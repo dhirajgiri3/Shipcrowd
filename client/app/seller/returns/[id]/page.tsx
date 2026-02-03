@@ -101,11 +101,11 @@ export default function ReturnDetailPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+            <div className="min-h-screen bg-[var(--bg-tertiary)] p-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="animate-pulse space-y-6">
-                        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-                        <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="h-8 bg-[var(--bg-secondary)] rounded w-1/4"></div>
+                        <div className="h-64 bg-[var(--bg-secondary)] rounded"></div>
                     </div>
                 </div>
             </div>
@@ -114,9 +114,9 @@ export default function ReturnDetailPage() {
 
     if (!returnReq) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+            <div className="min-h-screen bg-[var(--bg-tertiary)] p-6">
                 <div className="max-w-7xl mx-auto text-center">
-                    <p className="text-gray-500">Return not found</p>
+                    <p className="text-[var(--text-muted)]">Return not found</p>
                 </div>
             </div>
         );
@@ -133,7 +133,7 @@ export default function ReturnDetailPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                        <button onClick={() => router.back()} className="p-2 hover:bg-[var(--bg-hover)] rounded-lg">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
@@ -159,17 +159,17 @@ export default function ReturnDetailPage() {
                             <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Return Information</h2>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Customer</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">{returnReq.customerName}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{returnReq.customerPhone}</p>
+                                    <p className="text-sm text-[var(--text-secondary)]">Customer</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1">{returnReq.customerName}</p>
+                                    <p className="text-xs text-[var(--text-secondary)]">{returnReq.customerPhone}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Requested</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">{formatDate(returnReq.requestedAt)}</p>
+                                    <p className="text-sm text-[var(--text-secondary)]">Requested</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1">{formatDate(returnReq.requestedAt)}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Primary Reason</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1 capitalize">
+                                    <p className="text-sm text-[var(--text-secondary)]">Primary Reason</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1 capitalize">
                                         {returnReq.primaryReason.replace(/_/g, ' ')}
                                     </p>
                                 </div>
@@ -181,35 +181,35 @@ export default function ReturnDetailPage() {
                                 </div>
                             </div>
                             {returnReq.customerNotes && (
-                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Customer Notes</p>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300">{returnReq.customerNotes}</p>
+                                <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
+                                    <p className="text-sm text-[var(--text-secondary)] mb-1">Customer Notes</p>
+                                    <p className="text-sm text-[var(--text-primary)]">{returnReq.customerNotes}</p>
                                 </div>
                             )}
                         </div>
 
                         {/* Items */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Return Items</h2>
+                        <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Return Items</h2>
                             <div className="space-y-4">
                                 {returnReq.items.map((item, idx) => (
-                                    <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                    <div key={idx} className="border border-[var(--border-default)] rounded-lg p-4">
                                         <div className="flex justify-between">
                                             <div>
-                                                <h3 className="font-medium text-gray-900 dark:text-white">{item.productName}</h3>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">SKU: {item.sku}</p>
+                                                <h3 className="font-medium text-[var(--text-primary)]">{item.productName}</h3>
+                                                <p className="text-sm text-[var(--text-secondary)]">SKU: {item.sku}</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-semibold text-gray-900 dark:text-white">
+                                                <p className="font-semibold text-[var(--text-primary)]">
                                                     {formatCurrency(item.sellingPrice)}
                                                 </p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                <p className="text-sm text-[var(--text-secondary)]">
                                                     Qty: {item.returnQuantity}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="mt-2">
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                                            <p className="text-sm text-[var(--text-primary)] capitalize">
                                                 Reason: {item.returnReason.replace(/_/g, ' ')}
                                             </p>
                                         </div>
@@ -220,23 +220,23 @@ export default function ReturnDetailPage() {
 
                         {/* QC Results */}
                         {returnReq.qualityCheck && (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quality Check Results</h2>
+                            <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Quality Check Results</h2>
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
                                         <div>
-                                            <p className="font-medium text-gray-900 dark:text-white">
+                                            <p className="font-medium text-[var(--text-primary)]">
                                                 Status: {returnReq.qualityCheck.status.toUpperCase()}
                                             </p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            <p className="text-sm text-[var(--text-secondary)]">
                                                 Performed by {returnReq.qualityCheck.performedBy} on {formatDate(returnReq.qualityCheck.performedAt)}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-semibold text-green-600 dark:text-green-400">
+                                            <p className="font-semibold text-[var(--success)]">
                                                 {formatCurrency(returnReq.qualityCheck.refundAmount)}
                                             </p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">Refund Amount</p>
+                                            <p className="text-sm text-[var(--text-secondary)]">Refund Amount</p>
                                         </div>
                                     </div>
                                     {returnReq.qualityCheck.overallNotes && (
@@ -250,15 +250,15 @@ export default function ReturnDetailPage() {
 
                         {/* Actions */}
                         {(canApprove || canQC || canRefund) && (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Actions</h2>
+                            <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Actions</h2>
                                 <div className="flex flex-wrap gap-3">
                                     {canApprove && (
                                         <>
                                             <button
                                                 onClick={() => setShowApproveModal(true)}
                                                 disabled={approveReturn.isPending}
-                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                                                className="px-4 py-2 bg-[var(--success)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                                             >
                                                 Approve Return
                                             </button>
@@ -274,7 +274,7 @@ export default function ReturnDetailPage() {
                                     {canQC && (
                                         <button
                                             onClick={() => setShowQCModal(true)}
-                                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                                            className="px-4 py-2 bg-[var(--primary-blue)] text-white rounded-lg hover:bg-[var(--primary-blue-deep)]"
                                         >
                                             Perform Quality Check
                                         </button>
@@ -292,7 +292,7 @@ export default function ReturnDetailPage() {
                                     {returnReq.status !== 'requested' && returnReq.status !== 'rejected' && (
                                         <button
                                             onClick={() => setShowLabelModal(true)}
-                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                                            className="px-4 py-2 bg-[var(--primary-blue)] text-white rounded-lg hover:bg-[var(--primary-blue-deep)] flex items-center gap-2"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -308,18 +308,18 @@ export default function ReturnDetailPage() {
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Timeline */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Timeline</h3>
+                        <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Timeline</h3>
                             <div className="space-y-4">
                                 {returnReq.timeline.map((event, idx) => (
                                     <div key={idx} className="flex gap-3">
                                         <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-[var(--primary-blue)]"></div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                                            <p className="text-sm font-medium text-[var(--text-primary)] capitalize">
                                                 {event.status.replace(/_/g, ' ')}
                                             </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(event.timestamp)}</p>
-                                            {event.notes && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{event.notes}</p>}
+                                            <p className="text-xs text-[var(--text-secondary)]">{formatDate(event.timestamp)}</p>
+                                            {event.notes && <p className="text-xs text-[var(--text-muted)] mt-1">{event.notes}</p>}
                                         </div>
                                     </div>
                                 ))}

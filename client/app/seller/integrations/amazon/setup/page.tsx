@@ -182,16 +182,16 @@ export default function AmazonIntegrationPage() {
             {currentStep === 1 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Store className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                        <div className="w-16 h-16 bg-[var(--warning-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Store className="w-8 h-8 text-[var(--warning)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Enter Amazon Seller Details
                         </h3>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Seller ID *
                         </label>
                         <input
@@ -199,18 +199,18 @@ export default function AmazonIntegrationPage() {
                             value={sellerId}
                             onChange={(e) => setSellerId(e.target.value)}
                             placeholder="A1XXXXXXXXX"
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Region *
                         </label>
                         <select
                             value={region}
                             onChange={(e) => setRegion(e.target.value as any)}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         >
                             {regionOptions.map(r => (
                                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -218,11 +218,11 @@ export default function AmazonIntegrationPage() {
                         </select>
                     </div>
 
-                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-                        <h4 className="font-medium text-orange-900 dark:text-orange-100 mb-2">
+                    <div className="bg-[var(--warning-bg)] rounded-lg p-4 border border-[var(--warning-border)]">
+                        <h4 className="font-medium text-[var(--warning-text)] mb-2">
                             Find your Seller ID
                         </h4>
-                        <p className="text-sm text-orange-800 dark:text-orange-200">
+                        <p className="text-sm text-[var(--warning-text)] opacity-90">
                             Go to Settings → Account Info in Seller Central
                         </p>
                     </div>
@@ -232,16 +232,16 @@ export default function AmazonIntegrationPage() {
             {currentStep === 2 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Key className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                        <div className="w-16 h-16 bg-[var(--warning-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Key className="w-8 h-8 text-[var(--warning)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Enter MWS Auth Token
                         </h3>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             MWS Auth Token *
                         </label>
                         <input
@@ -249,15 +249,15 @@ export default function AmazonIntegrationPage() {
                             value={mwsAuthToken}
                             onChange={(e) => setMwsAuthToken(e.target.value)}
                             placeholder="amzn.mws.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
+                        <h4 className="font-medium text-[var(--text-primary)] mb-2">
                             How to get MWS Auth Token:
                         </h4>
-                        <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                        <ol className="text-sm text-[var(--text-secondary)] space-y-2">
                             <li>1. Go to Settings → User Permissions in Seller Central</li>
                             <li>2. Visit Apps & Services</li>
                             <li>3. Authorize Shipcrowd to access your account</li>
@@ -269,18 +269,18 @@ export default function AmazonIntegrationPage() {
 
             {currentStep === 3 && (
                 <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                         Configure Settings
                     </h3>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Sync Frequency
                         </label>
                         <select
                             value={settings.syncFrequency}
                             onChange={(e) => setSettings(prev => ({ ...prev, syncFrequency: e.target.value as SyncFrequency }))}
-                            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         >
                             <option value="HOURLY">Hourly</option>
                             <option value="EVERY_30_MIN">Every 30 minutes</option>
@@ -294,13 +294,13 @@ export default function AmazonIntegrationPage() {
                             id="autoTrackingUpdate"
                             checked={settings.autoTrackingUpdate}
                             onChange={(e) => setSettings(prev => ({ ...prev, autoTrackingUpdate: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
                         <div>
-                            <label htmlFor="autoTrackingUpdate" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                            <label htmlFor="autoTrackingUpdate" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                 Push tracking updates
                             </label>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Send tracking info back to Amazon
                             </p>
                         </div>
@@ -311,10 +311,10 @@ export default function AmazonIntegrationPage() {
             {currentStep === 4 && (
                 <div className="space-y-6">
                     <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Settings className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                        <div className="w-16 h-16 bg-[var(--warning-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Settings className="w-8 h-8 text-[var(--warning)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Test Connection
                         </h3>
                     </div>
@@ -323,7 +323,7 @@ export default function AmazonIntegrationPage() {
                         <button
                             onClick={handleTestConnection}
                             disabled={isTesting}
-                            className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-[var(--warning)] hover:opacity-90 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
                             {isTesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                             {isTesting ? 'Testing...' : 'Test Connection'}
@@ -332,25 +332,25 @@ export default function AmazonIntegrationPage() {
 
                     {testResult && (
                         <div className={`rounded-lg p-6 border ${testResult.success
-                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200'
-                            : 'bg-red-50 dark:bg-red-900/20 border-red-200'
+                            ? 'bg-[var(--success-bg)] border-[var(--success-border)]'
+                            : 'bg-[var(--error-bg)] border-[var(--error-border)]'
                             }`}>
                             {testResult.success ? (
                                 <>
-                                    <Check className="w-6 h-6 text-green-600 mb-2" />
-                                    <h4 className="font-semibold text-green-900 mb-2">Connection Successful!</h4>
-                                    <p className="text-sm text-green-700">
+                                    <Check className="w-6 h-6 text-[var(--success)] mb-2" />
+                                    <h4 className="font-semibold text-[var(--success-text)] mb-2">Connection Successful!</h4>
+                                    <p className="text-sm text-[var(--success-text)]">
                                         Store: <strong>{testResult.storeName || `Amazon ${region}`}</strong>
                                     </p>
                                 </>
                             ) : (
                                 <>
-                                    <AlertCircle className="w-6 h-6 text-red-600 mb-2" />
-                                    <h4 className="font-semibold text-red-900 mb-2">Connection Failed</h4>
-                                    <p className="text-sm text-red-700">{testResult.message}</p>
+                                    <AlertCircle className="w-6 h-6 text-[var(--error)] mb-2" />
+                                    <h4 className="font-semibold text-[var(--error-text)] mb-2">Connection Failed</h4>
+                                    <p className="text-sm text-[var(--error-text)]">{testResult.message}</p>
                                     <button
                                         onClick={handleTestConnection}
-                                        className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                                        className="mt-4 px-4 py-2 bg-[var(--error)] hover:opacity-90 text-white rounded-lg"
                                     >
                                         Try Again
                                     </button>

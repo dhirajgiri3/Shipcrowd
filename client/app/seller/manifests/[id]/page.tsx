@@ -6,14 +6,14 @@
 
 'use client';
 
-import React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { useParams } from 'next/navigation';
 import {
-    useManifest,
-    useDownloadManifestPdf,
-    useMarkPickedUp,
-    useCancelManifest,
-} from '@/src/core/api/hooks/orders/useManifests';
+    useShipmentManifest,
+    useDownloadManifestPDF,
+    useCloseManifest,
+    useHandoverManifest,
+} from '@/src/core/api/hooks/logistics/useManifest';
 import {
     ArrowLeft,
     FileText,
@@ -23,83 +23,67 @@ import {
     Calendar,
     Clock,
     MapPin,
-    CheckCircle2,
-    XCircle,
     Loader2,
     AlertCircle,
-    MoreHorizontal,
     RefreshCw,
     Check,
 } from 'lucide-react';
 import Link from 'next/link';
-import { showInfoToast } from '@/src/lib/error';
-import type { ManifestStatus, ManifestShipment } from '@/src/types/api/orders';
+import type { ManifestStatus } from '@/src/types/api/orders';
+import { ConfirmationModal } from '@/src/components/ui/ConfirmationModal';
 
 // ==================== Status Config ====================
 
 const statusConfig: Record<ManifestStatus, { label: string; className: string }> = {
-    DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
-    CREATED: { label: 'Created', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-    PICKUP_SCHEDULED: { label: 'Pickup Scheduled', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
-    PICKUP_IN_PROGRESS: { label: 'Pickup In Progress', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
-    PICKED_UP: { label: 'Picked Up', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-    PARTIALLY_PICKED: { label: 'Partially Picked', className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
-    CANCELLED: { label: 'Cancelled', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+    open: { label: 'Open', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+    closed: { label: 'Closed', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+    handed_over: { label: 'Handed Over', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+};
+
+const courierDisplayNames: Record<string, string> = {
+    velocity: 'Velocity',
+    delhivery: 'Delhivery',
+    ekart: 'Ekart',
+    xpressbees: 'XpressBees',
+    india_post: 'India Post',
 };
 
 // ==================== Component ====================
 
 export default function ManifestDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const manifestId = params.id as string;
+    const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
 
     // API hooks
-    const { data: manifest, isLoading, isError, refetch } = useManifest(manifestId);
-    const { mutate: downloadPdf, isPending: isDownloading } = useDownloadManifestPdf();
-    const { mutate: markPickedUp, isPending: isMarking } = useMarkPickedUp();
-    const { mutate: cancelManifest, isPending: isCancelling } = useCancelManifest();
+    const { data: manifest, isLoading, isError, refetch } = useShipmentManifest(manifestId);
+    const { mutateAsync: downloadPdf, isPending: isDownloading } = useDownloadManifestPDF();
+    const { mutate: closeManifest, isPending: isClosing } = useCloseManifest();
+    const { mutate: handoverManifest, isPending: isHandingOver } = useHandoverManifest();
 
     // Handlers
-    const handleDownloadPdf = () => {
+    const handleDownloadPdf = async () => {
         if (manifest) {
-            downloadPdf(manifest.manifestId);
+            const url = await downloadPdf(manifest._id);
+            window.open(url, '_blank');
         }
     };
 
-    const handleMarkAllPickedUp = () => {
-        if (manifest) {
-            const unPickedIds = manifest.shipments
-                .filter(s => !s.isPickedUp)
-                .map(s => s.shipmentId);
-
-            if (unPickedIds.length === 0) {
-                showInfoToast('All shipments already marked as picked up');
-                return;
-            }
-
-            markPickedUp({
-                manifestId: manifest.manifestId,
-                shipmentIds: unPickedIds,
-            });
-        }
+    const handleCloseManifest = () => {
+        if (!manifest) return;
+        setIsCloseConfirmOpen(true);
     };
 
-    const handleCancelManifest = () => {
-        if (manifest && window.confirm('Are you sure you want to cancel this manifest?')) {
-            cancelManifest({ manifestId: manifest.manifestId });
-        }
-    };
-
-    const handleReconcile = () => {
-        router.push(`/seller/manifests/reconciliation?id=${manifestId}`);
+    const handleHandoverManifest = () => {
+        if (!manifest) return;
+        handoverManifest(manifest._id);
     };
 
     // Loading state
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+            <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-[var(--primary-blue)] animate-spin" />
             </div>
         );
     }
@@ -107,18 +91,18 @@ export default function ManifestDetailPage() {
     // Error state
     if (isError || !manifest) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
                 <div className="text-center">
-                    <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    <AlertCircle className="w-12 h-12 mx-auto mb-4 text-[var(--error)]" />
+                    <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                         Manifest Not Found
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    <p className="text-[var(--text-secondary)] mb-4">
                         The manifest you're looking for doesn't exist or has been deleted.
                     </p>
                     <Link
                         href="/seller/manifests"
-                        className="text-primary-600 hover:text-primary-700 font-medium"
+                        className="text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] font-medium"
                     >
                         Back to Manifests
                     </Link>
@@ -127,14 +111,30 @@ export default function ManifestDetailPage() {
         );
     }
 
+    const warehouse = typeof manifest.warehouseId === 'string' ? null : manifest.warehouseId;
+
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-[var(--bg-primary)]">
+            <ConfirmationModal
+                isOpen={isCloseConfirmOpen}
+                title="Close Manifest?"
+                message="This will close the manifest and attempt to schedule pickup with the courier. You can still mark handover later."
+                confirmText="Close Manifest"
+                cancelText="Cancel"
+                variant="warning"
+                isLoading={isClosing}
+                onConfirm={() => {
+                    closeManifest(manifest._id);
+                    setIsCloseConfirmOpen(false);
+                }}
+                onCancel={() => setIsCloseConfirmOpen(false)}
+            />
             <div className="max-w-6xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
                     <Link
                         href="/seller/manifests"
-                        className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 mb-4"
+                        className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--primary-blue)] mb-4"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         Back to Manifests
@@ -142,18 +142,18 @@ export default function ManifestDetailPage() {
 
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                                <FileText className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+                            <div className="w-14 h-14 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                <FileText className="w-7 h-7 text-[var(--primary-blue)]" />
                             </div>
                             <div>
-                                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {manifest.manifestId}
+                                <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+                                    {manifest.manifestNumber}
                                 </h1>
                                 <div className="flex items-center gap-3 mt-1">
                                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[manifest.status].className}`}>
                                         {statusConfig[manifest.status].label}
                                     </span>
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                                    <span className="text-sm text-[var(--text-muted)]">
                                         Created {new Date(manifest.createdAt).toLocaleDateString()}
                                     </span>
                                 </div>
@@ -164,7 +164,7 @@ export default function ManifestDetailPage() {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => refetch()}
-                                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                className="p-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
                                 title="Refresh"
                             >
                                 <RefreshCw className="w-5 h-5" />
@@ -172,7 +172,7 @@ export default function ManifestDetailPage() {
                             <button
                                 onClick={handleDownloadPdf}
                                 disabled={isDownloading}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                                className="flex items-center gap-2 px-4 py-2 bg-[var(--success)] hover:opacity-90 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
                             >
                                 {isDownloading ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -188,45 +188,45 @@ export default function ManifestDetailPage() {
                 {/* Info Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     {/* Courier */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                <Truck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <div className="w-10 h-10 rounded-lg bg-[var(--info-bg)] flex items-center justify-center">
+                                <Truck className="w-5 h-5 text-[var(--info)]" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Courier</p>
-                                <p className="font-semibold text-gray-900 dark:text-white">
-                                    {manifest.courierDisplayName}
+                                <p className="text-xs text-[var(--text-muted)]">Courier</p>
+                                <p className="font-semibold text-[var(--text-primary)]">
+                                    {courierDisplayNames[manifest.carrier] || manifest.carrier}
                                 </p>
                             </div>
                         </div>
                     </div>
 
                     {/* Shipments */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                                <Package className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                            <div className="w-10 h-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                <Package className="w-5 h-5 text-[var(--primary-blue)]" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Shipments</p>
-                                <p className="font-semibold text-gray-900 dark:text-white">
-                                    {manifest.pickedUpCount}/{manifest.totalShipments} picked
+                                <p className="text-xs text-[var(--text-muted)]">Shipments</p>
+                                <p className="font-semibold text-[var(--text-primary)]">
+                                    {manifest.summary.totalShipments} shipments
                                 </p>
                             </div>
                         </div>
                     </div>
 
                     {/* Pickup Date */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                                <Calendar className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <div className="w-10 h-10 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center">
+                                <Calendar className="w-5 h-5 text-[var(--warning)]" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Pickup Date</p>
-                                <p className="font-semibold text-gray-900 dark:text-white">
-                                    {new Date(manifest.pickupDate).toLocaleDateString('en-IN', {
+                                <p className="text-xs text-[var(--text-muted)]">Pickup Date</p>
+                                <p className="font-semibold text-[var(--text-primary)]">
+                                    {new Date(manifest.pickup.scheduledDate).toLocaleDateString('en-IN', {
                                         day: 'numeric',
                                         month: 'short',
                                         year: 'numeric',
@@ -237,47 +237,51 @@ export default function ManifestDetailPage() {
                     </div>
 
                     {/* Weight & COD */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <Package className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <div className="w-10 h-10 rounded-lg bg-[var(--success-bg)] flex items-center justify-center">
+                                <Package className="w-5 h-5 text-[var(--success)]" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Weight / COD</p>
-                                <p className="font-semibold text-gray-900 dark:text-white">
-                                    {manifest.totalWeight.toFixed(2)} kg / ₹{manifest.totalCodAmount.toLocaleString()}
+                                <p className="text-xs text-[var(--text-muted)]">Weight / COD</p>
+                                <p className="font-semibold text-[var(--text-primary)]">
+                                    {manifest.summary.totalWeight.toFixed(2)} kg / ₹{manifest.summary.totalCODAmount.toLocaleString()}
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Pickup Address */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+                {/* Pickup Warehouse */}
+                <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-6 mb-8">
                     <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
-                            <MapPin className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <div className="w-10 h-10 rounded-lg bg-[var(--bg-secondary)] flex items-center justify-center flex-shrink-0">
+                            <MapPin className="w-5 h-5 text-[var(--text-muted)]" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                                Pickup Address
+                            <h3 className="font-semibold text-[var(--text-primary)] mb-1">
+                                Pickup Warehouse
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                {manifest.pickupAddress.name}
+                            <p className="text-[var(--text-secondary)]">
+                                {warehouse?.name || 'Warehouse'}
                             </p>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                {manifest.pickupAddress.address}
+                            {warehouse?.address && (
+                                <>
+                                    <p className="text-[var(--text-secondary)]">
+                                        {warehouse.address.line1}{warehouse.address.line2 ? `, ${warehouse.address.line2}` : ''}
+                                    </p>
+                                    <p className="text-[var(--text-secondary)]">
+                                        {warehouse.address.city}, {warehouse.address.state} - {warehouse.address.postalCode}
+                                    </p>
+                                </>
+                            )}
+                            <p className="text-[var(--text-muted)] text-sm mt-1">
+                                Contact: {manifest.pickup.contactPerson} ({manifest.pickup.contactPhone})
                             </p>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                {manifest.pickupAddress.city}, {manifest.pickupAddress.state} - {manifest.pickupAddress.pincode}
-                            </p>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                                Phone: {manifest.pickupAddress.phone}
-                            </p>
-                            {manifest.pickupSlot && (
-                                <p className="text-sm text-primary-600 dark:text-primary-400 mt-2 flex items-center gap-1">
+                            {manifest.pickup?.timeSlot && (
+                                <p className="text-sm text-[var(--primary-blue)] mt-2 flex items-center gap-1">
                                     <Clock className="w-4 h-4" />
-                                    Slot: {manifest.pickupSlot.start} - {manifest.pickupSlot.end}
+                                    Slot: {manifest.pickup.timeSlot}
                                 </p>
                             )}
                         </div>
@@ -285,96 +289,90 @@ export default function ManifestDetailPage() {
                 </div>
 
                 {/* Actions Bar */}
-                {manifest.status !== 'CANCELLED' && manifest.status !== 'PICKED_UP' && (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6 flex items-center justify-between">
-                        <p className="text-gray-600 dark:text-gray-400">
-                            {manifest.totalShipments - manifest.pickedUpCount} shipments pending pickup
+                {(manifest.status === 'open' || manifest.status === 'closed') && (
+                    <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-4 mb-6 flex items-center justify-between">
+                        <p className="text-[var(--text-secondary)]">
+                            {manifest.status === 'open'
+                                ? 'Manifest is open. Close it to schedule pickup.'
+                                : 'Manifest is closed. Mark handover once pickup is complete.'}
                         </p>
                         <div className="flex gap-3">
-                            <button
-                                onClick={handleCancelManifest}
-                                disabled={isCancelling}
-                                className="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                {isCancelling ? 'Cancelling...' : 'Cancel Manifest'}
-                            </button>
-                            <button
-                                onClick={handleMarkAllPickedUp}
-                                disabled={isMarking}
-                                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                {isMarking ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <Check className="w-4 h-4" />
-                                )}
-                                Mark All Picked Up
-                            </button>
+                            {manifest.status === 'open' && (
+                                <button
+                                    onClick={handleCloseManifest}
+                                    disabled={isClosing}
+                                    className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    {isClosing ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Check className="w-4 h-4" />
+                                    )}
+                                    Close Manifest
+                                </button>
+                            )}
+                            {manifest.status === 'closed' && (
+                                <button
+                                    onClick={handleHandoverManifest}
+                                    disabled={isHandingOver}
+                                    className="flex items-center gap-2 px-4 py-2 bg-[var(--success)] hover:opacity-90 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    {isHandingOver ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Check className="w-4 h-4" />
+                                    )}
+                                    Mark Handed Over
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
 
                 {/* Shipments Table */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--border-subtle)]">
+                        <h3 className="font-semibold text-[var(--text-primary)]">
                             Shipments ({manifest.shipments.length})
                         </h3>
                     </div>
 
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
+                            <thead className="bg-[var(--bg-secondary)]">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">AWB</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Destination</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Weight</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Payment</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">AWB</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Destination</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Weight</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Packages</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">COD</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-[var(--border-subtle)]">
                                 {manifest.shipments.map((shipment) => (
-                                    <tr key={shipment.shipmentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <tr key={shipment.shipmentId} className="hover:bg-[var(--bg-hover)]">
                                         <td className="px-6 py-4">
-                                            <p className="font-medium text-gray-900 dark:text-white">
-                                                {shipment.awbNumber}
-                                            </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                Order: {shipment.orderId}
+                                            <p className="font-medium text-[var(--text-primary)]">
+                                                {shipment.awb}
                                             </p>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                                            {shipment.destination.city}, {shipment.destination.state}
+                                        <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
+                                            {(shipment as any).shipmentId?.deliveryDetails?.address?.city || 'N/A'},
+                                            {' '}
+                                            {(shipment as any).shipmentId?.deliveryDetails?.address?.state || 'N/A'}
                                             <br />
-                                            <span className="text-xs">{shipment.destination.pincode}</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                                            {shipment.weight} kg
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`text-xs px-2 py-1 rounded-full ${shipment.paymentMode === 'COD'
-                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                                }`}>
-                                                {shipment.paymentMode}
-                                                {shipment.paymentMode === 'COD' && shipment.codAmount && (
-                                                    <> • ₹{shipment.codAmount}</>
-                                                )}
+                                            <span className="text-xs text-[var(--text-muted)]">
+                                                {(shipment as any).shipmentId?.deliveryDetails?.address?.postalCode || '—'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            {shipment.isPickedUp ? (
-                                                <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-sm">
-                                                    <CheckCircle2 className="w-4 h-4" />
-                                                    Picked Up
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 text-sm">
-                                                    <Clock className="w-4 h-4" />
-                                                    Pending
-                                                </span>
-                                            )}
+                                        <td className="px-6 py-4 text-sm text-[var(--text-primary)]">
+                                            {shipment.weight} kg
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-[var(--text-primary)]">
+                                            {shipment.packages}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-[var(--text-primary)]">
+                                            ₹{(shipment.codAmount || 0).toLocaleString()}
                                         </td>
                                     </tr>
                                 ))}

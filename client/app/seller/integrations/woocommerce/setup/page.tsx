@@ -207,19 +207,19 @@ export default function WooCommerceIntegrationPage() {
             {currentStep === 1 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <ShoppingCart className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                        <div className="w-16 h-16 bg-[var(--accent-bg-secondary)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <ShoppingCart className="w-8 h-8 text-[var(--secondary-purple)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Enter Your WooCommerce Store URL
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             We'll connect to your WooCommerce REST API
                         </p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Store URL *
                         </label>
                         <input
@@ -227,28 +227,28 @@ export default function WooCommerceIntegrationPage() {
                             value={siteUrl}
                             onChange={(e) => setSiteUrl(e.target.value)}
                             placeholder="https://your-store.com"
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                         {siteUrl && !canProceedStep1() && (
-                            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                            <p className="mt-2 text-sm text-[var(--error-text)] flex items-center gap-1">
                                 <AlertCircle className="w-4 h-4" />
                                 Please enter a valid URL
                             </p>
                         )}
                         {canProceedStep1() && (
-                            <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
+                            <p className="mt-2 text-sm text-[var(--success-text)] flex items-center gap-1">
                                 <Check className="w-4 h-4" />
                                 Valid URL format
                             </p>
                         )}
                     </div>
 
-                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-                        <h4 className="font-medium text-purple-900 dark:text-purple-100 mb-2 flex items-center gap-2">
+                    <div className="bg-[var(--accent-bg-secondary)] rounded-lg p-4 border border-[var(--secondary-purple-200)]">
+                        <h4 className="font-medium text-[var(--secondary-purple)] mb-2 flex items-center gap-2">
                             <Key className="w-4 h-4" />
                             Before you continue
                         </h4>
-                        <ul className="text-sm text-purple-800 dark:text-purple-200 space-y-1">
+                        <ul className="text-sm text-[var(--secondary-purple)] opacity-90 space-y-1">
                             <li>• Ensure WooCommerce REST API is enabled</li>
                             <li>• You'll need to generate API keys (next step)</li>
                             <li>• WordPress admin access required</li>
@@ -261,19 +261,19 @@ export default function WooCommerceIntegrationPage() {
             {currentStep === 2 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Key className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                        <div className="w-16 h-16 bg-[var(--accent-bg-secondary)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Key className="w-8 h-8 text-[var(--secondary-purple)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Enter API Credentials
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             Add your WooCommerce REST API keys
                         </p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Consumer Key *
                         </label>
                         <input
@@ -281,12 +281,12 @@ export default function WooCommerceIntegrationPage() {
                             value={consumerKey}
                             onChange={(e) => setConsumerKey(e.target.value)}
                             placeholder="ck_..."
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Consumer Secret *
                         </label>
                         <input
@@ -294,15 +294,15 @@ export default function WooCommerceIntegrationPage() {
                             value={consumerSecret}
                             onChange={(e) => setConsumerSecret(e.target.value)}
                             placeholder="cs_..."
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
+                        <h4 className="font-medium text-[var(--text-primary)] mb-2">
                             How to get API keys:
                         </h4>
-                        <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                        <ol className="text-sm text-[var(--text-secondary)] space-y-2">
                             <li>1. Go to WooCommerce → Settings → Advanced → REST API</li>
                             <li>2. Click "Add key"</li>
                             <li>3. Set permissions to "Read/Write"</li>
@@ -312,7 +312,7 @@ export default function WooCommerceIntegrationPage() {
                             href="https://woocommerce.github.io/woocommerce-rest-api-docs/#rest-api-keys"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-3 text-sm text-purple-600 hover:text-purple-700 font-medium"
+                            className="inline-flex items-center gap-1 mt-3 text-sm text-[var(--secondary-purple)] hover:text-[var(--secondary-purple-dark)] font-medium"
                         >
                             View documentation
                             <ExternalLink className="w-3 h-3" />
@@ -325,22 +325,22 @@ export default function WooCommerceIntegrationPage() {
             {currentStep === 3 && (
                 <div className="space-y-6">
                     <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
                             Configure Sync Settings
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             Customize how orders are synced
                         </p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Sync Frequency
                         </label>
                         <select
                             value={settings.syncFrequency}
                             onChange={(e) => setSettings(prev => ({ ...prev, syncFrequency: e.target.value as SyncFrequency }))}
-                            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         >
                             {syncFrequencyOptions.map(option => (
                                 <option key={option.value} value={option.value}>
@@ -356,13 +356,13 @@ export default function WooCommerceIntegrationPage() {
                             id="autoFulfill"
                             checked={settings.autoFulfill}
                             onChange={(e) => setSettings(prev => ({ ...prev, autoFulfill: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
                         <div>
-                            <label htmlFor="autoFulfill" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                            <label htmlFor="autoFulfill" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                 Auto-fulfill orders
                             </label>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Mark WooCommerce orders as completed when shipment is created
                             </p>
                         </div>
@@ -374,13 +374,13 @@ export default function WooCommerceIntegrationPage() {
                             id="autoTrackingUpdate"
                             checked={settings.autoTrackingUpdate}
                             onChange={(e) => setSettings(prev => ({ ...prev, autoTrackingUpdate: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
                         <div>
-                            <label htmlFor="autoTrackingUpdate" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                            <label htmlFor="autoTrackingUpdate" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                 Push tracking updates
                             </label>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Send tracking info back to WooCommerce via order notes
                             </p>
                         </div>
@@ -393,13 +393,13 @@ export default function WooCommerceIntegrationPage() {
                                 id="syncHistorical"
                                 checked={settings.syncHistoricalOrders}
                                 onChange={(e) => setSettings(prev => ({ ...prev, syncHistoricalOrders: e.target.checked }))}
-                                className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                             />
                             <div className="flex-1">
-                                <label htmlFor="syncHistorical" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                                <label htmlFor="syncHistorical" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                     Sync historical orders
                                 </label>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <p className="text-sm text-[var(--text-secondary)]">
                                     Import past orders
                                 </p>
                             </div>
@@ -407,7 +407,7 @@ export default function WooCommerceIntegrationPage() {
 
                         {settings.syncHistoricalOrders && (
                             <div className="ml-7">
-                                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                                <label className="block text-sm text-[var(--text-secondary)] mb-1">
                                     Days back
                                 </label>
                                 <input
@@ -416,7 +416,7 @@ export default function WooCommerceIntegrationPage() {
                                     max="365"
                                     value={settings.historicalOrderDays}
                                     onChange={(e) => setSettings(prev => ({ ...prev, historicalOrderDays: parseInt(e.target.value) }))}
-                                    className="w-32 px-3 py-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    className="w-32 px-3 py-2 rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                                 />
                             </div>
                         )}
@@ -428,13 +428,13 @@ export default function WooCommerceIntegrationPage() {
             {currentStep === 4 && (
                 <div className="space-y-6">
                     <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Settings className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                        <div className="w-16 h-16 bg-[var(--accent-bg-secondary)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Settings className="w-8 h-8 text-[var(--secondary-purple)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Test Connection & Complete
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             Verify the connection before activation
                         </p>
                     </div>
@@ -443,7 +443,7 @@ export default function WooCommerceIntegrationPage() {
                         <button
                             onClick={handleTestConnection}
                             disabled={isTesting}
-                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full py-3 bg-[var(--secondary-purple)] hover:opacity-90 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isTesting ? (
                                 <>
@@ -461,18 +461,18 @@ export default function WooCommerceIntegrationPage() {
 
                     {testResult && (
                         <div className={`rounded-lg p-6 border ${testResult.success
-                                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                            ? 'bg-[var(--success-bg)] border-[var(--success-border)]'
+                            : 'bg-[var(--error-bg)] border-[var(--error-border)]'
                             }`}>
                             {testResult.success ? (
                                 <>
                                     <div className="flex items-center gap-3 mb-4">
-                                        <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
-                                        <h4 className="font-semibold text-green-900 dark:text-green-100">
+                                        <Check className="w-6 h-6 text-[var(--success)]" />
+                                        <h4 className="font-semibold text-[var(--success-text)]">
                                             Connection Successful!
                                         </h4>
                                     </div>
-                                    <div className="space-y-2 text-sm text-green-700 dark:text-green-300">
+                                    <div className="space-y-2 text-sm text-[var(--success-text)]">
                                         <p>Store: <strong>{testResult.storeName || siteUrl}</strong></p>
                                         {testResult.details?.ordersFound && (
                                             <p>Orders found: <strong>{testResult.details.ordersFound}</strong></p>
@@ -482,17 +482,17 @@ export default function WooCommerceIntegrationPage() {
                             ) : (
                                 <>
                                     <div className="flex items-center gap-3 mb-4">
-                                        <AlertCircle className="w-6 h-6 text-red-600" />
-                                        <h4 className="font-semibold text-red-900 dark:text-red-100">
+                                        <AlertCircle className="w-6 h-6 text-[var(--error)]" />
+                                        <h4 className="font-semibold text-[var(--error-text)]">
                                             Connection Failed
                                         </h4>
                                     </div>
-                                    <p className="text-sm text-red-700">
+                                    <p className="text-sm text-[var(--error-text)]">
                                         {testResult.message}
                                     </p>
                                     <button
                                         onClick={handleTestConnection}
-                                        className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                                        className="mt-4 px-4 py-2 bg-[var(--error)] hover:opacity-90 text-white rounded-lg"
                                     >
                                         Try Again
                                     </button>

@@ -43,23 +43,23 @@ export default function FraudDetectionPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-12 h-12 border-4 border-[var(--primary-blue)] border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-[var(--bg-tertiary)]">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[var(--error)] to-[var(--warning-dark)] rounded-lg flex items-center justify-center">
                             <Shield className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Fraud Detection</h1>
-                            <p className="text-gray-600 dark:text-gray-400">Monitor and investigate suspicious activities</p>
+                            <h1 className="text-3xl font-bold text-[var(--text-primary)]">Fraud Detection</h1>
+                            <p className="text-[var(--text-secondary)]">Monitor and investigate suspicious activities</p>
                         </div>
                     </div>
                 </div>
@@ -96,14 +96,14 @@ export default function FraudDetectionPage() {
                 )}
 
                 {/* Filters */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
+                <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-4 mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Risk Level</label>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Risk Level</label>
                             <select
                                 value={filters.riskLevel || ''}
                                 onChange={(e) => setFilters({ ...filters, riskLevel: e.target.value as FraudRiskLevel || undefined })}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             >
                                 <option value="">All Levels</option>
                                 <option value="critical">Critical</option>
@@ -114,11 +114,11 @@ export default function FraudDetectionPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Status</label>
                             <select
                                 value={filters.status || ''}
                                 onChange={(e) => setFilters({ ...filters, status: e.target.value as FraudAlertStatus || undefined })}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             >
                                 <option value="">All Statuses</option>
                                 <option value="new">New</option>
@@ -130,22 +130,22 @@ export default function FraudDetectionPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date</label>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Start Date</label>
                             <input
                                 type="date"
                                 value={filters.startDate || ''}
                                 onChange={(e) => setFilters({ ...filters, startDate: e.target.value || undefined })}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Date</label>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">End Date</label>
                             <input
                                 type="date"
                                 value={filters.endDate || ''}
                                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value || undefined })}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             />
                         </div>
                     </div>
@@ -175,9 +175,9 @@ export default function FraudDetectionPage() {
                                 onBlockCustomer={() => handleBlockCustomer(selectedAlert)}
                             />
                         ) : (
-                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
-                                <Eye className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                                <p className="text-gray-600 dark:text-gray-400">Select an alert to view details</p>
+                            <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-12 text-center">
+                                <Eye className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3" />
+                                <p className="text-[var(--text-secondary)]">Select an alert to view details</p>
                             </div>
                         )}
                     </div>
@@ -197,23 +197,23 @@ function StatCard({ label, value, trend, icon: Icon, color }: {
     color: 'blue' | 'red' | 'yellow' | 'green';
 }) {
     const colorClasses = {
-        blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600',
-        red: 'bg-red-100 dark:bg-red-900/30 text-red-600',
-        yellow: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600',
-        green: 'bg-green-100 dark:bg-green-900/30 text-green-600',
+        blue: 'bg-[var(--primary-blue)]/10 text-[var(--primary-blue)]',
+        red: 'bg-[var(--error)]/10 text-[var(--error)]',
+        yellow: 'bg-[var(--warning)]/10 text-[var(--warning)]',
+        green: 'bg-[var(--success)]/10 text-[var(--success)]',
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-6">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</span>
+                <span className="text-sm font-medium text-[var(--text-secondary)]">{label}</span>
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', colorClasses[color])}>
                     <Icon className="w-5 h-5" />
                 </div>
             </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+            <p className="text-3xl font-bold text-[var(--text-primary)]">{value}</p>
             {trend !== undefined && (
-                <p className={cn('text-sm mt-1', trend > 0 ? 'text-red-600' : 'text-green-600')}>
+                <p className={cn('text-sm mt-1', trend > 0 ? 'text-[var(--error)]' : 'text-[var(--success)]')}>
                     {trend > 0 ? '+' : ''}{trend.toFixed(1)}% from last period
                 </p>
             )}
@@ -231,10 +231,10 @@ function AlertCard({ alert, isSelected, onClick, onStatusChange }: {
         <div
             onClick={onClick}
             className={cn(
-                'bg-white dark:bg-gray-800 rounded-xl border-2 p-5 cursor-pointer transition-all',
+                'bg-[var(--bg-primary)] rounded-xl border-2 p-5 cursor-pointer transition-all',
                 isSelected
-                    ? 'border-primary-500 ring-2 ring-primary-200 dark:ring-primary-800'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'
+                    ? 'border-[var(--primary-blue)] ring-2 ring-[var(--primary-blue)]/20'
+                    : 'border-[var(--border-default)] hover:border-[var(--primary-blue)]/50'
             )}
         >
             <div className="flex items-start justify-between mb-3">
@@ -247,18 +247,18 @@ function AlertCard({ alert, isSelected, onClick, onStatusChange }: {
                             {alert.status.replace('_', ' ')}
                         </span>
                     </div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{alert.title}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{alert.description}</p>
+                    <h3 className="font-semibold text-[var(--text-primary)] mb-1">{alert.title}</h3>
+                    <p className="text-sm text-[var(--text-secondary)]">{alert.description}</p>
                 </div>
                 <div className="text-right ml-4">
-                    <div className="text-2xl font-bold text-red-600">{alert.riskScore}</div>
-                    <div className="text-xs text-gray-500">Risk Score</div>
+                    <div className="text-2xl font-bold text-[var(--error)]">{alert.riskScore}</div>
+                    <div className="text-xs text-[var(--text-muted)]">Risk Score</div>
                 </div>
             </div>
 
-            <div className="border-t border-gray-100 dark:border-gray-700 pt-3 mt-3">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Type: {FRAUD_ALERT_TYPE_LABELS[alert.type]}</p>
-                <p className="text-xs text-gray-400">{formatDateTime(alert.createdAt)}</p>
+            <div className="border-t border-[var(--border-subtle)] pt-3 mt-3">
+                <p className="text-sm text-[var(--text-secondary)] mb-2">Type: {FRAUD_ALERT_TYPE_LABELS[alert.type]}</p>
+                <p className="text-xs text-[var(--text-muted)]">{formatDateTime(alert.createdAt)}</p>
             </div>
         </div>
     );
@@ -270,35 +270,35 @@ function InvestigationPanel({ alert, onStatusChange, onBlockCustomer }: {
     onBlockCustomer: () => void;
 }) {
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Investigation Details</h2>
+        <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-6">
+            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">Investigation Details</h2>
 
             {/* Customer Info */}
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Customer Information</h3>
+            <div className="bg-[var(--bg-secondary)] rounded-lg p-4 mb-4">
+                <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-3">Customer Information</h3>
                 <div className="space-y-2">
                     {alert.metadata.customerName && (
                         <div className="flex items-center gap-2 text-sm">
-                            <User className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-900 dark:text-white">{alert.metadata.customerName}</span>
+                            <User className="w-4 h-4 text-[var(--text-muted)]" />
+                            <span className="text-[var(--text-primary)]">{alert.metadata.customerName}</span>
                         </div>
                     )}
                     {alert.metadata.customerEmail && (
                         <div className="flex items-center gap-2 text-sm">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-900 dark:text-white">{alert.metadata.customerEmail}</span>
+                            <Mail className="w-4 h-4 text-[var(--text-muted)]" />
+                            <span className="text-[var(--text-primary)]">{alert.metadata.customerEmail}</span>
                         </div>
                     )}
                     {alert.metadata.customerPhone && (
                         <div className="flex items-center gap-2 text-sm">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-900 dark:text-white">{alert.metadata.customerPhone}</span>
+                            <Phone className="w-4 h-4 text-[var(--text-muted)]" />
+                            <span className="text-[var(--text-primary)]">{alert.metadata.customerPhone}</span>
                         </div>
                     )}
                     {alert.metadata.location && (
                         <div className="flex items-center gap-2 text-sm">
-                            <MapPin className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-900 dark:text-white">{alert.metadata.location}</span>
+                            <MapPin className="w-4 h-4 text-[var(--text-muted)]" />
+                            <span className="text-[var(--text-primary)]">{alert.metadata.location}</span>
                         </div>
                     )}
                 </div>
@@ -306,18 +306,18 @@ function InvestigationPanel({ alert, onStatusChange, onBlockCustomer }: {
 
             {/* Fraud Indicators */}
             <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Fraud Indicators</h3>
+                <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-3">Fraud Indicators</h3>
                 <div className="space-y-2">
                     {alert.indicators.map((indicator) => (
-                        <div key={indicator.id} className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div key={indicator.id} className="flex items-start gap-2 p-3 bg-[var(--bg-secondary)] rounded-lg">
                             <AlertTriangle className={cn(
                                 'w-4 h-4 mt-0.5 flex-shrink-0',
-                                indicator.severity === 'critical' ? 'text-red-600' :
-                                    indicator.severity === 'high' ? 'text-orange-600' : 'text-yellow-600'
+                                indicator.severity === 'critical' ? 'text-[var(--error)]' :
+                                    indicator.severity === 'high' ? 'text-[var(--warning-dark)]' : 'text-[var(--warning)]'
                             )} />
                             <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900 dark:text-white">{indicator.description}</p>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                <p className="text-sm font-medium text-[var(--text-primary)]">{indicator.description}</p>
+                                <p className="text-xs text-[var(--text-secondary)] mt-1">
                                     Value: {indicator.value}
                                     {indicator.threshold && ` (Threshold: ${indicator.threshold})`}
                                 </p>
@@ -332,7 +332,7 @@ function InvestigationPanel({ alert, onStatusChange, onBlockCustomer }: {
                 <select
                     value={alert.status}
                     onChange={(e) => onStatusChange(e.target.value as FraudAlertStatus)}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                    className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]"
                 >
                     <option value="new">New</option>
                     <option value="investigating">Investigating</option>
@@ -343,7 +343,7 @@ function InvestigationPanel({ alert, onStatusChange, onBlockCustomer }: {
 
                 <button
                     onClick={onBlockCustomer}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--error)] hover:bg-[var(--error)]/90 text-white rounded-lg font-medium transition-colors"
                 >
                     <Ban className="w-4 h-4" />
                     Block Customer

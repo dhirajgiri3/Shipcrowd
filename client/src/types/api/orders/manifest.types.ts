@@ -1,88 +1,86 @@
 /**
- * Manifest Types
- * 
- * Type definitions for manifest management, pickup coordination,
- * and reconciliation features.
+ * Manifest Types (Shipping)
+ *
+ * Type definitions for manifest management and pickup coordination.
  */
 
 // ==================== Core Manifest Types ====================
 
-export type ManifestStatus =
-    | 'DRAFT'
-    | 'CREATED'
-    | 'PICKUP_SCHEDULED'
-    | 'PICKUP_IN_PROGRESS'
-    | 'PICKED_UP'
-    | 'PARTIALLY_PICKED'
-    | 'CANCELLED';
+export type ManifestStatus = 'open' | 'closed' | 'handed_over';
 
 export type CourierPartner =
     | 'velocity'
     | 'delhivery'
     | 'ekart'
     | 'xpressbees'
-    | 'bluedart'
-    | 'shadowfax'
-    | 'ecom_express';
-
-export interface Manifest {
-    _id: string;
-    manifestId: string;
-    sellerId: string;
-    courierPartner: CourierPartner;
-    courierDisplayName: string;
-
-    // Pickup details
-    pickupDate: string;
-    pickupSlot?: {
-        start: string;
-        end: string;
-    };
-    pickupAddress: {
-        name: string;
-        address: string;
-        city: string;
-        state: string;
-        pincode: string;
-        phone: string;
-    };
-
-    // Shipment details
-    shipments: ManifestShipment[];
-    totalShipments: number;
-    totalWeight: number;
-    totalCodAmount: number;
-
-    // Status tracking
-    status: ManifestStatus;
-    pickedUpCount: number;
-    notPickedCount: number;
-
-    // Reconciliation
-    reconciliationStatus?: 'PENDING' | 'COMPLETED' | 'DISCREPANCY';
-    reconciliationNotes?: string;
-
-    // Metadata
-    createdAt: string;
-    updatedAt: string;
-    createdBy?: string;
-}
+    | 'india_post';
 
 export interface ManifestShipment {
     shipmentId: string;
-    awbNumber: string;
-    orderId: string;
-    destination: {
-        city: string;
-        state: string;
-        pincode: string;
-    };
+    awb: string;
     weight: number;
-    paymentMode: 'COD' | 'PREPAID';
-    codAmount?: number;
-    productDetails?: string;
-    isPickedUp: boolean;
-    pickupTime?: string;
+    packages: number;
+    codAmount: number;
+}
+
+export interface Manifest {
+    _id: string;
+    manifestNumber: string;
+    companyId: string;
+    warehouseId: string | {
+        _id: string;
+        name?: string;
+        address?: any;
+        contactInfo?: any;
+    };
+    carrier: CourierPartner;
+    shipments: ManifestShipment[];
+    pickup: {
+        scheduledDate: string;
+        timeSlot: string;
+        contactPerson: string;
+        contactPhone: string;
+        pickupReference?: string;
+    };
+    summary: {
+        totalShipments: number;
+        totalWeight: number;
+        totalPackages: number;
+        totalCODAmount: number;
+    };
+    status: ManifestStatus;
+    notes?: string;
+    closedAt?: string;
+    closedBy?: string;
+    handedOverAt?: string;
+    handedOverBy?: string;
+    createdAt: string;
+    updatedAt: string;
+    metadata?: {
+        carrierManifestId?: string;
+        carrierManifestUrl?: string;
+        generatedAt?: string;
+    };
+}
+
+export interface EligibleManifestShipment {
+    shipmentId: string;
+    awb: string;
+    weight: number;
+    packages: number;
+    codAmount: number;
+    destination: {
+        city?: string;
+        state?: string;
+        pincode?: string;
+    };
+    warehouseId?: string;
+    warehouseName?: string;
+    warehouseContact?: {
+        phone?: string;
+        name?: string;
+        email?: string;
+    };
 }
 
 // ==================== Stats Types ====================
@@ -105,39 +103,36 @@ export interface ManifestListFilters {
     page?: number;
     limit?: number;
     status?: ManifestStatus | ManifestStatus[];
-    courierPartner?: CourierPartner;
-    dateFrom?: string;
-    dateTo?: string;
+    carrier?: CourierPartner;
+    warehouseId?: string;
     search?: string;
 }
 
 export interface ManifestListResponse {
     manifests: Manifest[];
-    pagination: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-        hasNextPage: boolean;
-        hasPrevPage: boolean;
-    };
+    total: number;
+    page: number;
+    pages: number;
 }
 
 export interface CreateManifestPayload {
-    courierPartner: CourierPartner;
+    carrier: CourierPartner;
     shipmentIds: string[];
-    pickupDate: string;
-    pickupSlot?: {
-        start: string;
-        end: string;
+    pickup: {
+        scheduledDate: string;
+        timeSlot: string;
+        contactPerson: string;
+        contactPhone: string;
     };
     warehouseId?: string;
+    notes?: string;
 }
 
 export interface CreateManifestResponse {
     manifest: Manifest;
-    manifestPdfUrl?: string;
 }
+
+// ==================== Reconciliation (Legacy placeholders) ====================
 
 export interface ReconciliationPayload {
     manifestId: string;
@@ -159,59 +154,4 @@ export interface ReconciliationResult {
         reason: string;
     }[];
     status: 'COMPLETED' | 'DISCREPANCY';
-}
-
-// ==================== Wizard Types ====================
-
-export interface ManifestWizardStep1Data {
-    courierPartner: CourierPartner | null;
-}
-
-export interface ManifestWizardStep2Data {
-    selectedShipmentIds: string[];
-}
-
-export interface ManifestWizardStep3Data {
-    pickupDate: string;
-    pickupSlot: {
-        start: string;
-        end: string;
-    } | null;
-    warehouseId: string | null;
-}
-
-export interface ManifestWizardData {
-    step1: ManifestWizardStep1Data;
-    step2: ManifestWizardStep2Data;
-    step3: ManifestWizardStep3Data;
-}
-
-// ==================== Component Prop Types ====================
-
-export interface ManifestTableProps {
-    manifests: Manifest[];
-    isLoading: boolean;
-    onManifestClick?: (manifest: Manifest) => void;
-    onDownloadPdf?: (manifestId: string) => void;
-    onReconcile?: (manifestId: string) => void;
-}
-
-export interface ManifestStatsCardProps {
-    stats: ManifestStats;
-    isLoading: boolean;
-}
-
-export interface CreateManifestWizardProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess?: (manifest: Manifest) => void;
-}
-
-// ==================== PDF Generation Types ====================
-
-export interface ManifestPdfData {
-    manifest: Manifest;
-    companyName: string;
-    companyLogo?: string;
-    generatedAt: string;
 }

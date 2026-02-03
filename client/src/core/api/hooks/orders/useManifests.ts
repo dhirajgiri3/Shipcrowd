@@ -142,7 +142,7 @@ export const useCreateManifest = () => {
             // Invalidate manifest list and stats
             queryClient.invalidateQueries({ queryKey: queryKeys.manifests.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.list() });
-            showSuccessToast(`Manifest ${data.manifest.manifestId} created successfully`);
+            showSuccessToast(`Manifest ${data.manifest.manifestNumber} created successfully`);
         },
         onError: (error) => {
             handleApiError(error, 'Failed to Create Manifest');

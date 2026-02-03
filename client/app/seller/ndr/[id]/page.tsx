@@ -65,11 +65,11 @@ export default function NDRDetailPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+            <div className="min-h-screen bg-[var(--bg-tertiary)] p-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="animate-pulse space-y-6">
-                        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-                        <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="h-8 bg-[var(--bg-secondary)] rounded w-1/4"></div>
+                        <div className="h-64 bg-[var(--bg-secondary)] rounded"></div>
                     </div>
                 </div>
             </div>
@@ -78,9 +78,9 @@ export default function NDRDetailPage() {
 
     if (!ndrCase) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+            <div className="min-h-screen bg-[var(--bg-tertiary)] p-6">
                 <div className="max-w-7xl mx-auto text-center">
-                    <p className="text-gray-500 dark:text-gray-400">NDR case not found</p>
+                    <p className="text-[var(--text-muted)]">NDR case not found</p>
                 </div>
             </div>
         );
@@ -91,24 +91,24 @@ export default function NDRDetailPage() {
     const isResolved = ndrCase.status === 'resolved' || ndrCase.status === 'converted_to_rto';
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="min-h-screen bg-[var(--bg-secondary)] p-6">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => router.back()}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                            className="p-2 hover:bg-[var(--bg-hover)] rounded-lg"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
                                 {ndrCase.ndrId}
                             </h1>
-                            <p className="text-gray-600 dark:text-gray-400 mt-1">
+                            <p className="text-[var(--text-secondary)] mt-1">
                                 AWB: {shipment?.trackingNumber || 'N/A'}
                             </p>
                         </div>
@@ -119,7 +119,7 @@ export default function NDRDetailPage() {
                             {ndrCase.status.replace(/_/g, ' ').toUpperCase()}
                         </span>
                         {ndrCase.slaBreach && (
-                            <span className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <span className="px-4 py-2 bg-[var(--error-bg)] text-[var(--error)] rounded-lg text-sm font-medium flex items-center gap-2">
                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                 </svg>
@@ -133,52 +133,52 @@ export default function NDRDetailPage() {
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Case Information */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Case Information</h2>
+                        <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Case Information</h2>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Customer Name</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                    <p className="text-sm text-[var(--text-secondary)]">Customer Name</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1">
                                         {ndrCase.customerName}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Customer Phone</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                    <p className="text-sm text-[var(--text-secondary)]">Customer Phone</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1">
                                         {ndrCase.customerPhone}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Primary Reason</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1 capitalize">
+                                    <p className="text-sm text-[var(--text-secondary)]">Primary Reason</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1 capitalize">
                                         {ndrCase.primaryReason.replace(/_/g, ' ')}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Days Since Reported</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                    <p className="text-sm text-[var(--text-secondary)]">Days Since Reported</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1">
                                         {ndrCase.daysSinceReported} days
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Carrier</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                    <p className="text-sm text-[var(--text-secondary)]">Carrier</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1">
                                         {shipment?.carrier || 'N/A'}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Payment Method</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                    <p className="text-sm text-[var(--text-secondary)]">Payment Method</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] mt-1">
                                         {order?.paymentMethod || 'N/A'}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Delivery Address */}
-                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Delivery Address</p>
-                                <p className="text-sm text-gray-900 dark:text-white">
+                            <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
+                                <p className="text-sm text-[var(--text-secondary)] mb-2">Delivery Address</p>
+                                <p className="text-sm text-[var(--text-primary)]">
                                     {ndrCase.deliveryAddress}
                                 </p>
                             </div>
@@ -208,8 +208,8 @@ export default function NDRDetailPage() {
 
                         {/* Quick Actions */}
                         {!isResolved && (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+                            <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Quick Actions</h2>
                                 <div className="grid grid-cols-2 gap-3">
                                     {QUICK_ACTIONS.map((qa) => (
                                         <button
@@ -225,13 +225,13 @@ export default function NDRDetailPage() {
                                 <div className="mt-3 flex gap-3">
                                     <button
                                         onClick={() => setShowActionModal(true)}
-                                        className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                                        className="flex-1 px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-hover)]"
                                     >
                                         More Actions
                                     </button>
                                     <button
                                         onClick={handleEscalate}
-                                        className="px-4 py-2 border-2 border-orange-500 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                                        className="px-4 py-2 border-2 border-[var(--warning)] text-[var(--warning)] rounded-lg hover:bg-[var(--warning-bg)]"
                                         disabled={escalate.isPending}
                                     >
                                         Escalate to Admin
@@ -241,8 +241,8 @@ export default function NDRDetailPage() {
                         )}
 
                         {/* Communication History */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Communication History
                             </h2>
                             <CommunicationHistory communications={ndrCase.communications} />
@@ -250,33 +250,33 @@ export default function NDRDetailPage() {
 
                         {/* Resolution Details */}
                         {ndrCase.resolution && (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                     Resolution Details
                                 </h2>
                                 <div className="space-y-3">
                                     <div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Action Taken</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white mt-1 capitalize">
+                                        <p className="text-sm text-[var(--text-secondary)]">Action Taken</p>
+                                        <p className="text-sm font-medium text-[var(--text-primary)] mt-1 capitalize">
                                             {ndrCase.resolution.action.replace(/_/g, ' ')}
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Outcome</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white mt-1 capitalize">
+                                        <p className="text-sm text-[var(--text-secondary)]">Outcome</p>
+                                        <p className="text-sm font-medium text-[var(--text-primary)] mt-1 capitalize">
                                             {ndrCase.resolution.outcome}
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Resolved By</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                        <p className="text-sm text-[var(--text-secondary)]">Resolved By</p>
+                                        <p className="text-sm font-medium text-[var(--text-primary)] mt-1">
                                             {ndrCase.resolution.resolvedBy}
                                         </p>
                                     </div>
                                     {ndrCase.resolution.notes && (
                                         <div>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">Notes</p>
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                                            <p className="text-sm text-[var(--text-secondary)]">Notes</p>
+                                            <p className="text-sm text-[var(--text-primary)] mt-1">
                                                 {ndrCase.resolution.notes}
                                             </p>
                                         </div>
@@ -289,21 +289,21 @@ export default function NDRDetailPage() {
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Attempt Summary */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Delivery Attempts
                             </h3>
                             <div className="text-center">
-                                <p className="text-4xl font-bold text-primary-600 dark:text-primary-400">
+                                <p className="text-4xl font-bold text-[var(--primary-blue)]">
                                     {ndrCase.allAttempts.length}
                                 </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Attempts</p>
+                                <p className="text-sm text-[var(--text-secondary)] mt-1">Total Attempts</p>
                             </div>
                         </div>
 
                         {/* Timeline */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Timeline
                             </h3>
                             <NDRTimeline

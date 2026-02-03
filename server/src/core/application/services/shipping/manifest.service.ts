@@ -21,8 +21,8 @@ import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 
 interface CreateManifestData {
     companyId: string;
-    warehouseId: string;
-    carrier: 'velocity' | 'delhivery' | 'ekart' | 'india_post';
+    warehouseId?: string;
+    carrier: 'velocity' | 'delhivery' | 'ekart' | 'xpressbees' | 'india_post';
     shipmentIds: string[];
     pickup: {
         scheduledDate: Date;
@@ -34,6 +34,21 @@ interface CreateManifestData {
 }
 
 class ManifestService {
+    private readonly ELIGIBLE_STATUSES = ['created', 'pending_pickup', 'ready_to_ship'];
+
+    private normalizeCarrier(value?: string): string {
+        const carrier = (value || '').toLowerCase();
+
+        if (carrier.includes('velocity') || carrier.includes('shipfast')) return 'velocity';
+        if (carrier.includes('delhivery')) return 'delhivery';
+        if (carrier.includes('ekart')) return 'ekart';
+        if (carrier.includes('xpressbees') || carrier.includes('xpress')) return 'xpressbees';
+        if (carrier.includes('india post') || carrier.includes('india_post') || carrier.includes('india-post') || carrier.includes('indiapost')) {
+            return 'india_post';
+        }
+
+        return carrier;
+    }
     /**
      * Generate manifest number (transaction-safe)
      * Format: MAN-YYYYMM-XXXX
@@ -88,15 +103,38 @@ class ManifestService {
                 throw new ValidationError('Some shipment IDs are invalid');
             }
 
+            // Derive warehouseId from shipments if not provided
+            let resolvedWarehouseId = data.warehouseId;
+            if (!resolvedWarehouseId) {
+                const warehouseIds = [
+                    ...new Set(
+                        shipments
+                            .map((s: any) => s.pickupDetails?.warehouseId?.toString())
+                            .filter(Boolean)
+                    ),
+                ];
+
+                if (warehouseIds.length === 0) {
+                    throw new ValidationError('Warehouse ID is required for manifest creation');
+                }
+
+                if (warehouseIds.length > 1) {
+                    throw new ValidationError('Shipments must belong to the same warehouse');
+                }
+
+                resolvedWarehouseId = warehouseIds[0];
+            }
+
             // Validate all shipments belong to same carrier
-            const carriers = [...new Set(shipments.map((s: any) => s.carrier))];
+            const carriers = [...new Set(shipments.map((s: any) => this.normalizeCarrier(s.carrier)))];
             if (carriers.length > 1) {
                 throw new ValidationError(
                     'Cannot create manifest with shipments from different carriers'
                 );
             }
 
-            if (carriers[0] !== data.carrier) {
+            const requestedCarrier = this.normalizeCarrier(data.carrier);
+            if (carriers[0] !== requestedCarrier) {
                 throw new ValidationError(
                     `Shipments belong to ${carriers[0]}, but manifest is for ${data.carrier}`
                 );
@@ -133,7 +171,7 @@ class ManifestService {
                     const apiResult = await (provider as any).createManifest({
                         shipmentIds: shipments.map((s: any) => s._id.toString()),
                         awbs: shipments.map((s: any) => s.carrierDetails?.carrierTrackingNumber || s.trackingNumber),
-                        warehouseId: data.warehouseId
+                        warehouseId: resolvedWarehouseId
                     });
 
                     if (apiResult) {
@@ -167,7 +205,7 @@ class ManifestService {
                     {
                         manifestNumber,
                         companyId: new mongoose.Types.ObjectId(data.companyId),
-                        warehouseId: new mongoose.Types.ObjectId(data.warehouseId),
+                        warehouseId: new mongoose.Types.ObjectId(resolvedWarehouseId),
                         carrier: data.carrier,
                         shipments: manifestShipments,
                         pickup: data.pickup,
@@ -560,6 +598,7 @@ class ManifestService {
         warehouseId?: string;
         status?: string;
         carrier?: string;
+        search?: string;
         limit?: number;
         skip?: number;
     }) {
@@ -569,6 +608,13 @@ class ManifestService {
         if (filters.warehouseId) query.warehouseId = filters.warehouseId;
         if (filters.status) query.status = filters.status;
         if (filters.carrier) query.carrier = filters.carrier;
+        if (filters.search) {
+            const searchRegex = new RegExp(filters.search, 'i');
+            query.$or = [
+                { manifestNumber: searchRegex },
+                { notes: searchRegex },
+            ];
+        }
 
         const manifests = await Manifest.find(query)
             .sort({ createdAt: -1 })
@@ -584,6 +630,74 @@ class ManifestService {
             page: Math.floor((filters.skip || 0) / (filters.limit || 50)) + 1,
             pages: Math.ceil(total / (filters.limit || 50)),
         };
+    }
+
+    /**
+     * List shipments eligible for manifest creation
+     */
+    async listEligibleShipments(filters: {
+        companyId: string;
+        carrier?: string;
+        warehouseId?: string;
+    }) {
+        const manifestQuery: any = { companyId: filters.companyId };
+        if (filters.carrier) {
+            manifestQuery.carrier = filters.carrier;
+        }
+
+        const manifests = await Manifest.find(manifestQuery).select('shipments.shipmentId').lean();
+        const usedShipmentIds = new Set<string>();
+
+        manifests.forEach((manifest: any) => {
+            (manifest.shipments || []).forEach((s: any) => {
+                if (s?.shipmentId) {
+                    usedShipmentIds.add(s.shipmentId.toString());
+                }
+            });
+        });
+
+        const shipmentQuery: any = {
+            companyId: new mongoose.Types.ObjectId(filters.companyId),
+            isDeleted: false,
+            currentStatus: { $in: this.ELIGIBLE_STATUSES },
+            'pickupDetails.warehouseId': { $exists: true },
+        };
+
+        if (filters.warehouseId) {
+            shipmentQuery['pickupDetails.warehouseId'] = new mongoose.Types.ObjectId(filters.warehouseId);
+        }
+
+        if (usedShipmentIds.size > 0) {
+            shipmentQuery._id = { $nin: Array.from(usedShipmentIds) };
+        }
+
+        const shipments = await Shipment.find(shipmentQuery)
+            .populate('pickupDetails.warehouseId', 'name address contactInfo')
+            .select('trackingNumber carrierDetails packageDetails paymentDetails deliveryDetails pickupDetails')
+            .lean();
+
+        const normalizedFilter = filters.carrier ? this.normalizeCarrier(filters.carrier) : undefined;
+
+        return shipments
+            .filter((shipment: any) => {
+                if (!normalizedFilter) return true;
+                return this.normalizeCarrier(shipment.carrier) === normalizedFilter;
+            })
+            .map((shipment: any) => ({
+            shipmentId: shipment._id.toString(),
+            awb: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber,
+            weight: shipment.packageDetails?.weight || 0,
+            packages: shipment.packageDetails?.packageCount || 1,
+            codAmount: shipment.paymentDetails?.type === 'cod' ? shipment.paymentDetails?.codAmount || 0 : 0,
+            destination: {
+                city: shipment.deliveryDetails?.address?.city,
+                state: shipment.deliveryDetails?.address?.state,
+                pincode: shipment.deliveryDetails?.address?.postalCode,
+            },
+            warehouseId: shipment.pickupDetails?.warehouseId?._id?.toString(),
+            warehouseName: shipment.pickupDetails?.warehouseId?.name,
+            warehouseContact: shipment.pickupDetails?.warehouseId?.contactInfo,
+        }));
     }
 
     /**

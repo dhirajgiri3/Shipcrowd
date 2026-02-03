@@ -30,4 +30,10 @@ export interface IStorageService {
      * Check if file exists
      */
     exists(path: string): Promise<boolean>;
+
+    /**
+     * Download file as Buffer (useful for email attachments)
+     * @param path - Stored file path
+     */
+    downloadFile(path: string): Promise<Buffer>;
 }

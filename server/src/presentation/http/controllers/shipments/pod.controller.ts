@@ -3,7 +3,7 @@ import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError, CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
-import DiskStorageService from '../../../../core/application/services/storage/disk-storage.service';
+import StorageService from '../../../../core/application/services/storage/storage.service';
 import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 import mongoose from 'mongoose';
 
@@ -33,8 +33,8 @@ class PODController {
             const safeName = sanitizeFilename(file.originalname);
             const filePath = `pod/${id}/${Date.now()}-${safeName || `pod.${extension}`}`;
 
-            const storedPath = await DiskStorageService.uploadFile(file.buffer, filePath, file.mimetype);
-            const fileUrl = await DiskStorageService.getFileUrl(storedPath);
+            const storedPath = await StorageService.uploadFile(file.buffer, filePath, file.mimetype);
+            const fileUrl = await StorageService.getFileUrl(storedPath);
 
             shipment.documents.push({
                 type: 'pod',
@@ -73,7 +73,7 @@ class PODController {
                 const latest = podDocs[podDocs.length - 1];
                 const url = latest.url.startsWith('http')
                     ? latest.url
-                    : await DiskStorageService.getFileUrl(latest.url);
+                    : await StorageService.getFileUrl(latest.url);
 
                 sendSuccess(res, {
                     shipmentId: id,
@@ -84,7 +84,11 @@ class PODController {
             }
 
             // Try courier if supported
-            const courierProvider = shipment.carrier || 'velocity-shipfast';
+            const courierProvider = shipment.carrier;
+            if (!courierProvider) {
+                throw new NotFoundError('POD not available for this shipment');
+            }
+
             const courier = await CourierFactory.getProvider(
                 courierProvider,
                 new mongoose.Types.ObjectId(shipment.companyId)
@@ -125,12 +129,12 @@ class PODController {
 
                 if (response?.fileBuffer) {
                     const filePath = `pod/${id}/${Date.now()}-courier-pod.pdf`;
-                    const storedPath = await DiskStorageService.uploadFile(
+                    const storedPath = await StorageService.uploadFile(
                         response.fileBuffer,
                         filePath,
                         response.mimeType || 'application/pdf'
                     );
-                    const fileUrl = await DiskStorageService.getFileUrl(storedPath);
+                    const fileUrl = await StorageService.getFileUrl(storedPath);
 
                     shipment.documents.push({
                         type: 'pod',

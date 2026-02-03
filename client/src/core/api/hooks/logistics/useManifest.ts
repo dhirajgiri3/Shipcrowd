@@ -1,75 +1,22 @@
 import { useMutation, useQuery, useQueryClient, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../http';
-import { queryKeys, FilterParams } from '../../config/query-keys';
+import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import type {
+    Manifest,
+    ManifestListFilters,
+    ManifestListResponse,
+    ManifestStats,
+    CreateManifestPayload,
+    EligibleManifestShipment,
+} from '@/src/types/api/orders';
 
 /**
  * Manifest Management Hooks
  *
  * Purpose: Manage shipping manifests (bulk pickup scheduling)
- *
- * Features:
- * - Create manifests with shipments
- * - List manifests with filters
- * - Get manifest details
- * - Download manifest PDF
- * - Update manifest (pickup details, notes)
- * - Delete manifest
- * - Add/Remove shipments from manifest
- * - Close manifest & schedule pickup
- * - Mark manifest as handed over
  */
-
-export interface ManifestShipment {
-    shipmentId: string;
-    awb: string;
-    weight: number;
-    packages: number;
-    codAmount: number;
-}
-
-export interface Manifest {
-    _id: string;
-    manifestNumber: string;
-    companyId: string;
-    warehouseId: string;
-    carrier: 'velocity' | 'delhivery' | 'ekart' | 'india_post';
-    shipments: ManifestShipment[];
-    pickup: {
-        scheduledDate: string;
-        timeSlot: string;
-        contactPerson: string;
-        contactPhone: string;
-    };
-    summary: {
-        totalShipments: number;
-        totalWeight: number;
-        totalPackages: number;
-        totalCODAmount: number;
-    };
-    status: 'open' | 'closed' | 'handed_over';
-    notes?: string;
-    closedAt?: string;
-    closedBy?: string;
-    handedOverAt?: string;
-    handedOverBy?: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface CreateManifestPayload {
-    warehouseId: string;
-    carrier: 'velocity' | 'delhivery' | 'ekart' | 'india_post';
-    shipmentIds: string[];
-    pickup: {
-        scheduledDate: string;
-        timeSlot: string;
-        contactPerson: string;
-        contactPhone: string;
-    };
-    notes?: string;
-}
 
 export interface UpdateManifestPayload {
     pickup?: {
@@ -81,32 +28,19 @@ export interface UpdateManifestPayload {
     notes?: string;
 }
 
-export interface ManifestListFilters extends FilterParams {
-    warehouseId?: string;
-    status?: 'open' | 'closed' | 'handed_over';
-    carrier?: 'velocity' | 'delhivery' | 'ekart' | 'india_post';
-}
-
-interface PaginatedResult<T> {
-    manifests: T[];
-    total: number;
-    page: number;
-    pages: number;
-}
-
 /**
  * List manifests with filters
  */
-export function useShipmentManifests(
+export function useShipmentManifestsList(
     filters?: ManifestListFilters,
-    options?: UseQueryOptions<PaginatedResult<Manifest>, ApiError>
+    options?: UseQueryOptions<ManifestListResponse, ApiError>
 ) {
-    return useQuery<PaginatedResult<Manifest>, ApiError>({
-        queryKey: queryKeys.shipments.manifests(filters),
+    return useQuery<ManifestListResponse, ApiError>({
+        queryKey: queryKeys.shipments.manifests(filters as any),
         queryFn: async () => {
-            const { data } = await apiClient.get<{ success: boolean; data: PaginatedResult<Manifest> }>(
+            const { data } = await apiClient.get<{ success: boolean; data: ManifestListResponse }>(
                 '/shipments/manifests',
-                { params: filters }
+                { params: filters as any }
             );
             return data.data;
         },
@@ -133,6 +67,49 @@ export function useShipmentManifest(
         },
         enabled: !!id,
         ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+/**
+ * Manifest stats
+ */
+export function useShipmentManifestStats(
+    options?: UseQueryOptions<ManifestStats, ApiError>
+) {
+    return useQuery<ManifestStats, ApiError>({
+        queryKey: queryKeys.shipments.manifestStats(),
+        queryFn: async () => {
+            const { data } = await apiClient.get<{ success: boolean; data: ManifestStats }>(
+                '/shipments/manifests/stats'
+            );
+            return data.data;
+        },
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+/**
+ * Eligible shipments for manifest creation
+ */
+export function useEligibleManifestShipments(
+    carrier?: string,
+    warehouseId?: string,
+    options?: UseQueryOptions<EligibleManifestShipment[], ApiError>
+) {
+    return useQuery<EligibleManifestShipment[], ApiError>({
+        queryKey: queryKeys.shipments.manifestEligible(carrier, warehouseId),
+        queryFn: async () => {
+            const { data } = await apiClient.get<{ success: boolean; data: EligibleManifestShipment[] }>(
+                '/shipments/manifests/eligible-shipments',
+                { params: { carrier, warehouseId } }
+            );
+            return data.data;
+        },
+        ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });

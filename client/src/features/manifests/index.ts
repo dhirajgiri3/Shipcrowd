@@ -18,5 +18,4 @@ export type {
     CreateManifestResponse,
     ReconciliationPayload,
     ReconciliationResult,
-    ManifestWizardData,
 } from '@/src/types/api/orders';

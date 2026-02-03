@@ -165,40 +165,20 @@ export const NDR_STATUS_CONFIG: Record<NDRStatus, StatusConfig> = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const MANIFEST_STATUS_CONFIG: Record<ManifestStatus, StatusConfig> = {
-  DRAFT: {
-    label: 'Draft',
-    color: 'neutral',
-    description: 'Manifest in draft state',
+  open: {
+    label: 'Open',
+    color: 'warning',
+    description: 'Manifest created and editable',
   },
-  CREATED: {
-    label: 'Created',
+  closed: {
+    label: 'Closed',
     color: 'info',
-    description: 'Manifest created',
+    description: 'Pickup scheduled and manifest closed',
   },
-  PICKUP_SCHEDULED: {
-    label: 'Pickup Scheduled',
-    color: 'warning',
-    description: 'Pickup scheduled with courier',
-  },
-  PICKUP_IN_PROGRESS: {
-    label: 'Pickup In Progress',
-    color: 'pending',
-    description: 'Courier is picking up shipments',
-  },
-  PICKED_UP: {
-    label: 'Picked Up',
+  handed_over: {
+    label: 'Handed Over',
     color: 'success',
-    description: 'All shipments picked up',
-  },
-  PARTIALLY_PICKED: {
-    label: 'Partially Picked',
-    color: 'warning',
-    description: 'Some shipments picked up',
-  },
-  CANCELLED: {
-    label: 'Cancelled',
-    color: 'error',
-    description: 'Manifest cancelled',
+    description: 'Shipments handed over to courier',
   },
 };
 

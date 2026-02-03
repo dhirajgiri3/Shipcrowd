@@ -174,16 +174,16 @@ export default function FlipkartIntegrationPage() {
             {currentStep === 1 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Store className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                        <div className="w-16 h-16 bg-[var(--primary-bg-light)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Store className="w-8 h-8 text-[var(--primary-blue)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Enter Flipkart App Credentials
                         </h3>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             App ID *
                         </label>
                         <input
@@ -191,12 +191,12 @@ export default function FlipkartIntegrationPage() {
                             value={appId}
                             onChange={(e) => setAppId(e.target.value)}
                             placeholder="Your Flipkart App ID"
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             App Secret *
                         </label>
                         <input
@@ -204,15 +204,15 @@ export default function FlipkartIntegrationPage() {
                             value={appSecret}
                             onChange={(e) => setAppSecret(e.target.value)}
                             placeholder="Your Flipkart App Secret"
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                     </div>
 
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                    <div className="bg-[var(--primary-bg-light)] rounded-lg p-4 border border-[var(--primary-blue-200)]">
+                        <h4 className="font-medium text-[var(--primary-blue)] mb-2">
                             Get API Credentials
                         </h4>
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                        <p className="text-sm text-[var(--primary-blue)] opacity-90">
                             Contact Flipkart Seller Support to request API access and credentials
                         </p>
                     </div>
@@ -222,16 +222,16 @@ export default function FlipkartIntegrationPage() {
             {currentStep === 2 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Key className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                        <div className="w-16 h-16 bg-[var(--primary-bg-light)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Key className="w-8 h-8 text-[var(--primary-blue)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Enter Access Token
                         </h3>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Access Token *
                         </label>
                         <textarea
@@ -239,15 +239,15 @@ export default function FlipkartIntegrationPage() {
                             onChange={(e) => setAccessToken(e.target.value)}
                             placeholder="Paste your Flipkart access token here"
                             rows={4}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         />
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
+                        <h4 className="font-medium text-[var(--text-primary)] mb-2">
                             How to get Access Token:
                         </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-sm text-[var(--text-secondary)]">
                             Use the App ID and Secret to generate an access token via Flipkart's OAuth flow or contact their support for assistance.
                         </p>
                     </div>
@@ -256,18 +256,18 @@ export default function FlipkartIntegrationPage() {
 
             {currentStep === 3 && (
                 <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                         Configure Settings
                     </h3>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Sync Frequency
                         </label>
                         <select
                             value={settings.syncFrequency}
                             onChange={(e) => setSettings(prev => ({ ...prev, syncFrequency: e.target.value as SyncFrequency }))}
-                            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         >
                             <option value="HOURLY">Hourly</option>
                             <option value="EVERY_30_MIN">Every 30 minutes</option>
@@ -281,13 +281,13 @@ export default function FlipkartIntegrationPage() {
                             id="autoTrackingUpdate"
                             checked={settings.autoTrackingUpdate}
                             onChange={(e) => setSettings(prev => ({ ...prev, autoTrackingUpdate: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
                         <div>
-                            <label htmlFor="autoTrackingUpdate" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                            <label htmlFor="autoTrackingUpdate" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                 Push tracking updates
                             </label>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Send tracking info back to Flipkart
                             </p>
                         </div>
@@ -302,13 +302,13 @@ export default function FlipkartIntegrationPage() {
                                 ...prev,
                                 notifications: { ...prev.notifications!, lowInventory: e.target.checked }
                             }))}
-                            className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
                         <div>
-                            <label htmlFor="lowInventoryNotif" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                            <label htmlFor="lowInventoryNotif" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                 Low inventory alerts
                             </label>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Get notified when product inventory is low
                             </p>
                         </div>
@@ -319,10 +319,10 @@ export default function FlipkartIntegrationPage() {
             {currentStep === 4 && (
                 <div className="space-y-6">
                     <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Settings className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                        <div className="w-16 h-16 bg-[var(--primary-bg-light)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Settings className="w-8 h-8 text-[var(--primary-blue)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Test Connection
                         </h3>
                     </div>
@@ -331,7 +331,7 @@ export default function FlipkartIntegrationPage() {
                         <button
                             onClick={handleTestConnection}
                             disabled={isTesting}
-                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-dark)] text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
                             {isTesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                             {isTesting ? 'Testing...' : 'Test Connection'}
@@ -340,25 +340,25 @@ export default function FlipkartIntegrationPage() {
 
                     {testResult && (
                         <div className={`rounded-lg p-6 border ${testResult.success
-                                ? 'bg-green-50 dark:bg-green-900/20 border-green-200'
-                                : 'bg-red-50 dark:bg-red-900/20 border-red-200'
+                            ? 'bg-[var(--success-bg)] border-[var(--success-border)]'
+                            : 'bg-[var(--error-bg)] border-[var(--error-border)]'
                             }`}>
                             {testResult.success ? (
                                 <>
-                                    <Check className="w-6 h-6 text-green-600 mb-2" />
-                                    <h4 className="font-semibold text-green-900 mb-2">Connection Successful!</h4>
-                                    <p className="text-sm text-green-700">
+                                    <Check className="w-6 h-6 text-[var(--success)] mb-2" />
+                                    <h4 className="font-semibold text-[var(--success-text)] mb-2">Connection Successful!</h4>
+                                    <p className="text-sm text-[var(--success-text)]">
                                         Store: <strong>{testResult.storeName || 'Flipkart Store'}</strong>
                                     </p>
                                 </>
                             ) : (
                                 <>
-                                    <AlertCircle className="w-6 h-6 text-red-600 mb-2" />
-                                    <h4 className="font-semibold text-red-900 mb-2">Connection Failed</h4>
-                                    <p className="text-sm text-red-700">{testResult.message}</p>
+                                    <AlertCircle className="w-6 h-6 text-[var(--error)] mb-2" />
+                                    <h4 className="font-semibold text-[var(--error-text)] mb-2">Connection Failed</h4>
+                                    <p className="text-sm text-[var(--error-text)]">{testResult.message}</p>
                                     <button
                                         onClick={handleTestConnection}
-                                        className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                                        className="mt-4 px-4 py-2 bg-[var(--error)] hover:opacity-90 text-white rounded-lg"
                                     >
                                         Try Again
                                     </button>

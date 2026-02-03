@@ -3,7 +3,7 @@ import InvoiceService from '../../../../core/application/services/finance/invoic
 import IRNService from '../../../../core/application/services/finance/irn.service';
 import CreditNoteService from '../../../../core/application/services/finance/credit-note.service';
 import GSTRExportService from '../../../../core/application/services/finance/gstr-export.service';
-import DiskStorageService from '../../../../core/application/services/storage/disk-storage.service';
+import StorageService from '../../../../core/application/services/storage/storage.service';
 import { InvoicePDFTemplate } from '../../../../core/application/services/pdf/templates/invoice-pdf.template';
 import { CreditNotePDFTemplate } from '../../../../core/application/services/pdf/templates/credit-note-pdf.template';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
@@ -152,9 +152,9 @@ class InvoiceController {
 
             if (format === 'pdf') {
                 // Check if PDF already exists
-                if (invoice.pdfUrl && await DiskStorageService.exists(invoice.pdfUrl)) {
+                if (invoice.pdfUrl && await StorageService.exists(invoice.pdfUrl)) {
                     // Redirect to existing file
-                    const fileUrl = await DiskStorageService.getFileUrl(invoice.pdfUrl);
+                    const fileUrl = await StorageService.getFileUrl(invoice.pdfUrl);
                     res.redirect(fileUrl);
                     return;
                 }
@@ -169,7 +169,7 @@ class InvoiceController {
                 const storagePath = `invoices/${period}/${filename}`;
 
                 // Upload to storage (Local Disk for now)
-                const storedPath = await DiskStorageService.uploadFile(
+                const storedPath = await StorageService.uploadFile(
                     pdfBuffer,
                     storagePath,
                     'application/pdf'
@@ -180,7 +180,7 @@ class InvoiceController {
                 await invoice.save();
 
                 // Serve the file
-                const fileUrl = await DiskStorageService.getFileUrl(storedPath);
+                const fileUrl = await StorageService.getFileUrl(storedPath);
 
                 // If it's a download request, we might want to pipe the buffer directly 
                 // for immediate download, but redirecting is cleaner for caching.
@@ -226,13 +226,9 @@ class InvoiceController {
             // Ensure PDF is generated and stored
             let pdfBuffer: Buffer;
 
-            if (invoice.pdfUrl && await DiskStorageService.exists(invoice.pdfUrl)) {
-                // Read from storage
-                const absolutePath = DiskStorageService.getAbsolutePath(invoice.pdfUrl);
-                // We need fs to read it back to buffer for email attachment
-                // In a perfect world, email service handles streams, but this checks out
-                const fs = require('fs');
-                pdfBuffer = await fs.promises.readFile(absolutePath);
+            if (invoice.pdfUrl && await StorageService.exists(invoice.pdfUrl)) {
+                // Read from storage (works for both local disk and Spaces)
+                pdfBuffer = await StorageService.downloadFile(invoice.pdfUrl);
             } else {
                 // Generate and store
                 const pdfTemplate = new InvoicePDFTemplate();
@@ -241,7 +237,7 @@ class InvoiceController {
                 const period = formatFinancialPeriod(invoice.createdAt);
                 const storagePath = `invoices/${period}/${invoice.invoiceNumber}.pdf`;
 
-                const storedPath = await DiskStorageService.uploadFile(
+                const storedPath = await StorageService.uploadFile(
                     pdfBuffer,
                     storagePath,
                     'application/pdf'

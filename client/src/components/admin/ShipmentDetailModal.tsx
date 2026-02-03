@@ -1,12 +1,13 @@
 "use client";
 
+import { useRef } from 'react';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { Button } from '@/src/components/ui/core/Button';
-import { Badge } from '@/src/components/ui/core/Badge';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { useShipmentPOD, useUploadShipmentPOD } from '@/src/core/api/hooks/logistics/usePod';
 import {
-    Package, MapPin, User, Phone, Mail, Truck, Calendar,
-    IndianRupee, Copy, ExternalLink, Clock, FileText
+    Package, MapPin, User, Phone, Truck, Calendar,
+    IndianRupee, Copy, ExternalLink, FileText, Upload, Loader2
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
@@ -20,12 +21,32 @@ interface ShipmentDetailModalProps {
 
 export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetailModalProps) {
     const { addToast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     if (!shipment) return null;
+
+    const shipmentId = (shipment as any)._id || shipment.id;
+    const { data: pod, isLoading: isPodLoading } = useShipmentPOD(shipmentId, {
+        queryKey: ['shipment-pod', shipmentId],
+        enabled: isOpen && !!shipmentId,
+    });
+    const { mutate: uploadPod, isPending: isUploading } = useUploadShipmentPOD();
 
     const handleCopy = (text: string, label: string) => {
         navigator.clipboard.writeText(text);
         addToast(`${label} copied!`, 'success');
+    };
+
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !shipmentId) return;
+
+        uploadPod({ shipmentId, file });
+        event.target.value = '';
     };
 
     return (
@@ -113,6 +134,45 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                         <Calendar className="h-4 w-4 mx-auto text-[var(--text-muted)] mb-1" />
                         <p className="text-xs text-[var(--text-muted)]">Created</p>
                         <p className="font-medium text-sm text-[var(--text-primary)]">{formatDate(shipment.createdAt)}</p>
+                    </div>
+                </div>
+
+                {/* POD Section */}
+                <div>
+                    <h4 className="text-sm font-semibold text-[var(--text-secondary)] mb-3 flex items-center gap-2">
+                        <FileText className="h-4 w-4" /> Proof of Delivery (POD)
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-3 p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
+                        <Button
+                            variant="outline"
+                            className="bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                            onClick={() => pod?.podUrl && window.open(pod.podUrl, '_blank')}
+                            disabled={!pod?.podUrl || isPodLoading}
+                        >
+                            {isPodLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ExternalLink className="h-4 w-4 mr-2" />}
+                            {pod?.podUrl ? 'View POD' : 'POD Not Available'}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                            onClick={handleUploadClick}
+                            disabled={isUploading}
+                        >
+                            {isUploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                            Upload POD
+                        </Button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf,image/*"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
+                        {pod?.source && (
+                            <span className="text-xs text-[var(--text-muted)]">
+                                Source: {pod.source === 'courier_api' ? 'Courier' : 'Manual'}
+                            </span>
+                        )}
                     </div>
                 </div>
 

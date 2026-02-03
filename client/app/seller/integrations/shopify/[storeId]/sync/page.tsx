@@ -131,7 +131,7 @@ export default function ShopifySyncPage() {
                 <Button
                     onClick={() => setShowSyncModal(true)}
                     disabled={isSyncing}
-                    className="bg-[#95BF47] hover:bg-[#7da639] text-white"
+                    className="bg-[var(--primary-bg)] hover:opacity-90 text-[var(--accent-text)]"
                 >
                     {isSyncing ? (
                         <>
@@ -200,7 +200,7 @@ export default function ShopifySyncPage() {
                                 <Button
                                     onClick={handleManualSync}
                                     disabled={isSyncing}
-                                    className="bg-[#95BF47] hover:bg-[#7da639] text-white"
+                                    className="bg-[var(--primary-bg)] hover:opacity-90 text-[var(--accent-text)]"
                                 >
                                     {isSyncing ? 'Starting...' : 'Start Sync'}
                                 </Button>
@@ -244,7 +244,7 @@ export default function ShopifySyncPage() {
                 </CardHeader>
                 <CardContent>
                     {isLogsLoading ? (
-                        <div className="p-8 text-center text-gray-500">
+                        <div className="p-8 text-center text-[var(--text-secondary)]">
                             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                             Loading sync logs...
                         </div>
@@ -285,32 +285,32 @@ export default function ShopifySyncPage() {
 
                                                 <div className="grid grid-cols-3 gap-4 text-sm">
                                                     <div>
-                                                        <span className="text-gray-500">Processed:</span>
+                                                        <span className="text-[var(--text-secondary)]">Processed:</span>
                                                         <span className="ml-1 font-medium">{log.ordersProcessed || 0}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-gray-500">Success:</span>
-                                                        <span className="ml-1 font-medium text-green-600">{log.ordersSuccess || 0}</span>
+                                                        <span className="text-[var(--text-secondary)]">Success:</span>
+                                                        <span className="ml-1 font-medium text-[var(--success)]">{log.ordersSuccess || 0}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-gray-500">Failed:</span>
-                                                        <span className="ml-1 font-medium text-red-600">{log.ordersFailed || 0}</span>
+                                                        <span className="text-[var(--text-secondary)]">Failed:</span>
+                                                        <span className="ml-1 font-medium text-[var(--error)]">{log.ordersFailed || 0}</span>
                                                     </div>
                                                 </div>
 
                                                 {log.details?.errors && log.details.errors.length > 0 && (
-                                                    <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs">
-                                                        <div className="font-medium text-red-700 dark:text-red-400 mb-1">
+                                                    <div className="mt-3 p-2 bg-[var(--error-bg)] rounded text-xs">
+                                                        <div className="font-medium text-[var(--error)] mb-1">
                                                             Errors ({log.details.errors.length})
                                                         </div>
                                                         <div className="space-y-1">
                                                             {log.details.errors.slice(0, 3).map((error: any, idx: number) => (
-                                                                <div key={idx} className="text-red-600 dark:text-red-300">
+                                                                <div key={idx} className="text-[var(--error)]">
                                                                     • {error.error || error.message || 'Unknown error'}
                                                                 </div>
                                                             ))}
                                                             {log.details.errors.length > 3 && (
-                                                                <div className="text-red-500">
+                                                                <div className="text-[var(--error)]">
                                                                     + {log.details.errors.length - 3} more errors
                                                                 </div>
                                                             )}
@@ -324,7 +324,7 @@ export default function ShopifySyncPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-12 text-gray-500">
+                        <div className="text-center py-12 text-[var(--text-secondary)]">
                             <RefreshCw className="w-12 h-12 mx-auto mb-3 opacity-50" />
                             <p className="text-lg font-medium mb-1">No sync logs found</p>
                             <p className="text-sm">

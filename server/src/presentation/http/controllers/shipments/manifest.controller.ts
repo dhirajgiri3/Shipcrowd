@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import ManifestService from '../../../../core/application/services/shipping/manifest.service';
 import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import Manifest from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest.model';
 
 /**
  * Manifest Controller
@@ -34,8 +36,8 @@ class ManifestController {
             const { warehouseId, carrier, shipmentIds, pickup, notes } = req.body;
 
             // Validation
-            if (!warehouseId || !carrier || !shipmentIds || !Array.isArray(shipmentIds)) {
-                throw new ValidationError('Missing required fields: warehouseId, carrier, shipmentIds');
+            if (!carrier || !shipmentIds || !Array.isArray(shipmentIds)) {
+                throw new ValidationError('Missing required fields: carrier, shipmentIds');
             }
 
             if (!pickup || !pickup.scheduledDate || !pickup.timeSlot || !pickup.contactPerson || !pickup.contactPhone) {
@@ -65,6 +67,87 @@ class ManifestController {
     }
 
     /**
+     * List shipments eligible for manifest creation
+     * GET /shipments/manifests/eligible-shipments
+     */
+    async listEligibleShipments(req: Request, res: Response, next: NextFunction) {
+        try {
+            const companyId = req.user?.companyId?.toString();
+            const { carrier, warehouseId } = req.query;
+
+            if (!companyId) {
+                throw new ValidationError('Company ID is required');
+            }
+
+            const shipments = await ManifestService.listEligibleShipments({
+                companyId,
+                carrier: carrier as string | undefined,
+                warehouseId: warehouseId as string | undefined,
+            });
+
+            sendSuccess(res, shipments, 'Eligible shipments retrieved successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Manifest statistics
+     * GET /shipments/manifests/stats
+     */
+    async getManifestStats(req: Request, res: Response, next: NextFunction) {
+        try {
+            const companyId = req.user?.companyId?.toString();
+            if (!companyId) {
+                throw new ValidationError('Company ID is required');
+            }
+
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date();
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const [totalManifests, pendingPickup, scheduledToday, pickedUpToday, carrierBreakdown, shipmentTotals] = await Promise.all([
+                Manifest.countDocuments({ companyId }),
+                Manifest.countDocuments({ companyId, status: 'open' }),
+                Manifest.countDocuments({
+                    companyId,
+                    'pickup.scheduledDate': { $gte: startOfDay, $lte: endOfDay },
+                }),
+                Manifest.countDocuments({
+                    companyId,
+                    status: 'handed_over',
+                    handedOverAt: { $gte: startOfDay, $lte: endOfDay },
+                }),
+                Manifest.aggregate([
+                    { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
+                    { $group: { _id: '$carrier', count: { $sum: 1 } } },
+                ]),
+                Manifest.aggregate([
+                    { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
+                    { $group: { _id: null, total: { $sum: { $size: '$shipments' } } } },
+                ]),
+            ]);
+
+            const totalShipments = shipmentTotals[0]?.total || 0;
+
+            sendSuccess(res, {
+                totalManifests,
+                pendingPickup,
+                scheduledToday,
+                pickedUpToday,
+                averageShipmentsPerManifest: totalManifests ? Number((totalShipments / totalManifests).toFixed(2)) : 0,
+                courierBreakdown: carrierBreakdown.map((c: any) => ({
+                    courier: c._id,
+                    count: c.count,
+                })),
+            }, 'Manifest stats retrieved successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
      * List manifests
      * GET /shipments/manifests
      */
@@ -76,6 +159,7 @@ class ManifestController {
                 warehouseId,
                 status,
                 carrier,
+                search,
                 page = '1',
                 limit = '50',
             } = req.query;
@@ -87,6 +171,7 @@ class ManifestController {
                 warehouseId: warehouseId as string,
                 status: status as string,
                 carrier: carrier as string,
+                search: search as string,
                 limit: parseInt(limit as string),
                 skip,
             });

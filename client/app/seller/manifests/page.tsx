@@ -12,10 +12,10 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-    useManifests,
-    useManifestStats,
-    useDownloadManifestPdf,
-} from '@/src/core/api/hooks/orders/useManifests';
+    useShipmentManifestsList,
+    useShipmentManifestStats,
+    useDownloadManifestPDF,
+} from '@/src/core/api/hooks/logistics/useManifest';
 import { ManifestTable } from '@/src/features/manifests/components/ManifestTable';
 import {
     Plus,
@@ -27,7 +27,6 @@ import {
     Filter,
     Calendar,
     Truck,
-    Loader2,
     RefreshCw,
 } from 'lucide-react';
 import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest } from '@/src/types/api/orders';
@@ -36,12 +35,9 @@ import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest } fr
 
 const statusOptions: { value: ManifestStatus | ''; label: string }[] = [
     { value: '', label: 'All Statuses' },
-    { value: 'CREATED', label: 'Created' },
-    { value: 'PICKUP_SCHEDULED', label: 'Pickup Scheduled' },
-    { value: 'PICKUP_IN_PROGRESS', label: 'Pickup In Progress' },
-    { value: 'PICKED_UP', label: 'Picked Up' },
-    { value: 'PARTIALLY_PICKED', label: 'Partially Picked' },
-    { value: 'CANCELLED', label: 'Cancelled' },
+    { value: 'open', label: 'Open' },
+    { value: 'closed', label: 'Closed' },
+    { value: 'handed_over', label: 'Handed Over' },
 ];
 
 const courierOptions: { value: CourierPartner | ''; label: string }[] = [
@@ -50,9 +46,7 @@ const courierOptions: { value: CourierPartner | ''; label: string }[] = [
     { value: 'delhivery', label: 'Delhivery' },
     { value: 'ekart', label: 'Ekart' },
     { value: 'xpressbees', label: 'XpressBees' },
-    { value: 'bluedart', label: 'BlueDart' },
-    { value: 'shadowfax', label: 'Shadowfax' },
-    { value: 'ecom_express', label: 'Ecom Express' },
+    { value: 'india_post', label: 'India Post' },
 ];
 
 // ==================== Component ====================
@@ -73,26 +67,23 @@ export default function ManifestsPage() {
     const buildFilters = (): ManifestListFilters => ({
         ...filters,
         status: statusFilter || undefined,
-        courierPartner: courierFilter || undefined,
+        carrier: courierFilter || undefined,
         search: searchQuery || undefined,
     });
 
     // API hooks
-    const { data: manifestsData, isLoading, refetch } = useManifests(buildFilters());
-    const { data: stats, isLoading: isStatsLoading } = useManifestStats();
-    const { mutate: downloadPdf, isPending: isDownloading } = useDownloadManifestPdf();
+    const { data: manifestsData, isLoading, refetch } = useShipmentManifestsList(buildFilters());
+    const { data: stats, isLoading: isStatsLoading } = useShipmentManifestStats();
+    const { mutateAsync: downloadPdf } = useDownloadManifestPDF();
 
     // Handlers
     const handleManifestClick = (manifest: Manifest) => {
         router.push(`/seller/manifests/${manifest._id}`);
     };
 
-    const handleDownloadPdf = (manifestId: string) => {
-        downloadPdf(manifestId);
-    };
-
-    const handleReconcile = (manifestId: string) => {
-        router.push(`/seller/manifests/reconciliation?id=${manifestId}`);
+    const handleDownloadPdf = async (manifestId: string) => {
+        const url = await downloadPdf(manifestId);
+        window.open(url, '_blank');
     };
 
     const handleCreateManifest = () => {
@@ -281,26 +272,25 @@ export default function ManifestsPage() {
                     isLoading={isLoading}
                     onManifestClick={handleManifestClick}
                     onDownloadPdf={handleDownloadPdf}
-                    onReconcile={handleReconcile}
                 />
 
                 {/* Pagination */}
-                {manifestsData?.pagination && manifestsData.pagination.totalPages > 1 && (
+                {manifestsData && manifestsData.pages > 1 && (
                     <div className="mt-6 flex items-center justify-between">
                         <p className="text-sm text-[var(--text-secondary)]">
-                            Showing {((filters.page! - 1) * filters.limit!) + 1} to {Math.min(filters.page! * filters.limit!, manifestsData.pagination.total)} of {manifestsData.pagination.total} manifests
+                            Showing {((filters.page! - 1) * filters.limit!) + 1} to {Math.min(filters.page! * filters.limit!, manifestsData.total)} of {manifestsData.total} manifests
                         </p>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setFilters(prev => ({ ...prev, page: (prev.page ?? 1) - 1 }))}
-                                disabled={!manifestsData.pagination.hasPrevPage}
+                                disabled={(filters.page ?? 1) <= 1}
                                 className="px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 Previous
                             </button>
                             <button
                                 onClick={() => setFilters(prev => ({ ...prev, page: (prev.page ?? 1) + 1 }))}
-                                disabled={!manifestsData.pagination.hasNextPage}
+                                disabled={(filters.page ?? 1) >= manifestsData.pages}
                                 className="px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 Next

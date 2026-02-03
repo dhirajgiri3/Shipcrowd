@@ -15,7 +15,7 @@ export interface IManifest extends Document {
     manifestNumber: string;        // MAN-202601-0001
     companyId: mongoose.Types.ObjectId;
     warehouseId: mongoose.Types.ObjectId;
-    carrier: 'velocity' | 'delhivery' | 'ekart' | 'india_post';
+    carrier: 'velocity' | 'delhivery' | 'ekart' | 'xpressbees' | 'india_post';
 
     shipments: {
         shipmentId: mongoose.Types.ObjectId;
@@ -48,6 +48,11 @@ export interface IManifest extends Document {
     handedOverBy?: mongoose.Types.ObjectId;
 
     notes?: string;
+    metadata?: {
+        carrierManifestId?: string;
+        carrierManifestUrl?: string;
+        generatedAt?: Date;
+    };
 
     createdAt: Date;
     updatedAt: Date;
@@ -74,7 +79,7 @@ const ManifestSchema = new Schema<IManifest>(
         },
         carrier: {
             type: String,
-            enum: ['velocity', 'delhivery', 'ekart', 'india_post'],
+            enum: ['velocity', 'delhivery', 'ekart', 'xpressbees', 'india_post'],
             required: true,
             index: true,
         },
@@ -162,6 +167,11 @@ const ManifestSchema = new Schema<IManifest>(
             ref: 'User',
         },
         notes: String,
+        metadata: {
+            carrierManifestId: String,
+            carrierManifestUrl: String,
+            generatedAt: Date,
+        },
     },
     {
         timestamps: true,

@@ -7,6 +7,8 @@ import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
+import { apiClient } from '@/src/core/api/http';
+import { handleApiError, showInfoToast } from '@/src/lib/error';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { getCourierLogo, isUsingMockData } from '@/src/constants';
@@ -14,6 +16,7 @@ import {
     Search,
     Eye,
     FileText,
+    ClipboardCheck,
     Package,
     Truck,
     CheckCircle,
@@ -80,6 +83,21 @@ export function ShipmentsClient() {
     const handleBulkPrint = () => {
         if (selectedShipmentIds.size === 0) return;
         generateBulkLabels.mutate(Array.from(selectedShipmentIds));
+    };
+
+    const handleViewPOD = async (shipmentId: string) => {
+        try {
+            const response = await apiClient.get(`/shipments/${shipmentId}/pod`);
+            const podUrl = response?.data?.data?.podUrl;
+
+            if (podUrl) {
+                window.open(podUrl, '_blank');
+            } else {
+                showInfoToast('POD not available yet');
+            }
+        } catch (error) {
+            handleApiError(error, 'POD not available');
+        }
     };
 
     // Status Cards Data
@@ -207,6 +225,15 @@ export function ShipmentsClient() {
                     </Button>
                     <Button variant="ghost" size="sm" className="hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
                         <FileText className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
+                        onClick={() => handleViewPOD((row as any)._id || (row as any).id)}
+                        title="View POD"
+                    >
+                        <ClipboardCheck className="w-4 h-4" />
                     </Button>
                 </div>
             )

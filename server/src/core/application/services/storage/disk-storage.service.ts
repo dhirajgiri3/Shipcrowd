@@ -16,6 +16,7 @@ const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
+const readFile = promisify(fs.readFile);
 
 export class DiskStorageService implements IStorageService {
     private readonly uploadDir: string;
@@ -90,6 +91,16 @@ export class DiskStorageService implements IStorageService {
             return true;
         } catch {
             return false;
+        }
+    }
+
+    async downloadFile(filePath: string): Promise<Buffer> {
+        try {
+            const fullPath = path.join(this.uploadDir, filePath);
+            return await readFile(fullPath);
+        } catch (error: any) {
+            logger.error('Disk download failed:', error);
+            throw new AppError('File download failed', ErrorCode.SYS_INTERNAL_ERROR);
         }
     }
 

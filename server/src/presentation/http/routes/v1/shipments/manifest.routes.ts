@@ -25,6 +25,20 @@ router.get(
     ManifestController.listManifests
 );
 
+// Manifest stats
+router.get(
+    '/manifests/stats',
+    authenticate,
+    ManifestController.getManifestStats
+);
+
+// Eligible shipments for manifest
+router.get(
+    '/manifests/eligible-shipments',
+    authenticate,
+    ManifestController.listEligibleShipments
+);
+
 // Get manifest details
 router.get(
     '/manifests/:id',

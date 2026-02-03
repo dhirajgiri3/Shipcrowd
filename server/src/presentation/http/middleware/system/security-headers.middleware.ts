@@ -5,15 +5,20 @@ import helmet from 'helmet';
  * Configure security headers using helmet
  */
 export const configureHelmet = () => {
+  const storageOrigins = [
+    process.env.SPACES_CDN_URL,
+    process.env.SPACES_PUBLIC_URL,
+  ].filter(Boolean) as string[];
+
   return helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", 'https://storage.googleapis.com'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-        imgSrc: ["'self'", 'data:', 'https://storage.googleapis.com'],
+        imgSrc: ["'self'", 'data:', 'https://storage.googleapis.com', ...storageOrigins],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        connectSrc: ["'self'", 'https://storage.googleapis.com'],
+        connectSrc: ["'self'", 'https://storage.googleapis.com', ...storageOrigins],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],

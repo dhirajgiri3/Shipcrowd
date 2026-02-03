@@ -12,11 +12,10 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-    useEligibleShipments,
-    useCreateManifest,
-} from '@/src/core/api/hooks/orders/useManifests';
+    useEligibleManifestShipments,
+    useCreateShipmentManifest,
+} from '@/src/core/api/hooks/logistics/useManifest';
 import { Loader, TruckLoader } from '@/src/components/ui';
-import { handleApiError } from '@/src/lib/error';
 import { toast } from 'sonner';
 import {
     ArrowLeft,
@@ -35,7 +34,6 @@ import {
 import Link from 'next/link';
 import type {
     CourierPartner,
-    ManifestShipment,
     CreateManifestPayload,
 } from '@/src/types/api/orders';
 
@@ -46,9 +44,7 @@ const courierOptions: { value: CourierPartner; label: string; logo?: string }[] 
     { value: 'delhivery', label: 'Delhivery' },
     { value: 'ekart', label: 'Ekart' },
     { value: 'xpressbees', label: 'XpressBees' },
-    { value: 'bluedart', label: 'BlueDart' },
-    { value: 'shadowfax', label: 'Shadowfax' },
-    { value: 'ecom_express', label: 'Ecom Express' },
+    { value: 'india_post', label: 'India Post' },
 ];
 
 const pickupSlots = [
@@ -67,21 +63,25 @@ export default function CreateManifestPage() {
     // Wizard data
     const [selectedCourier, setSelectedCourier] = useState<CourierPartner | null>(null);
     const [selectedShipments, setSelectedShipments] = useState<string[]>([]);
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
     const [pickupDate, setPickupDate] = useState<string>(
         new Date().toISOString().split('T')[0]
     );
     const [pickupSlot, setPickupSlot] = useState<{ start: string; end: string } | null>(null);
+    const [pickupContactPerson, setPickupContactPerson] = useState('');
+    const [pickupContactPhone, setPickupContactPhone] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
     // API hooks
     const {
         data: eligibleShipments,
         isLoading: isLoadingShipments
-    } = useEligibleShipments(selectedCourier ?? undefined, {
+    } = useEligibleManifestShipments(selectedCourier ?? undefined, undefined, {
+        queryKey: ['eligible-shipments', selectedCourier],
         enabled: currentStep === 2 && !!selectedCourier,
     });
 
-    const { mutate: createManifest, isPending: isCreating } = useCreateManifest();
+    const { mutate: createManifest, isPending: isCreating } = useCreateShipmentManifest();
 
     // Steps configuration
     const steps = [
@@ -92,8 +92,8 @@ export default function CreateManifestPage() {
 
     // Filter shipments by search
     const filteredShipments = eligibleShipments?.filter(shipment =>
-        shipment.awbNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        shipment.destination.city.toLowerCase().includes(searchQuery.toLowerCase())
+        shipment.awb.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (shipment.destination.city || '').toLowerCase().includes(searchQuery.toLowerCase())
     ) ?? [];
 
     // Validation
@@ -104,7 +104,7 @@ export default function CreateManifestPage() {
             case 2:
                 return selectedShipments.length > 0;
             case 3:
-                return pickupDate && pickupSlot;
+                return pickupDate && pickupSlot && pickupContactPerson.trim() && pickupContactPhone.trim();
             default:
                 return false;
         }
@@ -124,67 +124,113 @@ export default function CreateManifestPage() {
     };
 
     const handleSubmit = () => {
-        if (!selectedCourier || selectedShipments.length === 0 || !pickupDate || !pickupSlot) {
+        if (!selectedCourier || selectedShipments.length === 0 || !pickupDate || !pickupSlot || !pickupContactPerson || !pickupContactPhone) {
             toast.error('Please complete all required fields');
             return;
         }
 
         const payload: CreateManifestPayload = {
-            courierPartner: selectedCourier,
+            carrier: selectedCourier,
             shipmentIds: selectedShipments,
-            pickupDate,
-            pickupSlot,
+            warehouseId: selectedWarehouseId || undefined,
+            pickup: {
+                scheduledDate: pickupDate,
+                timeSlot: `${pickupSlot.start}-${pickupSlot.end}`,
+                contactPerson: pickupContactPerson.trim(),
+                contactPhone: pickupContactPhone.trim(),
+            },
         };
 
         createManifest(payload, {
             onSuccess: (data) => {
-                router.push(`/seller/manifests/${data.manifest._id}`);
+                router.push(`/seller/manifests/${data._id}`);
             },
         });
     };
 
     const toggleShipment = (shipmentId: string) => {
-        setSelectedShipments(prev =>
-            prev.includes(shipmentId)
-                ? prev.filter(id => id !== shipmentId)
-                : [...prev, shipmentId]
-        );
+        const shipment = eligibleShipments?.find(s => s.shipmentId === shipmentId);
+        if (!shipment) return;
+
+        setSelectedShipments((prev) => {
+            if (prev.includes(shipmentId)) {
+                const next = prev.filter(id => id !== shipmentId);
+                if (next.length === 0) {
+                    setSelectedWarehouseId(null);
+                }
+                return next;
+            }
+
+            if (selectedWarehouseId && shipment.warehouseId && shipment.warehouseId !== selectedWarehouseId) {
+                toast.error('All shipments in a manifest must be from the same warehouse');
+                return prev;
+            }
+
+            if (!selectedWarehouseId && shipment.warehouseId) {
+                setSelectedWarehouseId(shipment.warehouseId);
+            }
+
+            if (!pickupContactPerson && shipment.warehouseContact?.name) {
+                setPickupContactPerson(shipment.warehouseContact.name);
+            }
+            if (!pickupContactPhone && shipment.warehouseContact?.phone) {
+                setPickupContactPhone(shipment.warehouseContact.phone);
+            }
+
+            return [...prev, shipmentId];
+        });
     };
 
     const selectAllShipments = () => {
         if (filteredShipments.length === selectedShipments.length) {
             setSelectedShipments([]);
-        } else {
-            setSelectedShipments(filteredShipments.map(s => s.shipmentId));
+            setSelectedWarehouseId(null);
+            return;
         }
+
+        if (filteredShipments.length === 0) return;
+
+        const targetWarehouseId = selectedWarehouseId || filteredShipments[0].warehouseId;
+        const sameWarehouseShipments = filteredShipments.filter(
+            s => !targetWarehouseId || s.warehouseId === targetWarehouseId
+        );
+
+        if (sameWarehouseShipments.length === 0) {
+            toast.error('No shipments found for the selected warehouse');
+            return;
+        }
+
+        setSelectedWarehouseId(targetWarehouseId || null);
+        setSelectedShipments(sameWarehouseShipments.map(s => s.shipmentId));
     };
 
     // Calculate totals
     const selectedShipmentsData = eligibleShipments?.filter(s =>
         selectedShipments.includes(s.shipmentId)
     ) ?? [];
-    const totalWeight = selectedShipmentsData.reduce((sum, s) => sum + s.weight, 0);
+    const totalWeight = selectedShipmentsData.reduce((sum, s) => sum + (s.weight || 0), 0);
     const totalCod = selectedShipmentsData.reduce((sum, s) => sum + (s.codAmount ?? 0), 0);
+    const selectedWarehouseName = selectedShipmentsData[0]?.warehouseName;
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-[var(--bg-primary)]">
             <div className="max-w-4xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
                     <Link
                         href="/seller/manifests"
-                        className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 mb-4"
+                        className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--primary-blue)] mb-4"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         Back to Manifests
                     </Link>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)]">
                         Create Manifest
                     </h1>
                 </div>
 
                 {/* Progress Indicator */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
+                <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-6 mb-8">
                     <div className="flex items-center justify-between">
                         {steps.map((step, index) => (
                             <React.Fragment key={step.id}>
@@ -192,10 +238,10 @@ export default function CreateManifestPage() {
                                 <div className="flex flex-col items-center">
                                     <div
                                         className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-colors ${currentStep > step.id
-                                            ? 'bg-green-500 text-white'
+                                            ? 'bg-[var(--success)] text-white'
                                             : currentStep === step.id
-                                                ? 'bg-primary-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                                                ? 'bg-[var(--primary-blue)] text-white'
+                                                : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
                                             }`}
                                     >
                                         {currentStep > step.id ? (
@@ -206,12 +252,12 @@ export default function CreateManifestPage() {
                                     </div>
                                     <div className="mt-2 text-center">
                                         <p className={`text-sm font-medium ${currentStep >= step.id
-                                            ? 'text-gray-900 dark:text-white'
-                                            : 'text-gray-400'
+                                            ? 'text-[var(--text-primary)]'
+                                            : 'text-[var(--text-muted)]'
                                             }`}>
                                             {step.title}
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 hidden md:block">
+                                        <p className="text-xs text-[var(--text-muted)] hidden md:block">
                                             {step.description}
                                         </p>
                                     </div>
@@ -219,7 +265,7 @@ export default function CreateManifestPage() {
 
                                 {/* Connector */}
                                 {index < steps.length - 1 && (
-                                    <div className={`flex-1 h-1 mx-4 rounded ${currentStep > step.id ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
+                                    <div className={`flex-1 h-1 mx-4 rounded ${currentStep > step.id ? 'bg-[var(--success)]' : 'bg-[var(--border-subtle)]'
                                         }`} />
                                 )}
                             </React.Fragment>
@@ -228,14 +274,14 @@ export default function CreateManifestPage() {
                 </div>
 
                 {/* Step Content */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] overflow-hidden">
                     {/* Step 1: Select Courier */}
                     {currentStep === 1 && (
                         <div className="p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Select Courier Partner
                             </h2>
-                            <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            <p className="text-[var(--text-secondary)] mb-6">
                                 Choose the courier partner for this manifest
                             </p>
 
@@ -243,24 +289,30 @@ export default function CreateManifestPage() {
                                 {courierOptions.map((courier) => (
                                     <button
                                         key={courier.value}
-                                        onClick={() => setSelectedCourier(courier.value)}
+                                        onClick={() => {
+                                            setSelectedCourier(courier.value);
+                                            setSelectedShipments([]);
+                                            setSelectedWarehouseId(null);
+                                            setPickupContactPerson('');
+                                            setPickupContactPhone('');
+                                        }}
                                         className={`p-4 rounded-xl border-2 transition-all ${selectedCourier === courier.value
-                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                            ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]'
+                                            : 'border-[var(--border-default)] hover:border-[var(--border-strong)]'
                                             }`}
                                     >
                                         <div className="flex items-center justify-between mb-3">
                                             <Truck className={`w-6 h-6 ${selectedCourier === courier.value
-                                                ? 'text-primary-600 dark:text-primary-400'
-                                                : 'text-gray-400'
+                                                ? 'text-[var(--primary-blue)]'
+                                                : 'text-[var(--text-muted)]'
                                                 }`} />
                                             {selectedCourier === courier.value && (
-                                                <CheckCircle2 className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                                <CheckCircle2 className="w-5 h-5 text-[var(--primary-blue)]" />
                                             )}
                                         </div>
                                         <p className={`font-medium ${selectedCourier === courier.value
-                                            ? 'text-primary-700 dark:text-primary-300'
-                                            : 'text-gray-900 dark:text-white'
+                                            ? 'text-[var(--primary-blue-deep)]'
+                                            : 'text-[var(--text-primary)]'
                                             }`}>
                                             {courier.label}
                                         </p>
@@ -275,15 +327,15 @@ export default function CreateManifestPage() {
                         <div className="p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">
                                         Select Shipments
                                     </h2>
-                                    <p className="text-gray-600 dark:text-gray-400">
+                                    <p className="text-[var(--text-secondary)]">
                                         Select shipments ready for pickup via {courierOptions.find(c => c.value === selectedCourier)?.label}
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    <p className="text-sm text-[var(--text-muted)]">
                                         {selectedShipments.length} selected
                                     </p>
                                 </div>
@@ -291,13 +343,13 @@ export default function CreateManifestPage() {
 
                             {/* Search */}
                             <div className="relative mb-4">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search by AWB or destination..."
-                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] placeholder:text-[var(--text-muted)]"
                                 />
                             </div>
 
@@ -306,59 +358,59 @@ export default function CreateManifestPage() {
                                 <Loader variant="spinner" size="lg" message="Loading shipments..." centered />
                             ) : filteredShipments.length === 0 ? (
                                 <div className="text-center py-12">
-                                    <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                                    <p className="text-gray-600 dark:text-gray-400">No shipments ready for pickup</p>
+                                    <Package className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" />
+                                    <p className="text-[var(--text-secondary)]">No shipments ready for pickup</p>
                                 </div>
                             ) : (
-                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
                                     {/* Header */}
-                                    <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center gap-4">
+                                    <div className="bg-[var(--bg-secondary)] px-4 py-3 flex items-center gap-4">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={filteredShipments.length === selectedShipments.length}
                                                 onChange={selectAllShipments}
-                                                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                                             />
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            <span className="text-sm font-medium text-[var(--text-secondary)]">
                                                 Select All ({filteredShipments.length})
                                             </span>
                                         </label>
                                     </div>
 
                                     {/* Scrollable List */}
-                                    <div className="max-h-[400px] overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
+                                    <div className="max-h-[400px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
                                         {filteredShipments.map((shipment) => (
                                             <label
                                                 key={shipment.shipmentId}
                                                 className={`flex items-center gap-4 p-4 cursor-pointer transition-colors ${selectedShipments.includes(shipment.shipmentId)
-                                                    ? 'bg-primary-50 dark:bg-primary-900/10'
-                                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                                    ? 'bg-[var(--primary-blue-soft)]'
+                                                    : 'hover:bg-[var(--bg-hover)]'
                                                     }`}
                                             >
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedShipments.includes(shipment.shipmentId)}
                                                     onChange={() => toggleShipment(shipment.shipmentId)}
-                                                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                    className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                                                 />
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-gray-900 dark:text-white">
-                                                        {shipment.awbNumber}
+                                                    <p className="font-medium text-[var(--text-primary)]">
+                                                        {shipment.awb}
                                                     </p>
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                                    <p className="text-sm text-[var(--text-muted)] truncate">
                                                         {shipment.destination.city}, {shipment.destination.state}
                                                     </p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                    <p className="text-sm font-medium text-[var(--text-primary)]">
                                                         {shipment.weight} kg
                                                     </p>
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${shipment.paymentMode === 'COD'
-                                                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${shipment.codAmount && shipment.codAmount > 0
+                                                        ? 'bg-[var(--warning-bg)] text-[var(--warning)]'
+                                                        : 'bg-[var(--info-bg)] text-[var(--info)]'
                                                         }`}>
-                                                        {shipment.paymentMode}
+                                                        {shipment.codAmount && shipment.codAmount > 0 ? 'COD' : 'PREPAID'}
                                                     </span>
                                                 </div>
                                             </label>
@@ -369,23 +421,23 @@ export default function CreateManifestPage() {
 
                             {/* Selected Summary */}
                             {selectedShipments.length > 0 && (
-                                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="mt-4 p-4 bg-[var(--bg-secondary)] rounded-lg">
                                     <div className="grid grid-cols-3 gap-4 text-center">
                                         <div>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">Shipments</p>
-                                            <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                            <p className="text-sm text-[var(--text-muted)]">Shipments</p>
+                                            <p className="text-xl font-bold text-[var(--text-primary)]">
                                                 {selectedShipments.length}
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">Total Weight</p>
-                                            <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                            <p className="text-sm text-[var(--text-muted)]">Total Weight</p>
+                                            <p className="text-xl font-bold text-[var(--text-primary)]">
                                                 {totalWeight.toFixed(2)} kg
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">COD Amount</p>
-                                            <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                            <p className="text-sm text-[var(--text-muted)]">COD Amount</p>
+                                            <p className="text-xl font-bold text-[var(--text-primary)]">
                                                 ₹{totalCod.toLocaleString()}
                                             </p>
                                         </div>
@@ -398,36 +450,36 @@ export default function CreateManifestPage() {
                     {/* Step 3: Review & Create */}
                     {currentStep === 3 && (
                         <div className="p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Review & Create Manifest
                             </h2>
 
                             {/* Pickup Date & Time */}
                             <div className="mb-6">
-                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-3">
                                     Pickup Schedule
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Date Picker */}
                                     <div>
-                                        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                        <label className="block text-sm text-[var(--text-muted)] mb-1">
                                             Pickup Date
                                         </label>
                                         <div className="relative">
-                                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
                                             <input
                                                 type="date"
                                                 value={pickupDate}
                                                 min={new Date().toISOString().split('T')[0]}
                                                 onChange={(e) => setPickupDate(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                                             />
                                         </div>
                                     </div>
 
                                     {/* Slot Selection */}
                                     <div>
-                                        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                        <label className="block text-sm text-[var(--text-muted)] mb-1">
                                             Pickup Slot
                                         </label>
                                         <div className="space-y-2">
@@ -436,18 +488,18 @@ export default function CreateManifestPage() {
                                                     key={slot.label}
                                                     onClick={() => setPickupSlot({ start: slot.start, end: slot.end })}
                                                     className={`w-full p-3 rounded-lg border text-left transition-all flex items-center gap-3 ${pickupSlot?.start === slot.start
-                                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                        ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]'
+                                                        : 'border-[var(--border-default)] hover:border-[var(--border-strong)]'
                                                         }`}
                                                 >
                                                     <Clock className={`w-4 h-4 ${pickupSlot?.start === slot.start
-                                                        ? 'text-primary-600'
-                                                        : 'text-gray-400'
+                                                        ? 'text-[var(--primary-blue)]'
+                                                        : 'text-[var(--text-muted)]'
                                                         }`} />
                                                     <span className={
                                                         pickupSlot?.start === slot.start
-                                                            ? 'text-primary-700 dark:text-primary-300'
-                                                            : 'text-gray-700 dark:text-gray-300'
+                                                            ? 'text-[var(--primary-blue)]'
+                                                            : 'text-[var(--text-secondary)]'
                                                     }>
                                                         {slot.label}
                                                     </span>
@@ -458,40 +510,81 @@ export default function CreateManifestPage() {
                                 </div>
                             </div>
 
+                            {/* Pickup Contact */}
+                            <div className="mb-6">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                                    Pickup Contact
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm text-[var(--text-muted)] mb-1">
+                                            Contact Person
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={pickupContactPerson}
+                                            onChange={(e) => setPickupContactPerson(e.target.value)}
+                                            placeholder="Name of contact"
+                                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-[var(--text-muted)] mb-1">
+                                            Contact Phone
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            value={pickupContactPhone}
+                                            onChange={(e) => setPickupContactPhone(e.target.value)}
+                                            placeholder="Phone number"
+                                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Summary Card */}
-                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
-                                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                            <div className="bg-[var(--bg-secondary)] rounded-xl p-6">
+                                <h3 className="font-semibold text-[var(--text-primary)] mb-4">
                                     Manifest Summary
                                 </h3>
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 dark:text-gray-400">Courier Partner</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="text-[var(--text-muted)]">Courier Partner</span>
+                                        <span className="font-medium text-[var(--text-primary)]">
                                             {courierOptions.find(c => c.value === selectedCourier)?.label}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 dark:text-gray-400">Total Shipments</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="text-[var(--text-muted)]">Total Shipments</span>
+                                        <span className="font-medium text-[var(--text-primary)]">
                                             {selectedShipments.length}
                                         </span>
                                     </div>
+                                    {selectedWarehouseName && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[var(--text-muted)]">Warehouse</span>
+                                            <span className="font-medium text-[var(--text-primary)]">
+                                                {selectedWarehouseName}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 dark:text-gray-400">Total Weight</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="text-[var(--text-muted)]">Total Weight</span>
+                                        <span className="font-medium text-[var(--text-primary)]">
                                             {totalWeight.toFixed(2)} kg
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 dark:text-gray-400">COD Amount</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="text-[var(--text-muted)]">COD Amount</span>
+                                        <span className="font-medium text-[var(--text-primary)]">
                                             ₹{totalCod.toLocaleString()}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 dark:text-gray-400">Pickup Date</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="text-[var(--text-muted)]">Pickup Date</span>
+                                        <span className="font-medium text-[var(--text-primary)]">
                                             {new Date(pickupDate).toLocaleDateString('en-IN', {
                                                 weekday: 'short',
                                                 day: 'numeric',
@@ -502,8 +595,8 @@ export default function CreateManifestPage() {
                                     </div>
                                     {pickupSlot && (
                                         <div className="flex items-center justify-between">
-                                            <span className="text-gray-600 dark:text-gray-400">Pickup Slot</span>
-                                            <span className="font-medium text-gray-900 dark:text-white">
+                                            <span className="text-[var(--text-muted)]">Pickup Slot</span>
+                                            <span className="font-medium text-[var(--text-primary)]">
                                                 {pickupSlot.start} - {pickupSlot.end}
                                             </span>
                                         </div>
@@ -514,12 +607,12 @@ export default function CreateManifestPage() {
                     )}
 
                     {/* Footer Actions */}
-                    <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div className="px-6 py-4 bg-[var(--bg-secondary)] border-t border-[var(--border-default)] flex items-center justify-between">
                         <div>
                             {currentStep > 1 && (
                                 <button
                                     onClick={handleBack}
-                                    className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                                 >
                                     <ArrowLeft className="w-4 h-4" />
                                     Back
@@ -530,7 +623,7 @@ export default function CreateManifestPage() {
                         <div className="flex gap-3">
                             <Link
                                 href="/seller/manifests"
-                                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                className="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                             >
                                 Cancel
                             </Link>
@@ -539,7 +632,7 @@ export default function CreateManifestPage() {
                                 <button
                                     onClick={handleNext}
                                     disabled={!canProceed()}
-                                    className="flex items-center gap-2 px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-2 px-6 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Next
                                     <ArrowRight className="w-4 h-4" />
@@ -548,7 +641,7 @@ export default function CreateManifestPage() {
                                 <button
                                     onClick={handleSubmit}
                                     disabled={!canProceed() || isCreating}
-                                    className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-2 px-6 py-2 bg-[var(--success)] hover:opacity-90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <CheckCircle2 className="w-4 h-4" />
                                     Create Manifest

@@ -20,7 +20,7 @@
  * <StatusBadge domain="ndr" status="open" />
  *
  * // With additional features
- * <StatusBadge domain="manifest" status="PICKED_UP" showTooltip />
+ * <StatusBadge domain="manifest" status="handed_over" showTooltip />
  * <StatusBadge domain="dispute" status="under_investigation" size="lg" />
  * ```
  */

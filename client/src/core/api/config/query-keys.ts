@@ -238,6 +238,15 @@ export const queryKeys = {
     stats: () => ['shipments', 'stats'],
     manifests: (filters?: FilterParams) => ['shipments', 'manifests', filters],
     manifest: (id: string) => ['shipments', 'manifests', id],
+    manifestStats: () => ['shipments', 'manifests', 'stats'],
+    manifestEligible: (carrier?: string, warehouseId?: string) => [
+      'shipments',
+      'manifests',
+      'eligible-shipments',
+      carrier,
+      warehouseId,
+    ],
+    pod: (id: string) => ['shipments', 'pod', id],
   },
 
   // ========================================================================
