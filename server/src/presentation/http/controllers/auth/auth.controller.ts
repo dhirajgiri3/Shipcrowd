@@ -815,7 +815,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
           if (decoded && decoded.jti && decoded.exp) {
             const timeUntilExpiry = decoded.exp - Math.floor(Date.now() / 1000);
             if (timeUntilExpiry > 0) {
-          const { blacklistToken } = await import('../../../../shared/helpers/jwt');
+              const { blacklistToken } = await import('../../../../shared/helpers/jwt.js');
               await blacklistToken(decoded.jti, timeUntilExpiry);
             }
           }
@@ -1829,7 +1829,7 @@ export const getCSRFToken = async (
 
     if (accessToken) {
       try {
-        const { verifyAccessToken } = await import('../../../../shared/helpers/jwt');
+        const { verifyAccessToken } = await import('../../../../shared/helpers/jwt.js');
         const payload = await verifyAccessToken(accessToken, false);
         sessionId = payload.userId;
         logger.debug('CSRF token: Using authenticated user ID', { sessionId });

@@ -109,14 +109,16 @@ export default class RemittanceReconciliationService {
                 rows = await this.parseFile(
                     fileBuffer,
                     mimetype,
-                    this.resolveColumnMapping('velocity', mappingOverride)
+                    this.resolveColumnMapping('velocity', mappingOverride),
+                    'velocity'
                 );
             }
         } else {
             rows = await this.parseFile(
                 fileBuffer,
                 mimetype,
-                this.resolveColumnMapping(provider, mappingOverride)
+                this.resolveColumnMapping(provider, mappingOverride),
+                provider
             );
         }
 
@@ -338,12 +340,13 @@ export default class RemittanceReconciliationService {
      * @param provider - Courier provider for column mapping
      */
     private static async parseFile(
-        buffer: any, 
-        mimetype: string, 
-        mapping: ColumnMapping
+        buffer: any,
+        mimetype: string,
+        mapping: ColumnMapping,
+        provider: string
     ): Promise<MISRow[]> {
         const rows: MISRow[] = [];
-        
+
         if (mimetype.includes('csv') || mimetype.includes('text')) {
             const stream = Readable.from(buffer.toString());
             return new Promise((resolve, reject) => {
@@ -364,14 +367,14 @@ export default class RemittanceReconciliationService {
             const workbook = new ExcelJS.Workbook();
             await workbook.xlsx.load(buffer);
             const worksheet = workbook.getWorksheet(1);
-            
+
             if (!worksheet) {
                 logger.warn('No worksheet found in Excel file');
                 return [];
             }
 
             let headerRow: any = null;
-            
+
             worksheet.eachRow((row, rowNumber) => {
                 // First row is header
                 if (rowNumber === 1) {
@@ -415,7 +418,7 @@ export default class RemittanceReconciliationService {
         // Find AWB column
         let awbKey: string | undefined;
         for (const possibleAwbColumn of effectiveMapping.awbColumns) {
-            awbKey = Object.keys(data).find(k => 
+            awbKey = Object.keys(data).find(k =>
                 k.toLowerCase() === possibleAwbColumn.toLowerCase() ||
                 this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleAwbColumn)
             );
@@ -425,7 +428,7 @@ export default class RemittanceReconciliationService {
         // Find Amount column
         let amountKey: string | undefined;
         for (const possibleAmountColumn of effectiveMapping.amountColumns) {
-            amountKey = Object.keys(data).find(k => 
+            amountKey = Object.keys(data).find(k =>
                 k.toLowerCase() === possibleAmountColumn.toLowerCase() ||
                 this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleAmountColumn)
             );
@@ -436,7 +439,7 @@ export default class RemittanceReconciliationService {
         let dateKey: string | undefined;
         if (effectiveMapping.dateColumns) {
             for (const possibleDateColumn of effectiveMapping.dateColumns) {
-                dateKey = Object.keys(data).find(k => 
+                dateKey = Object.keys(data).find(k =>
                     k.toLowerCase() === possibleDateColumn.toLowerCase() ||
                     this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleDateColumn)
                 );
@@ -448,7 +451,7 @@ export default class RemittanceReconciliationService {
         let utrKey: string | undefined;
         if (effectiveMapping.utrColumns) {
             for (const possibleUtrColumn of effectiveMapping.utrColumns) {
-                utrKey = Object.keys(data).find(k => 
+                utrKey = Object.keys(data).find(k =>
                     k.toLowerCase() === possibleUtrColumn.toLowerCase() ||
                     this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleUtrColumn)
                 );
@@ -458,7 +461,7 @@ export default class RemittanceReconciliationService {
 
         // Validate required fields
         if (!awbKey || !amountKey) {
-            logger.debug('Row missing required columns', { 
+            logger.debug('Row missing required columns', {
                 keys: Object.keys(data),
                 awbFound: !!awbKey,
                 amountFound: !!amountKey

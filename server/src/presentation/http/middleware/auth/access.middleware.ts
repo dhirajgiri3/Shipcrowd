@@ -101,14 +101,14 @@ export const requireAccess = (options: AccessOptions = {}) => {
             const isAdminRoleForKYC = isPlatformAdmin(user);
             if (options.requireKYC && !isAdminRoleForKYC) {
                 // Check user flag first
-                if (!user.kycStatus?.isComplete && user.kycStatus?.state !== KYCState.VERIFIED) {
+                if (!user.kycStatus?.isComplete && (user.kycStatus as any)?.state !== KYCState.VERIFIED) {
                     logAccessDenial(req, user, 'kyc_required');
                     throw new AppError('KYC verification required', 'KYC_REQUIRED', 403);
                 }
 
                 // Strict check: Ensure KYC exists for THIS company (Prevent Bypass)
                 if (user.companyId) {
-                    const { KYC } = await import('../../../../infrastructure/database/mongoose/models');
+                    const { KYC } = await import('../../../../infrastructure/database/mongoose/models/index.js');
                     const kycRecord = await KYC.exists({
                         userId: user._id,
                         companyId: user.companyId,
