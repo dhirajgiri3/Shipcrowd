@@ -226,7 +226,7 @@ export function ProfitClient() {
                                 onChange={(e) => setDateFrom(e.target.value)}
                                 className="w-40"
                             />
-                            <span className="self-center text-gray-400">to</span>
+                            <span className="self-center text-[var(--text-muted)]">to</span>
                             <Input
                                 type="date"
                                 value={dateTo}

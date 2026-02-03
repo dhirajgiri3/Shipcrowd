@@ -105,14 +105,14 @@ export function BillingClient() {
             accessorKey: 'description',
             header: 'Description',
             cell: (row: BillingTransaction) => (
-                <p className="text-sm text-gray-600 max-w-xs truncate">{row.description}</p>
+                <p className="text-sm text-[var(--text-secondary)] max-w-xs truncate">{row.description}</p>
             )
         },
         {
             accessorKey: 'createdAt',
             header: 'Date',
             cell: (row: BillingTransaction) => (
-                <div className="flex items-center gap-1 text-sm text-gray-600">
+                <div className="flex items-center gap-1 text-sm text-[var(--text-secondary)]">
                     <Clock className="h-3.5 w-3.5" />
                     {new Date(row.createdAt).toLocaleDateString()}
                 </div>
@@ -233,9 +233,9 @@ export function BillingClient() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Seller *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Seller *</label>
                                 <select
-                                    className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
+                                    className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-focus)]"
                                     value={manualForm.sellerId}
                                     onChange={(e) => setManualForm({ ...manualForm, sellerId: e.target.value })}
                                 >
@@ -246,9 +246,9 @@ export function BillingClient() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Type *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Type *</label>
                                 <select
-                                    className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
+                                    className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-focus)]"
                                     value={manualForm.type}
                                     onChange={(e) => setManualForm({ ...manualForm, type: e.target.value })}
                                 >
@@ -257,7 +257,7 @@ export function BillingClient() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Amount (₹) *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Amount (₹) *</label>
                                 <Input
                                     type="number"
                                     placeholder="Enter amount"
@@ -267,14 +267,14 @@ export function BillingClient() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Reason *</label>
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Reason *</label>
                             <Input
                                 placeholder="e.g., Compensation for delayed COD remittance"
                                 value={manualForm.reason}
                                 onChange={(e) => setManualForm({ ...manualForm, reason: e.target.value })}
                             />
                         </div>
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowAddManual(false)}>Cancel</Button>
                             <Button onClick={submitManualEntry}>
                                 Submit Entry

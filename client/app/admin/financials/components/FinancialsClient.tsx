@@ -23,7 +23,7 @@ export function FinancialsClient() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <h2 className="text-2xl font-bold text-gray-900">Financial Overview</h2>
+            <h2 className="text-2xl font-bold text-[var(--text-primary)]">Financial Overview</h2>
 
             <div className="grid gap-4 md:grid-cols-3">
                 <MetricCard
@@ -55,7 +55,7 @@ export function FinancialsClient() {
                     <CardContent>
                         {isLoadingTransactions ? (
                             <div className="flex justify-center p-8">
-                                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                                <Loader2 className="w-6 h-6 animate-spin text-[var(--text-muted)]" />
                             </div>
                         ) : (
                             <div className="space-y-4">

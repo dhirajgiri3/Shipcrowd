@@ -205,7 +205,7 @@ export function KycClient() {
                                     )}
                                 >
                                     {activeFilter === filter.id && (
-                                        <span className={cn("w-2 h-2 rounded-full", filter.color || 'bg-gray-500')} />
+                                        <span className={cn("w-2 h-2 rounded-full", filter.color || 'bg-[var(--text-muted)]')} />
                                     )}
                                     {filter.label}
                                 </button>

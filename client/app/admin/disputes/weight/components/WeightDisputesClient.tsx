@@ -74,7 +74,7 @@ export function WeightDisputesClient() {
                 <Card>
                     <CardContent className="p-4">
                         <p className="text-sm text-[var(--text-secondary)]">Auto Resolved</p>
-                        <p className="text-2xl font-bold text-purple-600">
+                        <p className="text-2xl font-bold text-[var(--primary-blue)]">
                             {metrics?.autoResolved || 0}
                         </p>
                     </CardContent>
@@ -82,7 +82,7 @@ export function WeightDisputesClient() {
 
                 {/* Financial Impact */}
                 <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-xl shadow-sm p-4 text-white">
-                    <p className="text-sm text-red-100">Total Impact</p>
+                    <p className="text-sm text-[var(--error-bg)]">Total Impact</p>
                     <p className="text-2xl font-bold">
                         {formatCompactCurrency(metrics?.totalFinancialImpact || 0)}
                     </p>
@@ -128,8 +128,8 @@ export function WeightDisputesClient() {
                                     {(analytics.stats.autoResolveRate * 100).toFixed(1)}%
                                 </p>
                             </div>
-                            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                                <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            <div className="p-3 bg-[var(--primary-blue-soft)] rounded-full">
+                                <CheckCircle className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </CardContent>
                     </Card>

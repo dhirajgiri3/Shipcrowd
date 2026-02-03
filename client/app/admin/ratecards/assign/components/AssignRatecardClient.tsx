@@ -186,7 +186,7 @@ export function AssignRatecardClient() {
                                                 "p-4 rounded-xl border cursor-pointer transition-all",
                                                 selectedSeller === seller._id
                                                     ? "border-[#2525FF] bg-[#2525FF]/5 ring-2 ring-[#2525FF]/20"
-                                                    : "border-gray-200 hover:border-gray-300"
+                                                    : "border-[var(--border-default)] hover:border-[var(--border-focus)]"
                                             )}
                                         >
                                             <div className="flex items-center justify-between">
@@ -258,7 +258,7 @@ export function AssignRatecardClient() {
                                                         isProcessing ? "cursor-wait opacity-50" : "cursor-pointer",
                                                         isAssigned
                                                             ? "border-emerald-300 bg-emerald-50"
-                                                            : "border-gray-200 hover:border-gray-300"
+                                                            : "border-[var(--border-default)] hover:border-[var(--border-focus)]"
                                                     )}
                                                 >
                                                     <div className="flex items-center justify-between">
@@ -267,7 +267,7 @@ export function AssignRatecardClient() {
                                                                 "h-5 w-5 rounded-full border-2 flex items-center justify-center",
                                                                 isAssigned
                                                                     ? "border-emerald-500 bg-emerald-500"
-                                                                    : "border-gray-300"
+                                                                    : "border-[var(--border-focus)]"
                                                             )}>
                                                                 {isAssigned && <CheckCircle className="h-3 w-3 text-white" />}
                                                             </div>
@@ -285,7 +285,7 @@ export function AssignRatecardClient() {
                             </>
                         ) : (
                             <div className="py-12 text-center">
-                                <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                                <Building2 className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-4" />
                                 <h3 className="text-lg font-medium text-[var(--text-primary)]">No Seller Selected</h3>
                                 <p className="text-[var(--text-muted)] mt-1">Select a seller from the left to manage assignments</p>
                             </div>
