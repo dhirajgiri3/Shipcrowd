@@ -157,6 +157,64 @@ export class RedisRateLimiter {
     }
 
     /**
+     * Acquire distributed lock (for critical sections)
+     * Returns true if lock acquired, false if already locked
+     */
+    async acquireLock(key: string, ttlSeconds: number = 30): Promise<boolean> {
+        const fullKey = `lock:${key}`;
+
+        try {
+            if (await RedisManager.healthCheck()) {
+                const redis = await RedisManager.getMainClient();
+                // SET NX (set if not exists) with expiry
+                const result = await redis.set(fullKey, '1', 'EX', ttlSeconds, 'NX');
+                return result === 'OK';
+            }
+        } catch (error: any) {
+            logger.error('Failed to acquire Redis lock, using in-memory fallback', {
+                key,
+                error: error.message,
+            });
+        }
+
+        // Fallback: in-memory lock (not distributed, but better than nothing)
+        const now = Date.now();
+        const lockEntry = this.inMemoryLimiter.get(`lock:${key}`);
+
+        if (!lockEntry || now >= lockEntry.resetAt) {
+            this.inMemoryLimiter.set(`lock:${key}`, {
+                count: 1,
+                resetAt: now + ttlSeconds * 1000,
+            });
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Release distributed lock
+     */
+    async releaseLock(key: string): Promise<void> {
+        const fullKey = `lock:${key}`;
+
+        try {
+            if (await RedisManager.healthCheck()) {
+                const redis = await RedisManager.getMainClient();
+                await redis.del(fullKey);
+            }
+        } catch (error: any) {
+            logger.error('Failed to release Redis lock', {
+                key,
+                error: error.message,
+            });
+        }
+
+        // Also clear from in-memory
+        this.inMemoryLimiter.delete(`lock:${key}`);
+    }
+
+    /**
      * Cleanup on shutdown
      */
     async disconnect(): Promise<void> {

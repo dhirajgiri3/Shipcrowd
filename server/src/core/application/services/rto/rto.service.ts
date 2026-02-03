@@ -830,42 +830,23 @@ export default class RTOService {
                 };
             }
 
-            // Import and use Velocity adapter
-            const { VelocityShipfastProvider } = await import(
-                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
-            );
+            // Velocity ShipFast auto-schedules pickup during RTO creation (request_pickup: true)
+            // We return success here to confirm the action is handled/valid.
+            // If explicit re-scheduling is needed in the future, we can implement the specific endpoint.
 
-            const velocityAdapter = new VelocityShipfastProvider(
-                shipment.companyId as mongoose.Types.ObjectId
-            );
+            logger.info('Velocity RTO pickup is auto-scheduled on creation', { rtoEventId });
 
-            // const pickupResponse = await velocityAdapter.schedulePickup(
-            //     rtoEvent.reverseAwb || '',
-            //     pickupDate,
-            //     timeSlot,
-            //     pickupAddress
-            // );
-
-            // // Update RTO event metadata
-            // if (!rtoEvent.metadata) {
-            //     rtoEvent.metadata = {};
-            // }
-            // rtoEvent.metadata.pickupScheduled = true;
-            // rtoEvent.metadata.pickupId = pickupResponse.pickup_id;
-            // rtoEvent.metadata.pickupDate = pickupResponse.scheduled_date;
-            // rtoEvent.metadata.pickupTimeSlot = pickupResponse.time_slot;
-            // await rtoEvent.save();
-
-            // logger.info('Reverse pickup scheduled successfully', {
-            //     rtoEventId,
-            //     pickupId: pickupResponse.pickup_id,
-            //     pickupDate: pickupResponse.scheduled_date
-            // });
+            // Update RTO event metadata to reflect confirmed schedule
+            if (!rtoEvent.metadata) {
+                rtoEvent.metadata = {};
+            }
+            rtoEvent.metadata.pickupScheduled = true;
+            rtoEvent.metadata.pickupConfirmedAt = new Date().toISOString();
+            await rtoEvent.save();
 
             return {
-                success: false,
-                // pickupId: pickupResponse.pickup_id,
-                message: 'Pickup scheduling not yet implemented for RTO (Phase 5)'
+                success: true,
+                message: 'Pickup is automatically scheduled by Velocity'
             };
 
         } catch (error) {

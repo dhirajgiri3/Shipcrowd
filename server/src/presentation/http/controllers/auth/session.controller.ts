@@ -8,6 +8,7 @@ import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { ISession } from '../../../../infrastructure/database/mongoose/models';
 import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { getRefreshTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
 
 const sessionIdSchema = z.object({
   sessionId: z.string(),
@@ -44,7 +45,7 @@ export const getSessions = async (req: Request, res: Response, next: NextFunctio
     const sessions = await getUserSessions(req.user._id);
 
     // ✅ FIX: Use bcrypt.compare to identify current session (was comparing plaintext with hash)
-    const currentSessionId = await findCurrentSessionId(sessions, req.cookies?.refreshToken);
+    const currentSessionId = await findCurrentSessionId(sessions, getRefreshTokenFromRequest(req));
 
     const formattedSessions = sessions.map(session => ({
       id: session._id,
@@ -112,7 +113,7 @@ export const terminateAllSessions = async (req: Request, res: Response, next: Ne
     // ✅ FIX: Use bcrypt.compare via helper to find current session
     const sessions = await getUserSessions(req.user._id);
     const currentSessionId = req.body?.keepCurrent === true
-      ? await findCurrentSessionId(sessions, req.cookies?.refreshToken)
+      ? await findCurrentSessionId(sessions, getRefreshTokenFromRequest(req))
       : undefined;
 
     const count = await revokeAllSessions(req.user._id, currentSessionId);

@@ -6,6 +6,7 @@ import { TeamInvitation } from '../../../../infrastructure/database/mongoose/mod
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { generateAccessToken } from '../../../../shared/helpers/jwt';
+import { getAuthCookieNames, getAuthCookieOptions } from '../../../../shared/helpers/auth-cookies';
 import { sendOwnerInvitationEmail } from '../../../../core/application/services/communication/email.service';
 import mongoose from 'mongoose';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
@@ -140,12 +141,8 @@ export const createCompany = async (req: Request, res: Response, next: NextFunct
         savedCompany._id.toString()
       );
 
-      res.cookie('accessToken', newAccessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 15 * 60 * 1000,
-      });
+      const { accessCookieName } = getAuthCookieNames();
+      res.cookie(accessCookieName, newAccessToken, getAuthCookieOptions(15 * 60 * 1000));
     }
 
     await createAuditLog(req.user._id, savedCompany._id, 'create', 'company', savedCompany._id.toString(), { message: 'Company created' }, req);

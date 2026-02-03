@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { authApi } from '@/src/core/api/clients/auth/authApi';
+import { clearCSRFToken, prefetchCSRFToken } from '@/src/core/api/http';
 import { useAuth } from '@/src/features/auth';
 import { Card } from '@/src/components/ui';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
@@ -26,6 +27,13 @@ function MagicLinkVerifyContent() {
         const verifyToken = async () => {
             try {
                 await authApi.verifyMagicLink(token);
+
+                // ✅ Rotate CSRF token after magic link login to avoid anonymous token reuse
+                clearCSRFToken();
+                await prefetchCSRFToken().catch((err) => {
+                    console.warn('[CSRF] Prefetch after magic link login failed:', err);
+                });
+
                 await refreshUser();
                 setStatus('success');
                 showSuccessToast('Welcome back!');

@@ -97,7 +97,7 @@ export function NdrClient() {
                 <div className="lg:col-span-2 p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-[var(--text-primary)]">NDR Resolution Funnel</h3>
-                        <Badge variant="success" className="bg-emerald-500/10 text-emerald-500 border-0">
+                        <Badge variant="success" className="bg-[var(--success-bg)] text-[var(--success)] border-0">
                             {(stats.resolutionRate * 100).toFixed(0)}% Resolution Rate
                         </Badge>
                     </div>

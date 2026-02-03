@@ -24,6 +24,7 @@ import {
 } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
 import { VELOCITY_STATUS_MAP } from '../../../../infrastructure/external/couriers/velocity/velocity.types';
 import WeightDisputeDetectionService from '../disputes/weight-dispute-detection.service';
+import { WebhookRetryService } from '../system/webhook-retry.service';
 
 export class VelocityWebhookService implements WebhookEventHandler {
   /**
@@ -223,6 +224,15 @@ export class VelocityWebhookService implements WebhookEventHandler {
         payload,
         processingTimeMs: processingTime
       });
+
+      // Store for audit trail
+      await WebhookRetryService.storeFailedWebhook(
+        'velocity',
+        payload.event_type,
+        payload,
+        { 'x-event-type': payload.event_type },
+        error instanceof Error ? error.message : 'Unknown error'
+      );
 
       return {
         success: false,

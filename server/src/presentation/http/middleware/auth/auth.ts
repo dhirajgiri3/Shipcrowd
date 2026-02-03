@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { verifyAccessToken } from '../../../../shared/helpers/jwt';
+import { getAccessTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 
@@ -15,25 +16,13 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Get token from cookie first, then fallback to Authorization header
-    let token = req.cookies?.accessToken;
+    // Get token from cookie first, then fallback to Authorization header/query
+    let token = getAccessTokenFromRequest(req);
 
     // Debug logging
     if (process.env.NODE_ENV === 'development' && !token) {
       logger.debug('No accessToken cookie found. Available cookies:', Object.keys(req.cookies || {}));
       logger.debug('Cookie header:', req.headers.cookie);
-    }
-
-    if (!token) {
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
-      }
-    }
-
-    // Allow token from query param (for install links/magic links)
-    if (!token && req.query.token) {
-      token = req.query.token as string;
     }
 
     if (!token) {

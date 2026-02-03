@@ -102,6 +102,8 @@ export default class CODRemittanceService {
     /**
      * Create new COD remittance batch
      * Aggregates eligible shipments and calculates deductions
+     * 
+     * IDEMPOTENCY: Prevents duplicate batches for same company + cutoffDate
      */
     static async createRemittanceBatch(
         companyId: string,
@@ -117,6 +119,37 @@ export default class CODRemittanceService {
         };
         shipmentCount: number;
     }> {
+        // IDEMPOTENCY CHECK: Check if batch already exists for this company + cutoffDate
+        const cutoffDateOnly = new Date(cutoffDate);
+        cutoffDateOnly.setHours(0, 0, 0, 0);
+
+        const existingBatch = await CODRemittance.findOne({
+            companyId: new mongoose.Types.ObjectId(companyId),
+            'batch.cutoffDate': {
+                $gte: cutoffDateOnly,
+                $lt: new Date(cutoffDateOnly.getTime() + 24 * 60 * 60 * 1000)
+            },
+            status: { $in: ['pending_approval', 'approved', 'paid'] }
+        });
+
+        if (existingBatch) {
+            logger.info('Returning existing remittance batch (idempotency)', {
+                remittanceId: existingBatch.remittanceId,
+                companyId,
+                cutoffDate: cutoffDateOnly
+            });
+
+            return {
+                remittanceId: existingBatch.remittanceId,
+                financial: {
+                    totalCODCollected: existingBatch.financial.totalCODCollected,
+                    netPayable: existingBatch.financial.netPayable,
+                    deductionsSummary: existingBatch.financial.deductionsSummary,
+                },
+                shipmentCount: existingBatch.shipments.length,
+            };
+        }
+
         // Get eligible shipments
         const eligibleData = await this.getEligibleShipments(companyId, cutoffDate);
 
@@ -282,6 +315,8 @@ export default class CODRemittanceService {
 
     /**
      * Initiate payout via Razorpay
+     * 
+     * DISTRIBUTED LOCK: Prevents concurrent payout initiation
      */
     static async initiatePayout(remittanceId: string): Promise<{
         success: boolean;
@@ -289,37 +324,69 @@ export default class CODRemittanceService {
         status: 'processing' | 'failed';
         failureReason?: string;
     }> {
-        const remittance = await CODRemittance.findOne({ remittanceId }).populate('companyId');
+        // DISTRIBUTED LOCK: Use Redis-based lock to prevent concurrent initiation
+        const lockKey = `payout:lock:${remittanceId}`;
+        const lockTTL = 30; // 30 seconds
 
-        if (!remittance) {
-            throw new ValidationError('Remittance not found', ErrorCode.RES_REMITTANCE_NOT_FOUND);
-        }
+        const { getRateLimiter } = await import('../../../../infrastructure/utilities/rate-limiter.js');
+        const rateLimiter = getRateLimiter();
 
-        if (remittance.status !== 'approved') {
+        // Try to acquire lock
+        const lockAcquired = await rateLimiter.acquireLock(lockKey, lockTTL);
+
+        if (!lockAcquired) {
+            logger.warn('Payout initiation already in progress', { remittanceId });
             throw new ValidationError(
-                `Cannot initiate payout for remittance in ${remittance.status} status`,
+                'Payout initiation already in progress. Please wait.',
                 ErrorCode.BIZ_INVALID_STATE
             );
         }
 
-        const company: any = remittance.companyId;
-
-        // Check Razorpay configuration
-        const razorpayFundAccountId = company.financial?.razorpayFundAccountId;
-        if (!razorpayFundAccountId) {
-            throw new AppError(
-                'Razorpay fund account not configured. Please add bank details.',
-                ErrorCode.BIZ_SETUP_FAILED,
-                400
-            );
-        }
-
         try {
+            const remittance = await CODRemittance.findOne({ remittanceId }).populate('companyId');
+
+            if (!remittance) {
+                throw new ValidationError('Remittance not found', ErrorCode.RES_REMITTANCE_NOT_FOUND);
+            }
+
+            if (remittance.status !== 'approved') {
+                throw new ValidationError(
+                    `Cannot initiate payout for remittance in ${remittance.status} status`,
+                    ErrorCode.BIZ_INVALID_STATE
+                );
+            }
+
+            // Check if payout already processing
+            if (remittance.payout.status === 'processing' || remittance.payout.status === 'completed') {
+                logger.warn('Payout already initiated', {
+                    remittanceId,
+                    payoutStatus: remittance.payout.status
+                });
+                return {
+                    success: true,
+                    status: 'processing',
+                    razorpayPayoutId: remittance.payout.razorpayPayoutId
+                };
+            }
+
+            const company: any = remittance.companyId;
+
+            // Check Razorpay configuration
+            const razorpayFundAccountId = company.financial?.razorpayFundAccountId;
+            if (!razorpayFundAccountId) {
+                throw new AppError(
+                    'Razorpay fund account not configured. Please add bank details.',
+                    ErrorCode.BIZ_SETUP_FAILED,
+                    400
+                );
+            }
+
             // Saga Pattern: Enqueue Payout Job
             // We do NOT call Razorpay directly here. We let the worker handle it.
 
             // 1. Update status to 'processing' (Locking)
             remittance.payout.status = 'processing';
+            remittance.payout.initiatedAt = new Date();
             await remittance.save();
 
             // 2. Enqueue Job
@@ -340,20 +407,24 @@ export default class CODRemittanceService {
         } catch (error: any) {
             logger.error(`Failed to enqueue payout for ${remittanceId}:`, error);
 
-            // Revert status if we failed to enqueue (though save was consistent)
-            // Actually, if we set it to processing, the worker will pick it up? 
-            // No, if addJob fails, the worker won't see it.
-            // We should revert.
-            remittance.payout.status = 'failed';
-            remittance.payout.failureReason = 'Failed to enqueue payout job: ' + error.message;
-            remittance.status = 'failed';
-            await remittance.save();
+            // Revert status if we failed to enqueue
+            const remittanceToRevert = await CODRemittance.findOne({ remittanceId });
+            if (remittanceToRevert) {
+                remittanceToRevert.payout.status = 'failed';
+                remittanceToRevert.payout.failureReason = 'Failed to enqueue payout job: ' + error.message;
+                remittanceToRevert.payout.lastError = error.message;
+                remittanceToRevert.status = 'failed';
+                await remittanceToRevert.save();
+            }
 
             return {
                 success: false,
                 status: 'failed',
                 failureReason: error.message,
             };
+        } finally {
+            // Release lock
+            await rateLimiter.releaseLock(lockKey);
         }
     }
 
@@ -656,11 +727,187 @@ export default class CODRemittanceService {
 
     /**
      * Handle Velocity settlement webhook
+     * Reconciles settlement data with internal COD remittance batches
      */
-    static async handleSettlementWebhook(payload: any): Promise<void> {
-        logger.info('Received settlement webhook', { payload });
-        // Logic to reconcile settlements would go here
-        // For now, we mock success
+    static async handleSettlementWebhook(payload: {
+        settlement_id: string;
+        settlement_date: string;
+        total_amount: number;
+        currency?: string;
+        utr_number?: string;
+        bank_details?: {
+            account_number?: string;
+            ifsc?: string;
+            bank_name?: string;
+        };
+        shipments: Array<{
+            awb: string;
+            cod_amount: number;
+            shipping_deduction: number;
+            cod_charge: number;
+            rto_charge?: number;
+            net_amount: number;
+        }>;
+    }): Promise<{
+        success: boolean;
+        reconciledBatches: number;
+        discrepancies: Array<{ awb: string; reason: string }>;
+        message: string;
+    }> {
+        try {
+            logger.info('Processing settlement webhook', {
+                settlementId: payload.settlement_id,
+                totalAmount: payload.total_amount,
+                shipmentCount: payload.shipments.length
+            });
+
+            const discrepancies: Array<{ awb: string; reason: string }> = [];
+            const reconciledShipments = new Set<string>();
+
+            // Step 1: Match each shipment in settlement with internal records
+            for (const settlementShipment of payload.shipments) {
+                try {
+                    // Find shipment by AWB
+                    const shipment = await Shipment.findOne({
+                        trackingNumber: settlementShipment.awb,
+                        'paymentDetails.type': 'cod',
+                        isDeleted: false
+                    });
+
+                    if (!shipment) {
+                        discrepancies.push({
+                            awb: settlementShipment.awb,
+                            reason: 'Shipment not found in system'
+                        });
+                        continue;
+                    }
+
+                    // Check if already reconciled
+                    if (shipment.remittance?.included) {
+                        // Verify amount matches
+                        const expectedNet = settlementShipment.net_amount;
+                        const recordedAmount = shipment.remittance.remittedAmount || 0;
+
+                        if (Math.abs(expectedNet - recordedAmount) > 0.01) {
+                            discrepancies.push({
+                                awb: settlementShipment.awb,
+                                reason: `Amount mismatch: expected ${expectedNet}, recorded ${recordedAmount}`
+                            });
+                        } else {
+                            // Update settlement details
+                            shipment.remittance.remittedAt = new Date(payload.settlement_date);
+                            shipment.remittance.remittedAmount = settlementShipment.net_amount;
+                            await shipment.save();
+                            reconciledShipments.add(settlementShipment.awb);
+                        }
+                    } else {
+                        // Mark as remitted
+                        shipment.remittance = {
+                            included: true,
+                            remittanceId: payload.settlement_id,
+                            remittedAt: new Date(payload.settlement_date),
+                            remittedAmount: settlementShipment.net_amount,
+                            platformFee: settlementShipment.shipping_deduction + settlementShipment.cod_charge + (settlementShipment.rto_charge || 0)
+                        };
+                        await shipment.save();
+                        reconciledShipments.add(settlementShipment.awb);
+                    }
+                } catch (error) {
+                    logger.error('Error reconciling shipment', {
+                        awb: settlementShipment.awb,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                    discrepancies.push({
+                        awb: settlementShipment.awb,
+                        reason: error instanceof Error ? error.message : 'Processing error'
+                    });
+                }
+            }
+
+            // Step 2: Find and update related COD remittance batches
+            const companyIds = new Set<string>();
+            for (const awb of reconciledShipments) {
+                const shipment = await Shipment.findOne({ trackingNumber: awb }).select('companyId');
+                if (shipment) {
+                    companyIds.add(shipment.companyId.toString());
+                }
+            }
+
+            let reconciledBatches = 0;
+            for (const companyId of companyIds) {
+                // Find batches that might contain these shipments
+                const batches = await CODRemittance.find({
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    status: { $in: ['approved', 'processing'] },
+                    isDeleted: false
+                });
+
+                for (const batch of batches) {
+                    // Check if batch shipments are in the settlement
+                    const batchShipments = await Shipment.find({
+                        _id: { $in: batch.shipments },
+                        trackingNumber: { $in: Array.from(reconciledShipments) }
+                    });
+
+                    if (batchShipments.length > 0) {
+                        // Update batch status
+                        batch.status = 'settled';
+                        batch.settlementDetails = {
+                            settlementId: payload.settlement_id,
+                            settledAt: new Date(payload.settlement_date),
+                            utrNumber: payload.utr_number,
+                            settledAmount: payload.total_amount,
+                            bankDetails: payload.bank_details
+                        };
+                        await batch.save();
+                        reconciledBatches++;
+
+                        logger.info('Batch reconciled with settlement', {
+                            batchId: batch._id,
+                            settlementId: payload.settlement_id,
+                            shipmentsReconciled: batchShipments.length
+                        });
+                    }
+                }
+            }
+
+            // Step 3: Send alert if discrepancies found
+            if (discrepancies.length > 0) {
+                logger.warn('Settlement reconciliation completed with discrepancies', {
+                    settlementId: payload.settlement_id,
+                    totalShipments: payload.shipments.length,
+                    reconciled: reconciledShipments.size,
+                    discrepancies: discrepancies.length
+                });
+
+                // Send email alert to finance team
+                const EmailService = (await import('../communication/email.service')).default;
+                await EmailService.sendOperationalAlert({
+                    to: process.env.FINANCE_ALERT_EMAIL || 'finance@shipcrowd.com',
+                    subject: `Settlement Reconciliation Alert - ${discrepancies.length} Discrepancies`,
+                    body: `Settlement ID: ${payload.settlement_id}\n\n` +
+                          `Total Amount: ${payload.total_amount} ${payload.currency || 'INR'}\n` +
+                          `Reconciled: ${reconciledShipments.size}/${payload.shipments.length}\n\n` +
+                          `Discrepancies:\n${discrepancies.map(d => `- ${d.awb}: ${d.reason}`).join('\n')}`
+                });
+            }
+
+            return {
+                success: true,
+                reconciledBatches,
+                discrepancies,
+                message: discrepancies.length > 0 
+                    ? `Reconciled with ${discrepancies.length} discrepancies` 
+                    : 'Successfully reconciled all shipments'
+            };
+
+        } catch (error) {
+            logger.error('Error handling settlement webhook', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                settlementId: payload.settlement_id
+            });
+            throw error;
+        }
     }
 
     /**

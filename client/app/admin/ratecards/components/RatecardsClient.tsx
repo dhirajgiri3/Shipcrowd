@@ -238,7 +238,7 @@ export function RatecardsClient() {
 
             {/* Bulk Actions Bar */}
             {showBulkActions && (
-                <Card className="bg-indigo-50 border-indigo-200">
+                <Card className="bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -365,7 +365,7 @@ export function RatecardsClient() {
                         key={card._id}
                         className={cn(
                             "hover:shadow-lg transition-all cursor-pointer group",
-                            selectedCards.includes(card._id) && "ring-2 ring-indigo-500"
+                            selectedCards.includes(card._id) && "ring-2 ring-[var(--primary-blue)]"
                         )}
                         onClick={() => addToast(`Opening ${card.name}...`, 'info')}
                     >
@@ -383,7 +383,7 @@ export function RatecardsClient() {
                                                 className="cursor-pointer"
                                             >
                                                 {selectedCards.includes(card._id) ? (
-                                                    <CheckSquare className="h-5 w-5 text-indigo-600" />
+                                                    <CheckSquare className="h-5 w-5 text-[var(--primary-blue)]" />
                                                 ) : (
                                                     <Square className="h-5 w-5 text-[var(--text-muted)]" />
                                                 )}

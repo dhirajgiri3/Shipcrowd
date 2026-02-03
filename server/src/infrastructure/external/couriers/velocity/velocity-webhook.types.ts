@@ -8,10 +8,10 @@
 // ==================== WEBHOOK PAYLOAD ====================
 
 export interface VelocityWebhookPayload {
-  event_type: 'SHIPMENT_STATUS_UPDATE' | 'SHIPMENT_CREATED' | 'SHIPMENT_CANCELLED' | 'SHIPMENT_WEIGHT_SCANNED' | 'REVERSE_SHIPMENT_STATUS_UPDATE';
+  event_type: 'SHIPMENT_STATUS_UPDATE' | 'SHIPMENT_CREATED' | 'SHIPMENT_CANCELLED' | 'SHIPMENT_WEIGHT_SCANNED' | 'REVERSE_SHIPMENT_STATUS_UPDATE' | 'SETTLEMENT_COMPLETED';
   webhook_id?: string;                  // Optional unique ID for idempotency
   timestamp: string;                    // ISO 8601
-  shipment_data: {
+  shipment_data?: {
     awb: string;
     order_id: string;
     status: string;
@@ -34,6 +34,26 @@ export interface VelocityWebhookPayload {
     location: string;
     timestamp: string;
     description: string;
+  };
+  settlement_data?: {
+    settlement_id: string;
+    settlement_date: string;
+    total_amount: number;
+    currency: string;
+    utr_number?: string;
+    bank_details?: {
+      account_number?: string;
+      ifsc?: string;
+      bank_name?: string;
+    };
+    shipments: Array<{
+      awb: string;
+      cod_amount: number;
+      shipping_deduction: number;
+      cod_charge: number;
+      rto_charge?: number;
+      net_amount: number;
+    }>;
   };
 }
 
