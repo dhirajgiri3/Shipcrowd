@@ -142,7 +142,7 @@ router.get('/debug-sessions', authenticate, async (req, res) => {
     return;
   }
   try {
-    const Session = (await import('../../../../../infrastructure/database/mongoose/models/iam/users/session.model')).default as any;
+    const Session = (await import('@/infrastructure/database/mongoose/models/iam/users/session.model.js')).default as any;
     const userId = (req as any).user?._id;
 
     const allSessions = await Session.find({ userId }).lean();

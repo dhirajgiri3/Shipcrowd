@@ -1465,6 +1465,45 @@ export const sendSLAWarningEmail = async (
   logger.info('SLA warning email sent', { disputeId: disputeDetails.disputeId, adminEmail });
 };
 
+/**
+ * Send operational alert email (for finance, operations, etc.)
+ */
+export const sendOperationalAlert = async (params: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<void> => {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc2626; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #fef2f2; padding: 30px; border-radius: 0 0 8px 8px; }
+        .alert-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 20px 0; white-space: pre-wrap; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>⚠️ Operational Alert</h1>
+        </div>
+        <div class="content">
+          <div class="alert-box">
+            ${params.body.replace(/\n/g, '<br>')}
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail(params.to, params.subject, html);
+  logger.info('Operational alert email sent', { to: params.to, subject: params.subject });
+};
+
 export default {
   sendEmail,
   sendVerificationEmail,
@@ -1487,4 +1526,6 @@ export default {
   sendDisputeEscalatedEmail,
   sendDisputeResolvedEmail,
   sendSLAWarningEmail,
+  sendOperationalAlert,
 };
+

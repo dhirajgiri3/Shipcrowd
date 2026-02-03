@@ -16,7 +16,14 @@ import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
-import { AUTH_COOKIES, SESSION_CONSTANTS } from '../../../../shared/constants/security';
+import { SESSION_CONSTANTS } from '../../../../shared/constants/security';
+import {
+  clearAuthCookies,
+  getAccessTokenFromRequest,
+  getAuthCookieNames,
+  getAuthCookieOptions,
+  getRefreshTokenFromRequest,
+} from '../../../../shared/helpers/auth-cookies';
 import { UserDTO } from '../../dtos/user.dto';
 import { AuthenticationError, ValidationError, NotFoundError, ExternalServiceError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -26,18 +33,7 @@ import MFAService from '../../../../core/application/services/auth/mfa.service';
 // HELPER FUNCTIONS
 // ============================================================================
 
-// Helper function to get cookie options for auth tokens
-// ✅ CRITICAL FIX: Never set domain for localhost - it breaks cookie persistence
-// Browsers handle localhost specially; explicit domain prevents cookie setting/sending
-const getAuthCookieOptions = (maxAge: number) => ({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
-  path: '/',
-  // ✅ Domain must be undefined for localhost (browser auto-handles it)
-  // Only set domain in production if needed for subdomain sharing
-  maxAge,
-});
+// Cookie helpers centralized in shared helpers for consistency across controllers
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -450,20 +446,11 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     await createSession(typedUser._id, refreshToken, req, expiresAt);
 
     // Cookie name with secure prefix in production
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
-    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+    const { refreshCookieName, accessCookieName } = getAuthCookieNames();
 
     // ✅ CRITICAL FIX: Clear existing cookies BEFORE setting new ones
     // This ensures clean slate - no duplicate or stale cookies
-    const clearOptions = getAuthCookieOptions(0);
-    res.clearCookie(refreshCookieName, clearOptions);
-    res.clearCookie(accessCookieName, clearOptions);
-
-    // Also clear legacy cookies with 'localhost' domain (if any exist from old sessions)
-    if (process.env.NODE_ENV === 'development') {
-      res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
-      res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
-    }
+    clearAuthCookies(res);
 
     // ✅ Set fresh cookies atomically
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(cookieMaxAge));
@@ -507,11 +494,10 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Cookie names with secure prefix in production (must match login)
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
-    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+    const { refreshCookieName, accessCookieName } = getAuthCookieNames();
 
     // Validate that we have a refresh token from cookies (try both secure and non-secure names)
-    const token = req.cookies?.[refreshCookieName] || req.cookies?.[AUTH_COOKIES.REFRESH_TOKEN] || req.body?.refreshToken;
+    const token = getRefreshTokenFromRequest(req);
     if (!token) {
       throw new AuthenticationError(
         'Your session has expired. Please log in again to continue.',
@@ -628,15 +614,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
     // ✅ CRITICAL FIX: Clear existing cookies BEFORE setting new ones
     // This ensures the new cookies replace old ones atomically
-    const clearOptions = getAuthCookieOptions(0);
-    res.clearCookie(refreshCookieName, clearOptions);
-    res.clearCookie(accessCookieName, clearOptions);
-
-    // Also clear legacy cookies with 'localhost' domain (if any exist from old sessions)
-    if (process.env.NODE_ENV === 'development') {
-      res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
-      res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
-    }
+    clearAuthCookies(res);
 
     // ✅ CRITICAL: Set both cookies in the same response to ensure atomic update
     res.cookie(refreshCookieName, newRefreshToken, getAuthCookieOptions(remainingTimeMs));
@@ -677,19 +655,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
     // ✅ SELF-HEAL: Clear cookies on error to prevent infinite restart loops
     // If the browser holds bad/stale cookies, this forces a clean slate
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
-    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
-
-    // Clear with default options (HostOnly)
-    const cookieOptions = getAuthCookieOptions(0);
-    res.clearCookie(refreshCookieName, cookieOptions);
-    res.clearCookie(accessCookieName, cookieOptions);
-
-    // Clear legacy cookies with domain
-    if (process.env.NODE_ENV === 'development') {
-      res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
-      res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
-    }
+    clearAuthCookies(res);
 
     next(error); // Let Express error handler deal with it
   }
@@ -827,30 +793,15 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Cookie names with secure prefix in production
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
+    const { refreshCookieName, accessCookieName } = getAuthCookieNames();
 
-    const refreshToken = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken;
+    const refreshToken = getRefreshTokenFromRequest(req);
 
     // ✅ FIX: Get access token to blacklist it immediately
-    const accessToken = req.cookies?.[accessCookieName] || req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
+    const accessToken = getAccessTokenFromRequest(req);
 
     // ✅ CRITICAL FIX: Clear cookies with EXACT same options used when setting them
-    // Cookies must be cleared with the same path, domain, secure, and sameSite settings
-    const cookieOptions = getAuthCookieOptions(0); // maxAge 0 to expire immediately
-
-    // Clear both tokens with proper options
-    res.clearCookie(refreshCookieName, cookieOptions);
-    res.clearCookie(accessCookieName, cookieOptions);
-
-    // ✅ CRITICAL FIX: Also clear legacy cookies with 'localhost' domain
-    if (process.env.NODE_ENV === 'development') {
-      res.clearCookie(refreshCookieName, { ...cookieOptions, domain: 'localhost' });
-      res.clearCookie(accessCookieName, { ...cookieOptions, domain: 'localhost' });
-    }
-
-    res.clearCookie('refreshToken', cookieOptions); // Clear regular cookie for backwards compatibility
-    res.clearCookie('accessToken', cookieOptions);
+    clearAuthCookies(res);
 
     // Cast to AuthRequest to access user property
     const authReq = req as Request;
@@ -980,8 +931,7 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
 
     // ✅ Set httpOnly cookies
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
+    const { refreshCookieName, accessCookieName } = getAuthCookieNames();
 
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
@@ -1233,8 +1183,7 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     );
 
     // Set httpOnly cookies (same as regular login)
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
+    const { accessCookieName, refreshCookieName } = getAuthCookieNames();
 
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(30 * 24 * 60 * 60 * 1000));
@@ -1415,8 +1364,7 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     );
 
     // Set httpOnly cookies
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
-    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+    const { refreshCookieName, accessCookieName } = getAuthCookieNames();
 
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
@@ -1800,8 +1748,7 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
 
     // Set httpOnly cookies
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
+    const { refreshCookieName, accessCookieName } = getAuthCookieNames();
 
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(30 * 24 * 60 * 60 * 1000));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
@@ -1877,7 +1824,7 @@ export const getCSRFToken = async (
 
     // ✅ Try to extract user ID from accessToken cookie (if present)
     // This ensures CSRF token is generated with the same ID that csrfProtection middleware will use
-    const accessToken = req.cookies?.accessToken;
+    const accessToken = getAccessTokenFromRequest(req);
 
     if (accessToken) {
       try {
@@ -1937,4 +1884,3 @@ const authController = {
 };
 
 export default authController;
-

@@ -6,6 +6,7 @@ import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/features/auth';
 import { authApi } from '@/src/core/api/clients/auth/authApi';
+import { clearCSRFToken, prefetchCSRFToken } from '@/src/core/api/http';
 import { Loader } from '@/src/components/ui';
 
 function OAuthCallbackContent() {
@@ -36,6 +37,12 @@ function OAuthCallbackContent() {
 
             // Success path: Verify cookies were set and sync AuthContext
             try {
+                // ✅ Rotate CSRF token after OAuth login to avoid anonymous token reuse
+                clearCSRFToken();
+                await prefetchCSRFToken().catch((err) => {
+                    console.warn('[CSRF] Prefetch after OAuth login failed:', err);
+                });
+
                 // Wait for auth state to sync (cookies should be set by backend)
                 await refreshUser();
 

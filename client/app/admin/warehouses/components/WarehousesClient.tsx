@@ -98,7 +98,7 @@ export function WarehousesClient() {
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold text-[var(--text-primary)]">Warehouse Network</h1>
                             {isUsingMockData && (
-                                <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning-border)]">
                                     ⚠️ Mock Data
                                 </span>
                             )}
@@ -209,7 +209,7 @@ export function WarehousesClient() {
                                         </div>
                                         <span className={cn(
                                             "px-2.5 py-1 rounded-full text-xs font-bold",
-                                            !(wh as any).isDeleted ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-gray-500/10 text-gray-500"
+                                            !(wh as any).isDeleted ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
                                         )}>
                                             {!(wh as any).isDeleted ? 'Active' : 'Inactive'}
                                         </span>
@@ -297,7 +297,7 @@ export function WarehousesClient() {
                                         <span className={cn(
                                             "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase",
                                             item.status === 'In Stock' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                                item.status === 'Low Stock' ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-gray-500/10 text-gray-500"
+                                                item.status === 'Low Stock' ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
                                         )}>
                                             {item.status}
                                         </span>

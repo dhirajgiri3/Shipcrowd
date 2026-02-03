@@ -246,7 +246,7 @@ export function ProfitClient() {
                             ) : (
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
-                                        <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                                        <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                                             <tr>
                                                 <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
                                                 <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
@@ -257,7 +257,7 @@ export function ProfitClient() {
                                                 <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Margin</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100">
+                                        <tbody className="divide-y divide-[var(--border-subtle)]">
                                             {profitData.length === 0 ? (
                                                 <tr>
                                                     <td colSpan={7} className="p-8 text-center text-[var(--text-muted)]">
@@ -386,14 +386,14 @@ export function ProfitClient() {
                     <CardContent className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Date Range</label>
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">Date Range</label>
                                 <div className="flex gap-2">
                                     <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                                     <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Search</label>
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">Search</label>
                                 <Input
                                     placeholder="Seller Name or ID"
                                     value={searchQuery}

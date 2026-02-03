@@ -12,20 +12,7 @@ import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 
-import { AUTH_COOKIES } from '../../../../shared/constants/security';
-
-// Helper function to get cookie options for auth tokens
-// ✅ CRITICAL FIX: Never set domain for localhost - it breaks cookie persistence
-// Browsers handle localhost specially; explicit domain prevents cookie setting/sending
-const getAuthCookieOptions = (maxAge: number) => ({
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
-    path: '/',
-    // ✅ Domain must be undefined for localhost (browser auto-handles it)
-    // Only set domain in production if needed for subdomain sharing
-    maxAge,
-});
+import { getAuthCookieNames, getAuthCookieOptions } from '../../../../shared/helpers/auth-cookies';
 
 class UserManagementController {
     /**
@@ -199,8 +186,7 @@ class UserManagementController {
             const result = await UserManagementService.impersonateUser(targetUserId, userId);
 
             // Cookie names with secure prefix in production
-            const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
-            const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+            const { refreshCookieName, accessCookieName } = getAuthCookieNames();
 
             // Set cookies (Access: 15m, Refresh: 7d as impersonation default)
             const refreshMaxAge = 7 * 24 * 60 * 60 * 1000;

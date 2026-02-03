@@ -135,7 +135,7 @@ export interface ICODRemittance extends Document {
     };
 
     // Approval Workflow
-    status: 'draft' | 'pending_approval' | 'approved' | 'paid' | 'cancelled' | 'failed';
+    status: 'draft' | 'pending_approval' | 'approved' | 'paid' | 'settled' | 'cancelled' | 'failed';
     approvedBy?: mongoose.Types.ObjectId;
     approvedAt?: Date;
     approvalNotes?: string;
@@ -144,6 +144,19 @@ export interface ICODRemittance extends Document {
     cancelledBy?: mongoose.Types.ObjectId;
     cancelledAt?: Date;
     cancellationReason?: string;
+
+    // Settlement Details (from Velocity webhook)
+    settlementDetails?: {
+        settlementId: string;
+        settledAt: Date;
+        utrNumber?: string;
+        settledAmount: number;
+        bankDetails?: {
+            account_number?: string;
+            ifsc?: string;
+            bank_name?: string;
+        };
+    };
 
     // Reports
     reportGenerated: boolean;
@@ -377,7 +390,7 @@ const CODRemittanceSchema = new Schema<ICODRemittance>(
         },
         status: {
             type: String,
-            enum: ['draft', 'pending_approval', 'approved', 'paid', 'cancelled', 'failed'],
+            enum: ['draft', 'pending_approval', 'approved', 'paid', 'settled', 'cancelled', 'failed'],
             default: 'draft',
             required: true,
             index: true,
@@ -394,6 +407,17 @@ const CODRemittanceSchema = new Schema<ICODRemittance>(
         },
         cancelledAt: Date,
         cancellationReason: String,
+        settlementDetails: {
+            settlementId: String,
+            settledAt: Date,
+            utrNumber: String,
+            settledAmount: Number,
+            bankDetails: {
+                account_number: String,
+                ifsc: String,
+                bank_name: String,
+            },
+        },
         reportGenerated: {
             type: Boolean,
             default: false,

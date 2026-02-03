@@ -161,6 +161,27 @@ export class DatabaseError extends AppError {
 }
 
 /**
+ * Courier Feature Not Supported Error (501)
+ * Used when a courier provider doesn't implement an optional feature
+ */
+export class CourierFeatureNotSupportedError extends AppError {
+    public readonly courierName: string;
+    public readonly feature: string;
+
+    constructor(courierName: string, feature: string) {
+        super(
+            `Courier provider '${courierName}' does not support feature: ${feature}`,
+            ErrorCode.EXT_SERVICE_UNAVAILABLE,
+            501, // Not Implemented
+            true,
+            { courierName, feature }
+        );
+        this.courierName = courierName;
+        this.feature = feature;
+    }
+}
+
+/**
  * Check if an error is an operational error (expected) vs programmer error (bug)
  */
 export const isOperationalError = (error: Error): boolean => {

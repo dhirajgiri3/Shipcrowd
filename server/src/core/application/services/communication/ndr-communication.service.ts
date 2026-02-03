@@ -1,5 +1,6 @@
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import WhatsAppService from './whatsapp.service';
+import smsService from './sms.service';
 import { sendEmail } from './email.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError } from '../../../../shared/errors/app.error';
@@ -98,6 +99,33 @@ class NDRCommunicationService {
                     }
                 } catch (error: any) {
                     logger.error(`WhatsApp NDR send failed for ${awb}:`, error);
+                }
+            }
+
+            // Send via SMS
+            if (channel === 'sms' || channel === 'all') {
+                try {
+                    let smsMessage = '';
+
+                    // Format SMS based on template type
+                    if (templateType === 'ndr_alert') {
+                        smsMessage = `Hi ${recipientName}, delivery for ${awb} failed. Reason: ${ndrReason}. Track: ${process.env.FRONTEND_URL}/track/${awb}`;
+                    } else if (templateType === 'action_required') {
+                        smsMessage = `Hi ${recipientName}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${process.env.FRONTEND_URL}/track/${awb}/ndr-action`;
+                    } else if (templateType === 'reattempt') {
+                        smsMessage = `Hi ${recipientName}, delivery for ${awb} rescheduled. Track: ${process.env.FRONTEND_URL}/track/${awb}`;
+                    } else if (templateType === 'rto') {
+                        smsMessage = `Hi ${recipientName}, shipment ${awb} is being returned. Reason: ${ndrReason}. Contact support for details.`;
+                    }
+
+                    const smsSent = await smsService.sendSMS(recipientPhone, smsMessage);
+
+                    if (smsSent) {
+                        results.channelsSent.push('sms');
+                        results.success = true;
+                    }
+                } catch (error: any) {
+                    logger.error(`SMS NDR send failed for ${awb}:`, error);
                 }
             }
 

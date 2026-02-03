@@ -11,6 +11,7 @@ import {
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { clearAuthCookies } from '../../../../shared/helpers/auth-cookies';
 import { AuthenticationError, NotFoundError, ValidationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
@@ -79,8 +80,8 @@ export const deactivateUserAccount = async (req: Request, res: Response, next: N
     );
 
     if (success) {
-      // Clear auth cookie
-      res.clearCookie('refreshToken');
+      // Clear auth cookies
+      clearAuthCookies(res);
       sendSuccess(
         res,
         null,
@@ -189,8 +190,8 @@ export const scheduleAccountDeletionHandler = async (req: Request, res: Response
     );
 
     if (success) {
-      // Clear auth cookie
-      res.clearCookie('refreshToken');
+      // Clear auth cookies
+      clearAuthCookies(res);
 
       const deletionDate = new Date();
       deletionDate.setDate(deletionDate.getDate() + validation.data.gracePeriodDays);

@@ -18,6 +18,40 @@ interface MISRow {
     utr?: string;
 }
 
+/**
+ * Column mapping configuration for different courier MIS formats
+ */
+interface ColumnMapping {
+    awbColumns: string[];      // Possible AWB column names
+    amountColumns: string[];   // Possible amount column names
+    dateColumns?: string[];    // Optional date columns
+    utrColumns?: string[];     // Optional UTR columns
+}
+
+/**
+ * Predefined column mappings for known couriers
+ */
+const COURIER_COLUMN_MAPPINGS: Record<string, ColumnMapping> = {
+    velocity: {
+        awbColumns: ['awb', 'awb_number', 'tracking_number', 'waybill', 'shipment_id'],
+        amountColumns: ['cod_amount', 'cod_collected', 'amount', 'net_amount', 'collectible'],
+        dateColumns: ['remittance_date', 'settlement_date', 'date'],
+        utrColumns: ['utr', 'utr_number', 'reference_number', 'transaction_id']
+    },
+    delhivery: {
+        awbColumns: ['awb', 'waybill_number', 'cn', 'reference_number'],
+        amountColumns: ['cod_amount', 'total_cod', 'amount_collected'],
+        dateColumns: ['settlement_date', 'remittance_date'],
+        utrColumns: ['utr_no', 'utr_number', 'reference_no']
+    },
+    generic: {
+        awbColumns: ['awb', 'awb_number', 'tracking', 'tracking_number', 'waybill', 'ref', 'reference'],
+        amountColumns: ['cod', 'cod_amount', 'amount', 'collected', 'value', 'total'],
+        dateColumns: ['date', 'settlement_date', 'remittance_date', 'paid_date'],
+        utrColumns: ['utr', 'utr_number', 'reference', 'transaction_id', 'ref_no']
+    }
+}
+
 export default class RemittanceReconciliationService {
     /**
      * Create a verified Remittance Batch from a Courier MIS File.
@@ -31,13 +65,19 @@ export default class RemittanceReconciliationService {
         uploadedBy: string,
         provider: 'generic' | 'velocity' = 'generic'
     ) {
-        // 1. Parse File
+        // 1. Parse File with provider-specific column mapping
         let rows: MISRow[] = [];
 
         if (provider === 'velocity') {
-            rows = await VelocityRemittanceService.parseMIS(fileBuffer);
+            // Use Velocity-specific parser if available, otherwise use generic with velocity mapping
+            try {
+                rows = await VelocityRemittanceService.parseMIS(fileBuffer);
+            } catch (error) {
+                logger.warn('Velocity-specific parser failed, falling back to generic with velocity mapping', { error });
+                rows = await this.parseFile(fileBuffer, mimetype, 'velocity');
+            }
         } else {
-            rows = await this.parseFile(fileBuffer, mimetype);
+            rows = await this.parseFile(fileBuffer, mimetype, provider === 'generic' ? 'generic' : 'generic');
         }
 
         if (rows.length === 0) {
@@ -253,51 +293,152 @@ export default class RemittanceReconciliationService {
 
     /**
      * Generic Parse generic Excel/CSV into simplified { awb, amount } format
+     * @param buffer - File buffer
+     * @param mimetype - File MIME type
+     * @param provider - Courier provider for column mapping
      */
-    private static async parseFile(buffer: any, mimetype: string): Promise<MISRow[]> {
-        // ... (Existing implementation) ...
+    private static async parseFile(
+        buffer: any, 
+        mimetype: string, 
+        provider: 'velocity' | 'delhivery' | 'generic' = 'generic'
+    ): Promise<MISRow[]> {
         const rows: MISRow[] = [];
-        // Copying existing implementation for CSV/Excel logic safety
-        if (mimetype.includes('csv')) {
+        
+        if (mimetype.includes('csv') || mimetype.includes('text')) {
             const stream = Readable.from(buffer.toString());
             return new Promise((resolve, reject) => {
                 stream
                     .pipe(csvParser())
                     .on('data', (data) => {
-                        const normalized = this.normalizeRow(data);
+                        const normalized = this.normalizeRow(data, provider);
                         if (normalized) rows.push(normalized);
                     })
-                    .on('end', () => resolve(rows))
+                    .on('end', () => {
+                        logger.info(`Parsed ${rows.length} rows from CSV`, { provider });
+                        resolve(rows);
+                    })
                     .on('error', (err) => reject(err));
             });
         } else {
+            // Excel file
             const workbook = new ExcelJS.Workbook();
             await workbook.xlsx.load(buffer);
             const worksheet = workbook.getWorksheet(1);
-            if (!worksheet) return [];
+            
+            if (!worksheet) {
+                logger.warn('No worksheet found in Excel file');
+                return [];
+            }
+
+            let headerRow: any = null;
+            
             worksheet.eachRow((row, rowNumber) => {
-                if (rowNumber === 1) return;
-                const rowValues = row.values as any[];
-                if (rowValues && rowValues.length >= 2) {
-                    const awb = row.getCell(1).toString();
-                    const amt = parseFloat(row.getCell(2).toString()) || 0;
-                    if (awb && awb !== 'null') {
-                        rows.push({ awb, amount: amt });
+                // First row is header
+                if (rowNumber === 1) {
+                    headerRow = {};
+                    row.eachCell((cell, colNumber) => {
+                        headerRow[colNumber] = cell.toString();
+                    });
+                    return;
+                }
+
+                // Data rows - convert to object using header
+                if (headerRow) {
+                    const rowData: any = {};
+                    row.eachCell((cell, colNumber) => {
+                        const columnName = headerRow[colNumber];
+                        if (columnName) {
+                            rowData[columnName] = cell.toString();
+                        }
+                    });
+
+                    const normalized = this.normalizeRow(rowData, provider);
+                    if (normalized) {
+                        rows.push(normalized);
                     }
                 }
             });
+
+            logger.info(`Parsed ${rows.length} rows from Excel`, { provider });
             return rows;
         }
     }
 
-    private static normalizeRow(data: any): MISRow | null {
-        const keys = Object.keys(data);
-        const awbKey = keys.find(k => k.toLowerCase().includes('awb') || k.toLowerCase().includes('tracking'));
-        const amountKey = keys.find(k => k.toLowerCase().includes('cod') || k.toLowerCase().includes('amount') || k.toLowerCase().includes('collected'));
-        if (!awbKey || !amountKey) return null;
+    /**
+     * Normalize row from MIS file using configurable column mapping
+     * @param data - Row data from CSV/Excel
+     * @param provider - Courier provider ('velocity', 'delhivery', 'generic')
+     */
+    private static normalizeRow(data: any, provider: 'velocity' | 'delhivery' | 'generic' = 'generic'): MISRow | null {
+        const keys = Object.keys(data).map(k => k.toLowerCase());
+        const mapping = COURIER_COLUMN_MAPPINGS[provider];
+
+        // Find AWB column
+        let awbKey: string | undefined;
+        for (const possibleAwbColumn of mapping.awbColumns) {
+            awbKey = Object.keys(data).find(k => 
+                k.toLowerCase() === possibleAwbColumn.toLowerCase() ||
+                k.toLowerCase().replace(/[_\s-]/g, '') === possibleAwbColumn.toLowerCase().replace(/[_\s-]/g, '')
+            );
+            if (awbKey) break;
+        }
+
+        // Find Amount column
+        let amountKey: string | undefined;
+        for (const possibleAmountColumn of mapping.amountColumns) {
+            amountKey = Object.keys(data).find(k => 
+                k.toLowerCase() === possibleAmountColumn.toLowerCase() ||
+                k.toLowerCase().replace(/[_\s-]/g, '') === possibleAmountColumn.toLowerCase().replace(/[_\s-]/g, '')
+            );
+            if (amountKey) break;
+        }
+
+        // Find Date column (optional)
+        let dateKey: string | undefined;
+        if (mapping.dateColumns) {
+            for (const possibleDateColumn of mapping.dateColumns) {
+                dateKey = Object.keys(data).find(k => 
+                    k.toLowerCase() === possibleDateColumn.toLowerCase() ||
+                    k.toLowerCase().replace(/[_\s-]/g, '') === possibleDateColumn.toLowerCase().replace(/[_\s-]/g, '')
+                );
+                if (dateKey) break;
+            }
+        }
+
+        // Find UTR column (optional)
+        let utrKey: string | undefined;
+        if (mapping.utrColumns) {
+            for (const possibleUtrColumn of mapping.utrColumns) {
+                utrKey = Object.keys(data).find(k => 
+                    k.toLowerCase() === possibleUtrColumn.toLowerCase() ||
+                    k.toLowerCase().replace(/[_\s-]/g, '') === possibleUtrColumn.toLowerCase().replace(/[_\s-]/g, '')
+                );
+                if (utrKey) break;
+            }
+        }
+
+        // Validate required fields
+        if (!awbKey || !amountKey) {
+            logger.debug('Row missing required columns', { 
+                keys: Object.keys(data),
+                awbFound: !!awbKey,
+                amountFound: !!amountKey
+            });
+            return null;
+        }
+
+        const awbValue = data[awbKey]?.toString().trim();
+        const amountValue = parseFloat(data[amountKey]) || 0;
+
+        if (!awbValue || awbValue === 'null' || awbValue === '') {
+            return null;
+        }
+
         return {
-            awb: data[awbKey]?.trim(),
-            amount: parseFloat(data[amountKey]) || 0
+            awb: awbValue,
+            amount: amountValue,
+            remittanceDate: dateKey ? new Date(data[dateKey]) : undefined,
+            utr: utrKey ? data[utrKey]?.toString().trim() : undefined
         };
     }
 }

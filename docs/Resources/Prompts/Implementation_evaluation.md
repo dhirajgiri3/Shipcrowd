@@ -1,6 +1,3 @@
-# Comprehensive Implementation Review and Analysis Prompt
-
-```
 IMPLEMENTATION REVIEW & OPTIMIZATION ANALYSIS
 
 You have now completed the implementation I requested. Before we proceed further, I need you to conduct a thorough, systematic review of your entire implementation from start to finish.

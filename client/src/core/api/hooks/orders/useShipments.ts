@@ -35,6 +35,8 @@ export interface ShipmentFilters {
     carrier?: string;
     search?: string;
     sortBy?: string;
+    startDate?: string;
+    endDate?: string;
 }
 
 export interface ShipmentsResponse {
