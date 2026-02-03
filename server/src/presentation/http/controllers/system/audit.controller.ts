@@ -6,6 +6,7 @@ import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 const getAuditLogsSchema = z.object({
   page: z.string().optional().transform(val => (val ? parseInt(val, 10) : 1)),
@@ -79,7 +80,7 @@ export const getCompanyAuditLogs = async (req: Request, res: Response, next: Nex
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Insufficient permissions', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 

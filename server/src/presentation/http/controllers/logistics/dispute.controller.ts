@@ -28,6 +28,7 @@ import DisputeAnalyticsService from '@/core/application/services/logistics/dispu
 import logger from '@/shared/logger/winston.logger';
 import { AppError, normalizeError } from '@/shared/errors/app.error';
 import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '@/shared/utils/responseHelper';
+import { isPlatformAdmin } from '@/shared/utils/role-helpers';
 
 // ============================================================================
 // CUSTOMER ENDPOINTS
@@ -86,7 +87,7 @@ export default class DisputeController {
     static async getDisputes(req: Request, res: Response): Promise<void> {
         try {
             const companyId = req.user?.companyId;
-            const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             if (!companyId && !isAdmin) {
                 throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
@@ -155,7 +156,7 @@ export default class DisputeController {
         try {
             const { id } = req.params;
             const companyId = req.user?.companyId;
-            const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const dispute = await DisputeService.getDisputeById(id);
 
@@ -228,7 +229,7 @@ export default class DisputeController {
         try {
             const { id } = req.params;
             const companyId = req.user?.companyId;
-            const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const dispute = await DisputeService.getDisputeById(id);
 
@@ -427,7 +428,7 @@ export default class DisputeController {
     static async getStats(req: Request, res: Response): Promise<void> {
         try {
             const companyId = req.user?.companyId;
-            const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const {
                 startDate,
@@ -467,7 +468,7 @@ export default class DisputeController {
     static async getTrends(req: Request, res: Response): Promise<void> {
         try {
             const companyId = req.user?.companyId;
-            const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { startDate, endDate, groupBy = 'day' } = req.query;
 
@@ -523,7 +524,7 @@ export default class DisputeController {
     static async getTopReasons(req: Request, res: Response): Promise<void> {
         try {
             const companyId = req.user?.companyId;
-            const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { startDate, endDate, limit = 10 } = req.query;
 

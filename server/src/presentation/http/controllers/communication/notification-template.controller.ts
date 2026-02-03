@@ -3,6 +3,7 @@ import NotificationTemplateService from '../../../../core/application/services/c
 import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**
  * Notification Template Controller
@@ -31,7 +32,7 @@ class NotificationTemplateController {
         try {
             const userId = req.user?._id?.toString();
             const companyId = req.user?.companyId?.toString();
-            const isAdmin = req.user?.role === 'admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { name, code, category, channel, subject, body, isDefault } = req.body;
 
@@ -75,7 +76,7 @@ class NotificationTemplateController {
     async listTemplates(req: Request, res: Response, next: NextFunction) {
         try {
             const companyId = req.user?.companyId?.toString();
-            const isAdmin = req.user?.role === 'admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const {
                 category,
@@ -148,7 +149,7 @@ class NotificationTemplateController {
         try {
             const { id } = req.params;
             const companyId = req.user?.companyId?.toString();
-            const isAdmin = req.user?.role === 'admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { name, subject, body, isActive, isDefault } = req.body;
 
@@ -177,7 +178,7 @@ class NotificationTemplateController {
         try {
             const { id } = req.params;
             const companyId = req.user?.companyId?.toString();
-            const isAdmin = req.user?.role === 'admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             await NotificationTemplateService.deleteTemplate(
                 id,
@@ -273,7 +274,7 @@ class NotificationTemplateController {
     async getTemplateStats(req: Request, res: Response, next: NextFunction) {
         try {
             const companyId = req.user?.companyId?.toString();
-            const isAdmin = req.user?.role === 'admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const stats = await NotificationTemplateService.getTemplateStats(
                 isAdmin && req.query.companyId === 'global' ? undefined : companyId
@@ -291,7 +292,7 @@ class NotificationTemplateController {
      */
     async seedDefaultTemplates(req: Request, res: Response, next: NextFunction) {
         try {
-            const isAdmin = req.user?.role === 'admin';
+            const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             if (!isAdmin) {
                 throw new ValidationError('Only admins can seed default templates');

@@ -7,6 +7,7 @@ import cacheService from '../../../../core/application/services/analytics/analyt
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import RTOService from '../../../../core/application/services/rto/rto.service';
 import GeographicAnalyticsService from '../../../../core/application/services/analytics/geographic-analytics.service';
 import SmartInsightsService from '../../../../core/application/services/analytics/smart-insights.service';
@@ -366,7 +367,7 @@ export const getAdminDashboard = async (
         const auth = guardChecks(req, { requireCompany: false });
 
         // Admin role check
-        if (req.user!.role !== 'admin') {
+        if (!isPlatformAdmin(req.user ?? {})) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
@@ -532,7 +533,7 @@ export const getOrderTrends = async (
         const auth = guardChecks(req, { requireCompany: false });
 
         const companyId = auth.companyId;
-        const isAdmin = req.user!.role === 'admin';
+        const isAdmin = isPlatformAdmin(req.user ?? {});
 
         // Date filters
         const days = parseInt(req.query.days as string) || 30;
@@ -606,7 +607,7 @@ export const getShipmentPerformance = async (
         const auth = guardChecks(req, { requireCompany: false });
 
         const companyId = auth.companyId;
-        const isAdmin = req.user!.role === 'admin';
+        const isAdmin = isPlatformAdmin(req.user ?? {});
 
         // Date filters
         const days = parseInt(req.query.days as string) || 30;

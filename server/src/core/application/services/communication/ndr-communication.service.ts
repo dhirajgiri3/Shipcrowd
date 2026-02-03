@@ -4,6 +4,7 @@ import smsService from './sms.service';
 import { sendEmail } from './email.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError } from '../../../../shared/errors/app.error';
+import NotificationPreferenceService from './notification-preferences.service';
 
 /**
  * NDR Communication Service
@@ -52,11 +53,23 @@ class NDRCommunicationService {
                 shipmentId,
                 awb,
                 channelsSent: [],
+                channelsSkipped: [],
                 success: false,
             };
 
+            const companyId = shipment.companyId?.toString();
+            const canSendEmail = companyId
+                ? await NotificationPreferenceService.shouldSend(companyId, 'email')
+                : true;
+            const canSendSms = companyId
+                ? await NotificationPreferenceService.shouldSend(companyId, 'sms')
+                : true;
+            const canSendWhatsApp = companyId
+                ? await NotificationPreferenceService.shouldSend(companyId, 'whatsapp')
+                : true;
+
             // Send via WhatsApp
-            if (channel === 'whatsapp' || channel === 'all') {
+            if ((channel === 'whatsapp' || channel === 'all') && canSendWhatsApp) {
                 try {
                     let whatsappSent = false;
 
@@ -100,10 +113,12 @@ class NDRCommunicationService {
                 } catch (error: any) {
                     logger.error(`WhatsApp NDR send failed for ${awb}:`, error);
                 }
+            } else if (channel === 'whatsapp' || channel === 'all') {
+                results.channelsSkipped.push('whatsapp');
             }
 
             // Send via SMS
-            if (channel === 'sms' || channel === 'all') {
+            if ((channel === 'sms' || channel === 'all') && canSendSms) {
                 try {
                     let smsMessage = '';
 
@@ -127,10 +142,12 @@ class NDRCommunicationService {
                 } catch (error: any) {
                     logger.error(`SMS NDR send failed for ${awb}:`, error);
                 }
+            } else if (channel === 'sms' || channel === 'all') {
+                results.channelsSkipped.push('sms');
             }
 
             // Send via Email (fallback or all)
-            if ((channel === 'email' || channel === 'all') && recipientEmail) {
+            if ((channel === 'email' || channel === 'all') && recipientEmail && canSendEmail) {
                 try {
                     const htmlContent = this.generateEmailTemplate(templateType, {
                         recipientName,
@@ -152,6 +169,8 @@ class NDRCommunicationService {
                 } catch (error: any) {
                     logger.error(`Email NDR send failed for ${awb}:`, error);
                 }
+            } else if ((channel === 'email' || channel === 'all') && recipientEmail) {
+                results.channelsSkipped.push('email');
             }
 
             logger.info(`NDR notification sent for ${awb}, channels: ${results.channelsSent.join(', ')}`);

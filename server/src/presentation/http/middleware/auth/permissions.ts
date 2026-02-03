@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { TeamPermission } from '../../../../infrastructure/database/mongoose/models';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
@@ -38,14 +37,6 @@ const buildPermissionMap = (permissionList: string[]): PermissionMap => {
   return permissions;
 };
 
-const mergePermissionMaps = (base: PermissionMap, overrides: PermissionMap): PermissionMap => {
-  const merged: PermissionMap = { ...base };
-  Object.keys(overrides).forEach((moduleKey) => {
-    merged[moduleKey] = { ...(merged[moduleKey] || {}), ...overrides[moduleKey] };
-  });
-  return merged;
-};
-
 /**
  * Check if the user has the required permission
  * @param module The module to check permission for (e.g., 'orders', 'products')
@@ -81,43 +72,15 @@ export const checkPermission = (module: string, action: string) => {
 
       // RBAC V5 permissions (Role + Membership)
       const permissionList = await PermissionService.resolve(String(user._id), user.companyId?.toString());
-      if (permissionList.includes(`${module}:${action}`) || permissionList.includes(`${module}.${action}`) || permissionList.includes('*')) {
+      if (
+        permissionList.includes(`${module}:${action}`) ||
+        permissionList.includes(`${module}.${action}`) ||
+        permissionList.includes('*')
+      ) {
         next();
         return;
       }
-
-      // For staff members, check specific permissions
-      const permission = await TeamPermission.findOne({ userId: user._id });
-
-      if (!permission) {
-        // Company owners, admins, and managers have elevated permissions
-        if (user.teamRole === 'owner' || user.teamRole === 'admin' || user.teamRole === 'manager') {
-          // For critical operations, ensure proper role hierarchy
-          if ((module === 'team' && (action === 'remove' || action === 'manage_roles' || action === 'manage_permissions')) &&
-            user.teamRole !== 'owner' && user.teamRole !== 'admin') {
-            // Only owners and admins can manage roles and remove team members
-            res.status(403).json({ message: 'This action requires owner or admin privileges' });
-            return;
-          }
-
-          next();
-          return;
-        }
-
-        // If no specific permissions are set, deny access
-        res.status(403).json({ message: 'Insufficient permissions' });
-        return;
-      }
-
-      // Check if the user has the required permission
-      const hasPermission = permission.permissions[module as keyof typeof permission.permissions]?.[action as keyof typeof permission.permissions[keyof typeof permission.permissions]];
-
-      if (!hasPermission) {
-        res.status(403).json({ message: 'Insufficient permissions' });
-        return;
-      }
-
-      next();
+      res.status(403).json({ message: 'Insufficient permissions' });
     } catch (error) {
       logger.error('Error checking permission:', error);
       res.status(500).json({ message: 'Internal server error' });
@@ -155,12 +118,7 @@ export const getUserPermissions = async (userId: string): Promise<any> => {
     }
 
     const permissionList = await PermissionService.resolve(userId, user.companyId?.toString());
-    const permissionMap = buildPermissionMap(permissionList);
-
-    const permissionOverride = await TeamPermission.findOne({ userId });
-    const permissions = permissionOverride?.permissions
-      ? mergePermissionMaps(permissionMap, permissionOverride.permissions as PermissionMap)
-      : permissionMap;
+    const permissions = buildPermissionMap(permissionList);
 
     return {
       isAdmin: false,

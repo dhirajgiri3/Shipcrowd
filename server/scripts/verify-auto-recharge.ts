@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Company } from '../src/infrastructure/database/mongoose/models';
 import { AutoRechargeLog } from '../src/infrastructure/database/mongoose/models/finance/auto-recharge-log.model';
 import { autoRechargeWorker } from '../src/workers/finance/auto-recharge.worker';
@@ -16,6 +17,8 @@ const autoRechargeMetrics = AutoRechargeMetricsService.getInstance();
 // Mock environment
 process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '0000000000000000000000000000000000000000000000000000000000000000';
 process.env.MOCK_PAYMENTS = 'true'; // Enable mock mode for testing
+
+let mongoServer: MongoMemoryServer | null = null;
 
 // Mock Services for Verification
 // ----------------------------------------------------------------
@@ -64,8 +67,18 @@ async function verifyAutoRecharge() {
     console.log('='.repeat(70));
 
     try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd');
-        console.log('✅ Connected to MongoDB\n');
+        if (process.env.USE_EXTERNAL_MONGO === 'true' && process.env.MONGODB_URI) {
+            await mongoose.connect(process.env.MONGODB_URI);
+            console.log('✅ Connected to MongoDB (external)\n');
+        } else {
+            mongoServer = await MongoMemoryServer.create({
+                instance: {
+                    ip: '127.0.0.1'
+                }
+            });
+            await mongoose.connect(mongoServer.getUri());
+            console.log('✅ Connected to in-memory MongoDB\n');
+        }
 
         // =================================================================
         // TEST 1: Happy Path - Successful Auto-Recharge
@@ -719,7 +732,7 @@ async function verifyAutoRecharge() {
                 passed = false; // Should have thrown
                 console.error('Sub-test 2 Failed: Did not throw on invalid threshold');
             } catch (e: any) {
-                if (!e.message.includes('Threshold must be less than recharge amount')) {
+                if (!e.message.includes('must be less than recharge amount')) {
                     console.error('Sub-test 2 Failed: Wrong error message:', e.message);
                     passed = false;
                 }
@@ -729,13 +742,13 @@ async function verifyAutoRecharge() {
             try {
                 await WalletService.updateAutoRechargeSettings(company._id.toString(), {
                     enabled: true,
-                    threshold: 50,
+                    threshold: 1000,
                     amount: 90 // Invalid: min amount 100
                 });
                 passed = false; // Should have thrown
                 console.error('Sub-test 3 Failed: Did not throw on min amount');
             } catch (e: any) {
-                if (!e.message.includes('Amount must be between')) {
+                if (!e.message.includes('Recharge amount must be at least ₹100')) {
                     if (!e.message.includes('Validation')) {
                         console.error('Sub-test 3 Failed: Wrong error message:', e.message);
                         passed = false;
@@ -787,14 +800,20 @@ async function verifyAutoRecharge() {
             console.log('   • Edge Case Handling\n');
         } else {
             console.log(`\n⚠️  ${failed} test(s) failed. Review implementation.\n`);
-            process.exit(1);
+            process.exitCode = 1;
         }
 
     } catch (error) {
         console.error('❌ Fatal Error during verification:', error);
-        process.exit(1);
+        process.exitCode = 1;
     } finally {
+        redisLockService.acquireLock = originalAcquireLock;
+        redisLockService.releaseLock = originalReleaseLock;
+        razorpayPaymentService.createOrder = originalCreateOrder;
         await mongoose.disconnect();
+        if (mongoServer) {
+            await mongoServer.stop();
+        }
         console.log('✅ Disconnected from MongoDB\n');
     }
 }

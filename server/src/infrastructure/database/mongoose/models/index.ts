@@ -12,8 +12,6 @@ export { default as RecoveryToken } from './auth/recovery-token.model';
 export * from './auth/recovery-token.model';
 export { default as Permission } from './iam/access/permission.model';
 export * from './iam/access/permission.model';
-export { default as TeamPermission } from './iam/access/team-permission.model';
-export * from './iam/access/team-permission.model';
 export { default as TeamInvitation } from './iam/access/team-invitation.model';
 export * from './iam/access/team-invitation.model';
 export { default as Role } from './iam/role.model';

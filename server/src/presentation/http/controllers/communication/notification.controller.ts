@@ -164,7 +164,8 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
       validation.data.orderId,
       validation.data.awbId,
       validation.data.notificationType as NotificationType,
-      { productName: validation.data.productName, courierName: validation.data.courierName }
+      { productName: validation.data.productName, courierName: validation.data.courierName },
+      req.user?.companyId?.toString()
     );
 
     if (result.email || result.sms) {

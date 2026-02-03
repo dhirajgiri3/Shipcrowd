@@ -26,7 +26,8 @@ import {
   Plus,
   Zap,
   ArrowRight,
-  IndianRupee
+  Package,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
@@ -294,6 +295,3 @@ export function WalletHero({
     </div>
   );
 }
-
-// Missing imports (add to top of file if not already there)
-import { Package, Clock } from 'lucide-react';

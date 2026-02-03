@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { User } from '../../../../infrastructure/database/mongoose/models';
+import { User, KYC } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, NotFoundError, AuthorizationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { KYCState } from '../../../../core/domain/types/kyc-state';
 
 /**
  * Middleware to check if user has completed KYC verification
@@ -84,9 +85,6 @@ export const checkKYC = async (
         // ✅ FEATURE 14: Cross-Company KYC Bypass Prevention
         // Verify that the user's KYC belongs to their current company
         if (user.companyId) {
-            const { KYC } = await import('../../../../infrastructure/database/mongoose/models');
-            const { KYCState } = await import('../../../../core/domain/types/kyc-state');
-
             // Stricter check: Must find a verified KYC for THIS specific company
             const kycRecord = await KYC.findOne({
                 userId: user._id,

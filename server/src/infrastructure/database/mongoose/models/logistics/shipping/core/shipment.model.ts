@@ -85,7 +85,7 @@ export interface IShipment extends Document {
   estimatedDelivery?: Date;
   actualDelivery?: Date;
   documents: Array<{
-    type: 'label' | 'invoice' | 'manifest';
+    type: 'label' | 'invoice' | 'manifest' | 'pod';
     url: string;
     createdAt: Date;
   }>;
@@ -358,7 +358,7 @@ const ShipmentSchema = new Schema<IShipment>(
         {
           type: {
             type: String,
-            enum: ['label', 'invoice', 'manifest'],
+            enum: ['label', 'invoice', 'manifest', 'pod'],
             required: true,
           },
           url: {

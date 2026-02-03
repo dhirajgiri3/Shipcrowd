@@ -4,6 +4,7 @@ import { processScheduledDeletions } from '../infrastructure/jobs/system/mainten
 import WeightDisputeJob from '../infrastructure/jobs/disputes/weight-dispute.job';
 import CODRemittanceJob from '../infrastructure/jobs/finance/cod-remittance.job';
 import InvoiceGenerationJob from '../infrastructure/jobs/finance/invoice-generation.job';
+import LostShipmentDetectionJob from '../infrastructure/jobs/logistics/shipping/lost-shipment-detection.job';
 import { startAutoRechargeScheduler } from '../infrastructure/schedulers/auto-recharge.scheduler';
 
 /**
@@ -74,6 +75,16 @@ export const initializeScheduler = (): void => {
       }
     });
     codPayoutJob.start();
+
+    // Lost Shipment Detection (Daily at 5:30 AM)
+    const lostShipmentJob = new CronJob('30 5 * * *', async () => {
+      try {
+        await LostShipmentDetectionJob.queueDailyDetection();
+      } catch (error) {
+        logger.error('Error queuing lost shipment detection job:', error);
+      }
+    });
+    lostShipmentJob.start();
 
     // Auto-Recharge (Every 5 minutes or configured)
     startAutoRechargeScheduler();

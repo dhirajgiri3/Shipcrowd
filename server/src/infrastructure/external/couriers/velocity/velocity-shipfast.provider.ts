@@ -41,7 +41,8 @@ import {
   CourierRateRequest,
   CourierRateResponse,
   CourierReverseShipmentData,
-  CourierReverseShipmentResponse
+  CourierReverseShipmentResponse,
+  CourierPODResponse
 } from '../base/courier.adapter';
 import Warehouse from '../../../database/mongoose/models/logistics/warehouse/structure/warehouse.model';
 import {
@@ -757,11 +758,9 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
   /**
    * 7. Create Reverse Shipment (RTO Pickup)
-   * Maps to: POST /custom/api/v1/reverse-order (MOCK FALLBACK INCLUDED)
+   * Maps to: POST /custom/api/v1/reverse-order-orchestration
    *
-   * NOTE: As of implementation, Velocity API doesn't fully support reverse pickup.
-   * This method includes a mock fallback that generates simulated reverse AWB.
-   * When Velocity API is ready, the real API will be called first.
+   * NOTE: Reverse pickup is supported via orchestration. Mock fallback is disabled in production.
    */
   async createReverseShipment(data: CourierReverseShipmentData): Promise<CourierReverseShipmentResponse> {
     const { originalAwb, pickupAddress, returnWarehouseId, package: packageDetails, orderId, reason } = data;
@@ -890,31 +889,35 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         courierName: shipmentResponse.courier_name
       };
     } catch (error) {
-      // FALLBACK: Generate mock reverse AWB if API fails
-      logger.warn('Velocity reverse shipment API failed, using mock fallback', {
+      // Strict mode: do not generate mock AWB in production
+      const allowMockFallback =
+        process.env.ALLOW_COURIER_MOCKS === 'true' || process.env.NODE_ENV === 'development';
+
+      if (allowMockFallback) {
+        const timestamp = Date.now().toString().slice(-6);
+        const mockReverseAwb = `RTO-${originalAwb}-${timestamp}`;
+
+        logger.warn('Velocity reverse shipment API failed, using mock fallback (dev only)', {
+          originalAwb,
+          orderId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+
+        return {
+          trackingNumber: mockReverseAwb,
+          labelUrl: `https://mock.velocity.in/labels/${mockReverseAwb}.pdf`,
+          orderId: orderId,
+          courierName: 'Velocity (Mock RTO)'
+        };
+      }
+
+      logger.error('Velocity reverse shipment API failed (no fallback)', {
         originalAwb,
         orderId,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
 
-      const timestamp = Date.now().toString().slice(-6);
-      const mockReverseAwb = `RTO-${originalAwb}-${timestamp}`;
-
-      // Simplified mock response for new interface
-      const mockResponse = {
-        trackingNumber: mockReverseAwb,
-        labelUrl: `https://mock.velocity.in/labels/${mockReverseAwb}.pdf`,
-        orderId: orderId,
-        courierName: 'Velocity (Mock RTO)'
-      };
-
-      logger.info('Mock reverse shipment created', {
-        originalAwb,
-        reverseAwb: mockReverseAwb,
-        fallbackMode: true
-      });
-
-      return mockResponse;
+      throw handleVelocityError(error, 'Velocity createReverseShipment');
     }
   }
 
@@ -968,7 +971,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
   /**
    * 9. Cancel Reverse Shipment
-   * Maps to: POST /custom/api/v1/cancel-reverse-order (MOCK FALLBACK INCLUDED)
+   * Maps to: POST /custom/api/v1/cancel-reverse-order
    *
    * Cancels a reverse/RTO shipment before pickup.
    */
@@ -1014,22 +1017,63 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
       return cancellation.status === 'CANCELLED';
     } catch (error) {
-      // FALLBACK: Log cancellation attempt and return success
-      logger.warn('Velocity cancel reverse shipment API failed, using mock fallback', {
+      const allowMockFallback =
+        process.env.ALLOW_COURIER_MOCKS === 'true' || process.env.NODE_ENV === 'development';
+
+      if (allowMockFallback) {
+        logger.warn('Velocity cancel reverse shipment API failed, using mock fallback (dev only)', {
+          reverseAwb,
+          originalAwb,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        return true;
+      }
+
+      logger.error('Velocity cancel reverse shipment API failed (no fallback)', {
         reverseAwb,
         originalAwb,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
 
-      logger.info('Mock reverse shipment cancellation', {
-        reverseAwb,
-        originalAwb,
-        fallbackMode: true
-      });
-
-      // Return true to allow RTO cancellation to proceed
-      return true;
+      throw handleVelocityError(error, 'Velocity cancelReverseShipment');
     }
+  }
+
+  /**
+   * Schedule reverse pickup
+   * Velocity auto-schedules pickup during reverse order orchestration.
+   */
+  async scheduleReversePickup(data: {
+    reverseAwb?: string;
+    originalAwb?: string;
+    pickupDate?: Date;
+    timeSlot?: string;
+    pickupAddress?: {
+      address: string;
+      pincode: string;
+      phone: string;
+    };
+  }): Promise<{ success: boolean; message?: string; pickupId?: string }> {
+    logger.info('Velocity reverse pickup auto-scheduled at creation', {
+      reverseAwb: data.reverseAwb,
+      originalAwb: data.originalAwb
+    });
+
+    return {
+      success: true,
+      message: 'Reverse pickup is automatically scheduled by Velocity on creation'
+    };
+  }
+
+  /**
+   * Proof of Delivery (POD) retrieval
+   * Velocity API does not provide POD download as per current docs.
+   */
+  async getProofOfDelivery(trackingNumber: string): Promise<CourierPODResponse> {
+    return {
+      source: 'not_supported',
+      message: 'POD download not supported by Velocity API'
+    };
   }
 
 

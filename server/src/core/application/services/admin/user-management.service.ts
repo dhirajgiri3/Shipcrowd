@@ -15,6 +15,7 @@ import { AuthorizationError, ValidationError, NotFoundError } from '../../../../
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import { generateAccessToken, generateRefreshToken } from '../../../../shared/helpers/jwt';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 export interface UserListFilters {
     role?: 'all' | 'super_admin' | 'admin' | 'seller' | 'staff';
@@ -140,7 +141,7 @@ class UserManagementService {
             companyId: user.companyId?.toString(),
             canPromote: this.canPromoteUser(user.role),
             canDemote: this.canDemoteUser(user.role),
-            isDualRole: (user.role === 'admin' || user.role === 'super_admin') && !!user.companyId,
+            isDualRole: isPlatformAdmin(user) && !!user.companyId,
         }));
 
         // Calculate global stats
@@ -285,7 +286,7 @@ class UserManagementService {
         }
 
         // Validate current role (can demote both admin and super_admin)
-        if (user.role !== 'admin' && user.role !== 'super_admin') {
+        if (!isPlatformAdmin(user)) {
             throw new ValidationError(
                 `Cannot demote ${user.role}. Only admins or super admins can be demoted to seller.`,
                 ErrorCode.VAL_INVALID_INPUT

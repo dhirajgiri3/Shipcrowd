@@ -3,7 +3,6 @@
  * 
  * Seeds team-related data:
  * - TeamInvitations: pending, accepted, and expired invitations
- * - TeamPermissions: custom permission assignments for team members
  * - TeamActivity: activity logs for team actions
  */
 
@@ -12,7 +11,6 @@ import crypto from 'crypto';
 import User from '../../mongoose/models/iam/users/user.model';
 import Company from '../../mongoose/models/organization/core/company.model';
 import TeamInvitation from '../../mongoose/models/iam/access/team-invitation.model';
-// import TeamPermission from '../../mongoose/models/iam/access/team-permission.model'; // Deprecated in V5
 import TeamActivity from '../../mongoose/models/organization/teams/team-activity.model';
 import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -70,59 +68,6 @@ const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
 ];
-
-/**
- * Generate permission set based on team role
- */
-function generatePermissions(teamRole: string): any {
-    const fullAccess = { view: true, create: true, update: true, delete: true };
-    const readOnly = { view: true, create: false, update: false, delete: false };
-    const noAccess = { view: false, create: false, update: false, delete: false };
-
-    switch (teamRole) {
-        case 'admin':
-            return {
-                orders: fullAccess,
-                products: fullAccess,
-                warehouses: fullAccess,
-                customers: fullAccess,
-                team: { view: true, invite: true, update: true, remove: true, manage_roles: true, manage_permissions: true },
-                reports: { view: true, export: true },
-                settings: { view: true, update: true },
-            };
-        case 'manager':
-            return {
-                orders: fullAccess,
-                products: { view: true, create: true, update: true, delete: false },
-                warehouses: { view: true, create: false, update: true, delete: false },
-                customers: { view: true, create: true, update: true, delete: false },
-                team: { view: true, invite: true, update: false, remove: false, manage_roles: false, manage_permissions: false },
-                reports: { view: true, export: true },
-                settings: { view: true, update: false },
-            };
-        case 'member':
-            return {
-                orders: { view: true, create: true, update: true, delete: false },
-                products: { view: true, create: true, update: false, delete: false },
-                warehouses: readOnly,
-                customers: { view: true, create: true, update: false, delete: false },
-                team: { view: true, invite: false, update: false, remove: false, manage_roles: false, manage_permissions: false },
-                reports: { view: true, export: false },
-                settings: readOnly,
-            };
-        case 'viewer':
-        default:
-            return {
-                orders: readOnly,
-                products: readOnly,
-                warehouses: readOnly,
-                customers: readOnly,
-                team: { view: true, invite: false, update: false, remove: false, manage_roles: false, manage_permissions: false },
-                reports: { view: true, export: false },
-                settings: noAccess,
-            };
-    }
-}
 
 /**
  * Generate team invitation
@@ -209,7 +154,6 @@ export async function seedTeams(): Promise<void> {
         }).lean();
 
         const invitations: any[] = [];
-        const permissions: any[] = [];
         const activities: any[] = [];
 
         // Create a map of company to owner
@@ -241,23 +185,6 @@ export async function seedTeams(): Promise<void> {
             }
         }
 
-        // Legacy TeamPermission seeding removed (Replaced by V5 Roles)
-        /*
-        // Generate permissions for team members (excluding owners who have full access by default)
-        for (const member of teamMembers) {
-            const memberAny = member as any;
-            if (memberAny.companyId && memberAny.teamRole) {
-                permissions.push({
-                    userId: memberAny._id,
-                    companyId: memberAny.companyId,
-                    permissions: generatePermissions(memberAny.teamRole),
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                });
-            }
-        }
-        */
-
         // Add some activity logs for team members
         for (const member of teamMembers) {
             const memberAny = member as any;
@@ -280,20 +207,11 @@ export async function seedTeams(): Promise<void> {
             });
         }
 
-        /*
-        if (permissions.length > 0) {
-            await TeamPermission.insertMany(permissions, { ordered: false }).catch((err) => {
-                if (err.code !== 11000) throw err;
-                logger.warn(`Skipped ${err.writeErrors?.length || 0} duplicate permissions`);
-            });
-        }
-        */
-
         if (activities.length > 0) {
             await TeamActivity.insertMany(activities);
         }
 
-        logger.complete('teams', invitations.length + permissions.length + activities.length, timer.elapsed());
+        logger.complete('teams', invitations.length + activities.length, timer.elapsed());
         logger.table({
             'Team Invitations': invitations.length,
             'Team Activities': activities.length,

@@ -48,6 +48,19 @@ export interface ICompany extends Document {
     defaultRateCardId?: mongoose.Types.ObjectId;
     notificationEmail?: string;
     notificationPhone?: string;
+    notificationPreferences?: {
+      channels?: {
+        email?: boolean;
+        sms?: boolean;
+        whatsapp?: boolean;
+      };
+      quietHours?: {
+        enabled?: boolean;
+        start?: string; // HH:mm
+        end?: string;   // HH:mm
+        timezone?: string;
+      };
+    };
     autoGenerateInvoice?: boolean;
     currency?: string;
     timezone?: string;
@@ -200,6 +213,19 @@ const CompanySchema = new Schema<ICompany>(
       },
       notificationEmail: String,
       notificationPhone: String,
+      notificationPreferences: {
+        channels: {
+          email: { type: Boolean, default: true },
+          sms: { type: Boolean, default: true },
+          whatsapp: { type: Boolean, default: true }
+        },
+        quietHours: {
+          enabled: { type: Boolean, default: false },
+          start: { type: String, default: '22:00' },
+          end: { type: String, default: '08:00' },
+          timezone: { type: String, default: 'Asia/Kolkata' }
+        }
+      },
       autoGenerateInvoice: {
         type: Boolean,
         default: true,

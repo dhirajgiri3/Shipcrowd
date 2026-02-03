@@ -14,13 +14,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Truck, Package, CreditCard, Wallet as WalletIcon } from 'lucide-react';
+import { Plus, Wallet as WalletIcon } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import {
     WalletHero,
-    SpendingInsights,
-    QuickAddMoney,
-    SpendingInsights,
     QuickAddMoney,
     TransactionList,
     AutoRechargeSettings
@@ -37,8 +34,7 @@ export function WalletPageClient() {
 
     const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useWalletBalance();
     const { data: transactionsData, isLoading: transactionsLoading } = useWalletTransactions({ limit: 20 });
-    const { data: transactionsData, isLoading: transactionsLoading } = useWalletTransactions({ limit: 20 });
-    const { data: autoRechargeSettings, isLoading: settingsLoading } = useAutoRechargeSettings();
+    const { data: autoRechargeSettings } = useAutoRechargeSettings();
     const rechargeWallet = useRechargeWallet();
     const updateAutoRecharge = useUpdateAutoRecharge();
 

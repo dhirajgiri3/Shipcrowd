@@ -58,7 +58,7 @@ export default function ShopifyStorePage() {
     if (!store) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-                <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+                <AlertCircle className="w-12 h-12 text-[var(--error)] mb-4" />
                 <h2 className="text-xl font-semibold mb-2">Store Not Found</h2>
                 <Button onClick={() => router.push('/seller/integrations')}>
                     Back to Integrations
@@ -76,7 +76,7 @@ export default function ShopifyStorePage() {
                         <img src="/logos/shopify.svg" alt="Shopify" className="w-8 h-8" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                             {store.storeName}
                             <Badge variant={store.isActive ? 'success' : 'secondary'}>
                                 {store.isActive ? 'Active' : 'Inactive'}
@@ -86,7 +86,7 @@ export default function ShopifyStorePage() {
                             href={store.storeUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-gray-500 hover:text-primary-600 flex items-center gap-1"
+                            className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary-blue)] flex items-center gap-1"
                         >
                             {store.storeUrl}
                             <Store className="w-3 h-3" />
@@ -115,46 +115,46 @@ export default function ShopifyStorePage() {
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-500">Sync Health</span>
-                            <Activity className={`w-4 h-4 ${(store.stats?.syncSuccessRate || 100) > 90 ? 'text-green-500' : 'text-yellow-500'}`} />
+                            <span className="text-sm font-medium text-[var(--text-secondary)]">Sync Health</span>
+                            <Activity className={`w-4 h-4 ${(store.stats?.syncSuccessRate || 100) > 90 ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`} />
                         </div>
                         <div className="text-2xl font-bold">{store.stats?.syncSuccessRate || 100}%</div>
-                        <p className="text-xs text-gray-500 mt-1">Success rate over last 24h</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">Success rate over last 24h</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-500">Total Orders</span>
-                            <Package className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm font-medium text-[var(--text-secondary)]">Total Orders</span>
+                            <Package className="w-4 h-4 text-[var(--primary-blue)]" />
                         </div>
                         <div className="text-2xl font-bold">{store.stats?.totalOrdersSynced || 0}</div>
-                        <p className="text-xs text-gray-500 mt-1">Synced to Shipcrowd</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">Synced to Shipcrowd</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-500">Last Sync</span>
-                            <Clock className="w-4 h-4 text-purple-500" />
+                            <span className="text-sm font-medium text-[var(--text-secondary)]">Last Sync</span>
+                            <Clock className="w-4 h-4 text-[var(--primary-purple)]" />
                         </div>
                         <div className="text-sm font-medium">
                             {store.stats?.lastSyncAt ? formatDate(store.stats.lastSyncAt) : 'Never'}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Latest synchronization</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">Latest synchronization</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-500">Status</span>
-                            <div className={`w-2 h-2 rounded-full ${store.isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+                            <span className="text-sm font-medium text-[var(--text-secondary)]">Status</span>
+                            <div className={`w-2 h-2 rounded-full ${store.isActive ? 'bg-[var(--success)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
                         </div>
                         <div className="text-lg font-bold">{store.isActive ? 'Connected' : 'Inactive'}</div>
-                        <p className="text-xs text-gray-500 mt-1">Current integration state</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">Current integration state</p>
                     </CardContent>
                 </Card>
             </div>
@@ -169,20 +169,20 @@ export default function ShopifyStorePage() {
                 </CardHeader>
                 <CardContent>
                     {isLogsLoading ? (
-                        <div className="p-4 text-center text-sm text-gray-500">Loading logs...</div>
+                        <div className="p-4 text-center text-sm text-[var(--text-muted)]">Loading logs...</div>
                     ) : logs && logs.length > 0 ? (
                         <div className="space-y-4">
                             {logs.slice(0, 5).map((log) => (
-                                <div key={log._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div key={log._id} className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg">
                                     <div className="flex items-center gap-3">
                                         {log.status === 'COMPLETED' ? (
-                                            <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                            <CheckCircle2 className="w-5 h-5 text-[var(--success)]" />
                                         ) : (
-                                            <AlertCircle className="w-5 h-5 text-red-500" />
+                                            <AlertCircle className="w-5 h-5 text-[var(--error)]" />
                                         )}
                                         <div>
                                             <div className="font-medium text-sm">{log.triggerType === 'WEBHOOK' ? 'Webhook Event' : 'Manual Sync'}</div>
-                                            <div className="text-xs text-gray-500">{formatDate(log.startedAt)}</div>
+                                            <div className="text-xs text-[var(--text-muted)]">{formatDate(log.startedAt)}</div>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -190,14 +190,14 @@ export default function ShopifyStorePage() {
                                             {log.status}
                                         </Badge>
                                         {log.ordersProcessed > 0 && (
-                                            <div className="text-xs text-gray-500 mt-1">{log.ordersProcessed} orders</div>
+                                            <div className="text-xs text-[var(--text-muted)] mt-1">{log.ordersProcessed} orders</div>
                                         )}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-8 text-[var(--text-muted)]">
                             No sync activity recorded yet
                         </div>
                     )}

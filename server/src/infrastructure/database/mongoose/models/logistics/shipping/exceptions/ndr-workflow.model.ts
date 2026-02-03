@@ -10,17 +10,43 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
  * - call_customer: Initiate automated call via Exotel
  * - send_whatsapp: Send WhatsApp message
  * - send_email: Send email notification
+ * - send_sms: Send SMS notification
  * - update_address: Request customer to update address
  * - request_reattempt: Request courier to reattempt delivery
  * - trigger_rto: Trigger return to origin
  */
 
+export interface IWorkflowCondition {
+    field: string;
+    operator:
+        | 'equals'
+        | 'not_equals'
+        | 'includes'
+        | 'in'
+        | 'not_in'
+        | 'exists'
+        | 'not_exists'
+        | 'gt'
+        | 'gte'
+        | 'lt'
+        | 'lte'
+        | 'regex';
+    value?: any;
+}
+
+export interface IWorkflowConditions {
+    all?: IWorkflowCondition[];
+    any?: IWorkflowCondition[];
+    not?: IWorkflowCondition[];
+}
+
 export interface IWorkflowAction {
     sequence: number;
-    actionType: 'call_customer' | 'send_whatsapp' | 'send_email' | 'update_address' | 'request_reattempt' | 'trigger_rto';
+    actionType: 'call_customer' | 'send_whatsapp' | 'send_email' | 'send_sms' | 'update_address' | 'request_reattempt' | 'trigger_rto';
     delayMinutes: number;
     autoExecute: boolean;
     actionConfig: Record<string, any>;
+    conditions?: IWorkflowConditions;
     description?: string;
 }
 
@@ -61,12 +87,13 @@ const WorkflowActionSchema = new Schema<IWorkflowAction>(
         sequence: { type: Number, required: true },
         actionType: {
             type: String,
-            enum: ['call_customer', 'send_whatsapp', 'send_email', 'update_address', 'request_reattempt', 'trigger_rto'],
+            enum: ['call_customer', 'send_whatsapp', 'send_email', 'send_sms', 'update_address', 'request_reattempt', 'trigger_rto'],
             required: true,
         },
         delayMinutes: { type: Number, default: 0 },
         autoExecute: { type: Boolean, default: true },
         actionConfig: { type: Schema.Types.Mixed, default: {} },
+        conditions: { type: Schema.Types.Mixed, default: undefined },
         description: { type: String },
     },
     { _id: false }
@@ -195,26 +222,58 @@ NDRWorkflowSchema.statics.seedDefaultWorkflows = async function (): Promise<void
                 },
                 {
                     sequence: 2,
+                    actionType: 'send_sms',
+                    delayMinutes: 10,
+                    autoExecute: true,
+                    actionConfig: { template: 'action_required' },
+                    conditions: {
+                        all: [
+                            { field: 'flags.addressUpdated', operator: 'equals', value: false },
+                            { field: 'flags.customerResponded', operator: 'equals', value: false }
+                        ]
+                    },
+                    description: 'Send SMS reminder if no response',
+                },
+                {
+                    sequence: 3,
                     actionType: 'call_customer',
                     delayMinutes: 60,
                     autoExecute: true,
                     actionConfig: { ivrFlow: 'ndr_address' },
+                    conditions: {
+                        all: [
+                            { field: 'flags.addressUpdated', operator: 'equals', value: false },
+                            { field: 'flags.customerResponded', operator: 'equals', value: false }
+                        ]
+                    },
                     description: 'Call customer for address confirmation',
                 },
                 {
-                    sequence: 3,
+                    sequence: 4,
                     actionType: 'send_email',
                     delayMinutes: 120,
                     autoExecute: true,
                     actionConfig: { template: 'ndr_address_email' },
+                    conditions: {
+                        all: [
+                            { field: 'flags.addressUpdated', operator: 'equals', value: false },
+                            { field: 'flags.customerResponded', operator: 'equals', value: false }
+                        ]
+                    },
                     description: 'Send email if no response',
                 },
                 {
-                    sequence: 4,
+                    sequence: 5,
                     actionType: 'trigger_rto',
                     delayMinutes: 2880, // 48 hours
                     autoExecute: true,
                     actionConfig: {},
+                    conditions: {
+                        all: [
+                            { field: 'flags.addressUpdated', operator: 'equals', value: false },
+                            { field: 'flags.customerResponded', operator: 'equals', value: false }
+                        ]
+                    },
                     description: 'Auto-trigger RTO if unresolved',
                 },
             ],
@@ -237,6 +296,14 @@ NDRWorkflowSchema.statics.seedDefaultWorkflows = async function (): Promise<void
                 },
                 {
                     sequence: 2,
+                    actionType: 'send_sms',
+                    delayMinutes: 15,
+                    autoExecute: true,
+                    actionConfig: { template: 'reattempt' },
+                    description: 'Send SMS with reschedule info',
+                },
+                {
+                    sequence: 3,
                     actionType: 'send_whatsapp',
                     delayMinutes: 30,
                     autoExecute: true,
@@ -244,7 +311,7 @@ NDRWorkflowSchema.statics.seedDefaultWorkflows = async function (): Promise<void
                     description: 'Send WhatsApp with reschedule options',
                 },
                 {
-                    sequence: 3,
+                    sequence: 4,
                     actionType: 'request_reattempt',
                     delayMinutes: 1440, // 24 hours
                     autoExecute: false,

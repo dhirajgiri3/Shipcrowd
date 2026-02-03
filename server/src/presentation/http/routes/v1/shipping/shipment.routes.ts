@@ -7,6 +7,7 @@ import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import labelRoutes from '../shipments/label.routes';
 import manifestRoutes from '../shipments/manifest.routes';
 import bulkRoutes from '../shipments/bulk.routes';
+import podRoutes from '../shipments/pod.routes';
 
 const router = express.Router();
 
@@ -18,6 +19,9 @@ router.use(manifestRoutes);
 
 // Mount bulk routes
 router.use('/bulk', bulkRoutes);
+
+// Mount POD routes
+router.use(podRoutes);
 
 /**
  * @route POST /api/v1/shipments

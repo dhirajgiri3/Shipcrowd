@@ -18,6 +18,7 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 // Validation schemas
 const createWarehouseSchema = z.object({
@@ -98,7 +99,7 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
       throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.params.companyId && req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
+    if (req.params.companyId && req.user.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
       throw new AuthorizationError('You do not have permission to create warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
@@ -201,7 +202,7 @@ export const getWarehouses = async (req: Request, res: Response, next: NextFunct
       throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.params.companyId && req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
+    if (req.params.companyId && req.user.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
       throw new AuthorizationError('You do not have permission to view warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
@@ -457,7 +458,7 @@ export const importWarehouses = async (req: Request, res: Response, next: NextFu
       throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.params.companyId && req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
+    if (req.params.companyId && req.user.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
       throw new AuthorizationError('You do not have permission to import warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 

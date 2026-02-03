@@ -155,6 +155,8 @@ export class AddressUpdateController {
                             },
                         },
                     });
+                    ndrEvent.customerResponse = 'address_updated';
+                    ndrEvent.customerContacted = true;
                     ndrEvent.status = 'in_resolution';
                     await ndrEvent.save();
 
@@ -180,49 +182,61 @@ export class AddressUpdateController {
                 newAddress
             );
 
-            // Sync address update with Courier
+            // Sync address update with Courier (multi-courier friendly)
             try {
-                // Instantiate Velocity Client dynamically
-                // TODO: Use DI container in future refactor
-                const { VelocityShipfastProvider } = await import('../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js');
-                const velocityClient = new VelocityShipfastProvider(new (await import('mongoose')).Types.ObjectId(String(shipment.companyId)));
+                const mongoose = await import('mongoose');
+                const { CourierFactory } = await import('../../../../core/application/services/courier/courier.factory.js');
 
-                // 1. Update address on Courier side
-                const courierUpdateResult = await velocityClient.updateDeliveryAddress(
-                    shipment.trackingNumber,
-                    {
-                        line1: address.line1,
-                        city: address.city,
-                        state: address.state,
-                        pincode: address.postalCode,
-                        country: address.country || 'India'
-                    },
-                    (shipment as any).orderId || shipment.trackingNumber, // Fallback if orderId missing
-                    phone || shipment.deliveryDetails.recipientPhone
+                const courierProvider = shipment.carrier || 'velocity-shipfast';
+                const courierClient = await CourierFactory.getProvider(
+                    courierProvider,
+                    new mongoose.Types.ObjectId(String(shipment.companyId))
                 );
 
-                if (!courierUpdateResult.success) {
-                    logger.error('Failed to sync address to courier', {
-                        shipmentId: shipment._id,
-                        error: courierUpdateResult.message
-                    });
-                    // We continue anyway as DB is updated, but this is critical log
+                // 1. Update address on Courier side (if supported)
+                if (courierClient && typeof (courierClient as any).updateDeliveryAddress === 'function') {
+                    const courierUpdateResult = await (courierClient as any).updateDeliveryAddress(
+                        shipment.trackingNumber,
+                        {
+                            line1: address.line1,
+                            city: address.city,
+                            state: address.state,
+                            pincode: address.postalCode,
+                            country: address.country || 'India'
+                        },
+                        (shipment as any).orderId || shipment.trackingNumber, // Fallback if orderId missing
+                        phone || shipment.deliveryDetails.recipientPhone
+                    );
+
+                    if (!courierUpdateResult.success) {
+                        logger.error('Failed to sync address to courier', {
+                            shipmentId: shipment._id,
+                            error: courierUpdateResult.message
+                        });
+                    } else {
+                        logger.info('Address synced to courier', { shipmentId: shipment._id, courier: courierProvider });
+                    }
                 } else {
-                    logger.info('Address synced to courier', { shipmentId: shipment._id });
+                    logger.warn('Courier does not support address update API', {
+                        shipmentId: shipment._id,
+                        courier: courierProvider
+                    });
                 }
 
-                // 2. Request Reattempt immediately with new address
-                const reattemptResult = await velocityClient.requestReattempt(
-                    shipment.trackingNumber,
-                    new Date(Date.now() + 24 * 60 * 60 * 1000), // Schedule for next day
-                    'Customer updated address via Magic Link'
-                );
+                // 2. Request Reattempt immediately with new address (if supported)
+                if (courierClient && typeof (courierClient as any).requestReattempt === 'function') {
+                    const reattemptResult = await courierClient.requestReattempt(
+                        shipment.trackingNumber,
+                        new Date(Date.now() + 24 * 60 * 60 * 1000), // Schedule for next day
+                        'Customer updated address via Magic Link'
+                    );
 
-                logger.info('Courier reattempt requested after address update', {
-                    shipmentId: shipment._id,
-                    success: reattemptResult.success
-                });
-
+                    logger.info('Courier reattempt requested after address update', {
+                        shipmentId: shipment._id,
+                        courier: courierProvider,
+                        success: reattemptResult.success
+                    });
+                }
             } catch (courierError: any) {
                 logger.error('Courier sync failed during address update', {
                     shipmentId: shipment._id,

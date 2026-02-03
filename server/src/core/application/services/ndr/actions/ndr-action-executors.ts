@@ -11,6 +11,8 @@ import WhatsAppService from '../../../../../infrastructure/external/communicatio
 import OpenAIService from '../../../../../infrastructure/external/ai/openai/openai.service';
 import TokenService from '../../../../../shared/services/token.service';
 import logger from '../../../../../shared/logger/winston.logger';
+import smsService from '../../communication/sms.service';
+import NotificationPreferenceService from '../../communication/notification-preferences.service';
 
 interface ActionResult {
     success: boolean;
@@ -37,6 +39,14 @@ export class NDRActionExecutors {
     private static exotel = new ExotelClient();
     private static whatsapp = new WhatsAppService();
 
+    private static async canSend(companyId: string, channel: 'email' | 'sms' | 'whatsapp'): Promise<boolean> {
+        try {
+            return await NotificationPreferenceService.shouldSend(companyId, channel);
+        } catch {
+            return true;
+        }
+    }
+
     /**
      * Execute action by type
      */
@@ -52,6 +62,8 @@ export class NDRActionExecutors {
                 return this.executeSendWhatsApp(context, actionConfig);
             case 'send_email':
                 return this.executeSendEmail(context, actionConfig);
+            case 'send_sms':
+                return this.executeSendSMS(context, actionConfig);
             case 'update_address':
                 return this.executeUpdateAddress(context, actionConfig);
             case 'request_reattempt':
@@ -142,6 +154,16 @@ export class NDRActionExecutors {
         try {
             const { ndrEvent, customer } = context;
 
+            const allowed = await this.canSend(context.companyId, 'whatsapp');
+            if (!allowed) {
+                return {
+                    success: true,
+                    actionType: 'send_whatsapp',
+                    result: 'skipped',
+                    metadata: { reason: 'notification_preferences' }
+                };
+            }
+
             // Generate personalized message if OpenAI is available
             let message: string;
             if (OpenAIService.isConfigured() && actionConfig.useAI !== false) {
@@ -211,6 +233,16 @@ export class NDRActionExecutors {
         try {
             const { ndrEvent, customer } = context;
 
+            const allowed = await this.canSend(context.companyId, 'email');
+            if (!allowed) {
+                return {
+                    success: true,
+                    actionType: 'send_email',
+                    result: 'skipped',
+                    metadata: { reason: 'notification_preferences' }
+                };
+            }
+
             if (!customer.email) {
                 return {
                     success: false,
@@ -273,6 +305,83 @@ export class NDRActionExecutors {
             return {
                 success: false,
                 actionType: 'send_email',
+                result: 'failed',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Send SMS notification
+     */
+    static async executeSendSMS(
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        try {
+            const { ndrEvent, customer } = context;
+
+            const allowed = await this.canSend(context.companyId, 'sms');
+            if (!allowed) {
+                return {
+                    success: true,
+                    actionType: 'send_sms',
+                    result: 'skipped',
+                    metadata: { reason: 'notification_preferences' }
+                };
+            }
+
+            const awb = ndrEvent.awb;
+            const ndrReason = ndrEvent.ndrReason || 'Delivery attempt failed';
+            const template = actionConfig.template || 'ndr_alert';
+            const frontendUrl = process.env.FRONTEND_URL || 'https://app.shipcrowd.com';
+
+            let message: string = actionConfig.message;
+
+            if (!message) {
+                switch (template) {
+                    case 'action_required':
+                        message = `Hi ${customer.name}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${frontendUrl}/track/${awb}/ndr-action`;
+                        break;
+                    case 'reattempt':
+                        message = `Hi ${customer.name}, delivery for ${awb} rescheduled. Track: ${frontendUrl}/track/${awb}`;
+                        break;
+                    case 'rto':
+                        message = `Hi ${customer.name}, shipment ${awb} is being returned. Reason: ${ndrReason}. Contact support for details.`;
+                        break;
+                    case 'ndr_alert':
+                    default:
+                        message = `Hi ${customer.name}, delivery for ${awb} failed. Reason: ${ndrReason}. Track: ${frontendUrl}/track/${awb}`;
+                        break;
+                }
+            }
+
+            const smsSent = await smsService.sendSMS(customer.phone, message);
+
+            if (!smsSent) {
+                return {
+                    success: false,
+                    actionType: 'send_sms',
+                    result: 'failed',
+                    error: 'SMS send failed',
+                };
+            }
+
+            return {
+                success: true,
+                actionType: 'send_sms',
+                result: 'success',
+                metadata: { template }
+            };
+        } catch (error: any) {
+            logger.error('Send SMS action failed', {
+                error: error.message,
+                ndrEventId: context.ndrEvent._id,
+            });
+
+            return {
+                success: false,
+                actionType: 'send_sms',
                 result: 'failed',
                 error: error.message,
             };
@@ -480,9 +589,14 @@ Need help? Reply to this message.
             metadata: actionResult.metadata,
         };
 
+        const nextStatus =
+            actionResult.result === 'success' || actionResult.result === 'skipped'
+                ? 'in_resolution'
+                : 'detected';
+
         await NDREvent.findByIdAndUpdate(ndrEventId, {
             $push: { resolutionActions: action },
-            $set: { status: actionResult.result === 'success' ? 'in_resolution' : 'detected' },
+            $set: { status: nextStatus },
         });
     }
 }

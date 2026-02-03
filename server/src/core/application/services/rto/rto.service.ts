@@ -414,7 +414,7 @@ export default class RTOService {
             // Check if shipment uses Velocity courier
             // Get courier provider via Factory
             // This decouples the service from specific implementations (Velocity, etc.)
-            const courierProvider = fullShipment.carrier || 'velocity'; // Default or logic fallback
+            const courierProvider = fullShipment.carrier || 'velocity-shipfast'; // Default fallback
 
             const { CourierFactory } = await import('../courier/courier.factory.js');
             const courierAdapter = await CourierFactory.getProvider(
@@ -731,32 +731,14 @@ export default class RTOService {
                 throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
             }
 
-            // Check if Velocity courier
-            const courierProvider = shipment.carrier?.toLowerCase();
-            const isVelocity = courierProvider?.includes('velocity');
-
-            if (!isVelocity) {
-                // Return basic tracking info for non-Velocity
-                return {
-                    reverseAwb,
-                    originalAwb: shipment.trackingNumber,
-                    status: rtoEvent.returnStatus,
-                    trackingHistory: [],
-                    currentLocation: 'In Transit',
-                    message: 'Detailed tracking not available for this courier'
-                };
-            }
-
-            // Import and use Velocity adapter for tracking
-            const { VelocityShipfastProvider } = await import(
-                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+            const { CourierFactory } = await import('../courier/courier.factory.js');
+            const courierProvider = shipment.carrier || 'velocity-shipfast';
+            const courierAdapter = await CourierFactory.getProvider(
+                courierProvider,
+                new mongoose.Types.ObjectId(shipment.companyId)
             );
 
-            const velocityAdapter = new VelocityShipfastProvider(
-                shipment.companyId as mongoose.Types.ObjectId
-            );
-
-            const tracking = await velocityAdapter.trackShipment(reverseAwb);
+            const tracking = await courierAdapter.trackShipment(reverseAwb);
 
             logger.info('Reverse shipment tracked successfully', {
                 reverseAwb,
@@ -816,12 +798,42 @@ export default class RTOService {
                 throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
             }
 
-            // Check if Velocity courier
-            const courierProvider = shipment.carrier?.toLowerCase();
-            const isVelocity = courierProvider?.includes('velocity');
+            const courierProvider = shipment.carrier || 'velocity-shipfast';
 
-            if (!isVelocity) {
-                logger.info('Non-Velocity courier, pickup scheduling not supported', {
+            const { CourierFactory } = await import('../courier/courier.factory.js');
+            const courierAdapter = await CourierFactory.getProvider(
+                courierProvider,
+                new mongoose.Types.ObjectId(shipment.companyId)
+            );
+
+            let scheduleResult: { success: boolean; message?: string; pickupId?: string } | null = null;
+
+            if (courierAdapter && typeof (courierAdapter as any).scheduleReversePickup === 'function') {
+                scheduleResult = await (courierAdapter as any).scheduleReversePickup({
+                    reverseAwb: rtoEvent.reverseAwb,
+                    originalAwb: shipment.trackingNumber,
+                    pickupDate,
+                    timeSlot,
+                    pickupAddress
+                });
+
+                logger.info('Reverse pickup scheduling result', {
+                    rtoEventId,
+                    courier: courierProvider,
+                    result: scheduleResult
+                });
+
+                if (!scheduleResult?.success) {
+                    return {
+                        success: false,
+                        message: scheduleResult?.message || 'Failed to schedule reverse pickup'
+                    };
+                }
+            } else if (courierProvider.toLowerCase().includes('velocity')) {
+                // Velocity auto-schedules pickup during reverse creation
+                logger.info('Velocity RTO pickup is auto-scheduled on creation', { rtoEventId });
+            } else {
+                logger.info('Courier does not support reverse pickup scheduling', {
                     courier: courierProvider
                 });
                 return {
@@ -829,12 +841,6 @@ export default class RTOService {
                     message: 'Pickup scheduling not supported for this courier'
                 };
             }
-
-            // Velocity ShipFast auto-schedules pickup during RTO creation (request_pickup: true)
-            // We return success here to confirm the action is handled/valid.
-            // If explicit re-scheduling is needed in the future, we can implement the specific endpoint.
-
-            logger.info('Velocity RTO pickup is auto-scheduled on creation', { rtoEventId });
 
             // Update RTO event metadata to reflect confirmed schedule
             if (!rtoEvent.metadata) {
@@ -846,7 +852,8 @@ export default class RTOService {
 
             return {
                 success: true,
-                message: 'Pickup is automatically scheduled by Velocity'
+                pickupId: scheduleResult?.pickupId,
+                message: scheduleResult?.message || 'Pickup scheduled successfully'
             };
 
         } catch (error) {
@@ -894,26 +901,18 @@ export default class RTOService {
                 throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
             }
 
-            // Check if Velocity courier
-            const courierProvider = shipment.carrier?.toLowerCase();
-            const isVelocity = courierProvider?.includes('velocity');
+            const courierProvider = shipment.carrier || 'velocity-shipfast';
+            const { CourierFactory } = await import('../courier/courier.factory.js');
+            const courierAdapter = await CourierFactory.getProvider(
+                courierProvider,
+                new mongoose.Types.ObjectId(shipment.companyId)
+            );
 
-            if (isVelocity) {
-                // Import and use Velocity adapter
-                const { VelocityShipfastProvider } = await import(
-                    '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
-                );
-
-                const velocityAdapter = new VelocityShipfastProvider(
-                    shipment.companyId as mongoose.Types.ObjectId
-                );
-
-                await velocityAdapter.cancelReverseShipment(
-                    rtoEvent.reverseAwb || '',
-                    shipment.trackingNumber,
-                    reason
-                );
-            }
+            await courierAdapter.cancelReverseShipment(
+                rtoEvent.reverseAwb || '',
+                shipment.trackingNumber,
+                reason
+            );
 
             // Mark RTO as cancelled
             rtoEvent.returnStatus = 'cancelled' as any;

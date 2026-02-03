@@ -4,13 +4,10 @@ import {
     X,
     Zap,
     AlertTriangle,
-    Check,
     CreditCard,
-    ChevronRight,
     Lock
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
-import { Switch } from '@/src/components/ui/core/Switch'; // Assuming Switch component exists
 import { cn } from '@/src/lib/utils';
 import { AutoRechargeSettings as IAutoRechargeSettings } from '@/src/core/api/clients/finance/walletApi';
 
@@ -35,6 +32,12 @@ export function AutoRechargeSettings({
     const [paymentMethodId, setPaymentMethodId] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
 
+    const handleManagePaymentMethods = () => {
+        if (typeof window !== 'undefined') {
+            window.location.href = '/seller/settings';
+        }
+    };
+
     // Initialize state from currentSettings
     useEffect(() => {
         if (currentSettings) {
@@ -48,8 +51,17 @@ export function AutoRechargeSettings({
     const handleSubmit = async () => {
         setError(null);
 
-        // Validation
-        if (enabled) {
+        try {
+            if (!enabled) {
+                await onSave({ enabled: false });
+                return;
+            }
+
+            // Validation (only when enabling)
+            if (!paymentMethodId) {
+                setError('Please add a payment method to enable auto-recharge.');
+                return;
+            }
             if (threshold >= amount) {
                 setError('Recharge threshold must be less than recharge amount');
                 return;
@@ -62,15 +74,9 @@ export function AutoRechargeSettings({
                 setError('Recharge amount must be at least ₹100');
                 return;
             }
-            // For now, we assume if no payment method ID is set, the user needs to add one.
-            // But we might rely on the backend to validate or the selector to enforce it.
-            // If paymentMethodId is empty string, let's warn if we can't auto-detect.
-            // However, the backend validation handles the "missing payment method" check comprehensively.
-        }
 
-        try {
             await onSave({
-                enabled,
+                enabled: true,
                 threshold,
                 amount,
                 paymentMethodId: paymentMethodId || undefined // Only send if set
@@ -194,13 +200,24 @@ export function AutoRechargeSettings({
                                             <h4 className="text-sm font-medium text-[var(--text-primary)]">
                                                 Payment Method
                                             </h4>
-                                            <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                                Funds will be deducted from your primary saved card.
-                                                {/* In a real implementation, we'd add a selector here */}
-                                            </p>
-                                        </div>
-                                        <Lock className="w-4 h-4 text-[var(--text-tertiary)]" />
+                                    <p className="text-xs text-[var(--text-secondary)] mt-1">
+                                        Funds will be deducted from your primary saved card.
+                                    </p>
+                                    <div className="mt-3 flex items-center justify-between gap-3">
+                                        <p className="text-[11px] text-[var(--text-tertiary)]">
+                                            Manage payment methods in Settings &gt; Billing.
+                                        </p>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleManagePaymentMethods}
+                                        >
+                                            Manage
+                                        </Button>
                                     </div>
+                                </div>
+                                <Lock className="w-4 h-4 text-[var(--text-tertiary)]" />
+                            </div>
                                 </div>
 
                                 <div className="p-3 rounded-lg bg-[var(--bg-secondary)] text-xs text-[var(--text-secondary)] flex items-start gap-2">

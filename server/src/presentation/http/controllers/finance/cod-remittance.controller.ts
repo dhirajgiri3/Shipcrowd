@@ -363,13 +363,33 @@ export const uploadMIS = async (
             throw new ValidationError('Invalid provider. Allowed: velocity, generic');
         }
 
+        let mappingOverride: any = undefined;
+        if (req.body.mapping) {
+            try {
+                const raw = typeof req.body.mapping === 'string' ? JSON.parse(req.body.mapping) : req.body.mapping;
+
+                if (raw && typeof raw === 'object') {
+                    const normalizeArray = (value: any) => (Array.isArray(value) ? value.map(String) : undefined);
+                    mappingOverride = {
+                        awbColumns: normalizeArray(raw.awbColumns),
+                        amountColumns: normalizeArray(raw.amountColumns),
+                        dateColumns: normalizeArray(raw.dateColumns),
+                        utrColumns: normalizeArray(raw.utrColumns)
+                    };
+                }
+            } catch (error) {
+                throw new ValidationError('Invalid mapping JSON provided');
+            }
+        }
+
 
         const result = await RemittanceReconciliationService.createBatchFromMIS(
             auth.companyId,
             req.file.buffer,
             req.file.mimetype,
             auth.userId,
-            provider
+            provider,
+            mappingOverride
         );
 
         sendCreated(res, result, 'MIS processed and reconciliation batch created successfully');

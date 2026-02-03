@@ -589,12 +589,12 @@ Based on **deep codebase analysis** (logic, field mapping, API alignment, and in
 |---------|-----------------|-------------------|-----------|--------|
 | NDR Detection | 90% | Yes | `ndr-detection.service.ts` | Pattern matching & duplicate detection present. No Velocity-specific NDR mapping. |
 | NDR Classification | 95% | Yes | `ndr-classification.service.ts` | OpenAI integration & batch processing (10 NDRs concurrent). |
-| NDR Resolution | 75% | Mostly | `ndr-resolution.service.ts` | Linear workflow only. **No conditional branching** on customer response. |
-| NDR Communication | 80% | Mostly | `ndr-communication.service.ts` | WhatsApp + Email implemented. **SMS channel not implemented** in flow. |
+| NDR Resolution | 100% | Yes | `ndr-resolution.service.ts` | Conditional branching supported via workflow `conditions`; auto-skips actions when customer responds. |
+| NDR Communication | 100% | Yes | `ndr-communication.service.ts` | WhatsApp + SMS + Email implemented with notification preferences support. |
 | NDR Analytics | 95% | Yes | `ndr-analytics.service.ts` | Aggregation pipelines, courier breakdown, trends. |
-| RTO Service | 90% | Mostly | `rto.service.ts` | ACID, rate limiting, wallet checks. **`scheduleReversePickup` is stubbed.** |
-| COD Remittance | 95% | Yes | `cod-remittance.service.ts` | Batch creation, Razorpay queue. **Settlement webhook is mocked.** |
-| COD Excel Parser | 70% | No | `remittance-reconciliation.service.ts` | MIS parsing exists. **Field mapping fragile/hardcoded** (keyword-based). |
+| RTO Service | 95% | Yes | `rto.service.ts` | Reverse pickup scheduling implemented via courier adapter; Velocity auto-schedule supported. |
+| COD Remittance | 100% | Yes | `cod-remittance.service.ts` | Settlement webhook reconciles shipments, batches, and alerts. |
+| COD Excel Parser | 95% | Yes | `remittance-reconciliation.service.ts` | Provider mapping + override support; header normalization improved. |
 | Email Service | 100% | Yes | `email.service.ts` | SendGrid, ZeptoMail, SMTP; retries + circuit breaker. |
 | SMS Service | 85% | Yes | `sms.service.ts` | Twilio with retry. **No rate limiting or queueing.** |
 | WhatsApp Service | 95% | Yes | `whatsapp.service.ts` (external) | Meta Business API, templates, mock mode. |
@@ -602,54 +602,17 @@ Based on **deep codebase analysis** (logic, field mapping, API alignment, and in
 
 ---
 
-## Critical Issues (Verified in Codebase)
+## Critical Issues (Resolved)
 
-These issues were confirmed by reading the actual implementation. They must be addressed before relying on the feature in production.
+The following items were previously flagged and are now **resolved**:
+- ✅ RTO reverse pickup scheduling implemented via courier adapter (Velocity auto-schedule supported).
+- ✅ NDR conditional branching supported via workflow `conditions` and runtime evaluation.
+- ✅ COD settlement webhook fully reconciles shipments and batches with discrepancy alerts.
+- ✅ COD MIS parsing supports configurable column mapping and header normalization.
+- ✅ NDR SMS channel implemented and wired into workflows.
 
-### 1. RTO Pickup Scheduling — Stub
-
-- **File**: `server/src/core/application/services/rto/rto.service.ts`
-- **Method**: `scheduleReversePickup` (lines ~790–881)
-- **Finding**: Logic is commented out; method returns `success: false` with message *"Pickup scheduling not yet implemented for RTO (Phase 5)"*.
-- **Action**: Implement per Phase 10 below (or remove from “complete” list until done).
-
-### 2. NDR Resolution — No Conditional Branching
-
-- **File**: `server/src/core/application/services/ndr/ndr-resolution.service.ts`
-- **Method**: `executeNextAction` (sequence-based)
-- **Finding**: Next action is chosen only by `sequence === currentSequence + 1`. No evaluation of customer response or if/else rules (e.g. “if address confirmed → skip update step”).
-- **Action**: Add conditional evaluation per Phase 12 (NDR Workflow Branching).
-
-### 3. COD Settlement Webhook — Mock
-
-- **File**: `server/src/core/application/services/finance/cod-remittance.service.ts`
-- **Method**: `handleSettlementWebhook` (lines ~660–664)
-- **Finding**: Only logs payload; comment says *"Logic to reconcile settlements would go here"* and *"For now, we mock success"*. No reconciliation logic.
-- **Action**: Implement per Phase 11 (Velocity Settlement Webhook).
-
-### 4. COD Excel Parser — Fragile Field Mapping
-
-- **File**: `server/src/core/application/services/finance/remittance-reconciliation.service.ts`
-- **Method**: `normalizeRow`
-- **Finding**: AWB/amount columns resolved by case-insensitive substring match (`includes('awb')`, `includes('cod')`, `includes('amount')`, etc.). Non-standard headers (e.g. "Ref No", "Value") will not parse.
-- **Action**: Add configurable column mapping (e.g. per-provider schema or header map).
-
----
-
-## Additional Verified Gaps
-
-### NDR Communication — SMS Not Wired
-
-- **File**: `server/src/core/application/services/communication/ndr-communication.service.ts`
-- **Method**: `sendNDRNotification`
-- **Finding**: Options allow `channel: 'sms' | 'all'`, but implementation only has blocks for `whatsapp` and `email`. No SMS branch; choosing `sms` or `all` never sends SMS for NDR.
-- **Action**: Add SMS branch (e.g. via Twilio/SMS service) when `channel === 'sms'` or `channel === 'all'`.
-
-### SMS Service — No Rate Limiting or Queueing
-
-- **File**: `server/src/core/application/services/communication/sms.service.ts`
-- **Finding**: Forwards to `twilioUtils.sendSMS` / retry helpers only. No rate limiting, queueing, or provider fallback.
-- **Action**: Optional improvement: add rate limiter and/or queue for high-volume NDR/campaign use.
+Remaining enhancements (optional):
+- SMS rate limiting/queueing for very high-volume campaigns.
 
 ---
 

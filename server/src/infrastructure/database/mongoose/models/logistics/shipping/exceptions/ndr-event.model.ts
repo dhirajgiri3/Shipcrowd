@@ -15,7 +15,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface INDRResolutionAction {
     action: string;
-    actionType: 'call_customer' | 'send_whatsapp' | 'send_email' | 'update_address' | 'request_reattempt' | 'trigger_rto' | 'manual';
+    actionType: 'call_customer' | 'send_whatsapp' | 'send_email' | 'send_sms' | 'update_address' | 'request_reattempt' | 'trigger_rto' | 'manual';
     takenAt: Date;
     takenBy: string;
     result: 'success' | 'failed' | 'pending' | 'skipped';
@@ -65,7 +65,7 @@ const ResolutionActionSchema = new Schema<INDRResolutionAction>(
         action: { type: String, required: true },
         actionType: {
             type: String,
-            enum: ['call_customer', 'send_whatsapp', 'send_email', 'update_address', 'request_reattempt', 'trigger_rto', 'manual'],
+            enum: ['call_customer', 'send_whatsapp', 'send_email', 'send_sms', 'update_address', 'request_reattempt', 'trigger_rto', 'manual'],
             required: true,
         },
         takenAt: { type: Date, default: Date.now },

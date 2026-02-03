@@ -253,19 +253,19 @@ export default function ShopifyIntegrationPage() {
             {currentStep === 1 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Store className="w-8 h-8 text-green-600 dark:text-green-400" />
+                        <div className="w-16 h-16 bg-[var(--success-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Store className="w-8 h-8 text-[var(--success)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Enter Your Shopify Store Domain
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             We'll connect to your Shopify store to sync orders automatically
                         </p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Store Domain *
                         </label>
                         <div className="relative">
@@ -274,16 +274,16 @@ export default function ShopifyIntegrationPage() {
                                 value={shopDomain}
                                 onChange={(e) => setShopDomain(e.target.value.toLowerCase())}
                                 placeholder="your-store.myshopify.com"
-                                className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             />
                             {shopDomain && !canProceedStep1() && (
-                                <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                                <p className="mt-2 text-sm text-[var(--error)] flex items-center gap-1">
                                     <AlertCircle className="w-4 h-4" />
                                     Please enter a valid Shopify domain (e.g., store.myshopify.com)
                                 </p>
                             )}
                             {canProceedStep1() && (
-                                <p className="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                                <p className="mt-2 text-sm text-[var(--success)] flex items-center gap-1">
                                     <Check className="w-4 h-4" />
                                     Valid domain format
                                 </p>
@@ -291,12 +291,12 @@ export default function ShopifyIntegrationPage() {
                         </div>
                     </div>
 
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+                    <div className="bg-[var(--primary-blue)]/5 rounded-lg p-4 border border-[var(--primary-blue)]/20">
+                        <h4 className="font-medium text-[var(--primary-blue)] mb-2 flex items-center gap-2">
                             <Store className="w-4 h-4" />
                             What you'll need
                         </h4>
-                        <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                        <ul className="text-sm text-[var(--text-secondary)] space-y-1">
                             <li>• Your Shopify store admin access</li>
                             <li>• Permission to install apps on your store</li>
                             <li>• Active Shopify plan</li>
@@ -309,24 +309,24 @@ export default function ShopifyIntegrationPage() {
             {currentStep === 2 && (
                 <div className="space-y-6">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <ExternalLink className="w-8 h-8 text-green-600 dark:text-green-400" />
+                        <div className="w-16 h-16 bg-[var(--success-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <ExternalLink className="w-8 h-8 text-[var(--success)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Authenticate with Shopify
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             Click the button below to authorize Shipcrowd to access your Shopify store
                         </p>
                     </div>
 
                     {isAuthenticated ? (
-                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-6 border border-green-200 dark:border-green-800 text-center">
-                            <Check className="w-12 h-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
-                            <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">
+                        <div className="bg-[var(--success-bg)] rounded-lg p-6 border border-[var(--success)] text-center">
+                            <Check className="w-12 h-12 text-[var(--success)] mx-auto mb-4" />
+                            <h4 className="font-semibold text-[var(--success)] mb-2">
                                 Successfully Connected!
                             </h4>
-                            <p className="text-sm text-green-700 dark:text-green-300">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Your Shopify store is now connected
                             </p>
                         </div>
@@ -335,7 +335,7 @@ export default function ShopifyIntegrationPage() {
                             <button
                                 onClick={() => setIsAuthenticated(true)}
                                 disabled={isInitiatingOAuth}
-                                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="w-full py-4 bg-[var(--success)] hover:bg-[var(--success-hover)] text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 {isInitiatingOAuth ? (
                                     <>
@@ -350,11 +350,11 @@ export default function ShopifyIntegrationPage() {
                                 )}
                             </button>
 
-                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                                <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                            <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
+                                <h4 className="font-medium text-[var(--text-primary)] mb-2">
                                     What happens next?
                                 </h4>
-                                <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                                <ol className="text-sm text-[var(--text-secondary)] space-y-2">
                                     <li>1. You'll be redirected to Shopify to log in</li>
                                     <li>2. Review the permissions Shipcrowd is requesting</li>
                                     <li>3. Click "Install app" to authorize</li>
@@ -370,23 +370,23 @@ export default function ShopifyIntegrationPage() {
             {currentStep === 3 && (
                 <div className="space-y-6">
                     <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
                             Configure Sync Settings
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             Customize how orders are synced between Shopify and Shipcrowd
                         </p>
                     </div>
 
                     {/* Sync Frequency */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Sync Frequency
                         </label>
                         <select
                             value={settings.syncFrequency}
                             onChange={(e) => setSettings(prev => ({ ...prev, syncFrequency: e.target.value as SyncFrequency }))}
-                            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                         >
                             {syncFrequencyOptions.map(option => (
                                 <option key={option.value} value={option.value}>
@@ -403,13 +403,13 @@ export default function ShopifyIntegrationPage() {
                             id="autoFulfill"
                             checked={settings.autoFulfill}
                             onChange={(e) => setSettings(prev => ({ ...prev, autoFulfill: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
                         <div>
-                            <label htmlFor="autoFulfill" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                            <label htmlFor="autoFulfill" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                 Auto-fulfill orders
                             </label>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Automatically mark Shopify orders as fulfilled when shipment is created
                             </p>
                         </div>
@@ -422,13 +422,13 @@ export default function ShopifyIntegrationPage() {
                             id="autoTrackingUpdate"
                             checked={settings.autoTrackingUpdate}
                             onChange={(e) => setSettings(prev => ({ ...prev, autoTrackingUpdate: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
                         <div>
-                            <label htmlFor="autoTrackingUpdate" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                            <label htmlFor="autoTrackingUpdate" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                 Push tracking updates
                             </label>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-[var(--text-secondary)]">
                                 Send tracking numbers and status updates back to Shopify
                             </p>
                         </div>
@@ -442,13 +442,13 @@ export default function ShopifyIntegrationPage() {
                                 id="syncHistorical"
                                 checked={settings.syncHistoricalOrders}
                                 onChange={(e) => setSettings(prev => ({ ...prev, syncHistoricalOrders: e.target.checked }))}
-                                className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                             />
                             <div className="flex-1">
-                                <label htmlFor="syncHistorical" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                                <label htmlFor="syncHistorical" className="font-medium text-[var(--text-primary)] cursor-pointer">
                                     Sync historical orders
                                 </label>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <p className="text-sm text-[var(--text-secondary)]">
                                     Import past orders from Shopify
                                 </p>
                             </div>
@@ -456,7 +456,7 @@ export default function ShopifyIntegrationPage() {
 
                         {settings.syncHistoricalOrders && (
                             <div className="ml-7">
-                                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                                <label className="block text-sm text-[var(--text-secondary)] mb-1">
                                     How many days back?
                                 </label>
                                 <input
@@ -465,7 +465,7 @@ export default function ShopifyIntegrationPage() {
                                     max="365"
                                     value={settings.historicalOrderDays}
                                     onChange={(e) => setSettings(prev => ({ ...prev, historicalOrderDays: parseInt(e.target.value) }))}
-                                    className="w-32 px-3 py-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    className="w-32 px-3 py-2 rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                                 />
                             </div>
                         )}
@@ -477,13 +477,13 @@ export default function ShopifyIntegrationPage() {
             {currentStep === 4 && (
                 <div className="space-y-6">
                     <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Settings className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                        <div className="w-16 h-16 bg-[var(--primary-blue)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Settings className="w-8 h-8 text-[var(--primary-blue)]" />
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                             Test Connection & Complete Setup
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             Verify the connection before activating the integration
                         </p>
                     </div>
@@ -493,7 +493,7 @@ export default function ShopifyIntegrationPage() {
                         <button
                             onClick={handleTestConnection}
                             disabled={isTesting}
-                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full py-3 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isTesting ? (
                                 <>
@@ -512,18 +512,18 @@ export default function ShopifyIntegrationPage() {
                     {/* Test Results */}
                     {testResult && (
                         <div className={`rounded-lg p-6 border ${testResult.success
-                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                            ? 'bg-[var(--success-bg)] border-[var(--success)]'
+                            : 'bg-[var(--error-bg)] border-[var(--error)]'
                             }`}>
                             {testResult.success ? (
                                 <>
                                     <div className="flex items-center gap-3 mb-4">
-                                        <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
-                                        <h4 className="font-semibold text-green-900 dark:text-green-100">
+                                        <Check className="w-6 h-6 text-[var(--success)]" />
+                                        <h4 className="font-semibold text-[var(--success)]">
                                             Connection Successful!
                                         </h4>
                                     </div>
-                                    <div className="space-y-2 text-sm text-green-700 dark:text-green-300">
+                                    <div className="space-y-2 text-sm text-[var(--text-secondary)]">
                                         <p>Store: <strong>{testResult.storeName}</strong></p>
                                         {testResult.details?.ordersFound && (
                                             <p>Orders found: <strong>{testResult.details.ordersFound}</strong></p>
@@ -536,17 +536,17 @@ export default function ShopifyIntegrationPage() {
                             ) : (
                                 <>
                                     <div className="flex items-center gap-3 mb-4">
-                                        <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-                                        <h4 className="font-semibold text-red-900 dark:text-red-100">
+                                        <AlertCircle className="w-6 h-6 text-[var(--error)]" />
+                                        <h4 className="font-semibold text-[var(--error)]">
                                             Connection Failed
                                         </h4>
                                     </div>
-                                    <p className="text-sm text-red-700 dark:text-red-300">
+                                    <p className="text-sm text-[var(--error)]">
                                         {testResult.message}
                                     </p>
                                     <button
                                         onClick={handleTestConnection}
-                                        className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                        className="mt-4 px-4 py-2 bg-[var(--error)] hover:bg-[var(--error-hover)] text-white rounded-lg transition-colors"
                                     >
                                         Try Again
                                     </button>
@@ -557,30 +557,30 @@ export default function ShopifyIntegrationPage() {
 
                     {/* Summary */}
                     {testResult?.success && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6">
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
+                        <div className="bg-[var(--bg-secondary)] rounded-lg p-6">
+                            <h4 className="font-semibold text-[var(--text-primary)] mb-4">
                                 Integration Summary
                             </h4>
-                            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="space-y-2 text-sm text-[var(--text-secondary)]">
                                 <div className="flex justify-between">
                                     <span>Store:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{shopDomain}</span>
+                                    <span className="font-medium text-[var(--text-primary)]">{shopDomain}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Sync Frequency:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="font-medium text-[var(--text-primary)]">
                                         {syncFrequencyOptions.find(o => o.value === settings.syncFrequency)?.label}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Auto-fulfill:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="font-medium text-[var(--text-primary)]">
                                         {settings.autoFulfill ? 'Enabled' : 'Disabled'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Tracking Updates:</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="font-medium text-[var(--text-primary)]">
                                         {settings.autoTrackingUpdate ? 'Enabled' : 'Disabled'}
                                     </span>
                                 </div>

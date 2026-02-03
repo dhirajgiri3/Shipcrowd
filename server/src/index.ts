@@ -14,6 +14,7 @@ import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.j
 import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { CarrierSyncJob } from './infrastructure/jobs/logistics/shipping/carrier-sync.job';
 import { ManifestPickupRetryJob } from './infrastructure/jobs/logistics/shipping/manifest-pickup-retry.job';
+import LostShipmentDetectionJob from './infrastructure/jobs/logistics/shipping/lost-shipment-detection.job';
 
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import { initializeCRMListeners } from './core/application/listeners/crm/index';
@@ -81,6 +82,10 @@ const startServer = async (): Promise<void> => {
         // Initialize Manifest Pickup Retry Job
         await ManifestPickupRetryJob.initialize();
         logger.info('Manifest pickup retry job initialized');
+
+        // Initialize Lost Shipment Detection Job
+        await LostShipmentDetectionJob.initialize();
+        logger.info('Lost shipment detection job initialized');
 
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();

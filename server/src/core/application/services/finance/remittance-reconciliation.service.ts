@@ -33,26 +33,54 @@ interface ColumnMapping {
  */
 const COURIER_COLUMN_MAPPINGS: Record<string, ColumnMapping> = {
     velocity: {
-        awbColumns: ['awb', 'awb_number', 'tracking_number', 'waybill', 'shipment_id'],
-        amountColumns: ['cod_amount', 'cod_collected', 'amount', 'net_amount', 'collectible'],
-        dateColumns: ['remittance_date', 'settlement_date', 'date'],
-        utrColumns: ['utr', 'utr_number', 'reference_number', 'transaction_id']
+        awbColumns: ['awb', 'awb_number', 'tracking_number', 'waybill', 'shipment_id', 'ref_no', 'refno', 'reference_no', 'reference_number'],
+        amountColumns: ['cod_amount', 'cod_collected', 'collected_amount', 'amount', 'net_amount', 'collectible', 'value', 'amount_received', 'amount received'],
+        dateColumns: ['remittance_date', 'settlement_date', 'delivery_date', 'date'],
+        utrColumns: ['utr', 'utr_number', 'reference_number', 'transaction_id', 'ref_no']
     },
     delhivery: {
-        awbColumns: ['awb', 'waybill_number', 'cn', 'reference_number'],
-        amountColumns: ['cod_amount', 'total_cod', 'amount_collected'],
-        dateColumns: ['settlement_date', 'remittance_date'],
-        utrColumns: ['utr_no', 'utr_number', 'reference_no']
+        awbColumns: ['awb', 'waybill_number', 'cn', 'reference_number', 'ref_no', 'refno'],
+        amountColumns: ['cod_amount', 'total_cod', 'amount_collected', 'amount_received', 'value'],
+        dateColumns: ['settlement_date', 'remittance_date', 'date'],
+        utrColumns: ['utr_no', 'utr_number', 'reference_no', 'transaction_id']
     },
     generic: {
-        awbColumns: ['awb', 'awb_number', 'tracking', 'tracking_number', 'waybill', 'ref', 'reference'],
-        amountColumns: ['cod', 'cod_amount', 'amount', 'collected', 'value', 'total'],
-        dateColumns: ['date', 'settlement_date', 'remittance_date', 'paid_date'],
-        utrColumns: ['utr', 'utr_number', 'reference', 'transaction_id', 'ref_no']
+        awbColumns: ['awb', 'awb_number', 'tracking', 'tracking_number', 'waybill', 'ref', 'refno', 'ref_no', 'reference', 'reference_no', 'reference_number'],
+        amountColumns: ['cod', 'cod_amount', 'amount', 'collected', 'value', 'total', 'net_amount', 'amount_received', 'amount received'],
+        dateColumns: ['date', 'settlement_date', 'remittance_date', 'paid_date', 'delivery_date'],
+        utrColumns: ['utr', 'utr_number', 'reference', 'transaction_id', 'ref_no', 'reference_no']
     }
 }
 
 export default class RemittanceReconciliationService {
+    private static normalizeHeaderKey(key: string): string {
+        return key.toLowerCase().replace(/[_\s-]/g, '');
+    }
+
+    private static mergeColumnMappings(
+        base: ColumnMapping,
+        override?: Partial<ColumnMapping>
+    ): ColumnMapping {
+        if (!override) return base;
+
+        const merge = (baseArr: string[] = [], overrideArr: string[] = []) =>
+            Array.from(new Set([...overrideArr, ...baseArr]));
+
+        return {
+            awbColumns: merge(base.awbColumns, override.awbColumns),
+            amountColumns: merge(base.amountColumns, override.amountColumns),
+            dateColumns: merge(base.dateColumns || [], override.dateColumns),
+            utrColumns: merge(base.utrColumns || [], override.utrColumns),
+        };
+    }
+
+    private static resolveColumnMapping(
+        provider: 'velocity' | 'delhivery' | 'generic',
+        override?: Partial<ColumnMapping>
+    ): ColumnMapping {
+        const base = COURIER_COLUMN_MAPPINGS[provider] || COURIER_COLUMN_MAPPINGS.generic;
+        return this.mergeColumnMappings(base, override);
+    }
     /**
      * Create a verified Remittance Batch from a Courier MIS File.
      * Unlike the standard 'createBatch' which pulls all eligible orders,
@@ -63,7 +91,8 @@ export default class RemittanceReconciliationService {
         fileBuffer: any,
         mimetype: string,
         uploadedBy: string,
-        provider: 'generic' | 'velocity' = 'generic'
+        provider: 'generic' | 'velocity' = 'generic',
+        mappingOverride?: Partial<ColumnMapping>
     ) {
         // 1. Parse File with provider-specific column mapping
         let rows: MISRow[] = [];
@@ -71,13 +100,24 @@ export default class RemittanceReconciliationService {
         if (provider === 'velocity') {
             // Use Velocity-specific parser if available, otherwise use generic with velocity mapping
             try {
-                rows = await VelocityRemittanceService.parseMIS(fileBuffer);
+                rows = await VelocityRemittanceService.parseMIS(
+                    fileBuffer,
+                    this.resolveColumnMapping('velocity', mappingOverride)
+                );
             } catch (error) {
                 logger.warn('Velocity-specific parser failed, falling back to generic with velocity mapping', { error });
-                rows = await this.parseFile(fileBuffer, mimetype, 'velocity');
+                rows = await this.parseFile(
+                    fileBuffer,
+                    mimetype,
+                    this.resolveColumnMapping('velocity', mappingOverride)
+                );
             }
         } else {
-            rows = await this.parseFile(fileBuffer, mimetype, provider === 'generic' ? 'generic' : 'generic');
+            rows = await this.parseFile(
+                fileBuffer,
+                mimetype,
+                this.resolveColumnMapping(provider, mappingOverride)
+            );
         }
 
         if (rows.length === 0) {
@@ -300,7 +340,7 @@ export default class RemittanceReconciliationService {
     private static async parseFile(
         buffer: any, 
         mimetype: string, 
-        provider: 'velocity' | 'delhivery' | 'generic' = 'generic'
+        mapping: ColumnMapping
     ): Promise<MISRow[]> {
         const rows: MISRow[] = [];
         
@@ -310,7 +350,7 @@ export default class RemittanceReconciliationService {
                 stream
                     .pipe(csvParser())
                     .on('data', (data) => {
-                        const normalized = this.normalizeRow(data, provider);
+                        const normalized = this.normalizeRow(data, mapping);
                         if (normalized) rows.push(normalized);
                     })
                     .on('end', () => {
@@ -352,7 +392,7 @@ export default class RemittanceReconciliationService {
                         }
                     });
 
-                    const normalized = this.normalizeRow(rowData, provider);
+                    const normalized = this.normalizeRow(rowData, mapping);
                     if (normalized) {
                         rows.push(normalized);
                     }
@@ -369,37 +409,36 @@ export default class RemittanceReconciliationService {
      * @param data - Row data from CSV/Excel
      * @param provider - Courier provider ('velocity', 'delhivery', 'generic')
      */
-    private static normalizeRow(data: any, provider: 'velocity' | 'delhivery' | 'generic' = 'generic'): MISRow | null {
-        const keys = Object.keys(data).map(k => k.toLowerCase());
-        const mapping = COURIER_COLUMN_MAPPINGS[provider];
+    private static normalizeRow(data: any, mapping: ColumnMapping): MISRow | null {
+        const effectiveMapping = mapping || COURIER_COLUMN_MAPPINGS.generic;
 
         // Find AWB column
         let awbKey: string | undefined;
-        for (const possibleAwbColumn of mapping.awbColumns) {
+        for (const possibleAwbColumn of effectiveMapping.awbColumns) {
             awbKey = Object.keys(data).find(k => 
                 k.toLowerCase() === possibleAwbColumn.toLowerCase() ||
-                k.toLowerCase().replace(/[_\s-]/g, '') === possibleAwbColumn.toLowerCase().replace(/[_\s-]/g, '')
+                this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleAwbColumn)
             );
             if (awbKey) break;
         }
 
         // Find Amount column
         let amountKey: string | undefined;
-        for (const possibleAmountColumn of mapping.amountColumns) {
+        for (const possibleAmountColumn of effectiveMapping.amountColumns) {
             amountKey = Object.keys(data).find(k => 
                 k.toLowerCase() === possibleAmountColumn.toLowerCase() ||
-                k.toLowerCase().replace(/[_\s-]/g, '') === possibleAmountColumn.toLowerCase().replace(/[_\s-]/g, '')
+                this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleAmountColumn)
             );
             if (amountKey) break;
         }
 
         // Find Date column (optional)
         let dateKey: string | undefined;
-        if (mapping.dateColumns) {
-            for (const possibleDateColumn of mapping.dateColumns) {
+        if (effectiveMapping.dateColumns) {
+            for (const possibleDateColumn of effectiveMapping.dateColumns) {
                 dateKey = Object.keys(data).find(k => 
                     k.toLowerCase() === possibleDateColumn.toLowerCase() ||
-                    k.toLowerCase().replace(/[_\s-]/g, '') === possibleDateColumn.toLowerCase().replace(/[_\s-]/g, '')
+                    this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleDateColumn)
                 );
                 if (dateKey) break;
             }
@@ -407,11 +446,11 @@ export default class RemittanceReconciliationService {
 
         // Find UTR column (optional)
         let utrKey: string | undefined;
-        if (mapping.utrColumns) {
-            for (const possibleUtrColumn of mapping.utrColumns) {
+        if (effectiveMapping.utrColumns) {
+            for (const possibleUtrColumn of effectiveMapping.utrColumns) {
                 utrKey = Object.keys(data).find(k => 
                     k.toLowerCase() === possibleUtrColumn.toLowerCase() ||
-                    k.toLowerCase().replace(/[_\s-]/g, '') === possibleUtrColumn.toLowerCase().replace(/[_\s-]/g, '')
+                    this.normalizeHeaderKey(k) === this.normalizeHeaderKey(possibleUtrColumn)
                 );
                 if (utrKey) break;
             }
@@ -428,7 +467,7 @@ export default class RemittanceReconciliationService {
         }
 
         const awbValue = data[awbKey]?.toString().trim();
-        const amountValue = parseFloat(data[amountKey]) || 0;
+        const amountValue = parseFloat(String(data[amountKey]).replace(/,/g, '')) || 0;
 
         if (!awbValue || awbValue === 'null' || awbValue === '') {
             return null;

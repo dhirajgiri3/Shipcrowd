@@ -12,6 +12,7 @@ import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '..
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 // Import validation schemas
 import { panSchema, aadhaarSchema, gstinSchema, bankAccountSchema, submitKYCSchema, verifyDocumentSchema } from '../../../../shared/validation/schemas';
 
@@ -229,7 +230,7 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
@@ -331,7 +332,7 @@ export const rejectKYC = async (req: Request, res: Response, next: NextFunction)
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
@@ -385,7 +386,7 @@ export const getAllKYCs = async (req: Request, res: Response, next: NextFunction
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 

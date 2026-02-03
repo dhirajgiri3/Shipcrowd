@@ -1255,8 +1255,8 @@ Instead they provide:
 | Rate Cards       | ✅ Yes                       | Internal                    |
 | Multi-Courier    | ⚠️ Partial                  | Needs more carriers         |
 | Webhooks         | ❌ Missing                   | Polling fallback            |
-| POD Download     | ❌ Missing                   | Manual / ask courier        |
-| Address Update   | ❌ Missing                   | Ops-driven                  |
+| POD Download     | ❌ Missing (Courier API)     | Shipcrowd supports manual upload + optional courier retrieval when available |
+| Address Update   | ✅ Supported                 | `PUT /custom/api/v1/order`  |
 
 ---
 
@@ -1277,7 +1277,7 @@ You can build a **production-grade shipping aggregator** with:
 
 * Real-time NDR actions via API
 * Webhook-only tracking
-* POD auto-fetch
+* POD auto-fetch (only if courier exposes API; otherwise manual upload)
 * Address correction APIs
 
 But guess what?

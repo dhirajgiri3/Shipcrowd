@@ -18,6 +18,7 @@ import emailService from './email.service';
 import smsService from './sms.service';
 import whatsappService from './whatsapp.service';
 import logger from '../../../../shared/logger/winston.logger';
+import NotificationPreferenceService from './notification-preferences.service';
 
 /**
  * Notification types
@@ -236,7 +237,8 @@ export const sendShipmentStatusNotification = async (
   additionalInfo?: {
     productName?: string;
     courierName?: string;
-  }
+  },
+  companyId?: string
 ): Promise<{
   email: boolean;
   sms: boolean;
@@ -249,8 +251,12 @@ export const sendShipmentStatusNotification = async (
   };
 
   try {
+    const canSendEmail = companyId ? await NotificationPreferenceService.shouldSend(companyId, 'email') : true;
+    const canSendSms = companyId ? await NotificationPreferenceService.shouldSend(companyId, 'sms') : true;
+    const canSendWhatsApp = companyId ? await NotificationPreferenceService.shouldSend(companyId, 'whatsapp') : true;
+
     // Send shipment status email
-    if ((type === NotificationType.EMAIL || type === NotificationType.BOTH || type === NotificationType.ALL) && to.email) {
+    if ((type === NotificationType.EMAIL || type === NotificationType.BOTH || type === NotificationType.ALL) && to.email && canSendEmail) {
       results.email = await emailService.sendShipmentStatusEmail(
         to.email,
         customerName,
@@ -263,7 +269,7 @@ export const sendShipmentStatusNotification = async (
     }
 
     // Send shipment status SMS
-    if ((type === NotificationType.SMS || type === NotificationType.BOTH || type === NotificationType.ALL) && to.phone) {
+    if ((type === NotificationType.SMS || type === NotificationType.BOTH || type === NotificationType.ALL) && to.phone && canSendSms) {
       results.sms = await smsService.sendShipmentStatusSMS(
         to.phone,
         customerName,
@@ -274,7 +280,7 @@ export const sendShipmentStatusNotification = async (
     }
 
     // Send shipment status WhatsApp
-    if ((type === NotificationType.WHATSAPP || type === NotificationType.ALL) && to.phone) {
+    if ((type === NotificationType.WHATSAPP || type === NotificationType.ALL) && to.phone && canSendWhatsApp) {
       results.whatsapp = await whatsappService.sendShipmentStatusWhatsApp(
         to.phone,
         customerName,

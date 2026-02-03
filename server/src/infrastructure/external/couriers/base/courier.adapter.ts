@@ -54,6 +54,14 @@ export interface CourierTrackingResponse {
     estimatedDelivery?: Date;
 }
 
+export interface CourierPODResponse {
+    url?: string;
+    fileBuffer?: Buffer;
+    mimeType?: string;
+    source?: 'courier_api' | 'manual' | 'not_supported';
+    message?: string;
+}
+
 export interface CourierRateRequest {
     origin: {
         pincode: string;
@@ -153,9 +161,40 @@ export interface ICourierAdapter {
     schedulePickup?(data: any): Promise<any>;
 
     /**
+     * Schedule a reverse pickup (RTO) if supported
+     */
+    scheduleReversePickup?(data: {
+        reverseAwb?: string;
+        originalAwb?: string;
+        pickupDate?: Date;
+        timeSlot?: string;
+        pickupAddress?: {
+            address: string;
+            pincode: string;
+            phone: string;
+        };
+    }): Promise<{ success: boolean; message?: string; pickupId?: string }>;
+
+    /**
      * Request reattempt for undelivered shipment
      */
     requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }>;
+
+    /**
+     * Update delivery address (if courier supports it)
+     */
+    updateDeliveryAddress?(
+        awb: string,
+        newAddress: {
+            line1: string;
+            city: string;
+            state: string;
+            pincode: string;
+            country: string;
+        },
+        orderId: string,
+        phone?: string
+    ): Promise<{ success: boolean; message: string }>;
 
     // Split Flow Methods (optional - not all couriers support)
     createOrderOnly?(data: CourierShipmentData): Promise<{
@@ -187,6 +226,20 @@ export interface ICourierAdapter {
         endDate: Date,
         type: 'forward' | 'return'
     ): Promise<any>;
+
+    /**
+     * Manifest creation (optional)
+     */
+    createManifest?(data: {
+        shipmentIds?: string[];
+        awbs?: string[];
+        warehouseId?: string;
+    }): Promise<{ manifestId?: string; manifestUrl?: string } | null>;
+
+    /**
+     * Proof of Delivery (POD) retrieval (optional)
+     */
+    getProofOfDelivery?(trackingNumber: string): Promise<CourierPODResponse>;
 }
 
 /**
@@ -219,6 +272,31 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
         throw new CourierFeatureNotSupportedError(
             this.constructor.name,
             'requestReattempt'
+        );
+    }
+
+    async updateDeliveryAddress(
+        awb: string,
+        newAddress: {
+            line1: string;
+            city: string;
+            state: string;
+            pincode: string;
+            country: string;
+        },
+        orderId: string,
+        phone?: string
+    ): Promise<{ success: boolean; message: string }> {
+        throw new CourierFeatureNotSupportedError(
+            this.constructor.name,
+            'updateDeliveryAddress'
+        );
+    }
+
+    async getProofOfDelivery(trackingNumber: string): Promise<CourierPODResponse> {
+        throw new CourierFeatureNotSupportedError(
+            this.constructor.name,
+            'getProofOfDelivery'
         );
     }
 

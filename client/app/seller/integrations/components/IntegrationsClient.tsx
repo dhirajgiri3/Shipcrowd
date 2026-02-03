@@ -84,7 +84,7 @@ export function IntegrationsClient() {
     if (error) {
         return (
             <div className="py-20 flex flex-col items-center justify-center min-h-[400px] text-center">
-                <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-4">
+                <div className="w-12 h-12 bg-[var(--error-bg)] rounded-full flex items-center justify-center text-[var(--error)] mb-4">
                     <AlertCircle className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">Failed to load integrations</h3>
@@ -146,7 +146,7 @@ export function IntegrationsClient() {
                                                 </p>
                                                 <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-muted)]">
                                                     <span className="flex items-center gap-1">
-                                                        <div className={cn("h-1.5 w-1.5 rounded-full", store.isActive ? "bg-[var(--success)]" : "bg-gray-400")} />
+                                                        <div className={cn("h-1.5 w-1.5 rounded-full", store.isActive ? "bg-[var(--success)]" : "bg-[var(--text-muted)]")} />
                                                         Last sync: {store.lastSyncAt ? formatDate(store.lastSyncAt) : 'Never'}
                                                     </span>
                                                     <span>•</span>
@@ -156,7 +156,7 @@ export function IntegrationsClient() {
                                                     {store.errorCount24h > 0 && (
                                                         <>
                                                             <span>•</span>
-                                                            <span className="text-red-500 font-medium">{store.errorCount24h} errors (24h)</span>
+                                                            <span className="text-[var(--error)] font-medium">{store.errorCount24h} errors (24h)</span>
                                                         </>
                                                     )}
                                                 </div>

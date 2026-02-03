@@ -29,6 +29,32 @@ interface CustomerInfo {
     email?: string;
 }
 
+type WorkflowConditionOperator =
+    | 'equals'
+    | 'not_equals'
+    | 'includes'
+    | 'in'
+    | 'not_in'
+    | 'exists'
+    | 'not_exists'
+    | 'gt'
+    | 'gte'
+    | 'lt'
+    | 'lte'
+    | 'regex';
+
+interface WorkflowCondition {
+    field: string;
+    operator: WorkflowConditionOperator;
+    value?: any;
+}
+
+interface WorkflowConditions {
+    all?: WorkflowCondition[];
+    any?: WorkflowCondition[];
+    not?: WorkflowCondition[];
+}
+
 export default class NDRResolutionService {
     /**
      * Execute resolution workflow for an NDR event
@@ -70,6 +96,132 @@ export default class NDRResolutionService {
     }
 
     /**
+     * Build condition evaluation context
+     */
+    private static buildConditionContext(ndrEvent: INDREvent) {
+        const actions = (ndrEvent as any).resolutionActions || [];
+        const hasAction = (actionType: string, result?: string) =>
+            actions.some(
+                (a: any) =>
+                    a.actionType === actionType && (!result || a.result === result)
+            );
+
+        const customerResponded =
+            Boolean((ndrEvent as any).customerResponse) ||
+            actions.some((a: any) => a.takenBy === 'customer' && a.result === 'success');
+
+        const addressUpdated =
+            hasAction('update_address', 'success') ||
+            (ndrEvent as any).customerResponse === 'address_updated';
+
+        return {
+            ndrEvent,
+            shipment: (ndrEvent as any).shipment,
+            flags: {
+                customerResponded,
+                addressUpdated,
+                reattemptRequested: hasAction('request_reattempt', 'success')
+            }
+        };
+    }
+
+    private static getFieldValue(path: string, context: any): any {
+        return path.split('.').reduce((acc: any, key: string) => {
+            if (acc === null || acc === undefined) return undefined;
+            return acc[key];
+        }, context);
+    }
+
+    private static evaluateCondition(condition: WorkflowCondition, context: any): boolean {
+        const value = this.getFieldValue(condition.field, context);
+        const compareValue = condition.value;
+
+        switch (condition.operator) {
+            case 'exists':
+                return value !== undefined && value !== null && value !== '';
+            case 'not_exists':
+                return value === undefined || value === null || value === '';
+            case 'equals':
+                return value === compareValue;
+            case 'not_equals':
+                return value !== compareValue;
+            case 'includes':
+                if (Array.isArray(value)) {
+                    return value.includes(compareValue);
+                }
+                if (typeof value === 'string') {
+                    return value.includes(String(compareValue));
+                }
+                return false;
+            case 'in':
+                return Array.isArray(compareValue) ? compareValue.includes(value) : false;
+            case 'not_in':
+                return Array.isArray(compareValue) ? !compareValue.includes(value) : false;
+            case 'gt':
+                return Number(value) > Number(compareValue);
+            case 'gte':
+                return Number(value) >= Number(compareValue);
+            case 'lt':
+                return Number(value) < Number(compareValue);
+            case 'lte':
+                return Number(value) <= Number(compareValue);
+            case 'regex':
+                try {
+                    return new RegExp(String(compareValue)).test(String(value));
+                } catch {
+                    return false;
+                }
+            default:
+                return true;
+        }
+    }
+
+    private static evaluateConditions(conditions: WorkflowConditions, context: any): boolean {
+        if (!conditions || Object.keys(conditions).length === 0) return true;
+
+        const allPass = conditions.all
+            ? conditions.all.every((c) => this.evaluateCondition(c, context))
+            : true;
+        const anyPass = conditions.any
+            ? conditions.any.some((c) => this.evaluateCondition(c, context))
+            : true;
+        const notPass = conditions.not
+            ? conditions.not.every((c) => !this.evaluateCondition(c, context))
+            : true;
+
+        return allPass && anyPass && notPass;
+    }
+
+    private static shouldExecuteAction(ndrEvent: INDREvent, action: IWorkflowAction): boolean {
+        const conditions: WorkflowConditions | undefined =
+            (action as any).conditions || action.actionConfig?.conditions;
+        if (!conditions) return true;
+
+        const context = this.buildConditionContext(ndrEvent);
+        return this.evaluateConditions(conditions, context);
+    }
+
+    private static async recordSkippedAction(
+        ndrEvent: INDREvent,
+        action: IWorkflowAction,
+        reason: string
+    ): Promise<void> {
+        await NDRActionExecutors.recordActionResult(
+            String(ndrEvent._id),
+            {
+                success: true,
+                actionType: action.actionType,
+                result: 'skipped',
+                metadata: {
+                    reason,
+                    conditions: (action as any).conditions || action.actionConfig?.conditions
+                }
+            },
+            'system'
+        );
+    }
+
+    /**
      * Execute next action in workflow
      */
     static async executeNextAction(
@@ -83,6 +235,13 @@ export default class NDRResolutionService {
         if (!nextAction) {
             // No more actions - check if we should escalate or trigger RTO
             await this.checkWorkflowCompletion(ndrEvent, workflow);
+            return;
+        }
+
+        // Evaluate conditional branching
+        if (!this.shouldExecuteAction(ndrEvent, nextAction)) {
+            await this.recordSkippedAction(ndrEvent, nextAction, 'conditions_not_met');
+            await this.executeNextAction(ndrEvent, workflow, nextAction.sequence);
             return;
         }
 
@@ -104,19 +263,30 @@ export default class NDRResolutionService {
         action: IWorkflowAction,
         workflow: INDRWorkflow
     ): Promise<void> {
+        // Refresh NDR event to evaluate latest state before executing
+        const latestEvent = await NDREvent.findById(ndrEvent._id).populate('shipment order');
+        const eventToUse = (latestEvent || ndrEvent) as INDREvent;
+
+        // Evaluate conditions again at execution time (state may have changed)
+        if (!this.shouldExecuteAction(eventToUse, action)) {
+            await this.recordSkippedAction(eventToUse, action, 'conditions_not_met');
+            await this.executeNextAction(eventToUse, workflow, action.sequence);
+            return;
+        }
+
         // Check if action needs manual approval
         if (!action.autoExecute) {
             logger.info('Action requires manual approval', {
-                ndrEventId: ndrEvent._id,
+                ndrEventId: eventToUse._id,
                 actionType: action.actionType,
             });
             return;
         }
 
         // Get customer info from shipment/order
-        const customer = await this.getCustomerInfo(ndrEvent);
+        const customer = await this.getCustomerInfo(eventToUse);
         if (!customer) {
-            logger.error('Could not get customer info for action', { ndrEventId: ndrEvent._id });
+            logger.error('Could not get customer info for action', { ndrEventId: eventToUse._id });
             return;
         }
 
@@ -124,10 +294,10 @@ export default class NDRResolutionService {
         const result = await NDRActionExecutors.executeAction(
             action.actionType,
             {
-                ndrEvent,
+                ndrEvent: eventToUse,
                 customer,
-                orderId: ndrEvent.order.toString(),
-                companyId: ndrEvent.company.toString(),
+                orderId: eventToUse.order.toString(),
+                companyId: eventToUse.company.toString(),
             },
             action.actionConfig
         );
@@ -147,7 +317,7 @@ export default class NDRResolutionService {
 
         // If action succeeded and not RTO, continue to next
         if (result.success && action.actionType !== 'trigger_rto') {
-            await this.executeNextAction(ndrEvent, workflow, action.sequence);
+            await this.executeNextAction(eventToUse, workflow, action.sequence);
         }
     }
 

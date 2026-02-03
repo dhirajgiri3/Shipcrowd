@@ -14,6 +14,7 @@ import { AuthenticationError, ValidationError, DatabaseError, AuthorizationError
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import CompanyOnboardingService from '../../../../core/application/services/organization/company-onboarding.service';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 const createCompanySchema = z.object({
   name: z.string().min(2),
@@ -47,6 +48,19 @@ const updateCompanySchema = createCompanySchema.partial().extend({
     defaultWarehouseId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
     notificationEmail: z.string().email().optional(),
     notificationPhone: z.string().optional(),
+    notificationPreferences: z.object({
+      channels: z.object({
+        email: z.boolean().optional(),
+        sms: z.boolean().optional(),
+        whatsapp: z.boolean().optional(),
+      }).optional(),
+      quietHours: z.object({
+        enabled: z.boolean().optional(),
+        start: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        end: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        timezone: z.string().optional(),
+      }).optional(),
+    }).optional(),
     autoGenerateInvoice: z.boolean().optional(),
     currency: z.string().optional(),
     timezone: z.string().optional(),
@@ -66,7 +80,7 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
 
     const authReq = req as Request;
 
-    if (authReq.user && authReq.user.role !== 'admin') {
+    if (authReq.user && !isPlatformAdmin(authReq.user)) {
       const user = await User.findById(authReq.user._id).lean();
 
       if (!user) {
@@ -101,7 +115,7 @@ export const createCompany = async (req: Request, res: Response, next: NextFunct
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin' && req.user.companyId) {
+    if (!isPlatformAdmin(req.user) && req.user.companyId) {
       throw new ConflictError('User already has a company', ErrorCode.BIZ_CONFLICT);
     }
 
@@ -129,7 +143,7 @@ export const createCompany = async (req: Request, res: Response, next: NextFunct
       logger.error(`[CompanyCreation] Onboarding failed for company ${savedCompany._id}:`, err);
     });
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       await User.findByIdAndUpdate(req.user._id, {
         companyId: savedCompany._id,
         teamRole: 'owner',
@@ -165,7 +179,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
       throw new ValidationError('Invalid company ID format', ErrorCode.VAL_INVALID_INPUT);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       const user = await User.findById(req.user._id).lean();
 
       if (!user) {
@@ -223,7 +237,7 @@ export const getAllCompanies = async (req: Request, res: Response, next: NextFun
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
@@ -255,7 +269,7 @@ export const inviteCompanyOwner = async (req: Request, res: Response, next: Next
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Only admins can invite company owners', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
@@ -323,7 +337,7 @@ export const updateCompanyStatus = async (req: Request, res: Response, next: Nex
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Only admins can update company status', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
@@ -360,7 +374,7 @@ export const getCompanyStats = async (req: Request, res: Response, next: NextFun
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.user.role !== 'admin') {
+    if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 

@@ -33,6 +33,7 @@ export const ndrActionTypeSchema = z.enum([
     'call_customer',
     'send_whatsapp',
     'send_email',
+    'send_sms',
     'update_address',
     'request_reattempt',
     'trigger_rto',

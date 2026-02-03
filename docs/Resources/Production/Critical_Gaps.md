@@ -42,7 +42,7 @@
 9. TRACKING & CUSTOMER EXPERIENCE
 ❌ Branded Tracking Portal - Can't white-label tracking page
 ❌ Tracking Link Customization - Generic tracking URLs only
-❌ POD Image Retrieval - No proof of delivery images
+✅ POD Image Retrieval - Manual upload supported; optional courier retrieval where API exists
 ❌ Signature Capture - No signature integration
 ❌ Tracking Analytics - Can't track customer behavior
 10. NOTIFICATIONS & COMMUNICATION

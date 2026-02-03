@@ -4,6 +4,7 @@ import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**
  * Authentication Analytics Controller
@@ -22,7 +23,7 @@ export const getAuthMetrics = async (
 ): Promise<void> => {
     try {
         // Only admin can view analytics
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || !isPlatformAdmin(req.user)) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
@@ -65,7 +66,7 @@ export const getLoginStats = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || !isPlatformAdmin(req.user)) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
@@ -97,7 +98,7 @@ export const getFailedLogins = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || !isPlatformAdmin(req.user)) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
@@ -129,7 +130,7 @@ export const getActiveSessions = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || !isPlatformAdmin(req.user)) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
@@ -153,7 +154,7 @@ export const getRegistrationTrends = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || !isPlatformAdmin(req.user)) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
@@ -185,7 +186,7 @@ export const getSecurityIncidents = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        if (!req.user || req.user.role !== 'admin') {
+        if (!req.user || !isPlatformAdmin(req.user)) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 

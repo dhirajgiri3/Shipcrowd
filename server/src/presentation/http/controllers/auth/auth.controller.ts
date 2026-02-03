@@ -28,6 +28,7 @@ import { UserDTO } from '../../dtos/user.dto';
 import { AuthenticationError, ValidationError, NotFoundError, ExternalServiceError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import MFAService from '../../../../core/application/services/auth/mfa.service';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -473,7 +474,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     } else {
       // User is fully onboarded
       nextStep = 'dashboard';
-      redirectUrl = typedUser.role === 'admin' ? '/admin/dashboard' : '/seller/dashboard';
+      redirectUrl = isPlatformAdmin(typedUser) ? '/admin/dashboard' : '/seller/dashboard';
     }
 
     sendSuccess(res, {
@@ -964,7 +965,7 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     );
 
     // ✅ Return user data for frontend to update auth state
-    const redirectUrl = typedUser.role === 'admin' ? '/admin' : '/seller/dashboard';
+    const redirectUrl = isPlatformAdmin(typedUser) ? '/admin' : '/seller/dashboard';
 
     sendSuccess(
       res,
@@ -1193,9 +1194,9 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
     let redirectUrl = `${baseUrl}/seller`;
 
-    if (!user.companyId && user.role !== 'admin' && user.role !== 'super_admin') {
+    if (!user.companyId && !isPlatformAdmin(user)) {
       redirectUrl = `${baseUrl}/onboarding`;
-    } else if (user.role === 'admin' || user.role === 'super_admin') {
+    } else if (isPlatformAdmin(user)) {
       redirectUrl = `${baseUrl}/admin`;
     }
 
@@ -1774,7 +1775,7 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     await typedUser.save();
 
     // Return user data matching login response structure
-    const redirectUrl = typedUser.role === 'admin' ? '/admin' : '/seller/dashboard';
+    const redirectUrl = isPlatformAdmin(typedUser) ? '/admin' : '/seller/dashboard';
 
     // Determine next step based on onboarding status
     let nextStep = 'completed';

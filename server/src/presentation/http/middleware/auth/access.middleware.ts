@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuditLog, User, TeamPermission } from '../../../../infrastructure/database/mongoose/models';
+import { AuditLog, User } from '../../../../infrastructure/database/mongoose/models';
 import { PermissionService } from '../../../../core/application/services/auth/permission.service';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
@@ -153,44 +153,17 @@ export const requireAccess = (options: AccessOptions = {}) => {
             if (options.permission) {
                 const { module, action } = options.permission;
 
-                // Super admins, admins and Owners usually have full access
-                const hasFullAccess = isPlatformAdmin(user) || user.teamRole === 'owner' || user.teamRole === 'admin';
-
-                if (!hasFullAccess) {
-                    // Managers handling
-                    if (user.teamRole === 'manager') {
-                        // Managers have full access except critical actions
-                        // TODO: Define critical actions list or rely on Permission model?
-                        // Current logic assumes Managers have implicit full access per permissions.ts logic?
-                        // Let's stick to permissions.ts logic: Managers have full, Member/Viewer limited.
-                        // But wait, existing permissions.ts gave Managers explicit full object.
-                        // Here we should fetch TeamPermission for 'staff'/'member'.
-                    }
-
-                    // Logic for Member/Viewer/Staff
-                    let allowed = false;
-
-                    // Check Role-based defaults first (optimization)
-                    if (user.teamRole === 'viewer' && action === 'view') allowed = true;
-                    // Members can view/create/update usually? Depend on system design.
-
-                    // Fallback to explicit Permission Model check
-                    const userPermissions = await TeamPermission.findOne({ userId: user._id });
-                    if (userPermissions && userPermissions.permissions) {
-                        // Type assertion to avoid implicit any error
-                        const modulePerms = (userPermissions.permissions as any)[module];
-                        if (modulePerms && modulePerms[action]) {
-                            allowed = true;
-                        }
-                    }
-
-                    if (!allowed && !hasFullAccess) {
-                        // Re-check Manager/Member defaults if Permission model missing?
-                        // Copying logic from permissions.ts:
-                        if (user.teamRole === 'manager') allowed = true; // Simplified: Managers allow all (except critical team ops checked earlier?)
-                        if (user.teamRole === 'member' && action !== 'delete' && module !== 'settings') allowed = true; // Simplified member logic
-                        if (user.teamRole === 'viewer' && action === 'view') allowed = true;
-                    }
+                const isAdmin = isPlatformAdmin(user);
+                if (!isAdmin) {
+                    const permissionList = await PermissionService.resolve(
+                        String(user._id),
+                        user.companyId?.toString()
+                    );
+                    const permissionKeyDot = `${module}.${action}`;
+                    const permissionKeyColon = `${module}:${action}`;
+                    const allowed = permissionList.includes('*') ||
+                        permissionList.includes(permissionKeyDot) ||
+                        permissionList.includes(permissionKeyColon);
 
                     if (!allowed) {
                         logAccessDenial(req, user, 'insufficient_permission', { module, action });

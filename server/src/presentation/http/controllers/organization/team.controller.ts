@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { User, Company, TeamInvitation, TeamPermission } from '../../../../infrastructure/database/mongoose/models';
+import { User, Company, TeamInvitation, Role, Membership } from '../../../../infrastructure/database/mongoose/models';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
@@ -12,6 +12,8 @@ import activityService from '../../../../core/application/services/user/activity
 import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, AuthorizationError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { PermissionService } from '../../../../core/application/services/auth/permission.service';
 
 // Helper function to wrap controller methods that expect AuthRequest
 const withAuth = (handler: (req: Request, res: Response, next: NextFunction) => Promise<void>) => {
@@ -78,6 +80,28 @@ const updatePermissionsSchema = z.object({
   }),
 });
 
+const extractPermissionList = (permissions: Record<string, Record<string, boolean | undefined>> | undefined) => {
+  const allowed: string[] = [];
+  const denied: string[] = [];
+
+  if (!permissions) {
+    return { allowed, denied };
+  }
+
+  Object.entries(permissions).forEach(([module, actions]) => {
+    if (!actions) return;
+    Object.entries(actions).forEach(([action, value]) => {
+      if (value === true) allowed.push(`${module}.${action}`);
+      if (value === false) denied.push(`${module}.${action}`);
+    });
+  });
+
+  return {
+    allowed: Array.from(new Set(allowed)),
+    denied: Array.from(new Set(denied)),
+  };
+};
+
 /**
  * Get all team members for a company
  * @route GET /team or GET /companies/:companyId/team
@@ -101,7 +125,7 @@ export const getTeamMembers = async (req: Request, res: Response, next: NextFunc
     // If companyId is provided in URL params, use that instead
     if (req.params.companyId) {
       // Check if user has access to this company
-      if (user.role !== 'admin' && (!user.companyId || user.companyId.toString() !== req.params.companyId)) {
+      if (!isPlatformAdmin(user) && (!user.companyId || user.companyId.toString() !== req.params.companyId)) {
         throw new AuthorizationError('Access denied to this company', ErrorCode.AUTHZ_FORBIDDEN);
       }
       // Convert string ID to ObjectId
@@ -228,7 +252,7 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
     // If companyId is provided in URL params, use that instead
     if (req.params.companyId) {
       // Check if user has access to this company
-      if (user.role !== 'admin' && (!user.companyId || user.companyId.toString() !== req.params.companyId)) {
+      if (!isPlatformAdmin(user) && (!user.companyId || user.companyId.toString() !== req.params.companyId)) {
         throw new AuthorizationError('Access denied to this company', ErrorCode.AUTHZ_FORBIDDEN);
       }
       // Convert string ID to ObjectId
@@ -851,8 +875,13 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
       throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
-    // Check if user has permission to update team member permissions
-    if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
+    const actorPermissions = await PermissionService.resolve(String(user._id), user.companyId?.toString());
+    const canManagePermissions = isPlatformAdmin(user) ||
+      actorPermissions.includes('roles.assign') ||
+      actorPermissions.includes('users.manage') ||
+      actorPermissions.includes('*');
+
+    if (!canManagePermissions) {
       throw new AuthorizationError('You do not have permission to update team member permissions', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
@@ -883,40 +912,74 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
       throw new AuthorizationError('You cannot modify permissions of team members with higher privileges than your own role', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
-    // Find or create permissions document
-    let permission = await TeamPermission.findOne({ userId: targetUser._id });
-
-    if (!permission) {
-      permission = new TeamPermission({
-        userId: targetUser._id,
-        companyId: targetUser.companyId,
-      });
+    const { allowed, denied } = extractPermissionList(validatedData.permissions as any);
+    if (denied.length > 0) {
+      throw new ValidationError(
+        'RBAC V5 does not support explicit permission denials. Change the team role to restrict access instead.',
+        ErrorCode.VAL_INVALID_INPUT
+      );
     }
 
-    // Update permissions with the provided values
-    // We need to do a deep merge to preserve existing permissions that weren't specified
-    const updatePermissions = (source: any, target: any) => {
-      if (!source) return;
+    const membership = await Membership.findOne({
+      userId: targetUser._id,
+      companyId: user.companyId,
+      status: 'active'
+    });
 
-      Object.keys(source).forEach(key => {
-        if (typeof source[key] === 'object' && source[key] !== null) {
-          if (!target[key]) target[key] = {};
-          updatePermissions(source[key], target[key]);
-        } else if (source[key] !== undefined) {
-          target[key] = source[key];
-        }
+    if (!membership) {
+      throw new NotFoundError('Active membership not found for team member', ErrorCode.RES_NOT_FOUND);
+    }
+
+    const customRoleName = `custom:${user.companyId}:${targetUser._id}`;
+    let customRole = await Role.findOne({ name: customRoleName, scope: 'company' });
+
+    if (allowed.length === 0) {
+      if (customRole) {
+        const customRoleId = customRole._id as mongoose.Types.ObjectId;
+        membership.roles = membership.roles.filter(
+          (roleId: any) => roleId.toString() !== customRoleId.toString()
+        );
+        await membership.save();
+        await customRole.deleteOne();
+      }
+
+      await PermissionService.invalidate(String(targetUser._id), user.companyId?.toString());
+
+      sendSuccess(res, {
+        message: 'Custom permissions removed. Team member now inherits role defaults.',
+        userId: targetUser._id,
+        permissions: []
+      }, 'Team member permissions updated successfully');
+      return;
+    }
+
+    if (!customRole) {
+      customRole = await Role.create({
+        name: customRoleName,
+        scope: 'company',
+        permissions: allowed,
+        isSystem: false,
+        isDeprecated: false,
       });
-    };
+    } else {
+      customRole.permissions = allowed;
+      await customRole.save();
+    }
 
-    updatePermissions(validatedData.permissions, permission.permissions);
-    await permission.save();
+    const customRoleId = customRole._id as mongoose.Types.ObjectId;
+    if (!membership.roles.some((roleId: any) => roleId.toString() === customRoleId.toString())) {
+      membership.roles.push(customRoleId);
+      await membership.save();
+    }
+
+    await PermissionService.invalidate(String(targetUser._id), user.companyId?.toString());
 
     await createAuditLog(
       req.user._id,
       user.companyId,
       'update',
       'team_permission',
-      String(permission._id), // Convert _id to string for type safety
+      String(customRoleId),
       { message: `Team member permissions updated for ${targetUser.name}` },
       req
     );
@@ -924,7 +987,7 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
     sendSuccess(res, {
       message: 'Team member permissions updated successfully',
       userId: targetUser._id,
-      permissions: permission.permissions
+      permissions: allowed
     }, 'Team member permissions updated successfully');
   } catch (error) {
     logger.error('Error updating team member permissions:', error);
