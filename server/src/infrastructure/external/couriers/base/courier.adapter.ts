@@ -1,4 +1,5 @@
 // Base Courier Adapter Interface
+import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error.js';
 export interface CourierShipmentData {
     origin: {
         name: string;
@@ -208,11 +209,17 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
 
     // Optional methods can have default implementation that throws NotSupported
     async createWarehouse(data: any): Promise<any> {
-        throw new Error('Method not implemented.');
+        throw new CourierFeatureNotSupportedError(
+            this.constructor.name,
+            'createWarehouse'
+        );
     }
 
     async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }> {
-        throw new Error('Method not implemented.');
+        throw new CourierFeatureNotSupportedError(
+            this.constructor.name,
+            'requestReattempt'
+        );
     }
 
     /**

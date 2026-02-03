@@ -125,7 +125,7 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
                     "p-2.5 rounded-lg transition-colors border",
                     color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20" :
                         color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
-                            color === 'violet' ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20" :
+                            color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border-[var(--primary-blue)]/20" :
                                 "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20"
                 )}>
                     <Icon className="w-5 h-5" />
@@ -161,7 +161,7 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
                                 <stop offset="0%" stopColor={
                                     color === 'blue' ? 'var(--primary-blue)' :
                                         color === 'emerald' ? 'var(--success)' :
-                                            color === 'violet' ? '#8B5CF6' : 'var(--warning)'
+                                            color === 'violet' ? 'var(--primary-blue)' : 'var(--warning)'
                                 } stopOpacity={0.1} />
                                 <stop offset="100%" stopColor="transparent" stopOpacity={0} />
                             </linearGradient>
@@ -172,7 +172,7 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
                             stroke={
                                 color === 'blue' ? 'var(--primary-blue)' :
                                     color === 'emerald' ? 'var(--success)' :
-                                        color === 'violet' ? '#8B5CF6' : 'var(--warning)'
+                                        color === 'violet' ? 'var(--primary-blue)' : 'var(--warning)'
                             }
                             fill={`url(#gradient-${title})`}
                             strokeWidth={1.5}
@@ -454,10 +454,10 @@ export function DashboardClient() {
                                         "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-current opacity-80",
                                         item.color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20" :
                                             item.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
-                                                item.color === 'violet' ? "bg-violet-500/10 text-violet-500 border-violet-500/20" :
+                                                item.color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border-[var(--primary-blue)]/20" :
                                                     item.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20" :
                                                         item.color === 'rose' || item.color === 'red' ? "bg-[var(--error-bg)] text-[var(--error)] border-[var(--error)]/20" :
-                                                            "bg-slate-500/10 text-slate-500"
+                                                            "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
                                     )}>
                                         <item.icon className="w-5 h-5" />
                                     </div>
@@ -493,7 +493,7 @@ export function DashboardClient() {
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary-blue)]/10 blur-3xl rounded-full pointer-events-none" />
 
                         <div className="flex items-center gap-3 mb-6 relative z-10">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center shadow-lg shadow-[var(--primary-blue)]/30">
                                 <BrainCircuit className="w-6 h-6" />
                             </div>
                             <div>
@@ -570,10 +570,10 @@ export function DashboardClient() {
                         <div className="relative z-10">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                                    <Server className="w-4 h-4 text-emerald-500" />
+                                    <Server className="w-4 h-4 text-[var(--success)]" />
                                     System Status
                                 </h3>
-                                <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/20">
+                                <div className="px-2 py-0.5 rounded-full bg-[var(--success-bg)] text-[var(--success)] text-[10px] font-bold uppercase border border-[var(--success)]/20">
                                     Healthy
                                 </div>
                             </div>
@@ -582,33 +582,33 @@ export function DashboardClient() {
                                 <div>
                                     <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
                                         <span>API Latency</span>
-                                        <span className="text-emerald-500 font-medium">45ms</span>
+                                        <span className="text-[var(--success)] font-medium">45ms</span>
                                     </div>
                                     <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: "25%" }}
-                                            className="h-full bg-emerald-500"
+                                            className="h-full bg-[var(--success)]"
                                         />
                                     </div>
                                 </div>
                                 <div>
                                     <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
                                         <span>Error Rate</span>
-                                        <span className="text-emerald-500 font-medium">0.01%</span>
+                                        <span className="text-[var(--success)] font-medium">0.01%</span>
                                     </div>
                                     <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: "2%" }}
-                                            className="h-full bg-emerald-500"
+                                            className="h-full bg-[var(--success)]"
                                         />
                                     </div>
                                 </div>
                                 <div>
                                     <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
                                         <span>Database Load</span>
-                                        <span className="text-blue-500 font-medium">32%</span>
+                                        <span className="text-[var(--primary-blue)] font-medium">32%</span>
                                     </div>
                                     <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <motion.div

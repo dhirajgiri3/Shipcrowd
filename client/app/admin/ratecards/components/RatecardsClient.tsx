@@ -403,7 +403,7 @@ export function RatecardsClient() {
                                     </Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-2 mt-1 -mb-1">
-                                    {card.version && <Badge variant="outline" className="text-xs py-0 h-5 border-blue-200 text-blue-700"><Tag className="h-3 w-3 mr-1" /> {card.version}</Badge>}
+                                    {card.version && <Badge variant="outline" className="text-xs py-0 h-5 border-[var(--primary-blue)]/20 text-[var(--primary-blue)]"><Tag className="h-3 w-3 mr-1" /> {card.version}</Badge>}
                                     {card.fuelSurcharge ? <Badge variant="warning" className="text-xs py-0 h-5"><Zap className="h-3 w-3 mr-1" /> Fuel: {card.fuelSurcharge}%</Badge> : null}
                                     {card.minimumCall ? <Badge variant="secondary" className="text-xs py-0 h-5">Min: ₹{card.minimumCall}</Badge> : null}
                                     {card.isLocked && <Badge variant="destructive" className="text-xs py-0 h-5"><Lock className="h-3 w-3 mr-1" /> Locked</Badge>}
@@ -477,7 +477,7 @@ export function RatecardsClient() {
                                                 <Edit2 className="h-4 w-4" />
                                             </Button>
                                         </Link>
-                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={(e) => {
+                                        <Button variant="ghost" size="sm" className="text-[var(--error)] hover:text-[var(--error)] hover:bg-[var(--error-bg)]" onClick={(e) => {
                                             e.stopPropagation();
                                             handleDelete(card._id, card.name);
                                         }} disabled={isDeleting}>

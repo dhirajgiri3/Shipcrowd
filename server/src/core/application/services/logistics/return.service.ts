@@ -209,10 +209,10 @@ export default class ReturnService {
         // Get courier provider via Factory
         const courierProvider = (shipment as any).carrier || 'velocity';
 
-        const { CourierFactory } = await import('../../../../infrastructure/external/couriers/courier.factory.js');
+        const { CourierFactory } = await import('../courier/courier.factory.js');
         const courierAdapter = await CourierFactory.getProvider(
-            returnOrder.companyId.toString(),
-            courierProvider
+            courierProvider,
+            new mongoose.Types.ObjectId(returnOrder.companyId)
         );
 
         const pickupAddress = {

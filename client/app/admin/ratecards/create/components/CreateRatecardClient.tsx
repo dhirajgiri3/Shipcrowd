@@ -187,7 +187,7 @@ export function CreateRatecardClient() {
                     </Link>
                     <div>
                         <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                            <CreditCard className="h-6 w-6 text-[#2525FF]" />
+                            <CreditCard className="h-6 w-6 text-[var(--primary-blue)]" />
                             Create Rate Card
                         </h1>
                         <p className="text-[var(--text-muted)] text-sm mt-1">
@@ -205,7 +205,7 @@ export function CreateRatecardClient() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
-                        <Truck className="h-5 w-5 text-[#2525FF]" />
+                        <Truck className="h-5 w-5 text-[var(--primary-blue)]" />
                         Basic Configuration
                     </CardTitle>
                     <CardDescription>Select courier and service details</CardDescription>
@@ -216,7 +216,7 @@ export function CreateRatecardClient() {
                             <input
                                 type="checkbox"
                                 id="isGeneric"
-                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                                 checked={formData.isGeneric}
                                 onChange={(e) => {
                                     const isChecked = e.target.checked;
@@ -230,19 +230,19 @@ export function CreateRatecardClient() {
                                     if (isChecked) setSelectedCourier('');
                                 }}
                             />
-                            <label htmlFor="isGeneric" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                            <label htmlFor="isGeneric" className="text-sm font-medium text-[var(--text-primary)] select-none cursor-pointer">
                                 Generic Rate Card (Apply to all couriers)
                             </label>
                         </div>
 
                         {/* Courier Provider */}
                         <div className="space-y-2">
-                            <label className={`text-sm font-medium ${formData.isGeneric ? 'text-gray-400' : 'text-gray-700'}`}>Courier Provider *</label>
+                            <label className={`text-sm font-medium ${formData.isGeneric ? 'text-[var(--text-muted)]' : 'text-[var(--text-secondary)]'}`}>Courier Provider *</label>
                             <select
                                 value={formData.courierProviderId}
                                 onChange={(e) => handleInputChange('courierProviderId', e.target.value)}
                                 disabled={formData.isGeneric}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 disabled:opacity-50 disabled:bg-gray-100"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)] disabled:opacity-50 disabled:bg-[var(--bg-tertiary)]"
                             >
                                 <option value="">Select Courier</option>
                                 {couriers.map((c) => (
@@ -253,12 +253,12 @@ export function CreateRatecardClient() {
 
                         {/* Courier Service */}
                         <div className="space-y-2">
-                            <label className={`text-sm font-medium ${formData.isGeneric ? 'text-gray-400' : 'text-gray-700'}`}>Courier Service *</label>
+                            <label className={`text-sm font-medium ${formData.isGeneric ? 'text-[var(--text-muted)]' : 'text-[var(--text-secondary)]'}`}>Courier Service *</label>
                             <select
                                 value={formData.courierServiceId}
                                 onChange={(e) => handleInputChange('courierServiceId', e.target.value)}
                                 disabled={!selectedCourierData || formData.isGeneric}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)] disabled:opacity-50 disabled:bg-[var(--bg-tertiary)] disabled:cursor-not-allowed"
                             >
                                 <option value="">Select Service</option>
                                 {selectedCourierData?.services.map((s) => (
@@ -269,11 +269,11 @@ export function CreateRatecardClient() {
 
                         {/* Category */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Rate Card Category *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Rate Card Category *</label>
                             <select
                                 value={formData.rateCardCategory}
                                 onChange={(e) => handleInputChange('rateCardCategory', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)] capitalize"
                             >
                                 <option value="">Select Category</option>
                                 {categories.map((c) => (
@@ -284,11 +284,11 @@ export function CreateRatecardClient() {
 
                         {/* Shipment Type */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Shipment Type *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Shipment Type *</label>
                             <select
                                 value={formData.shipmentType}
                                 onChange={(e) => handleInputChange('shipmentType', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)] capitalize"
                             >
                                 {shipmentTypes.map((t) => (
                                     <option key={t} value={t} className="capitalize">{t}</option>
@@ -297,10 +297,10 @@ export function CreateRatecardClient() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-[var(--border-subtle)]">
                         {/* GST */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">GST % *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">GST % *</label>
                             <div className="relative">
                                 <Input
                                     type="number"
@@ -308,17 +308,17 @@ export function CreateRatecardClient() {
                                     onChange={(e) => handleInputChange('gst', e.target.value)}
                                     placeholder="18"
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">%</span>
                             </div>
                         </div>
 
                         {/* Minimum Fare Calculated On */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Min Fare Based On *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Min Fare Based On *</label>
                             <select
                                 value={formData.minimumFareCalculatedOn}
                                 onChange={(e) => handleInputChange('minimumFareCalculatedOn', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)]"
                             >
                                 <option value="freight">Freight</option>
                                 <option value="freight_overhead">Freight + Overhead</option>
@@ -327,9 +327,9 @@ export function CreateRatecardClient() {
 
                         {/* Minimum Fare */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Minimum Fare *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Minimum Fare *</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">₹</span>
                                 <Input
                                     type="number"
                                     value={formData.minimumFare}
@@ -342,11 +342,11 @@ export function CreateRatecardClient() {
 
                         {/* Status */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Status *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Status *</label>
                             <select
                                 value={formData.status}
                                 onChange={(e) => handleInputChange('status', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)] capitalize"
                             >
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
@@ -355,13 +355,13 @@ export function CreateRatecardClient() {
                     </div>
 
                     {/* Zone Mapping & Weight Constraints */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-[var(--border-subtle)]">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Zone B Mapping *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Zone B Mapping *</label>
                             <select
                                 value={formData.zoneBType}
                                 onChange={(e) => handleInputChange('zoneBType', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)] capitalize"
                             >
                                 {zoneMappings.map((z) => (
                                     <option key={z} value={z} className="capitalize">{z}</option>
@@ -370,11 +370,11 @@ export function CreateRatecardClient() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Weight Constraint?</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Weight Constraint?</label>
                             <select
                                 value={formData.isWeightConstraint ? 'yes' : 'no'}
                                 onChange={(e) => handleInputChange('isWeightConstraint', e.target.value === 'yes')}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
+                                className="flex h-10 w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary-blue)]"
                             >
                                 <option value="no">No</option>
                                 <option value="yes">Yes</option>
@@ -384,7 +384,7 @@ export function CreateRatecardClient() {
                         {formData.isWeightConstraint && (
                             <>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Min Weight (gm)</label>
+                                    <label className="text-sm font-medium text-[var(--text-secondary)]">Min Weight (gm)</label>
                                     <Input
                                         type="number"
                                         value={formData.minWeight}
@@ -402,7 +402,7 @@ export function CreateRatecardClient() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
-                        <IndianRupee className="h-5 w-5 text-[#2525FF]" />
+                        <IndianRupee className="h-5 w-5 text-[var(--primary-blue)]" />
                         Zone Pricing - Basic Slab
                     </CardTitle>
                     <CardDescription>Base price for the first weight unit</CardDescription>
@@ -410,7 +410,7 @@ export function CreateRatecardClient() {
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Weight (gm) *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Weight (gm) *</label>
                             <Input
                                 type="number"
                                 value={formData.basicWeight}
@@ -420,9 +420,9 @@ export function CreateRatecardClient() {
                         </div>
                         {['A', 'B', 'C', 'D', 'E'].map((zone) => (
                             <div key={zone} className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Zone {zone} *</label>
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">Zone {zone} *</label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm">₹</span>
                                     <Input
                                         type="number"
                                         value={(formData as any)[`basicZone${zone}`]}
@@ -441,7 +441,7 @@ export function CreateRatecardClient() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
-                        <Plus className="h-5 w-5 text-[#2525FF]" />
+                        <Plus className="h-5 w-5 text-[var(--primary-blue)]" />
                         Zone Pricing - Additional Slab
                     </CardTitle>
                     <CardDescription>Price for each additional weight unit</CardDescription>
@@ -449,7 +449,7 @@ export function CreateRatecardClient() {
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Weight (gm) *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">Weight (gm) *</label>
                             <Input
                                 type="number"
                                 value={formData.additionalWeight}
@@ -459,9 +459,9 @@ export function CreateRatecardClient() {
                         </div>
                         {['A', 'B', 'C', 'D', 'E'].map((zone) => (
                             <div key={zone} className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Zone {zone} *</label>
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">Zone {zone} *</label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm">₹</span>
                                     <Input
                                         type="number"
                                         value={(formData as any)[`additionalZone${zone}`]}
@@ -480,7 +480,7 @@ export function CreateRatecardClient() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
-                        <Package className="h-5 w-5 text-[#2525FF]" />
+                        <Package className="h-5 w-5 text-[var(--primary-blue)]" />
                         Overhead Charges
                     </CardTitle>
                     <CardDescription>COD and other additional charges</CardDescription>
@@ -488,7 +488,7 @@ export function CreateRatecardClient() {
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">COD Percentage *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">COD Percentage *</label>
                             <div className="relative">
                                 <Input
                                     type="number"
@@ -497,13 +497,13 @@ export function CreateRatecardClient() {
                                     placeholder="2.5"
                                     step="0.1"
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">%</span>
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">COD Minimum Charge *</label>
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">COD Minimum Charge *</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">₹</span>
                                 <Input
                                     type="number"
                                     value={formData.codMinimumCharge}
@@ -518,7 +518,7 @@ export function CreateRatecardClient() {
             </Card>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between pt-4 border-t border-[var(--border-default)]">
                 <Link href="/admin/ratecards">
                     <Button variant="outline">
                         <ArrowLeft className="h-4 w-4 mr-2" />

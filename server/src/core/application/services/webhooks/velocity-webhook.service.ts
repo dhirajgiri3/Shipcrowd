@@ -34,6 +34,10 @@ export class VelocityWebhookService implements WebhookEventHandler {
     const startTime = Date.now();
 
     try {
+      if (!payload.shipment_data) {
+        throw new Error('Missing shipment_data in payload');
+      }
+
       const { awb, order_id, status, status_code, current_location, description } = payload.shipment_data;
 
       // Idempotency: Check if we already processed this exact webhook
@@ -236,8 +240,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       return {
         success: false,
-        awb: payload.shipment_data.awb,
-        orderId: payload.shipment_data.order_id,
+        awb: payload.shipment_data?.awb || 'unknown',
+        orderId: payload.shipment_data?.order_id || 'unknown',
         statusUpdated: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date()
@@ -250,6 +254,9 @@ export class VelocityWebhookService implements WebhookEventHandler {
    */
   async handleShipmentCreated(payload: VelocityWebhookPayload): Promise<WebhookProcessingResult> {
     try {
+      if (!payload.shipment_data) {
+        throw new Error('Missing shipment_data in payload');
+      }
       const { awb, order_id, courier_name } = payload.shipment_data;
 
       logger.info('Processing Velocity shipment created webhook', {
@@ -297,8 +304,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       return {
         success: false,
-        awb: payload.shipment_data.awb,
-        orderId: payload.shipment_data.order_id,
+        awb: payload.shipment_data?.awb || 'unknown',
+        orderId: payload.shipment_data?.order_id || 'unknown',
         statusUpdated: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date()
@@ -311,6 +318,9 @@ export class VelocityWebhookService implements WebhookEventHandler {
    */
   async handleShipmentCancelled(payload: VelocityWebhookPayload): Promise<WebhookProcessingResult> {
     try {
+      if (!payload.shipment_data) {
+        throw new Error('Missing shipment_data in payload');
+      }
       const { awb, order_id } = payload.shipment_data;
 
       logger.info('Processing Velocity shipment cancelled webhook', {
@@ -365,8 +375,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       return {
         success: false,
-        awb: payload.shipment_data.awb,
-        orderId: payload.shipment_data.order_id,
+        awb: payload.shipment_data?.awb || 'unknown',
+        orderId: payload.shipment_data?.order_id || 'unknown',
         statusUpdated: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date()
@@ -382,6 +392,9 @@ export class VelocityWebhookService implements WebhookEventHandler {
     const startTime = Date.now();
 
     try {
+      if (!payload.shipment_data) {
+        throw new Error('Missing shipment_data in payload');
+      }
       const { awb, order_id, courier_name } = payload.shipment_data;
       const weightData = payload.weight_data;
 
@@ -499,8 +512,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       return {
         success: false,
-        awb: payload.shipment_data.awb,
-        orderId: payload.shipment_data.order_id,
+        awb: payload.shipment_data?.awb || 'unknown',
+        orderId: payload.shipment_data?.order_id || 'unknown',
         statusUpdated: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date()
@@ -518,6 +531,9 @@ export class VelocityWebhookService implements WebhookEventHandler {
     const startTime = Date.now();
 
     try {
+      if (!payload.shipment_data) {
+        throw new Error('Missing shipment_data in payload');
+      }
       const { awb, order_id, status, status_code, current_location, description } = payload.shipment_data;
 
       logger.info('Processing Velocity reverse/RTO shipment status update webhook', {
@@ -620,8 +636,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       return {
         success: false,
-        awb: payload.shipment_data.awb,
-        orderId: payload.shipment_data.order_id,
+        awb: payload.shipment_data?.awb || 'unknown',
+        orderId: payload.shipment_data?.order_id || 'unknown',
         statusUpdated: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date()
@@ -648,8 +664,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
         logger.warn('Unknown webhook event type', { eventType: payload.event_type });
         return {
           success: false,
-          awb: payload.shipment_data.awb,
-          orderId: payload.shipment_data.order_id,
+          awb: payload.shipment_data?.awb || 'unknown',
+          orderId: payload.shipment_data?.order_id || 'unknown',
           statusUpdated: false,
           error: `Unknown event type: ${payload.event_type}`,
           timestamp: new Date()

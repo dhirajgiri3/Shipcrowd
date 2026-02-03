@@ -10,7 +10,7 @@ import mongoose from 'mongoose';
 import { Shipment } from '../../../database/mongoose/models';
 import QueueManager from '../../../utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
-import { CourierFactory } from '../../../external/couriers/courier.factory';
+import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 
 interface LostShipmentJobData {
     type: 'detect_lost' | 'refresh_tracking';
@@ -198,8 +198,8 @@ export class LostShipmentDetectionJob {
 
             // Get courier provider
             const provider = await CourierFactory.getProvider(
-                shipment.companyId.toString(),
-                shipment.carrier || 'velocity-shipfast'
+                shipment.carrier || 'velocity-shipfast',
+                shipment.companyId as unknown as mongoose.Types.ObjectId
             );
 
             // Fetch latest tracking

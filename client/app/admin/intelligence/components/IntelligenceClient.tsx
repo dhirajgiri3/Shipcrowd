@@ -101,7 +101,7 @@ export function IntelligenceClient() {
                             {/* Background Glow */}
                             <div className={cn(
                                 "absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none",
-                                isCritical ? "bg-amber-500" : "bg-blue-500"
+                                isCritical ? "bg-[var(--warning)]" : "bg-[var(--primary-blue)]"
                             )} />
 
                             <div className="relative z-10 flex flex-col h-full">
@@ -285,11 +285,11 @@ export function IntelligenceClient() {
             <motion.div variants={itemVariants}>
                 <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-r from-[#0f172a] via-[#1e1b4b] to-[#172554] p-1">
                     <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
-                    <div className="absolute top-0 right-0 p-12 bg-blue-500/20 rounded-full blur-3xl" />
+                    <div className="absolute top-0 right-0 p-12 bg-[var(--primary-blue)]/20 rounded-full blur-3xl" />
 
                     <div className="relative bg-[var(--bg-primary)]/10 backdrop-blur-sm rounded-xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 h-full">
                         <div className="space-y-4 max-w-2xl">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold uppercase tracking-wider">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--primary-blue)]/10 text-[var(--primary-blue)] border border-[var(--primary-blue)]/20 text-xs font-semibold uppercase tracking-wider">
                                 <Target className="h-3.5 w-3.5" />
                                 <span>Smart Routing Engine</span>
                             </div>
@@ -302,7 +302,7 @@ export function IntelligenceClient() {
                             <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 hover:text-white backdrop-blur-md h-12 px-6">
                                 Configure Rules
                             </Button>
-                            <Button className="bg-blue-600 hover:bg-blue-500 text-white border-none h-12 px-6 shadow-xl shadow-blue-900/20">
+                            <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white border-none h-12 px-6 shadow-xl shadow-[var(--primary-blue)]/20">
                                 Enable Auto-Switch
                                 <ArrowUpRight className="ml-2 h-4 w-4" />
                             </Button>

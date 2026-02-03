@@ -42,11 +42,15 @@ export class WarehouseRTOHandler {
                 };
             }
 
-            // Update RTO event
-            rtoEvent.returnStatus = 'warehouse_rejected';
-            rtoEvent.qcStatus = 'rejected';
-            rtoEvent.qcCompletedAt = new Date();
-            rtoEvent.qcNotes = notes || `Rejected: ${reason}`;
+            // Update RTOEvent - schema uses nested qcResult
+            // warehouse_rejected is not in enum, use valid status 'qc_completed' but mark QC as failed
+            rtoEvent.returnStatus = 'qc_completed';
+            rtoEvent.qcResult = {
+                passed: false,
+                remarks: notes || `Rejected: ${reason}`,
+                inspectedBy: rejectedBy,
+                inspectedAt: new Date()
+            };
 
             if (!rtoEvent.metadata) {
                 rtoEvent.metadata = {};
@@ -149,7 +153,8 @@ export class WarehouseRTOHandler {
     static async getRejectionStats(companyId: string, startDate: Date, endDate: Date) {
         const rejections = await RTOEvent.find({
             companyId,
-            returnStatus: 'warehouse_rejected',
+            returnStatus: 'qc_completed',
+            'qcResult.passed': false,
             'metadata.rejectedAt': {
                 $gte: startDate.toISOString(),
                 $lte: endDate.toISOString()

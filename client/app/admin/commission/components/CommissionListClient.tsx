@@ -138,7 +138,7 @@ export function CommissionListClient() {
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                className="text-[var(--error)] border-[var(--error)]/20 hover:bg-[var(--error-bg)]"
                                 onClick={() => setIsRejectDialogOpen(true)}
                                 disabled={isRejecting}
                             >
@@ -164,10 +164,10 @@ export function CommissionListClient() {
                             <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
                         </div>
                     ) : isError ? (
-                        <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-red-50">
-                            <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-                            <h3 className="text-lg font-semibold text-red-900">Failed to load transactions</h3>
-                            <p className="text-red-600 mt-2">{error?.message || "Something went wrong"}</p>
+                        <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-[var(--error-bg)]">
+                            <AlertCircle className="h-12 w-12 text-[var(--error)] mb-4" />
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)]">Failed to load transactions</h3>
+                            <p className="text-[var(--error)] mt-2">{error?.message || "Something went wrong"}</p>
                         </div>
                     ) : transactions.length === 0 ? (
                         <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-8">
@@ -301,7 +301,7 @@ export function CommissionListClient() {
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsRejectDialogOpen(false)}>Cancel</Button>
                         <Button
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            className="bg-[var(--error)] hover:bg-[var(--error-hover)] text-white"
                             onClick={handleBulkReject}
                             disabled={!rejectionReason || isRejecting}
                         >

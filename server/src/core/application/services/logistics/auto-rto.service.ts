@@ -40,7 +40,7 @@ export class AutoRTOService {
             const threshold = (shipment.companyId as any)?.settings?.rto?.autoRTOThreshold || this.DEFAULT_NDR_THRESHOLD;
 
             // Count NDR attempts
-            const ndrAttemptCount = shipment.ndrDetails?.attempts?.length || 0;
+            const ndrAttemptCount = shipment.ndrDetails?.ndrAttempts || 0;
 
             if (ndrAttemptCount < threshold) {
                 return { shouldRTO: false };
@@ -54,18 +54,15 @@ export class AutoRTOService {
             });
 
             // Dynamic import to avoid circular deps
-            const { RTOService } = await import('../rto/rto.service.js');
+            const RTOService = (await import('../rto/rto.service.js') as any).default;
 
-            const rtoResult = await RTOService.initiateRTO({
+            const rtoResult = await RTOService.triggerRTO(
                 shipmentId,
-                reason: 'auto_rto_ndr_threshold',
-                requestedBy: 'system',
-                metadata: {
-                    ndrAttempts: ndrAttemptCount,
-                    threshold,
-                    triggeredAt: new Date().toISOString()
-                }
-            });
+                'ndr_unresolved',
+                undefined,
+                'auto',
+                'system'
+            );
 
             return {
                 shouldRTO: true,
@@ -95,7 +92,7 @@ export class AutoRTOService {
 
         return {
             total: shipments.length,
-            avgNDRAttempts: shipments.reduce((sum, s) => sum + (s.ndrDetails?.attempts?.length || 0), 0) / (shipments.length || 1)
+            avgNDRAttempts: shipments.reduce((sum, s) => sum + (s.ndrDetails?.ndrAttempts || 0), 0) / (shipments.length || 1)
         };
     }
 }

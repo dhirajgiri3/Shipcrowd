@@ -416,10 +416,10 @@ export default class RTOService {
             // This decouples the service from specific implementations (Velocity, etc.)
             const courierProvider = fullShipment.carrier || 'velocity'; // Default or logic fallback
 
-            const { CourierFactory } = await import('../../../../infrastructure/external/couriers/courier.factory.js');
+            const { CourierFactory } = await import('../courier/courier.factory.js');
             const courierAdapter = await CourierFactory.getProvider(
-                shipment.companyId.toString(),
-                courierProvider
+                courierProvider,
+                new mongoose.Types.ObjectId(shipment.companyId)
             );
 
             // Prepare pickup address (customer location)

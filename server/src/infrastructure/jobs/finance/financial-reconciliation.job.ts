@@ -44,7 +44,7 @@ export class FinancialReconciliationJob {
     /**
      * Process job
      */
-    private static async processJob(job: Job<ReconciliationJobData>): Promise<any> {
+    public static async processJob(job: Job<ReconciliationJobData>): Promise<any> {
         const { type, date = new Date() } = job.data;
 
         logger.info('Processing financial reconciliation job', {

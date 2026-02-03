@@ -881,7 +881,7 @@ export default class CODRemittanceService {
                 });
 
                 // Send email alert to finance team
-                const EmailService = (await import('../communication/email.service')).default;
+                const EmailService = (await import('../communication/email.service.js')).default;
                 if ((EmailService as any).sendOperationalAlert) {
                     await (EmailService as any).sendOperationalAlert({
                         to: process.env.FINANCE_ALERT_EMAIL || 'finance@shipcrowd.com',
