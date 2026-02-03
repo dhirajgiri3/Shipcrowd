@@ -21,7 +21,7 @@ import { Package, Wallet, AlertTriangle, TrendingUp, TrendingDown, Flame } from 
 import { motion } from 'framer-motion';
 import { useIsMobile } from '../../../hooks/ux';
 import { trackKPIClick } from '@/src/lib/analytics/events';
-import { DataSourceBadge } from '@/src/components/ui/DataSourceBadge';
+
 
 // ============================================================================
 // Sparkline Component (Lightweight SVG)
@@ -185,7 +185,7 @@ interface PerformanceBarProps {
   // Data freshness
   lastUpdated: string; // ISO 8601
   freshness?: 'real_time' | 'cached_60s' | 'stale_5m' | 'stale_15m';
-  isUsingMock?: boolean; // Show mock data badge in dev
+
 
   // Click handlers (optional - defaults to analytics tracking)
   onRevenueClick?: () => void;
@@ -209,7 +209,7 @@ export function PerformanceBar({
   lowBalanceThreshold = 1000,
   lastUpdated,
   freshness = 'cached_60s',
-  isUsingMock = false,
+
   onRevenueClick,
   onProfitClick,
   onOrdersClick,
@@ -244,7 +244,7 @@ export function PerformanceBar({
       >
         {/* Data Freshness (Top) */}
         <div className="flex justify-between items-center">
-          <DataSourceBadge isUsingMock={isUsingMock} lastUpdated={lastUpdated} />
+
           <FreshnessIndicator lastUpdated={lastUpdated} freshness={freshness} />
         </div>
 
@@ -406,7 +406,7 @@ export function PerformanceBar({
           <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wide">
             Today's Performance
           </h3>
-          <DataSourceBadge isUsingMock={isUsingMock} lastUpdated={lastUpdated} />
+
         </div>
         <FreshnessIndicator lastUpdated={lastUpdated} freshness={freshness} />
       </div>

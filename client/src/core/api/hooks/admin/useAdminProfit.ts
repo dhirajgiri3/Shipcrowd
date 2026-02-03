@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { profitApi, ProfitFilters } from '../../clients/profitApi';
+import { profitApi, ProfitFilters } from '../../clients/finance/profitApi';
 import { queryKeys } from '../../config/query-keys';
 import { QUERY_CONFIG } from '../../config/query-client';
 import { RETRY_CONFIG } from '../../config/cache.config';

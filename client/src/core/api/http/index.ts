@@ -10,6 +10,8 @@ import {
     resetRefreshAttempt,
     addToFailedQueue,
     processQueue,
+    detectGhostSession,
+    hasRefreshTokenCookie,
 } from './auth';
 import { ERROR_MESSAGES } from '../../error/messages';
 
@@ -151,6 +153,39 @@ const createApiClient = (): AxiosInstance => {
                 !isUrlPath(originalRequest.url, '/auth/refresh') &&
                 !isUrlPath(originalRequest.url, '/auth/login')
             ) {
+                // ✅ FIX: Check for "Ghost Session" - refresh token exists but no access token
+                // This prevents unnecessary refresh attempts when cookies are stale
+                const sessionState = detectGhostSession();
+                if (sessionState === 'no_session') {
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('[API] No session cookies found, skipping refresh');
+                    }
+                    resetAuthState();
+                    if (typeof window !== 'undefined') {
+                        const currentPath = window.location.pathname;
+                        const { shouldNotRedirectOnAuthFailure } = await import('@/src/config/routes');
+                        if (!shouldNotRedirectOnAuthFailure(currentPath)) {
+                            window.location.href = '/login?session_expired=true';
+                        }
+                    }
+                    return Promise.reject(normalizeError(error));
+                }
+
+                // Check if refresh token cookie exists before attempting refresh
+                if (!hasRefreshTokenCookie()) {
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('[API] No refresh token cookie, cannot refresh');
+                    }
+                    resetAuthState();
+                    if (typeof window !== 'undefined') {
+                        const currentPath = window.location.pathname;
+                        const { shouldNotRedirectOnAuthFailure } = await import('@/src/config/routes');
+                        if (!shouldNotRedirectOnAuthFailure(currentPath)) {
+                            window.location.href = '/login?session_expired=true';
+                        }
+                    }
+                    return Promise.reject(normalizeError(error));
+                }
                 // ✅ Fix #7: Check for terminal error codes that shouldn't trigger refresh
                 const responseData = error.response?.data as any;
                 const terminalCodes = ['SESSION_EXPIRED', 'SESSION_TIMEOUT', 'REFRESH_TOKEN_REQUIRED'];
@@ -446,4 +481,4 @@ export const isApiEnabled = (): boolean => {
 };
 
 // Re-export auth utilities
-export { resetAuthState, isRefreshBlocked, prefetchCSRFToken, clearCSRFToken } from './auth';
+export { resetAuthState, isRefreshBlocked, prefetchCSRFToken, clearCSRFToken, detectGhostSession, hasRefreshTokenCookie, hasAccessTokenCookie } from './auth';

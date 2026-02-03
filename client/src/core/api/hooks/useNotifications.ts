@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notificationsApi, NotificationFilters } from '../clients/notificationsApi';
+import { notificationsApi, NotificationFilters } from '@/src/core/api/clients/general/notificationsApi';
 import { queryKeys } from '../config/query-keys';
 import { RETRY_CONFIG } from '../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';

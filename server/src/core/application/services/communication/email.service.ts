@@ -54,6 +54,8 @@ if (process.env.SENDGRID_API_KEY && EMAIL_SERVICE === 'sendgrid') {
   }
 } else if (EMAIL_SERVICE === 'smtp') {
   logger.info('Using SMTP email service');
+} else if (EMAIL_SERVICE === 'console' || EMAIL_SERVICE === 'log') {
+  logger.info('Using CONSOLE (Mock) email service for development');
 } else {
   logger.warn('No email service configured properly');
 }
@@ -226,6 +228,13 @@ export const sendEmail = async (
 
     // Generate plain text from HTML if not provided
     const plainText = text || html.replace(/<[^>]*>/g, '');
+
+    if (EMAIL_SERVICE === 'console' || EMAIL_SERVICE === 'log') {
+      logger.info(`[EMAIL MOCK] Subject: ${subject}`);
+      logger.info(`[EMAIL MOCK] To: ${recipients.join(', ')}`);
+      logger.info(`[EMAIL MOCK] Content: ${plainText.substring(0, 100)}...`);
+      return true;
+    }
 
     if (EMAIL_SERVICE === 'zeptomail' && ZEPTOMAIL_API_KEY) {
       // Use ZeptoMail API

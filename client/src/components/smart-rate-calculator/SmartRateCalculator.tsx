@@ -23,15 +23,14 @@ import {
     Truck
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { useToast } from '@/src/components/ui/feedback/Toast';
 import {
     useSmartRateCalculator,
     getMedalIcon,
     getMedalColor,
-    getScoreColor,
-    type SmartRateInput,
-    type CourierRateOption,
+    getScoreColor
 } from '@/src/core/api/hooks/logistics/useSmartRateCalculator';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { SmartRateInput, CourierRateOption, SmartRateResponse } from '@/src/core/api/clients/shipping/ratesApi';
 
 export function SmartRateCalculator() {
     const { addToast } = useToast();

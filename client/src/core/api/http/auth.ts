@@ -128,6 +128,7 @@ export const processQueue = (error: any, token: string | null = null) => {
 
 /**
  * Reset all auth state (circuit breaker, refresh flags)
+ * ✅ CRITICAL FIX: Also clear cookies to prevent stale token issues
  */
 export const resetAuthState = () => {
     circuitBreakerBlocked = false;
@@ -135,6 +136,25 @@ export const resetAuthState = () => {
     refreshAttemptCount = 0;
     isRefreshing = false;
     failedQueue = [];
+
+    // ✅ Clear cookies on client-side to prevent "Ghost ID" issue
+    // where stale cookies persist after session invalidation
+    if (typeof document !== 'undefined') {
+        // Clear all auth cookies by setting them to expire immediately
+        const cookiesToClear = ['accessToken', 'refreshToken', '__Secure-accessToken', '__Secure-refreshToken'];
+        const domains = ['', 'localhost', window.location.hostname];
+
+        cookiesToClear.forEach(cookieName => {
+            domains.forEach(domain => {
+                const domainPart = domain ? `; domain=${domain}` : '';
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${domainPart}`;
+            });
+        });
+
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[Auth] Cleared stale auth cookies');
+        }
+    }
 };
 
 /**
@@ -199,4 +219,44 @@ export const resetRefreshAttempt = () => {
  */
 export const addToFailedQueue = (resolve: (value?: unknown) => void, reject: (reason?: any) => void) => {
     failedQueue.push({ resolve, reject });
+};
+
+/**
+ * Check if refresh token cookie exists
+ * ✅ Helps detect "Ghost ID" scenario where cookies are stale/missing
+ */
+export const hasRefreshTokenCookie = (): boolean => {
+    if (typeof document === 'undefined') return false;
+
+    const cookies = document.cookie.split(';');
+    return cookies.some(cookie => {
+        const name = cookie.trim().split('=')[0];
+        return name === 'refreshToken' || name === '__Secure-refreshToken';
+    });
+};
+
+/**
+ * Check if access token cookie exists
+ */
+export const hasAccessTokenCookie = (): boolean => {
+    if (typeof document === 'undefined') return false;
+
+    const cookies = document.cookie.split(';');
+    return cookies.some(cookie => {
+        const name = cookie.trim().split('=')[0];
+        return name === 'accessToken' || name === '__Secure-accessToken';
+    });
+};
+
+/**
+ * Detect "Ghost ID" scenario: refresh token exists but access token is missing
+ * This indicates a stale session that needs refresh or re-login
+ */
+export const detectGhostSession = (): 'valid' | 'ghost' | 'no_session' => {
+    const hasRefresh = hasRefreshTokenCookie();
+    const hasAccess = hasAccessTokenCookie();
+
+    if (!hasRefresh && !hasAccess) return 'no_session';
+    if (hasRefresh && !hasAccess) return 'ghost';
+    return 'valid';
 };

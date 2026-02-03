@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { sellerHealthApi, HealthFilters } from '../../clients/sellerHealthApi';
+import { sellerHealthApi, HealthFilters } from '../../clients/analytics/sellerHealthApi';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { ApiError } from '../../http';

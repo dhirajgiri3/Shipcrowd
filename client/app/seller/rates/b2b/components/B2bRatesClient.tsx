@@ -25,7 +25,7 @@ import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
 import { TruckLoader } from '@/src/components/ui';
 import { useCalculateRates } from '@/src/core/api/hooks/seller/useSellerRates';
-import { RateCalculationPayload, CourierRate } from '@/src/core/api/clients/ratesApi';
+import { RateCalculationPayload, CourierRate } from '@/src/core/api/clients/shipping/ratesApi';
 
 export function B2bRatesClient() {
     const [fromPincode, setFromPincode] = useState('');

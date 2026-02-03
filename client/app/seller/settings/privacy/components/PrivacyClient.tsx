@@ -14,7 +14,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Download, Bell, FileText, Clock, Check, X } from 'lucide-react';
 import { Loader } from '@/src/components/ui';
-import { consentApi, type ConsentMap, type ConsentHistoryItem } from '@/src/core/api/clients/consentApi';
+import { consentApi, type ConsentMap, type ConsentHistoryItem } from '@/src/core/api/clients/auth/consentApi';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import Link from 'next/link';
 

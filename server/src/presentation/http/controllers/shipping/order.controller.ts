@@ -84,7 +84,14 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
 
         const filter: Record<string, any> = { companyId: auth.companyId, isDeleted: false };
 
-        if (req.query.status) filter.currentStatus = req.query.status;
+        if (req.query.status) {
+            const statuses = (req.query.status as string).split(',');
+            if (statuses.length > 1) {
+                filter.currentStatus = { $in: statuses };
+            } else {
+                filter.currentStatus = req.query.status;
+            }
+        }
         if (req.query.phone) filter['customerInfo.phone'] = { $regex: req.query.phone, $options: 'i' };
         if (req.query.warehouse) filter.warehouseId = new mongoose.Types.ObjectId(req.query.warehouse as string);
 

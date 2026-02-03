@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/features/auth';
-import { authApi } from '@/src/core/api/clients/authApi';
+import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { Loader } from '@/src/components/ui';
 
 function OAuthCallbackContent() {

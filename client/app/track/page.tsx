@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, X, History, Box } from 'lucide-react';
-import { shipmentApi, NormalizedTrackingData } from '@/src/core/api/clients/shipmentApi';
+import { shipmentApi, NormalizedTrackingData } from '@/src/core/api/clients/shipping/shipmentApi';
 import confetti from 'canvas-confetti';
 import { useSearchParams, useRouter } from 'next/navigation';
 

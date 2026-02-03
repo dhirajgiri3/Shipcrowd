@@ -5,7 +5,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { analyticsApi, DateRange } from '../../../clients/analyticsApi'; // Adjust path
+import { analyticsApi, DateRange } from '../../../clients/analytics/analyticsApi'; // Adjust path
 import { queryKeys } from '../../../config/query-keys'; // Adjust path
 import { QUERY_CONFIG } from '../../../config/query-client'; // Adjust path
 import { RETRY_CONFIG } from '../../../config/cache.config'; // Adjust path

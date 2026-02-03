@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { companyApi, Company, CreateCompanyData, InviteOwnerData } from '@/src/core/api/clients/companyApi';
+import { companyApi, Company, CreateCompanyData, InviteOwnerData, CompanyListResponse } from '@/src/core/api/clients/general/companyApi';
 import { queryKeys } from '@/src/core/api/config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '@/src/core/api/config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
@@ -15,13 +15,16 @@ export interface CompanyListParams {
     limit?: number;
     search?: string;
     status?: string;
+    kycStatus?: string; // Added
+    sortBy?: string; // Added
+    sortOrder?: 'asc' | 'desc'; // Added
 }
 
 /**
  * Get all companies with pagination and filtering
  */
 export const useAdminCompanies = (params: CompanyListParams = {}) => {
-    return useQuery({
+    return useQuery<CompanyListResponse, ApiError>({
         queryKey: queryKeys.admin.companies.list(params),
         queryFn: async () => await companyApi.getAllCompanies(params),
         ...CACHE_TIMES.MEDIUM,
@@ -85,6 +88,8 @@ export const useUpdateCompanyStatus = () => {
         },
     });
 };
+
+export const useAdminCompanyAction = useUpdateCompanyStatus;
 
 /**
  * Invite owner to company

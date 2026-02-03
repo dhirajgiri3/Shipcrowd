@@ -21,7 +21,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
-import { orderApi } from '@/src/core/api/clients/orderApi';
+import { orderApi } from '@/src/core/api/clients/orders/orderApi';
 import { useBulkOrderImport } from '@/src/core/api/hooks/orders/useBulkOrderImport';
 
 interface UploadedOrder {

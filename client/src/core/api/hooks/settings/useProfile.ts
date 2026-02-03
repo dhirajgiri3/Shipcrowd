@@ -26,27 +26,8 @@ export interface UpdateProfilePayload {
     avatar?: string;
 }
 
-// Company interfaces
-export interface Company {
-    _id: string;
-    name: string;
-    kycStatus?: 'pending' | 'verified' | 'rejected';
-    address: {
-        line1: string;
-        line2?: string;
-        city: string;
-        state: string;
-        country: string;
-        postalCode: string;
-    };
-    billingInfo?: {
-        gstin?: string;
-        pan?: string;
-        bankName?: string;
-        accountNumber?: string;
-        ifscCode?: string;
-    };
-}
+import { Company } from '../../clients/general/companyApi';
+export type { Company };
 
 export interface UpdateCompanyPayload {
     name?: string;

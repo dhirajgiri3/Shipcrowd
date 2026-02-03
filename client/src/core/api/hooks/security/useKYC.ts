@@ -5,40 +5,8 @@ import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 // KYC Types
-export interface KYCDocument {
-    _id: string;
-    userId: string;
-    companyId: string;
-    status: 'pending' | 'verified' | 'rejected';
-    documents: {
-        pan?: {
-            number: string;
-            image: string;
-            verified: boolean;
-        };
-        aadhaar?: {
-            number: string;
-            frontImage: string;
-            backImage: string;
-            verified: boolean;
-        };
-        gstin?: {
-            number: string;
-            verified: boolean;
-        };
-        bankAccount?: {
-            accountNumber: string;
-            ifscCode: string;
-            accountHolderName: string;
-            bankName: string;
-            proofImage?: string;
-            verified: boolean;
-        };
-    };
-    rejectionReason?: string;
-    createdAt: string;
-    updatedAt: string;
-}
+import { KYCDocument } from '../../clients/auth/kycApi';
+export type { KYCDocument };
 
 export interface KYCFilters {
     status?: 'pending' | 'verified' | 'rejected';

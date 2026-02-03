@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useBillingPage } from '@/src/core/api/hooks/admin/billing/useBilling';
-import type { BillingTransaction } from '@/src/core/api/clients/billingApi';
+import type { BillingTransaction } from '@/src/core/api/clients/finance/billingApi';
 
 export function BillingClient() {
     const {

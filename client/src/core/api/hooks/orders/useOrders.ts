@@ -5,7 +5,7 @@ import {
     UseQueryOptions,
     UseMutationOptions
 } from '@tanstack/react-query';
-import { orderApi } from '../../clients/orderApi';
+import { orderApi } from '../../clients/orders/orderApi';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';

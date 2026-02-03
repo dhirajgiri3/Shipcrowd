@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/src/features/auth';
-import { authApi } from '@/src/core/api/clients/authApi';
+import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { Button, Input, Card } from '@/src/components/ui';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { Shield, Lock, Smartphone, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';

@@ -446,22 +446,30 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     const expiresAt = new Date();
     expiresAt.setTime(expiresAt.getTime() + cookieMaxAge);
 
-    // Create a new session
+    // Create a new session in database for token refresh
     await createSession(typedUser._id, refreshToken, req, expiresAt);
 
     // Cookie name with secure prefix in production
     const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
     const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
-    // ✅ CRITICAL FIX: Explicitly clear legacy cookies with 'localhost' domain
-    // This prevents conflicts where browsers allow duplicate cookies (one with domain, one without)
+    // ✅ CRITICAL FIX: Clear existing cookies BEFORE setting new ones
+    // This ensures clean slate - no duplicate or stale cookies
+    const clearOptions = getAuthCookieOptions(0);
+    res.clearCookie(refreshCookieName, clearOptions);
+    res.clearCookie(accessCookieName, clearOptions);
+
+    // Also clear legacy cookies with 'localhost' domain (if any exist from old sessions)
     if (process.env.NODE_ENV === 'development') {
       res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
       res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
     }
 
+    // ✅ Set fresh cookies atomically
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(cookieMaxAge));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
+
+    logger.info(`✅ Login cookies set for user ${typedUser._id}: refresh=${cookieMaxAge / (24 * 60 * 60 * 1000)}d, access=15min`);
 
     // Determine next step for frontend routing
     let nextStep: string;
@@ -531,9 +539,25 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       expiresAt: { $gt: new Date() }
     });
 
+    logger.debug(`Token refresh: Found ${activeSessions.length} active sessions for user ${typedUser._id}`);
+
+    // Also check if there are ANY sessions (including revoked/expired) for debugging
+    const allSessions = await Session.find({ userId: typedUser._id });
+    logger.debug(`Token refresh: Total sessions (including revoked/expired) for user ${typedUser._id}: ${allSessions.length}`);
+
+    if (allSessions.length > 0) {
+      allSessions.forEach((s, i) => {
+        logger.debug(`  Session ${i + 1}: isRevoked=${s.isRevoked}, expiresAt=${s.expiresAt}, lastActive=${s.lastActive}`);
+      });
+    }
+
     let updatedSession: ISession | null = null;
     for (const session of activeSessions) {
+      logger.debug(`Token refresh: Comparing with session ${session._id}`);
+      logger.debug(`  - Stored hash (first 20 chars): ${session.refreshToken.substring(0, 20)}...`);
+      logger.debug(`  - Incoming token (first 20 chars): ${token.substring(0, 20)}...`);
       const isMatch = await session.compareRefreshToken(token);
+      logger.debug(`  - Match result: ${isMatch}`);
       if (isMatch) {
         updatedSession = session;
         break;
@@ -541,6 +565,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     }
 
     if (!updatedSession) {
+      logger.warn(`Token refresh failed: No matching session for user ${typedUser._id}`);
       throw new AuthenticationError(
         'Your session has expired. Please log in again to access your account.',
         ErrorCode.AUTH_TOKEN_EXPIRED
@@ -601,14 +626,24 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     logger.debug(`Setting refresh cookie: maxAge=${remainingTimeMs}ms (${remainingTimeDays}d) for user ${typedUser._id}`);
     logger.debug(`Setting access cookie: maxAge=${15 * 60 * 1000}ms (15min) for user ${typedUser._id}`);
 
-    // ✅ CRITICAL FIX: Explicitly clear legacy cookies with 'localhost' domain
+    // ✅ CRITICAL FIX: Clear existing cookies BEFORE setting new ones
+    // This ensures the new cookies replace old ones atomically
+    const clearOptions = getAuthCookieOptions(0);
+    res.clearCookie(refreshCookieName, clearOptions);
+    res.clearCookie(accessCookieName, clearOptions);
+
+    // Also clear legacy cookies with 'localhost' domain (if any exist from old sessions)
     if (process.env.NODE_ENV === 'development') {
       res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
       res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
     }
 
+    // ✅ CRITICAL: Set both cookies in the same response to ensure atomic update
     res.cookie(refreshCookieName, newRefreshToken, getAuthCookieOptions(remainingTimeMs));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
+
+    // ✅ DEBUG: Log successful cookie setting
+    logger.info(`✅ Cookies set for user ${typedUser._id}: refresh=${remainingTimeDays}d, access=15min`);
 
     await createAuditLog(
       typedUser._id.toString(),
@@ -1172,13 +1207,19 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiry
 
-    // Create session
-    await createSession(
+    // Create session in database for token refresh
+    const newSession = await createSession(
       user._id.toString(),
       refreshToken,
       req,
       expiresAt
     );
+
+    logger.info(`Google OAuth: Session created for user ${user._id}`, {
+      sessionId: newSession._id,
+      expiresAt,
+      tokenLength: refreshToken.length,
+    });
 
     // Audit log
     await createAuditLog(
@@ -1201,12 +1242,12 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     // Redirect to frontend without tokens in URL
     // Determine redirect URL based on user state
     const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-    let redirectUrl = `${baseUrl}/seller/dashboard`;
+    let redirectUrl = `${baseUrl}/seller`;
 
     if (!user.companyId && user.role !== 'admin' && user.role !== 'super_admin') {
       redirectUrl = `${baseUrl}/onboarding`;
     } else if (user.role === 'admin' || user.role === 'super_admin') {
-      redirectUrl = `${baseUrl}/admin/dashboard`;
+      redirectUrl = `${baseUrl}/admin`;
     }
 
     res.redirect(redirectUrl);
@@ -1821,6 +1862,10 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
  * Get CSRF Token
  * @route GET /auth/csrf-token
  * @access Public (session created automatically if not exists)
+ *
+ * ✅ CRITICAL FIX: Must use the same session ID that csrfProtection will use
+ * If user has valid accessToken cookie, extract userId from it to use as sessionId
+ * This ensures token generation and validation use the same identifier
  */
 export const getCSRFToken = async (
   req: Request,
@@ -1828,17 +1873,31 @@ export const getCSRFToken = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Get session ID from authenticated user or generate one
-    // For authenticated users: use user ID
-    // For unauthenticated users: use a temporary session identifier
-    let sessionId = (req as any).user?._id;
+    let sessionId: string | undefined;
 
+    // ✅ Try to extract user ID from accessToken cookie (if present)
+    // This ensures CSRF token is generated with the same ID that csrfProtection middleware will use
+    const accessToken = req.cookies?.accessToken;
+
+    if (accessToken) {
+      try {
+        const { verifyAccessToken } = await import('../../../../shared/helpers/jwt.js');
+        const payload = await verifyAccessToken(accessToken, false);
+        sessionId = payload.userId;
+        logger.debug('CSRF token: Using authenticated user ID', { sessionId });
+      } catch (tokenError) {
+        // Token is invalid/expired - fall back to anonymous session
+        logger.debug('CSRF token: Access token invalid, using anonymous session');
+      }
+    }
+
+    // Fallback: For unauthenticated users, create a temporary session ID
+    // based on IP + User-Agent for basic tracking
     if (!sessionId) {
-      // For unauthenticated users, create a temporary session ID
-      // This can be based on IP + User-Agent for basic tracking
-      const crypto = await import('crypto');
+      const cryptoModule = await import('crypto');
       const identifier = `${req.ip || 'unknown'}-${req.headers['user-agent'] || 'unknown'}`;
-      sessionId = crypto.createHash('sha256').update(identifier).digest('hex');
+      sessionId = cryptoModule.createHash('sha256').update(identifier).digest('hex');
+      logger.debug('CSRF token: Using anonymous session', { sessionId: sessionId.substring(0, 10) + '...' });
     }
 
     const csrfToken = await generateCSRFToken(sessionId);
@@ -1867,6 +1926,7 @@ const authController = {
   resendVerificationEmail,
   checkPasswordStrength,
   getMe,
+  googleCallback,
   setPassword,
   changePassword,
   changeEmail,

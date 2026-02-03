@@ -42,9 +42,9 @@ import {
 // Real API Hooks
 import { useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { useWalletBalance } from '@/src/core/api/hooks/finance/useWallet';
-import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 import { useCODStats } from '@/src/core/api/hooks/finance/useCOD';
 import { useOrderTrends } from '@/src/core/api/hooks/analytics/useOrderTrends';
+import { useUrgentActions } from '@/src/core/api/hooks/dashboard/useUrgentActions';
 import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, transformCashFlowToComponent } from '@/src/core/api/hooks/finance'; // Phase 3: New APIs
 import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics'; // Phase 4: RTO Analytics
 import { useProfitabilityAnalytics } from '@/src/core/api/hooks/analytics/useProfitabilityAnalytics'; // Phase 4: Profitability Analytics
@@ -234,10 +234,7 @@ export function DashboardClient() {
     const { data: codStatsData, isLoading: codStatsLoading, refetch: refetchCOD } = useCODStats();
 
     // Orders List (for urgent actions - pending pickups, RTO)
-    const { data: ordersListData, isLoading: ordersListLoading, refetch: refetchOrders } = useOrdersList({
-        limit: 100,
-        status: 'all'
-    });
+    const { pendingPickupCount, rtoCount, ndrActionRequiredCount, isLoading: urgentActionsLoading } = useUrgentActions();
 
     // Phase 3: COD Timeline & Cash Flow Forecast APIs
     const { data: codTimelineData, isLoading: codTimelineLoading, refetch: refetchTimeline } = useCODTimeline();
@@ -289,32 +286,42 @@ export function DashboardClient() {
     // 1. Urgent Actions Logic - Use real API data when available
 
     // Filter real orders by status or fall back to mock
-    const pendingPickups = ordersListData?.data?.filter(order =>
-        order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
-    ) || [];
+    // const pendingPickups = ordersListData?.data?.filter(order =>
+    //     order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
+    // ) || [];
 
-    const rtoOrders = ordersListData?.data?.filter(order =>
-        order.currentStatus?.toLowerCase().includes('rto')
-    ) || [];
+    // const rtoOrders = ordersListData?.data?.filter(order =>
+    //     order.currentStatus?.toLowerCase().includes('rto')
+    // ) || [];
 
     // Determine urgent actions based on REAL data
     const urgentActions = [
-        ...(pendingPickups.length > 0 ? [{
+        ...(pendingPickupCount > 0 ? [{
             id: 'pickup-1',
             type: 'pickup' as const,
             title: 'Pickups Pending',
-            description: `${pendingPickups.length} orders waiting for courier pickup`,
-            count: pendingPickups.length,
+            description: `${pendingPickupCount} orders waiting for courier pickup`,
+            count: pendingPickupCount,
             ctaLabel: 'Schedule Pickup',
             ctaUrl: '/seller/orders?status=pending_pickup',
             severity: 'high' as const
         }] : []),
-        ...(rtoOrders.length > 0 ? [{
+        ...(ndrActionRequiredCount > 0 ? [{
+            id: 'ndr-1',
+            type: 'failed' as const, // Using 'failed' icon for NDR
+            title: 'NDR Action Required',
+            description: `${ndrActionRequiredCount} orders need action to prevent RTO`,
+            count: ndrActionRequiredCount,
+            ctaLabel: 'Resolve Now',
+            ctaUrl: '/seller/ndr',
+            severity: 'high' as const
+        }] : []),
+        ...(rtoCount > 0 ? [{
             id: 'rto-1',
             type: 'rto' as const,
             title: 'RTO Risk Detected',
-            description: `${rtoOrders.length} orders flagged for RTO risk`,
-            count: rtoOrders.length,
+            description: `${rtoCount} orders flagged for RTO risk`,
+            count: rtoCount,
             ctaLabel: 'Review Cases',
             ctaUrl: '/seller/orders?status=rto_risk',
             severity: 'medium' as const
@@ -380,7 +387,8 @@ export function DashboardClient() {
             refetchWallet(),
             refetchTrends(),
             refetchCOD(),
-            refetchOrders(),
+            refetchCOD(),
+            // refetchOrders(), // Removed as we use dedicated hook now
             refetchTimeline(),
             refetchCashFlow(),
             refetchRTO(),
@@ -407,18 +415,7 @@ export function DashboardClient() {
                             className="flex-1"
                         >
                             <div className="flex items-center gap-3 mb-2">
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    transition={{ delay: 0.2, type: "spring" }}
-                                    className="px-2.5 py-1 rounded-md bg-[var(--success-bg)] border border-[var(--success)]/20 flex items-center gap-2"
-                                >
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--success)]"></span>
-                                    </span>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--success)]">Live System</span>
-                                </motion.div>
+
                                 <span className="text-xs text-[var(--text-muted)] font-medium">
                                     {currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                                 </span>
@@ -446,24 +443,7 @@ export function DashboardClient() {
                     const alerts: CriticalAlert[] = [];
 
                     // Wallet low balance alert (stable ID based on threshold)
-                    if (walletData?.balance !== undefined && walletData.balance < 5000) {
-                        const severity: 'critical' | 'warning' = walletData.balance < 1000 ? 'critical' : 'warning';
-                        // ✅ FIXED: Stable ID based on severity threshold
-                        const walletAlertId = walletData.balance < 1000
-                            ? 'wallet-critical-sub1k'
-                            : 'wallet-warning-sub5k';
 
-                        alerts.push({
-                            id: walletAlertId,
-                            type: 'wallet_low',
-                            severity: severity,
-                            title: 'Low Wallet Balance',
-                            message: `Your wallet balance is ₹${walletData.balance.toLocaleString('en-IN')}. Recharge now to avoid order disruptions.`,
-                            ctaLabel: 'Recharge Wallet',
-                            ctaUrl: '/seller/wallet',
-                            dismissable: true,
-                        });
-                    }
 
                     // RTO spike detection (>20% increase)
                     if (rtoAnalyticsData?.summary && rtoAnalyticsData.summary.change > 20) {
@@ -568,7 +548,6 @@ export function DashboardClient() {
                             longestStreak={dashboardMetrics?.longestStreak || 0}
                             milestones={dashboardMetrics?.milestones || []}
                             lastUpdated={new Date().toISOString()}
-                            isUsingMock={false}
                             onRevenueClick={() => router.push('/seller/analytics/revenue')}
                             onProfitClick={() => router.push('/seller/analytics/profit')}
                             onOrdersClick={() => router.push('/seller/orders')}

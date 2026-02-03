@@ -4,11 +4,12 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, ApiError } from '@/src/core/api/http';
+import { ApiError } from '@/src/core/api/http';
 import { queryKeys } from '@/src/core/api/config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '@/src/core/api/config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
-import { PromoCode, PromoCodeResponse, PromoCodeFilters } from '@/src/types/domain/promotion';
+import { PromoCode, PromoCodeFilters } from '@/src/types/domain/promotion';
+import { promotionApi } from '@/src/core/api/clients/marketing/promotionApi';
 
 /**
  * Get all coupons with optional filtering
@@ -16,10 +17,7 @@ import { PromoCode, PromoCodeResponse, PromoCodeFilters } from '@/src/types/doma
 export const useAdminCoupons = (filters?: PromoCodeFilters) => {
     return useQuery({
         queryKey: queryKeys.marketing.promoCodes(filters),
-        queryFn: async () => {
-            const response = await apiClient.get<{ data: PromoCodeResponse }>('/promos', { params: filters });
-            return response.data.data;
-        },
+        queryFn: () => promotionApi.getAll(filters),
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
     });
@@ -31,10 +29,7 @@ export const useAdminCoupons = (filters?: PromoCodeFilters) => {
 export const useCreateCoupon = () => {
     const queryClient = useQueryClient();
     return useMutation<PromoCode, ApiError, Partial<PromoCode>>({
-        mutationFn: async (payload) => {
-            const response = await apiClient.post<{ data: { promoCode: PromoCode } }>('/promos', payload);
-            return response.data.data.promoCode;
-        },
+        mutationFn: promotionApi.create,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.marketing.all() });
             showSuccessToast('Coupon created successfully');
@@ -49,10 +44,7 @@ export const useCreateCoupon = () => {
 export const useUpdateCoupon = () => {
     const queryClient = useQueryClient();
     return useMutation<PromoCode, ApiError, { id: string; payload: Partial<PromoCode> }>({
-        mutationFn: async ({ id, payload }) => {
-            const response = await apiClient.patch<{ data: { promoCode: PromoCode } }>(`/promos/${id}`, payload);
-            return response.data.data.promoCode;
-        },
+        mutationFn: ({ id, payload }) => promotionApi.update(id, payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.marketing.all() });
             showSuccessToast('Coupon updated successfully');
@@ -67,7 +59,7 @@ export const useUpdateCoupon = () => {
 export const useDeleteCoupon = () => {
     const queryClient = useQueryClient();
     return useMutation<void, ApiError, string>({
-        mutationFn: async (id) => { await apiClient.delete(`/promos/${id}`); },
+        mutationFn: promotionApi.delete,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.marketing.all() });
             showSuccessToast('Coupon deleted successfully');

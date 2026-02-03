@@ -15,7 +15,7 @@ import {
     Activity, ArrowUpRight
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { useAIPredictions, useAnomalyDetection, useAIInsights, useUpdateAnomalyStatus, useDemandForecast } from '@/src/core/api/hooks/admin/useAdminIntelligence';
+import { useAIPredictions, useAnomalyDetection, useAIInsights, useUpdateAnomalyStatus, useDemandForecast } from '@/src/core/api/hooks/admin/intelligence/useAdminIntelligence';
 
 export function IntelligenceClient() {
     // API Hooks
@@ -161,63 +161,63 @@ export function IntelligenceClient() {
                                     <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
                                 </div>
                             ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={forecastTimeSeries} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" vertical={false} />
-                                    <XAxis
-                                        dataKey="date"
-                                        tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        dy={10}
-                                    />
-                                    <YAxis
-                                        tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            borderRadius: '12px',
-                                            border: '1px solid var(--border-subtle)',
-                                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                                            backgroundColor: 'var(--bg-primary)',
-                                            color: 'var(--text-primary)',
-                                            padding: '12px'
-                                        }}
-                                        cursor={{ stroke: 'var(--text-muted)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                                    />
-                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="predicted"
-                                        name="AI Prediction (Upper Bound)"
-                                        stroke="var(--primary-blue)"
-                                        strokeWidth={3}
-                                        fill="url(#colorPredicted)"
-                                        className="drop-shadow-sm"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="actual"
-                                        name="Actual Orders"
-                                        stroke="var(--success)"
-                                        strokeWidth={3}
-                                        dot={{ r: 4, fill: 'var(--bg-primary)', strokeWidth: 2 }}
-                                        activeDot={{ r: 6, strokeWidth: 0 }}
-                                    />
-                                </ComposedChart>
-                            </ResponsiveContainer>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={forecastTimeSeries} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            dy={10}
+                                        />
+                                        <YAxis
+                                            tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                borderRadius: '12px',
+                                                border: '1px solid var(--border-subtle)',
+                                                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                                backgroundColor: 'var(--bg-primary)',
+                                                color: 'var(--text-primary)',
+                                                padding: '12px'
+                                            }}
+                                            cursor={{ stroke: 'var(--text-muted)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                        />
+                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="predicted"
+                                            name="AI Prediction (Upper Bound)"
+                                            stroke="var(--primary-blue)"
+                                            strokeWidth={3}
+                                            fill="url(#colorPredicted)"
+                                            className="drop-shadow-sm"
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="actual"
+                                            name="Actual Orders"
+                                            stroke="var(--success)"
+                                            strokeWidth={3}
+                                            dot={{ r: 4, fill: 'var(--bg-primary)', strokeWidth: 2 }}
+                                            activeDot={{ r: 6, strokeWidth: 0 }}
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
                             )}
                         </CardContent>
                     </Card>

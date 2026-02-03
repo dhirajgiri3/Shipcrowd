@@ -474,11 +474,16 @@ export const createSession = async (
     });
 
     // ✅ FEATURE 11: Enforce session limit after creating session
+    logger.info(`Enforcing session limit for user ${userId}, new session ${session._id}, deviceType=${deviceType}`);
     enforceSessionLimit(
       userId.toString(),
       (session._id as mongoose.Types.ObjectId).toString(),
       deviceType
-    ).catch(err => {
+    ).then((deletedCount) => {
+      if (deletedCount > 0) {
+        logger.warn(`⚠️ Session limit: Deleted ${deletedCount} old sessions for user ${userId}`);
+      }
+    }).catch(err => {
       logger.error('Session limit enforcement failed:', err);
     });
 

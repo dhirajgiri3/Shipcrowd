@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { IndianRupee, ArrowUpRight, ArrowDownRight, CreditCard, Wallet, Loader2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { useAdminFinancialsOverview, useAdminTransactions } from '@/src/core/api/hooks/admin/useAdminFinancials';
+import { useAdminFinancialsOverview, useAdminTransactions } from '@/src/core/api/hooks/admin/financials/useAdminFinancials';
 
 export function FinancialsClient() {
     const { data: overview, isLoading: isLoadingOverview } = useAdminFinancialsOverview();

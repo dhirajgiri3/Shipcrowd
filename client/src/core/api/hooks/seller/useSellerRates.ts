@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ratesApi, RateCalculationPayload, RateResponse } from '../../clients/ratesApi';
+import { ratesApi, RateCalculationPayload, RateResponse } from '@/src/core/api/clients/shipping/ratesApi';
 import { queryKeys } from '../../config/query-keys';
 import { QUERY_CONFIG } from '../../config/query-client';
 

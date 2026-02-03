@@ -192,7 +192,7 @@ export function ProfileClient() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {companyData?.kycStatus === 'verified' && (
+                    {companyData?.status === 'approved' && (
                         <Badge variant="success" className="gap-1">
                             <Shield className="h-3 w-3" />
                             KYC Verified

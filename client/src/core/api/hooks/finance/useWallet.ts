@@ -7,7 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { walletApi } from '@/src/core/api/clients/walletApi';
+import { walletApi } from '@/src/core/api/clients/finance/walletApi';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { createOptimisticUpdateHandler } from '../../lib/optimistic-updates';

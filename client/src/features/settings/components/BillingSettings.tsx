@@ -164,7 +164,7 @@ export function BillingSettings() {
                             </Button>
                         </div>
                     ) : (
-                        bankAccounts.map((account) => (
+                        bankAccounts.map((account: any) => (
                             <div
                                 key={account._id}
                                 className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border transition-all ${account.isDefault

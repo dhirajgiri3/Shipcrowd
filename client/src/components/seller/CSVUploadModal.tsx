@@ -18,7 +18,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from "@/src/lib/utils";
-import { orderApi } from '@/src/core/api/clients/orderApi';
+import { orderApi } from '@/src/core/api/clients/orders/orderApi';
 import { useBulkOrderImport } from '@/src/core/api/hooks/orders/useBulkOrderImport';
 
 interface CSVUploadModalProps {

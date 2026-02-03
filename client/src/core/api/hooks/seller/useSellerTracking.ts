@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { shipmentApi, NormalizedTrackingData } from '../../clients/shipmentApi';
+import { shipmentApi, NormalizedTrackingData } from '../../clients/shipping/shipmentApi';
 import { queryKeys } from '../../config/query-keys';
 
 export const useSellerTracking = () => {

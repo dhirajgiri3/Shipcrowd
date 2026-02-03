@@ -1,11 +1,11 @@
 export * from './useUserManagement';
 export * from './useEmailQueue';
 export * from './useAdminOrders';
-export * from './useAdminFinancials';
-export * from './useAdminIntelligence';
+
+export * from './intelligence/useAdminIntelligence';
 export * from './useAdminNDR';
 export * from './useAdminProfit';
-export * from './useAdminSellers';
+
 export * from './useRateCardManagement';
 export * from './useSellerHealth';
 
@@ -16,3 +16,4 @@ export * from './commission/useCommission';
 export * from './companies/useCompanies';
 export * from './coupons/useAdminCoupons';
 export * from './couriers/useCouriers';
+export * from './financials/useAdminFinancials';

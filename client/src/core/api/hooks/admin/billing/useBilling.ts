@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { billingApi, TransactionFilters } from '../../../clients/billingApi'; // Adjust path
+import { billingApi, TransactionFilters } from '../../../clients/finance/billingApi'; // Adjust path
 import { queryKeys } from '../../../config/query-keys'; // Adjust path
 import { CACHE_TIMES, RETRY_CONFIG } from '../../../config/cache.config'; // Adjust path
 import { handleApiError, showSuccessToast } from '@/src/lib/error';

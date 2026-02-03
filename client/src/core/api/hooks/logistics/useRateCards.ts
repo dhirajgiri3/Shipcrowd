@@ -41,21 +41,9 @@ export interface RateCard {
     codSurcharges?: any[];
 }
 
-export interface RateCalculationPayload {
-    weight: number;
-    destinationPincode: string;
-    originPincode?: string;
-    carrier?: string;
-    serviceType?: string;
-    strict?: boolean;
-}
+import { RateCalculationPayload } from '../../clients/shipping/ratesApi';
 
-export interface PricingResolution {
-    matchedLevel: 'EXACT' | 'CARRIER_DEFAULT' | 'GENERIC';
-    matchedCarrier?: string;
-    matchedServiceType?: string;
-    rateCardId?: string;
-}
+import { PricingResolution } from '../../clients/shipping/ratesApi';
 
 export interface RateCalculationResponse {
     rate: number;

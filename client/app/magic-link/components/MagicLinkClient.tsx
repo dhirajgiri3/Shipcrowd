@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from 'react';
-import { authApi } from '@/src/core/api/clients/authApi';
+import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { Button, Input, Card } from '@/src/components/ui';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { Mail, ArrowLeft } from 'lucide-react';

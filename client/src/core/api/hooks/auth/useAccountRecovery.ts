@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { z } from 'zod';
-import { authApi } from '@/src/core/api/clients/authApi';
+import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 
 const emailSchema = z.string().email('Please enter a valid email address');

@@ -2,8 +2,9 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
-import { authApi, sessionApi, companyApi } from '@/src/core/api';
-import type { Session } from '@/src/core/api/clients/sessionApi';
+import { authApi, companyApi } from '@/src/core/api';
+import { sessionApi } from '@/src/core/api/clients/auth/sessionApi';
+import type { Session } from '@/src/core/api/clients/auth/sessionApi';
 import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked, normalizeError } from '@/src/core/api/http';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
@@ -325,39 +326,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   /**
    * Logout user
+   * Clears all auth state, cookies, and broadcasts to other tabs
+   * Caller is responsible for redirecting to login page
    */
   const logout = useCallback(async () => {
+    // ✅ Clear CSRF token BEFORE logout request to get fresh token
+    clearCSRFToken();
+
+    // Stop token refresh immediately
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+
+    // Call logout endpoint (may fail with CSRF error, that's OK)
     try {
-      setIsLoading(true);
-      setError(null);
-
-      // Call logout endpoint
       await authApi.logout();
-
-      // Clear state
-      setUser(null);
-
-      // ✅ Fix #2: Reset circuit breaker on logout
-      clearCSRFToken();
-      resetAuthState();
-
-      // Stop token refresh
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
+    } catch (logoutError) {
+      // Server logout failed, but we still clear local state
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[Auth] Server logout failed:', logoutError);
       }
+    }
 
-      // ✅ Broadcast LOGOUT event to other tabs
+    // Clear user state
+    setUser(null);
+
+    // ✅ Reset auth state (clears cookies, circuit breaker)
+    resetAuthState();
+
+    // ✅ Broadcast LOGOUT event to other tabs
+    try {
       const authChannel = new BroadcastChannel('auth_channel');
       authChannel.postMessage({ type: 'LOGOUT' });
       authChannel.close();
-
-    } catch (err) {
-      const normalizedErr = normalizeError(err as any);
-      setError(normalizedErr);
-      throw err;
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // BroadcastChannel may not be available
     }
   }, []);
 

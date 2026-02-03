@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { bankAccountApi, BankAccountRequest } from '../../clients/bankAccountApi';
+import { bankAccountApi, BankAccountRequest } from '../../clients/finance/bankAccountApi';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { ApiError } from '../../http';

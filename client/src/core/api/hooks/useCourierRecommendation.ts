@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
     courierRecommendationApi,
     CourierRecommendationRequest
-} from '../clients/courierRecommendationApi';
+} from '@/src/core/api/clients/shipping/courierRecommendationApi';
 import { RETRY_CONFIG } from '../config/cache.config';
 import { ApiError } from '../http';
 

@@ -23,7 +23,7 @@
  * });
  */
 
-import { RateCalculationPayload } from "../hooks";
+import { RateCalculationPayload } from '@/src/core/api/clients/shipping/ratesApi';
 
 // ============================================================================
 // Type Definitions

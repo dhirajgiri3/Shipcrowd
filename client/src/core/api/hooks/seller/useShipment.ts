@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { shipmentApi } from '../../clients/shipmentApi';
+import { shipmentApi } from '../../clients/shipping/shipmentApi';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';

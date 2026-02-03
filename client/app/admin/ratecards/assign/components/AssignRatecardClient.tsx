@@ -22,7 +22,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useRateCardAssignments, useAssignRateCard, useUnassignRateCard } from '@/src/core/api/hooks/admin/useRateCardManagement';
-import { useAdminSellers } from '@/src/core/api/hooks/admin/useAdminSellers';
+import { useAdminCompanies } from '@/src/core/api/hooks/admin/companies/useCompanies';
 import { useRateCards } from '@/src/core/api/hooks/logistics/useRateCards';
 
 export function AssignRatecardClient() {
@@ -32,7 +32,7 @@ export function AssignRatecardClient() {
     const { addToast } = useToast();
 
     // API Hooks
-    const { data: sellersData, isLoading: isLoadingSellers } = useAdminSellers();
+    const { data: sellersData, isLoading: isLoadingSellers } = useAdminCompanies({ limit: 100 });
     const { data: assignmentsData, isLoading: isLoadingAssignments } = useRateCardAssignments();
     const { data: rateCardsData, isLoading: isLoadingRateCards } = useRateCards();
     const { mutate: assignCard, isPending: isAssigning } = useAssignRateCard();

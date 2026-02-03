@@ -1,6 +1,6 @@
 import { useMutation, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../http';
-import { ratesApi } from '../../clients/ratesApi';
+import { ratesApi } from '@/src/core/api/clients/shipping/ratesApi';
 import { RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError } from '@/src/lib/error';
 
@@ -11,13 +11,9 @@ import { handleApiError } from '@/src/lib/error';
  * across multiple factors: price, speed, reliability, and performance.
  */
 
-// Types
-// Types
-import { SmartRateInput, CourierRateOption, SmartRateResponse } from '../../clients/ratesApi';
-export type { SmartRateInput, CourierRateOption, SmartRateResponse };
+import { SmartRateInput, CourierRateOption, SmartRateResponse } from '../../clients/shipping/ratesApi';
 
 /**
- * Hook: Calculate Smart Rates
  *
  * Returns ranked courier options with AI-powered recommendations.
  * Automatically scores based on price, speed, reliability, and performance.

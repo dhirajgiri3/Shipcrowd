@@ -653,6 +653,76 @@ These issues were confirmed by reading the actual implementation. They must be a
 
 ---
 
+## What to Do Next — Execution Roadmap
+
+**Goal**: Shipfast Velocity 100% integrated — all APIs complete, all internal workflows working (no stubs/mocks), with proper testing and verification.
+
+**Approach**: Implement in four tiers. Fix existing gaps first so nothing is "fake complete," then complete missing APIs, then add new workflow features, then lock in quality with tests and docs.
+
+### Tier 1 — Fix Critical Gaps (Existing Features Actually Work)
+
+| # | Task | Phase / Ref | Est. | Why First |
+|---|------|-------------|------|-----------|
+| 1 | **COD Settlement Webhook** — implement reconciliation logic | Phase 11 | 3h | Webhook is currently mocked; settlement data never applied. |
+| 2 | **RTO Pickup Scheduling** — implement `scheduleReversePickup` | Phase 10 | 4h | Method is stubbed; RTO flow incomplete. |
+| 3 | **NDR Communication SMS** — add SMS branch in `sendNDRNotification` | Additional gap | ~1h | `channel: 'sms'` / `'all'` currently does nothing for SMS. |
+| 4 | **COD Excel Parser** — configurable column mapping (per provider or header map) | Critical issue #4 | ~2h | Non-standard MIS headers (e.g. "Ref No", "Value") fail silently. |
+
+**Outcome**: Settlement webhook, RTO pickup, NDR SMS, and MIS parsing are real and verifiable.
+
+### Tier 2 — Complete Velocity API (100% API Coverage)
+
+| # | Task | Phase | Est. | Notes |
+|---|------|-------|------|--------|
+| 1 | Type definitions (split flow + reports) | Phase 1 | 2h | `velocity.types.ts` |
+| 2 | Rate limiters for new endpoints | Phase 2 | 30m | `velocity-error-handler.ts` |
+| 3 | `createForwardOrderOnly()` + `assignCourier()` | Phases 3–4 | 3.5h | Split flow forward |
+| 4 | `createReverseOrderOnly()` + `assignReverseCourier()` | Phases 5–6 | 3.5h | Split flow reverse |
+| 5 | `getSummaryReport()` | Phase 7 | 2h | Reports API |
+| 6 | Enhanced `getRates()` with internal pricing + zone | Phase 8 | 4h | Real rates from rate cards |
+| 7 | Response mapping + Shipment model fields | Phase 5 (mapping) | 2h | Capture zone, routing, charges |
+
+**Outcome**: All 10 Velocity endpoints implemented and usable; rates and reports aligned with plan.
+
+### Tier 3 — Internal Workflow Enhancements
+
+| # | Task | Phase | Est. | Notes |
+|---|------|-------|------|--------|
+| 1 | **NDR Workflow Branching** — conditions on customer response | Phase 12 | 4h | Fix linear-only resolution. |
+| 2 | Lost Shipment Detection job + service | Phase 9 | 6h | New feature. |
+| 3 | Customer Notification Preferences (model + service) | Phase 13 | 4h | Opt-in/opt-out, quiet hours. |
+
+**Outcome**: NDR resolution supports branching; lost shipment detection and notification preferences are in place.
+
+### Tier 4 — Quality & Verification
+
+| # | Task | Phase | Est. | Notes |
+|---|------|-------|------|--------|
+| 1 | Unit tests (Velocity, lost shipment, NDR workflow, settlement, RTO) | Phase 14 | 6h | Cover new and fixed code. |
+| 2 | Integration tests (split flow, reports, settlement webhook) | Phase 15 | 4h | End-to-end against staging/mock. |
+| 3 | Documentation (Velocity Integration Guide, plan updates) | Phase 16 | 2h | API usage, split flow, verification steps. |
+| 4 | **Verification checklist** | — | — | Run plan’s verification steps; confirm no stubs/mocks in critical paths. |
+
+**Outcome**: Features are tested and documented; Shipfast Velocity integration is verifiable and maintainable.
+
+### Suggested Order (One by One)
+
+1. **Tier 1** (fix gaps) → **Tier 2** (API completion) → **Tier 3** (workflow features) → **Tier 4** (tests + docs).  
+2. Within each tier, do items in the table order unless you have a reason to reorder (e.g. dependency).  
+3. After each item (or small batch), run relevant tests and update the plan’s verification section so progress is clear.
+
+### Summary
+
+| Tier | Focus | Est. Total |
+|------|--------|------------|
+| 1 | Fix critical gaps | ~10h |
+| 2 | Complete Velocity API | ~17h |
+| 3 | Internal workflow enhancements | ~14h |
+| 4 | Quality & verification | ~12h |
+| **Total** | **Shipfast 100% integrated, tested, documented** | **~53h** |
+
+Yes — the plan is to implement these features one by one per the Integration Plan (using the order above), so Shipfast Velocity is 100% integrated with all features working and proper testing and verification.
+
 ---
 
 ## Phase 9: Lost Shipment Detection (NEW - 6 hours)

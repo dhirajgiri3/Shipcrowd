@@ -30,7 +30,7 @@ import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } 
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
-import { consentApi } from '@/src/core/api/clients/consentApi';
+import { consentApi } from '@/src/core/api/clients/auth/consentApi';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 
 export function SignupClient() {

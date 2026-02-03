@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { rateCardManagementApi, AssignRateCardData } from '../../clients/rateCardManagementApi';
+import { rateCardManagementApi, AssignRateCardData } from '../../clients/shipping/rateCardManagementApi';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';

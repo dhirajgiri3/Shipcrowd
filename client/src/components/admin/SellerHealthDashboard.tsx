@@ -22,7 +22,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { cn } from "@/src/lib/utils";
 import Link from "next/link";
 import { useSellerHealth, useRefreshHealthMetrics } from '@/src/core/api/hooks/admin/useSellerHealth';
-import { SellerHealth } from '@/src/core/api/clients/sellerHealthApi';
+import { SellerHealth } from '@/src/core/api/clients/analytics/sellerHealthApi';
 
 const statusConfig = {
     excellent: {

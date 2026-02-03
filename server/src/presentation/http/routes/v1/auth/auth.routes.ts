@@ -1,11 +1,9 @@
 import express from 'express';
 import passport from 'passport';
-import crypto from 'crypto';
 import authController from '../../../controllers/auth/auth.controller';
-import { authenticate, csrfProtection as oldCSRFProtection } from '../../../middleware/auth/auth';
+import { authenticate } from '../../../middleware/auth/auth';
 import { csrfProtection } from '../../../middleware/auth/csrf';
 import {
-  authRateLimiter,
   loginRateLimiter,
   registrationRateLimiter,
   passwordResetRateLimiter,
@@ -14,8 +12,6 @@ import {
   magicLinkRateLimiter,
   setPasswordRateLimiter,
 } from '../../../../../shared/config/rateLimit.config';
-import { generateAuthTokens } from '../../../../../core/application/services/auth/oauth.service';
-import logger from '../../../../../shared/logger/winston.logger';
 import mfaRoutes from './mfa.routes';
 
 const router = express.Router();
@@ -136,6 +132,46 @@ router.post('/check-password-strength', authController.checkPasswordStrength);
 router.get('/me', authenticate, authController.getMe);
 
 /**
+ * @route GET /auth/debug-sessions
+ * @desc Debug endpoint to check sessions for a user
+ * @access Private (development only)
+ */
+router.get('/debug-sessions', authenticate, async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(404).json({ message: 'Not found' });
+    return;
+  }
+  try {
+    const Session = (await import('../../../../../infrastructure/database/mongoose/models/iam/users/session.model')).default as any;
+    const userId = (req as any).user?._id;
+
+    const allSessions = await Session.find({ userId }).lean();
+    const activeSessions = await Session.find({
+      userId,
+      isRevoked: false,
+      expiresAt: { $gt: new Date() }
+    }).lean();
+
+    res.json({
+      userId: userId?.toString(),
+      totalSessions: allSessions.length,
+      activeSessions: activeSessions.length,
+      sessions: allSessions.map((s: any) => ({
+        _id: s._id,
+        isRevoked: s.isRevoked,
+        expiresAt: s.expiresAt,
+        lastActive: s.lastActive,
+        createdAt: s.createdAt,
+        tokenPrefix: s.refreshToken?.substring(0, 10) + '...',
+        deviceType: s.deviceInfo?.type,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * @route POST /auth/logout
  * @desc Logout a user
  * @access Public (but requires authentication to log audit)
@@ -182,7 +218,7 @@ router.get('/google', passport.authenticate('google', {
 
 /**
  * @route GET /auth/google/callback
- * @desc Google OAuth callback
+ * @desc Google OAuth callback - uses controller that properly creates sessions
  * @access Public
  */
 router.get('/google/callback',
@@ -190,38 +226,7 @@ router.get('/google/callback',
     failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=google-auth-failed`,
     session: false
   }),
-  (req, res) => {
-    try {
-      // Generate tokens
-      const { accessToken, refreshToken } = generateAuthTokens(req.user as any);
-
-      // Cookie names with secure prefix in production
-      const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
-      const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
-
-      // Set access token as httpOnly cookie
-      res.cookie(accessCookieName, accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000, // 15 minutes
-      });
-
-      // Set refresh token as httpOnly cookie
-      res.cookie(refreshCookieName, refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
-
-      // Redirect to frontend (cookies are already set)
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/oauth-callback`);
-    } catch (error) {
-      logger.error('Error in Google callback:', error);
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=google-auth-failed`);
-    }
-  }
+  authController.googleCallback
 );
 
 export default router;

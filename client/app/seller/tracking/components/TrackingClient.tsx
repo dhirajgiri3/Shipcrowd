@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSellerTracking } from '@/src/core/api/hooks/seller/useSellerTracking';
-import { NormalizedTrackingData } from '@/src/core/api/clients/shipmentApi';
+import { NormalizedTrackingData } from '@/src/core/api/clients/shipping/shipmentApi';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
 export function TrackingClient() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { authApi } from '@/src/core/api/clients/authApi';
+import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { useAuth } from '@/src/features/auth';
 import { Button, Card } from '@/src/components/ui';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
