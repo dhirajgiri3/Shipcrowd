@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useCourierComparison } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { Trophy, TrendingUp, TrendingDown, DollarSign, Clock, Package, AlertCircle } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
+import { SpinnerLoader } from '@/src/components/ui';
 import type { AnalyticsFilters, TimeRange } from '@/src/types/api/analytics';
 
 const timeRangeOptions: { value: TimeRange; label: string }[] = [
@@ -30,10 +31,10 @@ export default function CourierComparisonPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
                 <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">Loading courier data...</p>
+                    <SpinnerLoader size="lg" />
+                    <p className="text-[var(--text-secondary)] mt-4">Loading courier data...</p>
                 </div>
             </div>
         );
@@ -49,14 +50,14 @@ export default function CourierComparisonPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-[var(--bg-primary)]">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
                         Courier Comparison
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-[var(--text-secondary)]">
                         Compare courier performance across key metrics
                     </p>
                 </div>
@@ -70,8 +71,8 @@ export default function CourierComparisonPage() {
                             className={cn(
                                 'px-4 py-2 rounded-lg font-medium transition-colors',
                                 timeRange === option.value
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-primary-500'
+                                    ? 'bg-[var(--primary-blue)] text-white'
+                                    : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)] hover:border-[var(--primary-blue)]'
                             )}
                         >
                             {option.label}
@@ -83,26 +84,26 @@ export default function CourierComparisonPage() {
                     <>
                         {/* Recommendation Card */}
                         {comparisonData.recommendation && (
-                            <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border border-purple-200 dark:border-purple-800 p-6">
+                            <div className="mb-6 bg-gradient-to-r from-[var(--primary-blue-soft)] to-[var(--primary-blue-soft)] rounded-xl border border-[var(--border-subtle)] p-6">
                                 <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
-                                        <Trophy className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                                    <div className="w-12 h-12 bg-[var(--bg-secondary)] rounded-lg flex items-center justify-center flex-shrink-0">
+                                        <Trophy className="w-6 h-6 text-[var(--primary-blue)]" />
                                     </div>
                                     <div className="flex-1">
-                                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                                        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
                                             Recommended Courier
                                         </h2>
-                                        <p className="text-gray-700 dark:text-gray-300 mb-3">
+                                        <p className="text-[var(--text-secondary)] mb-3">
                                             {comparisonData.recommendation.reasoning}
                                         </p>
                                         <div className="flex flex-wrap gap-2">
-                                            <span className="px-3 py-1 bg-white dark:bg-gray-800 rounded-lg text-sm font-medium">
+                                            <span className="px-3 py-1 bg-[var(--bg-elevated)] rounded-lg text-sm font-medium">
                                                 Best Overall: {comparisonData.couriers.find(c => c.courierId === comparisonData.recommendation?.overall)?.courierName}
                                             </span>
-                                            <span className="px-3 py-1 bg-white dark:bg-gray-800 rounded-lg text-sm font-medium">
+                                            <span className="px-3 py-1 bg-[var(--bg-elevated)] rounded-lg text-sm font-medium">
                                                 Best Speed: {comparisonData.couriers.find(c => c.courierId === comparisonData.recommendation?.bestSpeed)?.courierName}
                                             </span>
-                                            <span className="px-3 py-1 bg-white dark:bg-gray-800 rounded-lg text-sm font-medium">
+                                            <span className="px-3 py-1 bg-[var(--bg-elevated)] rounded-lg text-sm font-medium">
                                                 Best Cost: {comparisonData.couriers.find(c => c.courierId === comparisonData.recommendation?.bestCost)?.courierName}
                                             </span>
                                         </div>
@@ -112,19 +113,19 @@ export default function CourierComparisonPage() {
                         )}
 
                         {/* Comparison Table */}
-                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
-                                            <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky left-0 bg-gray-50 dark:bg-gray-700/50">
+                                        <tr className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
+                                            <th className="text-left py-4 px-6 text-sm font-semibold text-[var(--text-secondary)] sticky left-0 bg-[var(--bg-secondary)]">
                                                 Courier
                                             </th>
-                                            <th className="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            <th className="text-center py-4 px-4 text-sm font-semibold text-[var(--text-secondary)]">
                                                 Shipments
                                             </th>
                                             {metrics.map((metric) => (
-                                                <th key={metric.key} className="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 min-w-[120px]">
+                                                <th key={metric.key} className="text-center py-4 px-4 text-sm font-semibold text-[var(--text-secondary)] min-w-[120px]">
                                                     <div className="flex flex-col items-center gap-1">
                                                         <metric.icon className="w-4 h-4" />
                                                         <span>{metric.label}</span>
@@ -143,12 +144,12 @@ export default function CourierComparisonPage() {
                                             return (
                                                 <tr
                                                     key={courier.courierId}
-                                                    className={index !== comparisonData.couriers.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''}
+                                                    className={index !== comparisonData.couriers.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}
                                                 >
-                                                    <td className="py-4 px-6 font-semibold text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800">
+                                                    <td className="py-4 px-6 font-semibold text-[var(--text-primary)] sticky left-0 bg-[var(--bg-elevated)]">
                                                         {courier.courierName}
                                                     </td>
-                                                    <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300">
+                                                    <td className="py-4 px-4 text-center text-[var(--text-secondary)]">
                                                         {courier.totalShipments.toLocaleString()}
                                                     </td>
 
@@ -219,38 +220,38 @@ export default function CourierComparisonPage() {
 
                         {/* Stats Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-6">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-2">
                                     Highest Success Rate
                                 </h3>
-                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                <p className="text-2xl font-bold text-[var(--success)]">
                                     {Math.max(...comparisonData.couriers.map(c => c.successRate)).toFixed(1)}%
                                 </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-sm text-[var(--text-muted)] mt-1">
                                     {comparisonData.couriers.find(c => c.successRate === Math.max(...comparisonData.couriers.map(x => x.successRate)))?.courierName}
                                 </p>
                             </div>
 
-                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-6">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-2">
                                     Fastest Delivery
                                 </h3>
-                                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                <p className="text-2xl font-bold text-[var(--primary-blue)]">
                                     {Math.min(...comparisonData.couriers.map(c => c.avgDeliveryTime)).toFixed(1)}h
                                 </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-sm text-[var(--text-muted)] mt-1">
                                     {comparisonData.couriers.find(c => c.avgDeliveryTime === Math.min(...comparisonData.couriers.map(x => x.avgDeliveryTime)))?.courierName}
                                 </p>
                             </div>
 
-                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <div className="bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] p-6">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-2">
                                     Most Affordable
                                 </h3>
-                                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                                <p className="text-2xl font-bold text-[var(--primary-blue)]">
                                     {formatCurrency(Math.min(...comparisonData.couriers.map(c => c.avgCost)))}
                                 </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                <p className="text-sm text-[var(--text-muted)] mt-1">
                                     {comparisonData.couriers.find(c => c.avgCost === Math.min(...comparisonData.couriers.map(x => x.avgCost)))?.courierName}
                                 </p>
                             </div>
@@ -276,9 +277,9 @@ function MetricCell({ value, unit, isBest, isGood, lower }: MetricCellProps) {
     return (
         <div className={cn(
             'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold',
-            isBest && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 ring-2 ring-yellow-400',
-            !isBest && isGood && 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300',
-            !isBest && !isGood && 'text-gray-900 dark:text-white'
+            isBest && 'bg-[var(--warning-bg)] text-[var(--warning)] ring-2 ring-[var(--warning)]',
+            !isBest && isGood && 'bg-[var(--success-bg)] text-[var(--success)]',
+            !isBest && !isGood && 'text-[var(--text-primary)]'
         )}>
             {unit === '₹' ? formatCurrency(value) : `${value.toFixed(1)}${unit}`}
             {isBest && <Trophy className="w-3 h-3" />}

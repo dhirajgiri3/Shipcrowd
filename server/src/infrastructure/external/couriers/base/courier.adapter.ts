@@ -1,5 +1,5 @@
 // Base Courier Adapter Interface
-import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error.js';
+import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error';
 export interface CourierShipmentData {
     origin: {
         name: string;

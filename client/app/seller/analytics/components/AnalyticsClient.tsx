@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useAnalytics } from '@/src/core/api/hooks';
 import { AnalyticsSection } from '@/src/components/seller/dashboard/AnalyticsSection';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { SpinnerLoader, Alert } from '@/src/components/ui';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 // Mock data for fallback
@@ -63,8 +64,8 @@ export function AnalyticsClient() {
                                 key={p}
                                 onClick={() => setPeriod(p)}
                                 className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${period === p
-                                        ? 'bg-primary-600 text-white'
-                                        : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                    ? 'bg-[var(--primary-blue)] text-white'
+                                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                     }`}
                             >
                                 {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : p === '90d' ? '90 Days' : '1 Year'}
@@ -75,18 +76,15 @@ export function AnalyticsClient() {
 
                 {/* Mock Data Indicator */}
                 {isUsingMockData && (
-                    <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                        <p className="text-sm text-amber-700 dark:text-amber-300">
-                            ⚠️ Using mock data (API data not available)
-                        </p>
-                    </div>
+                    <Alert variant="warning">
+                        ⚠️ Using mock data (API data not available)
+                    </Alert>
                 )}
 
                 {/* Loading State */}
                 {isLoading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                        <SpinnerLoader size="lg" />
                     </div>
                 ) : (
                     <AnalyticsSection data={displayData as any} />
