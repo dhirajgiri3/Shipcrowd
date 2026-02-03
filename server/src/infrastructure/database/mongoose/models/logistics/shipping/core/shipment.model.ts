@@ -97,6 +97,27 @@ export interface IShipment extends Document {
     providerShipmentId?: string;
     retryCount?: number; // Tracks carrier sync retry attempts
     lastRetryAttempt?: Date; // Timestamp of last retry attempt
+    // Velocity-specific fields
+    velocityOrderId?: string;
+    velocityShipmentId?: string;
+    zone?: string;
+    routingCode?: string;
+    rtoRoutingCode?: string;
+    pickupTokenNumber?: string;
+    appliedWeight?: number;
+    deadWeightBilling?: boolean;
+    manifestUrl?: string;
+    // Charges breakdown from Velocity
+    charges?: {
+      forwardShippingCharges?: number;
+      forwardCodCharges?: number;
+      rtoCharges?: number;
+      reverseCharges?: number;
+      qcCharges?: number;
+      platformFee?: number;
+    };
+    courierAssignedAt?: Date;
+    pickupScheduledDate?: Date;
   };
   ndrDetails?: {
     ndrReason?: string;
@@ -360,13 +381,34 @@ const ShipmentSchema = new Schema<IShipment>(
       carrierServiceType: String,
       carrierAccount: String,
       manifestId: String,
-      providerShipmentId: String,
-      retryCount: {
-        type: Number,
-        default: 0,
-      },
-      lastRetryAttempt: Date,
+    providerShipmentId: String,
+    retryCount: {
+      type: Number,
+      default: 0,
     },
+    lastRetryAttempt: Date,
+    // Velocity-specific fields
+    velocityOrderId: String,
+    velocityShipmentId: String,
+    zone: String,
+    routingCode: String,
+    rtoRoutingCode: String,
+    pickupTokenNumber: String,
+    appliedWeight: Number,
+    deadWeightBilling: Boolean,
+    manifestUrl: String,
+    // Charges breakdown from Velocity
+    charges: {
+      forwardShippingCharges: Number,
+      forwardCodCharges: Number,
+      rtoCharges: Number,
+      reverseCharges: Number,
+      qcCharges: Number,
+      platformFee: Number,
+    },
+    courierAssignedAt: Date,
+    pickupScheduledDate: Date,
+  },
     ndrDetails: {
       ndrReason: String,
       ndrDate: Date,

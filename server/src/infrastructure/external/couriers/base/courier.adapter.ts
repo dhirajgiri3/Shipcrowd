@@ -67,6 +67,7 @@ export interface CourierRateRequest {
         height: number;
     };
     paymentMode: 'prepaid' | 'cod';
+    orderValue?: number;  // For COD charge calculation
     shipmentType?: 'forward' | 'return';
 }
 
@@ -76,7 +77,9 @@ export interface CourierRateResponse {
     total: number;
     currency: string;
     serviceType?: string;
+    carrierId?: string;      // NEW: For split flow carrier selection
     estimatedDeliveryDays?: number;
+    zone?: string;           // NEW: From serviceability
 }
 
 export interface CourierReverseShipmentData {
@@ -152,6 +155,37 @@ export interface ICourierAdapter {
      * Request reattempt for undelivered shipment
      */
     requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }>;
+
+    // Split Flow Methods (optional - not all couriers support)
+    createOrderOnly?(data: CourierShipmentData): Promise<{
+        orderId: string;
+        shipmentId: string;
+        success: boolean;
+    }>;
+
+    assignCourierToOrder?(
+        shipmentId: string,
+        carrierId?: string
+    ): Promise<CourierShipmentResponse>;
+
+    createReverseOrderOnly?(data: CourierReverseShipmentData): Promise<{
+        orderId: string;
+        returnId: string;
+        success: boolean;
+    }>;
+
+    assignCourierToReverseOrder?(
+        returnId: string,
+        warehouseId: string,
+        carrierId?: string
+    ): Promise<CourierReverseShipmentResponse>;
+
+    // Reports (optional)
+    getSummaryReport?(
+        startDate: Date,
+        endDate: Date,
+        type: 'forward' | 'return'
+    ): Promise<any>;
 }
 
 /**

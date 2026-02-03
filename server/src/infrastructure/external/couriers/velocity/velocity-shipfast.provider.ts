@@ -1,18 +1,34 @@
 /**
  * Velocity Shipfast Courier Provider
  *
- * Complete implementation of Velocity Shipfast API integration
+ * Complete implementation of Velocity Shipfast API integration (100% Coverage)
  * Extends BaseCourierAdapter for consistency with future courier integrations
  *
- * Implements 6 core methods:
+ * Core Methods (14 total):
  * 1. createShipment() - POST /forward-order-orchestration
  * 2. trackShipment() - POST /order-tracking
- * 3. getRates() - POST /serviceability
+ * 3. getRates() - POST /serviceability (Enhanced with DynamicPricingService)
  * 4. cancelShipment() - POST /cancel-order
  * 5. checkServiceability() - POST /serviceability
- * 6. createWarehouse() - POST /warehouse (extension method)
+ * 6. createWarehouse() - POST /warehouse
+ * 7. createForwardOrderOnly() - POST /forward-order (Split Flow Step 1)
+ * 8. assignCourier() - POST /forward-order-shipment (Split Flow Step 2)
+ * 9. createReverseShipment() - POST /reverse-order-orchestration
+ * 10. cancelReverseShipment() - POST /cancel-reverse-order
+ * 11. schedulePickup() - POST /forward-order-shipment
+ * 12. updateDeliveryAddress() - PUT /order
+ * 13. requestReattempt() - POST /reattempt-delivery
+ * 14. getSettlementStatus() - POST /settlement-status
  *
- * @see docs/Development/Backend/Integrations/VELOCITY_SHIPFAST_INTEGRATION.md
+ * Split Flow Support:
+ * - createOrderOnly() / assignCourierToOrder() (Forward)
+ * - createReverseOrderOnly() / assignCourierToReverseOrder() (Reverse)
+ *
+ * Reports & Analytics:
+ * - getSummaryReport() - POST /reports (NEW)
+ *
+ * @see docs/Resources/API/Courier/Shipfast/Shipfast_Integration_Plan.md
+ * @see docs/Resources/API/Courier/Shipfast/Implementation_Verification_Report.md
  */
 
 import axios, { AxiosInstance } from 'axios';
@@ -47,11 +63,18 @@ import {
   VelocityCancelReverseShipmentResponse,
   VelocitySettlementRequest,
   VelocitySettlementResponse,
+  VelocityForwardOrderOnlyResponse,
+  VelocityAssignCourierRequest,
+  VelocityReverseOrderOnlyResponse,
+  VelocityAssignReverseCourierRequest,
+  VelocityReportsRequest,
+  VelocityReportsResponse,
   VelocityError,
   CANCELLABLE_STATUSES
 } from './velocity.types';
 import { VelocityAuth } from './velocity.auth';
 import { VelocityMapper } from './velocity.mapper';
+import { DynamicPricingService } from '../../../../core/application/services/pricing/dynamic-pricing.service';
 import {
   handleVelocityError,
   retryWithBackoff,
@@ -389,19 +412,57 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       );
     }
 
-    // Map carriers to rate responses
-    // NOTE: Serviceability API does NOT return rates, only carrier availability.
-    // We return 0 price as placeholder since we cannot calculate it here.
-    const rates: CourierRateResponse[] = serviceabilityData.serviceability_results.map((carrier) => ({
-      basePrice: 0,
-      taxes: 0,
-      total: 0,
-      currency: 'INR',
-      serviceType: carrier.carrier_name,
-      estimatedDeliveryDays: 3 // Default fallback
-    }));
+    // Initialize pricing service
+    const pricingService = new DynamicPricingService();
 
-    return rates;
+    // Map carriers to rate responses with actual pricing
+    const rates: CourierRateResponse[] = [];
+
+    for (const carrier of serviceabilityData.serviceability_results) {
+      try {
+        const pricing = await pricingService.calculatePricing({
+          companyId: this.companyId.toString(),
+          fromPincode: request.origin.pincode,
+          toPincode: request.destination.pincode,
+          weight: request.package.weight,
+          paymentMode: request.paymentMode as 'cod' | 'prepaid',
+          orderValue: request.orderValue,
+          carrier: carrier.carrier_name,
+          externalZone: serviceabilityData.zone,
+          shipmentType: request.shipmentType as 'forward' | 'return'
+        });
+
+        rates.push({
+          basePrice: pricing.shipping,
+          taxes: pricing.tax.total,
+          total: pricing.total,
+          currency: 'INR',
+          serviceType: carrier.carrier_name,
+          carrierId: carrier.carrier_id,
+          zone: serviceabilityData.zone,
+          estimatedDeliveryDays: 3 // Default fallback
+        });
+      } catch (pricingError) {
+        logger.warn('Failed to calculate internal pricing for carrier', {
+          carrier: carrier.carrier_name,
+          error: pricingError instanceof Error ? pricingError.message : 'Unknown error'
+        });
+        // Fallback to 0 price if pricing calculation fails
+        rates.push({
+          basePrice: 0,
+          taxes: 0,
+          total: 0,
+          currency: 'INR',
+          serviceType: carrier.carrier_name,
+          carrierId: carrier.carrier_id,
+          zone: serviceabilityData.zone,
+          estimatedDeliveryDays: 3
+        });
+      }
+    }
+
+    // Sort by total price ascending
+    return rates.sort((a, b) => a.total - b.total);
   }
 
   /**
@@ -556,6 +617,142 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     });
 
     return velocityWarehouse;
+  }
+
+  /**
+   * Step 1: Create Forward Order Only (no courier assignment)
+   * Endpoint: POST /custom/api/v1/forward-order
+   */
+  async createForwardOrderOnly(data: CourierShipmentData): Promise<{
+    shipmentId: string;
+    orderId: string;
+    success: boolean;
+  }> {
+    // Validate input data
+    const validation = VelocityMapper.validateForwardOrderData(data);
+    if (!validation.valid) {
+      throw new VelocityError(
+        400,
+        {
+          message: 'Invalid shipment data',
+          errors: { validation: validation.errors.join(', ') },
+          status_code: 400
+        },
+        false
+      );
+    }
+
+    // Get warehouse details
+    const warehouseId = (data as any).warehouseId;
+    if (!warehouseId) {
+      throw new VelocityError(400, { message: 'Warehouse ID is required', status_code: 400 }, false);
+    }
+
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      throw new VelocityError(404, { message: 'Warehouse not found', status_code: 404 }, false);
+    }
+
+    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    if (!velocityWarehouseId) {
+      const velocityWarehouse = await this.createWarehouse(warehouse as any);
+      velocityWarehouseId = velocityWarehouse.warehouse_id;
+    }
+
+    // Map data to Velocity format
+    const velocityRequest = {
+      ...VelocityMapper.mapToForwardOrder(
+        data,
+        warehouse.name,
+        velocityWarehouseId,
+        {
+          email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
+          phone: warehouse.contactInfo.phone,
+          contactName: warehouse.contactInfo.name,
+          address: {
+            line1: warehouse.address.line1,
+            line2: warehouse.address.line2,
+            city: warehouse.address.city,
+            state: warehouse.address.state,
+            postalCode: warehouse.address.postalCode,
+            country: warehouse.address.country
+          }
+        }
+      ),
+      idempotency_key: data.idempotencyKey
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.forwardOrderOnly.acquire();
+
+    // Make API call with retry
+    const response = await retryWithBackoff<{ data: VelocityForwardOrderOnlyResponse }>(
+      async () => {
+        logger.info('Creating Velocity forward order only', {
+          orderId: data.orderNumber,
+          companyId: this.companyId.toString()
+        });
+
+        return await this.httpClient.post<VelocityForwardOrderOnlyResponse>(
+          '/custom/api/v1/forward-order',
+          velocityRequest
+        );
+      },
+      3,
+      1000,
+      'Velocity createForwardOrderOnly'
+    );
+
+    const result = this.unwrapResponse<VelocityForwardOrderOnlyResponse>(response.data);
+
+    return {
+      shipmentId: result.shipment_id,
+      orderId: result.order_id,
+      success: !!result.order_created
+    };
+  }
+
+  /**
+   * Step 2: Assign Courier to Existing Order
+   * Endpoint: POST /custom/api/v1/forward-order-shipment
+   */
+  async assignCourier(shipmentId: string, carrierId?: string): Promise<CourierShipmentResponse> {
+    const request: VelocityAssignCourierRequest = {
+      shipment_id: shipmentId,
+      carrier_id: carrierId
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.assignCourier.acquire();
+
+    // Make API call with retry
+    const response = await retryWithBackoff<{ data: VelocityShipmentResponse }>(
+      async () => {
+        logger.info('Assigning courier to Velocity shipment', { shipmentId, carrierId });
+
+        return await this.httpClient.post<VelocityShipmentResponse>(
+          '/custom/api/v1/forward-order-shipment',
+          request
+        );
+      },
+      3,
+      1000,
+      'Velocity assignCourier'
+    );
+
+    const shipment = this.unwrapResponse<VelocityShipmentResponse>(response.data);
+
+    const shippingCharges = parseFloat(String(shipment.frwd_charges?.shipping_charges || 0));
+    const codCharges = parseFloat(String(shipment.frwd_charges?.cod_charges || 0));
+    const totalCost = shippingCharges + codCharges;
+
+    return {
+      trackingNumber: shipment.awb_code,
+      labelUrl: shipment.label_url,
+      estimatedDelivery: undefined,
+      cost: totalCost || 0,
+      providerShipmentId: shipment.shipment_id
+    };
   }
 
   /**
@@ -1007,6 +1204,215 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         false
       );
     }
+  }
+
+  /**
+   * Step 1: Create Reverse Order Only (no courier assignment)
+   * Endpoint: POST /custom/api/v1/reverse-order
+   */
+  private async createReverseOrderOnlyInternal(data: CourierReverseShipmentData): Promise<{
+    returnId: string;
+    orderId: string;
+    success: boolean;
+  }> {
+    const { returnWarehouseId, pickupAddress, package: packageDetails, orderId } = data;
+
+    const warehouse = await Warehouse.findById(returnWarehouseId);
+    if (!warehouse) {
+      throw new VelocityError(404, { message: 'Return warehouse not found', status_code: 404 }, false);
+    }
+
+    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    if (!velocityWarehouseId) {
+      const velocityWarehouse = await this.createWarehouse(warehouse as any);
+      velocityWarehouseId = velocityWarehouse.warehouse_id;
+    }
+
+    const reverseRequest = {
+      order_id: `RTO-${orderId}`,
+      pickup_customer_name: pickupAddress.name.split(' ')[0],
+      pickup_last_name: pickupAddress.name.split(' ').slice(1).join(' ') || '',
+      pickup_address: pickupAddress.address,
+      pickup_city: pickupAddress.city,
+      pickup_pincode: pickupAddress.pincode,
+      pickup_state: pickupAddress.state,
+      pickup_country: pickupAddress.country,
+      pickup_phone: pickupAddress.phone,
+      pickup_email: pickupAddress.email,
+      pickup_isd_code: '91',
+      shipping_customer_name: warehouse.contactInfo.name.split(' ')[0],
+      shipping_last_name: warehouse.contactInfo.name.split(' ').slice(1).join(' ') || '',
+      shipping_address: warehouse.address.line1,
+      shipping_address_2: warehouse.address.line2 || '',
+      shipping_city: warehouse.address.city,
+      shipping_state: warehouse.address.state,
+      shipping_country: warehouse.address.country,
+      shipping_pincode: warehouse.address.postalCode,
+      shipping_phone: warehouse.contactInfo.phone,
+      shipping_email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
+      shipping_isd_code: '91',
+      warehouse_id: velocityWarehouseId,
+      order_items: [{ name: 'Return Item', sku: 'RET-ITEM', units: 1, selling_price: 100, discount: 0 }],
+      payment_method: 'Prepaid',
+      sub_total: 100,
+      total_discount: 0,
+      length: packageDetails.length,
+      breadth: packageDetails.width,
+      height: packageDetails.height,
+      weight: packageDetails.weight,
+      channel_id: process.env.VELOCITY_CHANNEL_ID || '27202',
+      order_date: VelocityMapper.formatDate(new Date()).split(' ')[0]
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.reverseOrderOnly.acquire();
+
+    // Make API call with retry
+    const response = await retryWithBackoff<{ data: VelocityReverseOrderOnlyResponse }>(
+      async () => {
+        logger.info('Creating Velocity reverse order only', { orderId });
+
+        return await this.httpClient.post<VelocityReverseOrderOnlyResponse>(
+          '/custom/api/v1/reverse-order',
+          reverseRequest
+        );
+      },
+      3,
+      1000,
+      'Velocity createReverseOrderOnly'
+    );
+
+    const result = this.unwrapResponse<VelocityReverseOrderOnlyResponse>(response.data);
+
+    return {
+      returnId: result.return_id,
+      orderId: result.order_id,
+      success: !!result.order_created
+    };
+  }
+
+  /**
+   * Step 2: Assign Courier to Reverse Order
+   * Endpoint: POST /custom/api/v1/reverse-order-shipment
+   */
+  private async assignReverseCourier(
+    returnId: string,
+    warehouseId: string,
+    carrierId?: string
+  ): Promise<CourierReverseShipmentResponse> {
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      throw new VelocityError(404, { message: 'Warehouse not found', status_code: 404 }, false);
+    }
+
+    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    if (!velocityWarehouseId) {
+      const velocityWarehouse = await this.createWarehouse(warehouse as any);
+      velocityWarehouseId = velocityWarehouse.warehouse_id;
+    }
+
+    const request: VelocityAssignReverseCourierRequest = {
+      return_id: returnId,
+      warehouse_id: velocityWarehouseId,
+      carrier_id: carrierId
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.assignReverseCourier.acquire();
+
+    // Make API call with retry
+    const response = await retryWithBackoff<{ data: VelocityReverseShipmentResponse }>(
+      async () => {
+        logger.info('Assigning courier to Velocity reverse shipment', { returnId, carrierId });
+
+        return await this.httpClient.post<VelocityReverseShipmentResponse>(
+          '/custom/api/v1/reverse-order-shipment',
+          request
+        );
+      },
+      3,
+      1000,
+      'Velocity assignReverseCourier'
+    );
+
+    const shipment = this.unwrapResponse<VelocityReverseShipmentResponse>(response.data);
+
+    return {
+      trackingNumber: shipment.awb_code,
+      labelUrl: shipment.label_url ||
+        (shipment.awb_code ? `https://velocity-shazam-prod.s3.ap-south-1.amazonaws.com/${shipment.awb_code}_shipping_label.pdf` : undefined),
+      orderId: shipment.order_id,
+      courierName: shipment.courier_name
+    };
+  }
+
+  /**
+   * Internal implementation for getSummaryReport
+   * Endpoint: POST /custom/api/v1/reports
+   */
+  private async getSummaryReportInternal(startDate: Date, endDate: Date, type: 'forward' | 'return'): Promise<VelocityReportsResponse> {
+    const request: VelocityReportsRequest = {
+      start_date_time: startDate.toISOString(),
+      end_date_time: endDate.toISOString(),
+      shipment_type: type
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.reports.acquire();
+
+    // Make API call with retry
+    const response = await retryWithBackoff<{ data: VelocityReportsResponse }>(
+      async () => {
+        logger.info('Fetching Velocity summary report', { startDate, endDate, shipmentType: type });
+
+        return await this.httpClient.post<VelocityReportsResponse>(
+          '/custom/api/v1/reports',
+          request
+        );
+      },
+      3,
+      1000,
+      'Velocity getSummaryReport'
+    );
+
+    return this.unwrapResponse<VelocityReportsResponse>(response.data);
+  }
+
+  // ==================== ICourierAdapter Optional Method Implementations ====================
+
+  /**
+   * Create order without courier assignment (Split Flow Step 1)
+   */
+  async createOrderOnly(data: CourierShipmentData) {
+    return this.createForwardOrderOnly(data);
+  }
+
+  /**
+   * Assign courier to existing order (Split Flow Step 2)
+   */
+  async assignCourierToOrder(shipmentId: string, carrierId?: string) {
+    return this.assignCourier(shipmentId, carrierId);
+  }
+
+  /**
+   * Create reverse order without courier assignment (Split Flow Step 1)
+   */
+  async createReverseOrderOnly(data: CourierReverseShipmentData) {
+    return this.createReverseOrderOnlyInternal(data);
+  }
+
+  /**
+   * Assign courier to reverse order (Split Flow Step 2)
+   */
+  async assignCourierToReverseOrder(returnId: string, warehouseId: string, carrierId?: string) {
+    return this.assignReverseCourier(returnId, warehouseId, carrierId);
+  }
+
+  /**
+   * Get summary reports (optional interface method)
+   */
+  async getSummaryReport(startDate: Date, endDate: Date, type: 'forward' | 'return') {
+    return this.getSummaryReportInternal(startDate, endDate, type);
   }
 
   /**

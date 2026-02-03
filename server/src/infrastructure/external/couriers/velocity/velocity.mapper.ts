@@ -289,4 +289,28 @@ export class VelocityMapper {
       errors
     };
   }
+
+  /**
+   * Map Velocity shipment response to shipment model fields
+   */
+  static mapResponseToModel(shipment: any): any {
+    return {
+      'carrierDetails.velocityOrderId': shipment.order_id,
+      'carrierDetails.velocityShipmentId': shipment.shipment_id,
+      'carrierDetails.zone': shipment.zone,
+      'carrierDetails.routingCode': shipment.routing_code,
+      'carrierDetails.rtoRoutingCode': shipment.rto_routing_code,
+      'carrierDetails.pickupTokenNumber': shipment.pickup_token_number,
+      'carrierDetails.appliedWeight': shipment.applied_weight ? parseFloat(String(shipment.applied_weight)) : undefined,
+      'carrierDetails.manifestUrl': shipment.manifest_url,
+      'carrierDetails.charges.forwardShippingCharges': shipment.frwd_charges?.shipping_charges ? parseFloat(String(shipment.frwd_charges.shipping_charges)) : undefined,
+      'carrierDetails.charges.forwardCodCharges': shipment.frwd_charges?.cod_charges ? parseFloat(String(shipment.frwd_charges.cod_charges)) : undefined,
+      'carrierDetails.charges.rtoCharges': shipment.rto_charges?.rto_charges ? parseFloat(String(shipment.rto_charges.rto_charges)) : undefined,
+      'carrierDetails.charges.reverseCharges': shipment.charges?.reverse_charges ? parseFloat(String(shipment.charges.reverse_charges)) : undefined,
+      'carrierDetails.charges.qcCharges': shipment.charges?.qc ? parseFloat(String(shipment.charges.qc)) : undefined,
+      'carrierDetails.charges.platformFee': shipment.charges?.platform_fee ? parseFloat(String(shipment.charges.platform_fee)) : undefined,
+      'carrierDetails.courierAssignedAt': shipment.assigned_date_time?.date ? new Date(shipment.assigned_date_time.date) : undefined,
+      'carrierDetails.pickupScheduledDate': shipment.pickup_scheduled_date ? new Date(shipment.pickup_scheduled_date) : undefined,
+    };
+  }
 }

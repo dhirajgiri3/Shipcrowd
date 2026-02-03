@@ -418,6 +418,96 @@ export interface VelocityAddressUpdateResponse {
   message: string;
 }
 
+// ==================== SPLIT FLOW - FORWARD ORDER ====================
+
+export interface VelocityForwardOrderOnlyResponse {
+  pickup_location_added: number;
+  order_created: number;
+  awb_generated: number;  // Will be 0
+  pickup_generated: number;  // Will be 0
+  shipment_id: string;  // KEY: Needed for assignCourier step
+  order_id: string;
+  assigned_date_time: { date: string; timezone_type: number; timezone: string };
+  applied_weight: number | null;
+  cod: number;
+  label_url: string | null;
+  manifest_url: string | null;
+  routing_code: string | null;
+  rto_routing_code: string | null;
+  pickup_token_number: string | null;
+}
+
+export interface VelocityAssignCourierRequest {
+  shipment_id: string;
+  carrier_id?: string;  // Optional - auto-assign if blank
+}
+
+// ==================== SPLIT FLOW - REVERSE ORDER ====================
+
+export interface VelocityReverseOrderOnlyResponse {
+  order_created: number;
+  awb_generated: number;  // Will be 0
+  pickup_generated: number;  // Will be 0
+  pickup_scheduled_date: string | null;
+  order_id: string;
+  return_id: string;  // KEY: Needed for assignReverseCourier step
+  assigned_date_time: { date: string; timezone_type: number; timezone: string };
+  cod: number;
+}
+
+export interface VelocityAssignReverseCourierRequest {
+  return_id: string;
+  warehouse_id: string;
+  carrier_id?: string;  // Optional
+}
+
+// ==================== REPORTS API ====================
+
+export interface VelocityReportsRequest {
+  start_date_time: string;  // ISO 8601 format
+  end_date_time: string;
+  shipment_type: 'forward' | 'return';
+}
+
+export interface VelocityReportsSummary {
+  count: number;
+  sum_of_prepaid_orders: number;
+  sum_of_cod_orders: number;
+}
+
+export interface VelocityReportsResponse {
+  date_range: { start_date_time: string; end_date_time: string };
+  shipment_type: 'forward' | 'return';
+  summary: {
+    // Forward statuses
+    pickup_pending?: VelocityReportsSummary;
+    in_transit?: VelocityReportsSummary;
+    delivered?: VelocityReportsSummary;
+    rto_in_transit?: VelocityReportsSummary;
+    rto_delivered?: VelocityReportsSummary;
+    lost?: VelocityReportsSummary;
+    cancelled?: VelocityReportsSummary;
+    // Return statuses
+    return_pickup_scheduled?: VelocityReportsSummary;
+    return_in_transit?: VelocityReportsSummary;
+    return_delivered?: VelocityReportsSummary;
+    return_lost?: VelocityReportsSummary;
+    total_shipments: number;
+  };
+}
+
+// ==================== ENHANCED SERVICEABILITY ====================
+
+export interface VelocityServiceabilityResult {
+  carrier_id: string;
+  carrier_name: string;
+}
+
+export interface VelocityServiceabilityResponseFull {
+  serviceability_results: VelocityServiceabilityResult[];
+  zone: string;  // 'zone_a', 'zone_b', etc.
+}
+
 // ==================== TOKEN STORAGE ====================
 
 export interface VelocityTokenData {

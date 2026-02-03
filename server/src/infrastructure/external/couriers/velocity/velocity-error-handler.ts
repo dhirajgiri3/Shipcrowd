@@ -297,5 +297,10 @@ export const VelocityRateLimiters = {
   warehouse: new RateLimiter(20, 20),           // 20 requests/min
   reverseShipment: new RateLimiter(50, 50),     // 50 requests/min (RTO creation)
   schedulePickup: new RateLimiter(30, 30),      // 30 requests/min (pickup scheduling)
-  cancelReverseShipment: new RateLimiter(30, 30) // 30 requests/min (RTO cancellation)
+  cancelReverseShipment: new RateLimiter(30, 30), // 30 requests/min (RTO cancellation)
+  forwardOrderOnly: new RateLimiter(100, 100),
+  assignCourier: new RateLimiter(100, 100),
+  reverseOrderOnly: new RateLimiter(50, 50),
+  assignReverseCourier: new RateLimiter(50, 50),
+  reports: new RateLimiter(20, 20),
 };
