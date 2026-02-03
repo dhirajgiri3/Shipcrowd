@@ -106,7 +106,7 @@ export function BulkAddressValidationClient() {
             } catch (err) {
                 setParseError((err as Error).message);
                 setStatus('error');
-                            }
+            }
         };
         reader.onerror = () => {
             setParseError('Failed to read file');
@@ -179,7 +179,7 @@ export function BulkAddressValidationClient() {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-[var(--bg-primary)] rounded-xl shadow-sm border border-[var(--border-default)] overflow-hidden">
             {/* Upload Section */}
             {status === 'idle' && parsedAddresses.length === 0 && (
                 <div className="p-8">
@@ -187,25 +187,25 @@ export function BulkAddressValidationClient() {
                         {...getRootProps()}
                         className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
                   ${isDragActive
-                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                ? 'border-[var(--primary-blue)] bg-[var(--primary-blue)]/5'
+                                : 'border-[var(--border-default)] hover:border-[var(--primary-blue)] hover:bg-[var(--bg-secondary)]'
                             }`}
                     >
                         <input {...getInputProps()} />
-                        <Upload className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                        <Upload className="w-16 h-16 mx-auto mb-4 text-[var(--text-muted)]" />
                         {isDragActive ? (
-                            <p className="text-lg font-medium text-primary-600 dark:text-primary-400">
+                            <p className="text-lg font-medium text-[var(--primary-blue)]">
                                 Drop your CSV file here...
                             </p>
                         ) : (
                             <>
-                                <p className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                <p className="text-lg font-medium text-[var(--text-primary)] mb-2">
                                     Drag & drop your CSV file here
                                 </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                <p className="text-sm text-[var(--text-secondary)] mb-4">
                                     or click to browse
                                 </p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500">
+                                <p className="text-xs text-[var(--text-muted)]">
                                     Maximum file size: 5MB • Supported format: CSV
                                 </p>
                             </>
@@ -213,20 +213,20 @@ export function BulkAddressValidationClient() {
                     </div>
 
                     {/* CSV Format Guide */}
-                    <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
-                        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                    <div className="mt-8 bg-[var(--primary-blue)]/5 rounded-lg p-6 border border-[var(--primary-blue)]/20">
+                        <h3 className="font-semibold text-[var(--primary-blue)] mb-3 flex items-center gap-2">
                             <FileSpreadsheet className="w-5 h-5" />
                             CSV Format Requirements
                         </h3>
-                        <p className="text-sm text-blue-800 dark:text-blue-200 mb-4">
+                        <p className="text-sm text-[var(--text-secondary)] mb-4">
                             Your CSV file should have the following columns (headers in first row):
                         </p>
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                            <code className="text-gray-700 dark:text-gray-300">
+                        <div className="bg-[var(--bg-primary)] rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                            <code className="text-[var(--text-primary)]">
                                 address,city,state,pincode,name,phone
                             </code>
                         </div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
+                        <p className="text-xs text-[var(--primary-blue)] mt-3">
                             Required columns: <strong>pincode, city, state</strong>
                         </p>
                     </div>
@@ -236,25 +236,25 @@ export function BulkAddressValidationClient() {
             {/* Parsing Status */}
             {status === 'parsing' && (
                 <div className="p-12 text-center">
-                    <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary-500 animate-spin" />
-                    <p className="text-gray-600 dark:text-gray-400">Parsing CSV file...</p>
+                    <Loader2 className="w-12 h-12 mx-auto mb-4 text-[var(--primary-blue)] animate-spin" />
+                    <p className="text-[var(--text-secondary)]">Parsing CSV file...</p>
                 </div>
             )}
 
             {/* Parse Error */}
             {status === 'error' && parseError && (
                 <div className="p-8">
-                    <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-6 border border-red-200 dark:border-red-800 text-center">
-                        <XCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-                        <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">
+                    <div className="bg-[var(--error-bg)] rounded-lg p-6 border border-[var(--error)]/20 text-center">
+                        <XCircle className="w-12 h-12 mx-auto mb-4 text-[var(--error)]" />
+                        <h3 className="font-semibold text-[var(--error)] mb-2">
                             Failed to Parse CSV
                         </h3>
-                        <p className="text-sm text-red-600 dark:text-red-400 mb-4">
+                        <p className="text-sm text-[var(--error)] mb-4">
                             {parseError}
                         </p>
                         <button
                             onClick={handleReset}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                            className="px-4 py-2 bg-[var(--error)] hover:bg-[var(--error)]/90 text-white rounded-lg transition-colors"
                         >
                             Try Again
                         </button>
@@ -267,54 +267,54 @@ export function BulkAddressValidationClient() {
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <FileSpreadsheet className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <div className="w-10 h-10 rounded-lg bg-[var(--success)]/10 flex items-center justify-center">
+                                <FileSpreadsheet className="w-5 h-5 text-[var(--success)]" />
                             </div>
                             <div>
-                                <p className="font-medium text-gray-900 dark:text-white">{file?.name}</p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <p className="font-medium text-[var(--text-primary)]">{file?.name}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">
                                     {parsedAddresses.length} addresses found
                                 </p>
                             </div>
                         </div>
                         <button
                             onClick={handleReset}
-                            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            className="p-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     {/* Preview Table */}
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-6">
+                    <div className="border border-[var(--border-default)] rounded-lg overflow-hidden mb-6">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 dark:bg-gray-700">
+                                <thead className="bg-[var(--bg-secondary)]">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">#</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">City</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">State</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Pincode</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">#</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Address</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">City</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">State</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Pincode</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                <tbody className="divide-y divide-[var(--border-default)]">
                                     {parsedAddresses.slice(0, 5).map((addr, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                            <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-900 dark:text-white truncate max-w-[200px]">
+                                        <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
+                                            <td className="px-4 py-3 text-sm text-[var(--text-muted)]">{idx + 1}</td>
+                                            <td className="px-4 py-3 text-sm text-[var(--text-primary)] truncate max-w-[200px]">
                                                 {addr.line1 || '-'}
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{addr.city}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{addr.state}</td>
-                                            <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white">{addr.pincode}</td>
+                                            <td className="px-4 py-3 text-sm text-[var(--text-secondary)]">{addr.city}</td>
+                                            <td className="px-4 py-3 text-sm text-[var(--text-secondary)]">{addr.state}</td>
+                                            <td className="px-4 py-3 text-sm font-mono text-[var(--text-primary)]">{addr.pincode}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                         {parsedAddresses.length > 5 && (
-                            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 text-sm text-gray-500 dark:text-gray-400 text-center">
+                            <div className="px-4 py-2 bg-[var(--bg-secondary)] text-sm text-[var(--text-muted)] text-center">
                                 and {parsedAddresses.length - 5} more...
                             </div>
                         )}
@@ -324,7 +324,7 @@ export function BulkAddressValidationClient() {
                     <button
                         onClick={handleValidate}
                         disabled={isPending}
-                        className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-3 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {isPending ? (
                             <>
@@ -346,52 +346,52 @@ export function BulkAddressValidationClient() {
                 <div className="p-6">
                     {/* Summary Cards */}
                     <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 text-center">
-                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{results.totalAddresses}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
+                        <div className="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                            <p className="text-3xl font-bold text-[var(--text-primary)]">{results.totalAddresses}</p>
+                            <p className="text-sm text-[var(--text-muted)]">Total</p>
                         </div>
-                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center border border-green-200 dark:border-green-800">
-                            <p className="text-3xl font-bold text-green-600 dark:text-green-400">{results.validAddresses}</p>
-                            <p className="text-sm text-green-600 dark:text-green-400">Valid</p>
+                        <div className="bg-[var(--success)]/10 rounded-lg p-4 text-center border border-[var(--success)]/20">
+                            <p className="text-3xl font-bold text-[var(--success)]">{results.validAddresses}</p>
+                            <p className="text-sm text-[var(--success)]">Valid</p>
                         </div>
-                        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center border border-red-200 dark:border-red-800">
-                            <p className="text-3xl font-bold text-red-600 dark:text-red-400">{results.invalidAddresses}</p>
-                            <p className="text-sm text-red-600 dark:text-red-400">Invalid</p>
+                        <div className="bg-[var(--error)]/10 rounded-lg p-4 text-center border border-[var(--error)]/20">
+                            <p className="text-3xl font-bold text-[var(--error)]">{results.invalidAddresses}</p>
+                            <p className="text-sm text-[var(--error)]">Invalid</p>
                         </div>
                     </div>
 
                     {/* Results Table */}
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-6">
+                    <div className="border border-[var(--border-default)] rounded-lg overflow-hidden mb-6">
                         <div className="overflow-x-auto max-h-[400px]">
                             <table className="w-full">
-                                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                                <thead className="bg-[var(--bg-secondary)] sticky top-0">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Pincode</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Issues</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Address</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Pincode</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Issues</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                <tbody className="divide-y divide-[var(--border-default)]">
                                     {results.results.map((result, idx) => (
                                         <tr
                                             key={idx}
-                                            className={`${result.isValid ? '' : 'bg-red-50 dark:bg-red-900/10'}`}
+                                            className={`${result.isValid ? '' : 'bg-[var(--error)]/5'}`}
                                         >
                                             <td className="px-4 py-3">
                                                 {result.isValid ? (
-                                                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                                    <CheckCircle2 className="w-5 h-5 text-[var(--success)]" />
                                                 ) : (
-                                                    <XCircle className="w-5 h-5 text-red-500" />
+                                                    <XCircle className="w-5 h-5 text-[var(--error)]" />
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                            <td className="px-4 py-3 text-sm text-[var(--text-primary)]">
                                                 {result.originalAddress.city}, {result.originalAddress.state}
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-gray-600 dark:text-gray-300">
+                                            <td className="px-4 py-3 text-sm font-mono text-[var(--text-secondary)]">
                                                 {result.originalAddress.pincode}
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                                            <td className="px-4 py-3 text-sm text-[var(--error)]">
                                                 {result.errors.map(e => e.message).join(', ') || '-'}
                                             </td>
                                         </tr>
@@ -405,14 +405,14 @@ export function BulkAddressValidationClient() {
                     <div className="flex items-center justify-between">
                         <button
                             onClick={handleReset}
-                            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            className="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                         >
                             Validate Another File
                         </button>
                         {results.invalidAddresses > 0 && (
                             <button
                                 onClick={handleExportInvalid}
-                                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 bg-[var(--error)] hover:bg-[var(--error)]/90 text-white rounded-lg transition-colors"
                             >
                                 <Download className="w-4 h-4" />
                                 Export Invalid ({results.invalidAddresses})

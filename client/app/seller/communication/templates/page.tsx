@@ -94,21 +94,21 @@ export default function TemplatesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
                             Communication Templates
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[var(--text-secondary)]">
                             Manage SMS and Email templates for automated customer notifications
                         </p>
                     </div>
                     <button
                         onClick={handleCreateTemplate}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white font-medium rounded-lg transition-colors"
                     >
                         <Plus className="w-5 h-5" />
                         Create Template
@@ -116,22 +116,22 @@ export default function TemplatesPage() {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
+                <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-4 mb-6">
                     <div className="flex gap-4">
                         <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search templates..."
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
                             />
                         </div>
                         <select
                             value={filterType}
                             onChange={(e) => setFilterType(e.target.value as TemplateType | '')}
-                            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)]"
                         >
                             <option value="">All Types</option>
                             {typeOptions.map(type => (
@@ -140,7 +140,7 @@ export default function TemplatesPage() {
                         </select>
                         <button
                             onClick={() => refetch()}
-                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors"
                         >
                             {isLoading ? <Loader variant="spinner" size="sm" /> : <RefreshCw className="w-5 h-5" />}
                         </button>
@@ -155,17 +155,17 @@ export default function TemplatesPage() {
                         ))}
                     </div>
                 ) : (templates ?? []).length === 0 ? (
-                    <div className="text-center py-12 bg-white dark:bg-gray' rounded-xl border border-gray-200 dark:border-gray-700">
-                        <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    <div className="text-center py-12 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)]">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" />
+                        <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
                             No Templates Found
                         </h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">
+                        <p className="text-[var(--text-secondary)] mb-4">
                             Create your first communication template to get started
                         </p>
                         <button
                             onClick={handleCreateTemplate}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white rounded-lg transition-colors"
                         >
                             <Plus className="w-4 h-4" />
                             Create Template
@@ -228,42 +228,42 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
     const Icon = typeOptions.find(t => t.value === template.type)?.icon ?? MessageSquare;
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow">
+        <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${template.type === 'EMAIL'
-                        ? 'bg-blue-100 dark:bg-blue-900/30'
-                        : 'bg-green-100 dark:bg-green-900/30'
+                        ? 'bg-[var(--primary-blue)]/10'
+                        : 'bg-[var(--success)]/10'
                         }`}>
                         <Icon className={`w-5 h-5 ${template.type === 'EMAIL'
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-green-600 dark:text-green-400'
+                            ? 'text-[var(--primary-blue)]'
+                            : 'text-[var(--success)]'
                             }`} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                        <h3 className="font-semibold text-[var(--text-primary)]">
                             {template.name}
                         </h3>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-[var(--text-secondary)]">
                             {categoryOptions.find(c => c.value === template.category)?.label}
                         </span>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
                     <span className={`text-xs px-2 py-1 rounded-full ${template.isActive
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                        ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                        : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
                         }`}>
                         {template.isActive ? 'Active' : 'Inactive'}
                     </span>
                 </div>
             </div>
 
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">
+            <p className="text-sm text-[var(--text-secondary)] mb-4 line-clamp-3">
                 {template.content}
             </p>
 
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-4">
                 <span>{template.variables.length} variables</span>
                 <span>•</span>
                 <span>{template.content.length} chars</span>
@@ -272,7 +272,7 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
             <div className="flex items-center gap-2">
                 <button
                     onClick={() => onEdit(template)}
-                    className="flex-1 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors flex items-center justify-center gap-1"
                 >
                     <Edit className="w-4 h-4" />
                     Edit
@@ -280,7 +280,7 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
                 <button
                     onClick={handleTest}
                     disabled={isTesting}
-                    className="flex-1 px-3 py-2 text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                    className="flex-1 px-3 py-2 text-sm text-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/5 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
                 >
                     {isTesting ? <Loader variant="dots" size="sm" /> : <Send className="w-4 h-4" />}
                     Test
@@ -288,7 +288,7 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
                 <button
                     onClick={handleDelete}
                     disabled={isDeleting}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                    className="p-2 text-[var(--error)] hover:bg-[var(--error)]/5 rounded-lg transition-colors disabled:opacity-50"
                 >
                     {isDeleting ? <Loader variant="dots" size="sm" /> : <Trash2 className="w-4 h-4" />}
                 </button>
@@ -362,15 +362,15 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="bg-[var(--bg-primary)] rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <div className="flex items-center justify-between p-6 border-b border-[var(--border-default)]">
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)]">
                         {template ? 'Edit Template' : 'Create Template'}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -381,7 +381,7 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                     {/* Name & Type */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                                 Template Name *
                             </label>
                             <input
@@ -390,18 +390,18 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                                 placeholder="e.g., Order Shipped Notification"
                                 required
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                                 Type *
                             </label>
                             <select
                                 value={formData.type}
                                 onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as TemplateType }))}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)]"
                             >
                                 {typeOptions.map(type => (
                                     <option key={type.value} value={type.value}>{type.label}</option>
@@ -412,13 +412,13 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
 
                     {/* Category */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Category *
                         </label>
                         <select
                             value={formData.category}
                             onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value as TemplateCategory }))}
-                            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)]"
                         >
                             {categoryOptions.map(cat => (
                                 <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -429,7 +429,7 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                     {/* Subject (for Email) */}
                     {formData.type === 'EMAIL' && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                                 Subject *
                             </label>
                             <input
@@ -438,7 +438,7 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                                 onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
                                 placeholder="Email subject line"
                                 required={formData.type === 'EMAIL'}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
                             />
                         </div>
                     )}
@@ -446,10 +446,10 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                     {/* Content */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <label className="text-sm font-medium text-[var(--text-secondary)]">
                                 Message Content *
                             </label>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <div className="text-xs text-[var(--text-muted)]">
                                 {characterCount} characters
                                 {formData.type === 'SMS' && ` • ${smsCount} SMS`}
                             </div>
@@ -465,13 +465,13 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                             placeholder="Type your message here. Use {{variableName}} for dynamic content."
                             required
                             rows={8}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+                            className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] font-mono text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)]"
                         />
                     </div>
 
                     {/* Variable Inserter */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                             Available Variables
                         </label>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -480,10 +480,10 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                                     key={variable.name}
                                     type="button"
                                     onClick={() => insertVariable(variable.name)}
-                                    className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-left"
+                                    className="px-3 py-2 text-xs bg-[var(--bg-secondary)] hover:bg-[var(--bg-secondary)]/80 rounded-lg transition-colors text-left"
                                     title={variable.description}
                                 >
-                                    <span className="font-mono text-primary-600 dark:text-primary-400">
+                                    <span className="font-mono text-[var(--primary-blue)]">
                                         {`{{${variable.name}}}`}
                                     </span>
                                 </button>
@@ -498,27 +498,27 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                             id="isActive"
                             checked={formData.isActive}
                             onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                         />
-                        <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-gray-300">
+                        <label htmlFor="isActive" className="text-sm text-[var(--text-secondary)]">
                             Activate this template immediately
                         </label>
                     </div>
                 </form>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--border-default)]">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        className="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-6 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
                     >
                         {isSubmitting ? (
                             <>

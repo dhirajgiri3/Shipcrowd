@@ -84,27 +84,27 @@ export default function PincodeCheckerPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-[var(--bg-secondary)]">
             <div className="max-w-5xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
                         Pincode Serviceability Checker
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-[var(--text-secondary)]">
                         Check delivery coverage and courier availability for any pincode in India
                     </p>
                 </div>
 
                 {/* Mode Toggle */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+                <div className="bg-[var(--bg-primary)] rounded-xl shadow-sm border border-[var(--border-default)] p-6 mb-6">
                     <div className="flex gap-4 mb-6">
                         <button
                             onClick={() => setMode('single')}
                             className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2
                 ${mode === 'single'
-                                    ? 'bg-primary-600 text-white shadow-lg'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                    ? 'bg-[var(--primary-blue)] text-white shadow-lg'
+                                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
                                 }`}
                         >
                             <MapPin className="w-5 h-5" />
@@ -114,8 +114,8 @@ export default function PincodeCheckerPage() {
                             onClick={() => setMode('route')}
                             className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2
                 ${mode === 'route'
-                                    ? 'bg-primary-600 text-white shadow-lg'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                    ? 'bg-[var(--primary-blue)] text-white shadow-lg'
+                                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
                                 }`}
                         >
                             <ArrowRight className="w-5 h-5" />
@@ -139,17 +139,17 @@ export default function PincodeCheckerPage() {
                             <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] gap-4 items-center">
                                 {/* Origin */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                                         Origin Pincode
                                     </label>
                                     <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--success)]" />
                                         <input
                                             type="text"
                                             value={originPincode}
                                             onChange={(e) => setOriginPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                             placeholder="6-digit pincode"
-                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-lg font-medium tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-lg font-medium tracking-wider focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                                             maxLength={6}
                                         />
                                     </div>
@@ -157,24 +157,24 @@ export default function PincodeCheckerPage() {
 
                                 {/* Arrow */}
                                 <div className="hidden md:flex items-center justify-center">
-                                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                        <ArrowRight className="w-5 h-5 text-gray-500" />
+                                    <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center">
+                                        <ArrowRight className="w-5 h-5 text-[var(--text-muted)]" />
                                     </div>
                                 </div>
 
                                 {/* Destination */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                                         Destination Pincode
                                     </label>
                                     <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-red-500" />
+                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--error)]" />
                                         <input
                                             type="text"
                                             value={destinationPincode}
                                             onChange={(e) => setDestinationPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                             placeholder="6-digit pincode"
-                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-lg font-medium tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-lg font-medium tracking-wider focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                                             maxLength={6}
                                         />
                                     </div>
@@ -184,18 +184,18 @@ export default function PincodeCheckerPage() {
                             {/* Route Results */}
                             {isRouteLoading && (
                                 <div className="flex items-center justify-center py-12">
-                                    <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
-                                    <span className="ml-3 text-gray-600 dark:text-gray-400">Checking route serviceability...</span>
+                                    <Loader2 className="w-8 h-8 text-[var(--primary-blue)] animate-spin" />
+                                    <span className="ml-3 text-[var(--text-secondary)]">Checking route serviceability...</span>
                                 </div>
                             )}
 
                             {isRouteError && (
-                                <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-center">
-                                    <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                                    <p className="text-red-700 dark:text-red-300">Failed to check route serviceability</p>
+                                <div className="p-4 rounded-lg bg-[var(--error-bg)] border border-[var(--error)]/20 text-center">
+                                    <XCircle className="w-6 h-6 text-[var(--error)] mx-auto mb-2" />
+                                    <p className="text-[var(--error)]">Failed to check route serviceability</p>
                                     <button
                                         onClick={() => refetchRoute()}
-                                        className="mt-2 text-sm text-red-600 hover:underline"
+                                        className="mt-2 text-sm text-[var(--error)] hover:underline"
                                     >
                                         Try Again
                                     </button>
@@ -243,7 +243,7 @@ export default function PincodeCheckerPage() {
 
                                     {/* Available Couriers */}
                                     <div className="space-y-3">
-                                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                        <h4 className="text-sm font-semibold text-[var(--text-secondary)] flex items-center gap-2">
                                             <Truck className="w-4 h-4" />
                                             Available Couriers ({routeResult.availableCouriers.length})
                                         </h4>
@@ -251,21 +251,21 @@ export default function PincodeCheckerPage() {
                                             {routeResult.availableCouriers.map((courier) => (
                                                 <div
                                                     key={courier.courier}
-                                                    className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+                                                    className="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-default)] p-4 hover:shadow-md transition-shadow"
                                                 >
                                                     <div className="flex items-start justify-between mb-3">
-                                                        <h5 className="font-semibold text-gray-900 dark:text-white">
+                                                        <h5 className="font-semibold text-[var(--text-primary)]">
                                                             {courier.courierDisplayName}
                                                         </h5>
                                                         <div className="flex gap-1">
                                                             {courier.codAvailable && (
-                                                                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                                                                <span className="text-xs bg-[var(--success)]/10 text-[var(--success)] px-2 py-0.5 rounded-full">
                                                                     COD
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                                    <div className="grid grid-cols-2 gap-2 text-sm text-[var(--text-secondary)]">
                                                         <div className="flex items-center gap-1">
                                                             <Clock className="w-3 h-3" />
                                                             {courier.estimatedDays} days
@@ -287,14 +287,14 @@ export default function PincodeCheckerPage() {
                     <div className="flex items-center justify-between">
                         <button
                             onClick={handleReset}
-                            className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                         >
                             <RotateCcw className="w-4 h-4" />
                             Reset
                         </button>
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white rounded-lg transition-colors"
                         >
                             <Download className="w-4 h-4" />
                             Export Report
@@ -303,11 +303,11 @@ export default function PincodeCheckerPage() {
                 )}
 
                 {/* Info Section */}
-                <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-                    <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                <div className="mt-8 bg-[var(--primary-blue)]/5 rounded-xl p-6 border border-[var(--primary-blue)]/20">
+                    <h3 className="font-semibold text-[var(--primary-blue)] mb-3">
                         About Pincode Serviceability
                     </h3>
-                    <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                    <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
                         <li className="flex items-start gap-2">
                             <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
                             Check coverage for all major courier partners including Velocity, Delhivery, Ekart, XpressBees, and BlueDart

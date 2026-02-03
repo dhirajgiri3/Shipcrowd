@@ -17,7 +17,6 @@ import { Shield, Download, Bell, FileText, Clock, Check, CheckCircle2, Loader2, 
 import { Loader, Button } from '@/src/components/ui';
 import { consentApi, type ConsentMap, type ConsentHistoryItem } from '@/src/core/api/clients/auth/consentApi';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
-import Link from 'next/link';
 
 export function PrivacyClient() {
     const router = useRouter();

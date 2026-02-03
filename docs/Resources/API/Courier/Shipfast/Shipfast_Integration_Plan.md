@@ -747,9 +747,8 @@ lostShipmentDetails?: {
   daysStuck: number;
   escalatedAt?: Date;
   escalationPriority?: 'low' | 'medium' | 'high';
-  insuranceClaimId?: string;
   resolvedAt?: Date;
-  resolution?: 'found' | 'confirmed_lost' | 'insurance_claimed';
+  resolution?: 'found' | 'confirmed_lost';
 }
 ```
 

@@ -1,6 +1,5 @@
 import { RTOEvent } from '@/infrastructure/database/mongoose/models';
 import logger from '@/shared/logger/winston.logger';
-import InsuranceClaimService from './insurance-claim.service';
 
 /**
  * Warehouse RTO Handler
@@ -76,9 +75,7 @@ export class WarehouseRTOHandler {
             // Determine next action based on reason
             let action = 'hold_for_review';
 
-            if (reason === 'damaged') {
-                action = 'initiate_insurance_claim';
-            } else if (reason === 'missing_items') {
+            if (reason === 'missing_items') {
                 action = 'escalate_to_logistics';
             }
 
@@ -90,30 +87,6 @@ export class WarehouseRTOHandler {
                 action,
                 notes
             });
-
-            // Initiate insurance claim if applicable
-            if (action === 'initiate_insurance_claim') {
-                try {
-                    const claim = await InsuranceClaimService.initiateClaim({
-                        shipmentId: rtoEvent.shipment._id.toString(),
-                        companyId: rtoEvent.company.toString(),
-                        userId: rejectedBy,
-                        reason: reason as any,
-                        description: notes
-                    });
-
-                    rtoEvent.metadata = {
-                        ...(rtoEvent.metadata || {}),
-                        insuranceClaimId: claim.disputeId
-                    };
-                    await rtoEvent.save();
-                } catch (claimError: any) {
-                    logger.error('Failed to initiate insurance claim', {
-                        rtoEventId,
-                        error: claimError.message
-                    });
-                }
-            }
 
             return {
                 success: true,
