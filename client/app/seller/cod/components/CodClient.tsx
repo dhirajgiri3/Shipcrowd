@@ -135,9 +135,9 @@ export function CodClient() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Mock Data Indicator */}
             {(isUsingMockRemittances || isUsingMockStats) && (
-                <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                <div className="flex items-center gap-3 p-3 bg-[var(--warning-bg)] border border-[var(--warning-border)] rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-[var(--warning)] flex-shrink-0" />
+                    <p className="text-sm text-[var(--warning)]">
                         ⚠️ Using mock data (API data not available)
                     </p>
                 </div>
@@ -209,8 +209,8 @@ export function CodClient() {
                                 <p className="text-2xl font-bold text-[var(--text-primary)]">{thisMonthCount}</p>
                                 <p className="text-xs text-[var(--text-muted)]">remittances</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                <TrendingUp className="h-5 w-5 text-purple-600" />
+                            <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             </div>
                         </div>
                     </CardContent>

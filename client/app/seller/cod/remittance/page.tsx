@@ -105,7 +105,7 @@ export default function CODRemittancePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0 }}
                 >
-                    <Card className="border-[var(--border-default)] hover:border-[var(--primary-orange)]/50 transition-all duration-300 h-full">
+                    <Card className="border-[var(--border-default)] hover:border-[var(--warning)]/50 transition-all duration-300 h-full">
                         <CardContent className="p-6">
                             {statsLoading ? (
                                 <div className="animate-pulse space-y-3">
@@ -116,8 +116,8 @@ export default function CODRemittancePage() {
                             ) : (
                                 <>
                                     <div className="flex items-center justify-between mb-3">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-2 border-orange-500/20 flex items-center justify-center">
-                                            <Clock className="w-6 h-6 text-orange-600" />
+                                        <div className="w-12 h-12 rounded-xl bg-[var(--warning-soft)] border-2 border-[var(--warning)]/20 flex items-center justify-center">
+                                            <Clock className="w-6 h-6 text-[var(--warning)]" />
                                         </div>
                                         <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-2 py-1 rounded">
                                             PENDING
@@ -155,8 +155,8 @@ export default function CODRemittancePage() {
                             ) : (
                                 <>
                                     <div className="flex items-center justify-between mb-3">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-2 border-blue-500/20 flex items-center justify-center">
-                                            <TrendingUp className="w-6 h-6 text-blue-600" />
+                                        <div className="w-12 h-12 rounded-xl bg-[var(--primary-blue-soft)] border-2 border-[var(--primary-blue)]/20 flex items-center justify-center">
+                                            <TrendingUp className="w-6 h-6 text-[var(--primary-blue)]" />
                                         </div>
                                         <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-2 py-1 rounded">
                                             MTD
@@ -194,8 +194,8 @@ export default function CODRemittancePage() {
                             ) : stats?.lastRemittance ? (
                                 <>
                                     <div className="flex items-center justify-between mb-3">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500/10 to-green-600/5 border-2 border-green-500/20 flex items-center justify-center">
-                                            <DollarSign className="w-6 h-6 text-green-600" />
+                                        <div className="w-12 h-12 rounded-xl bg-[var(--success-bg)] border-2 border-[var(--success)]/20 flex items-center justify-center">
+                                            <DollarSign className="w-6 h-6 text-[var(--success)]" />
                                         </div>
                                         <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-2 py-1 rounded">
                                             PAID

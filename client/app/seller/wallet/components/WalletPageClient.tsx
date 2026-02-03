@@ -65,8 +65,8 @@ export function WalletPageClient() {
         return (
             <div className="min-h-screen bg-[var(--bg-secondary)] flex items-center justify-center p-6">
                 <div className="max-w-md w-full bg-[var(--bg-primary)] rounded-2xl p-8 text-center space-y-4 border border-[var(--border-default)]">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/10">
-                        <WalletIcon className="w-8 h-8 text-red-500" />
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--error-bg)]">
+                        <WalletIcon className="w-8 h-8 text-[var(--error)]" />
                     </div>
                     <h3 className="text-lg font-bold text-[var(--text-primary)]">
                         Unable to Load Wallet

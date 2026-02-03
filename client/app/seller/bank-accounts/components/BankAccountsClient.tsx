@@ -89,7 +89,7 @@ export function BankAccountsClient() {
                                     })}
                                     placeholder="e.g. John Doe"
                                 />
-                                {errors.accountHolderName && <span className="text-xs text-red-500">{errors.accountHolderName.message}</span>}
+                                {errors.accountHolderName && <span className="text-xs text-[var(--error)]">{errors.accountHolderName.message}</span>}
                             </div>
 
                             <div className="space-y-2">
@@ -102,7 +102,7 @@ export function BankAccountsClient() {
                                     })}
                                     placeholder="e.g. HDFC Bank"
                                 />
-                                {errors.bankName && <span className="text-xs text-red-500">{errors.bankName.message}</span>}
+                                {errors.bankName && <span className="text-xs text-[var(--error)]">{errors.bankName.message}</span>}
                             </div>
 
                             <div className="space-y-2">
@@ -115,7 +115,7 @@ export function BankAccountsClient() {
                                     })}
                                     placeholder="e.g. 1234567890"
                                 />
-                                {errors.accountNumber && <span className="text-xs text-red-500">{errors.accountNumber.message}</span>}
+                                {errors.accountNumber && <span className="text-xs text-[var(--error)]">{errors.accountNumber.message}</span>}
                             </div>
 
                             <div className="space-y-2">
@@ -132,7 +132,7 @@ export function BankAccountsClient() {
                                     className="uppercase"
                                     maxLength={11}
                                 />
-                                {errors.ifscCode && <span className="text-xs text-red-500">{errors.ifscCode.message}</span>}
+                                {errors.ifscCode && <span className="text-xs text-[var(--error)]">{errors.ifscCode.message}</span>}
                             </div>
 
                             <div className="flex justify-end gap-2 mt-6">
@@ -172,18 +172,18 @@ export function BankAccountsClient() {
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                            <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                        <div className="h-10 w-10 rounded-full bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                            <Building2 className="h-5 w-5 text-[var(--primary-blue)]" />
                                         </div>
                                         <div>
                                             <h3 className="font-semibold text-[var(--text-primary)]">{account.bankName}</h3>
                                             <p className="text-xs text-[var(--text-secondary)] flex items-center gap-1">
                                                 {account.isVerified ? (
-                                                    <span className="flex items-center text-emerald-600 dark:text-emerald-400">
+                                                    <span className="flex items-center text-[var(--success)]">
                                                         <CheckCircle className="h-3 w-3 mr-1" /> Verified
                                                     </span>
                                                 ) : (
-                                                    <span className="flex items-center text-amber-600 dark:text-amber-400">
+                                                    <span className="flex items-center text-[var(--warning)]">
                                                         <AlertCircle className="h-3 w-3 mr-1" /> Pending Verification
                                                     </span>
                                                 )}
@@ -196,7 +196,7 @@ export function BankAccountsClient() {
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                        className="text-[var(--error)] hover:text-[var(--error-hover)] hover:bg-[var(--error-bg)]"
                                         onClick={() => handleDelete(account._id || 'primary')}
                                         disabled={isDeleting}
                                     >

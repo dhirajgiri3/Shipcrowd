@@ -144,34 +144,34 @@ export default function CODSettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="min-h-screen bg-[var(--bg-secondary)] p-6">
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
                     <button
                         onClick={() => router.back()}
-                        className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
+                        className="flex items-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] mb-4"
                     >
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         Back to COD Remittance
                     </button>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)]">
                         Payout Settings
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    <p className="text-[var(--text-secondary)] mt-2">
                         Configure your automatic COD remittance schedule
                     </p>
                 </div>
 
                 {/* Success Message */}
                 {saveSuccess && (
-                    <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3">
-                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="mb-6 p-4 bg-[var(--success-bg)] border border-[var(--success)] rounded-lg flex items-center gap-3">
+                        <svg className="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span className="text-green-700 dark:text-green-300">Settings saved successfully!</span>
+                        <span className="text-[var(--success)]">Settings saved successfully!</span>
                     </div>
                 )}
 
@@ -179,19 +179,19 @@ export default function CODSettingsPage() {
                     {/* Left Column - Main Settings */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Enable/Disable Toggle */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)]">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">
                                         Automatic Payouts
                                     </h2>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    <p className="text-sm text-[var(--text-secondary)] mt-1">
                                         Enable scheduled automatic COD remittance
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => setSchedule(s => ({ ...s, isEnabled: !s.isEnabled }))}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${schedule.isEnabled ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${schedule.isEnabled ? 'bg-[var(--primary-blue)]' : 'bg-[var(--bg-tertiary)]'
                                         }`}
                                 >
                                     <span
@@ -203,8 +203,8 @@ export default function CODSettingsPage() {
                         </div>
 
                         {/* Frequency Selection */}
-                        <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${!schedule.isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        <div className={`bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)] ${!schedule.isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Payout Frequency
                             </h2>
                             <div className="grid grid-cols-2 gap-4">
@@ -213,23 +213,23 @@ export default function CODSettingsPage() {
                                         key={option.value}
                                         onClick={() => setSchedule(s => ({ ...s, frequency: option.value }))}
                                         className={`p-4 rounded-lg border-2 text-left transition-all ${schedule.frequency === option.value
-                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                            ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]'
+                                            : 'border-[var(--border-default)] hover:border-[var(--border-hover)]'
                                             }`}
                                     >
                                         <div className={`mb-2 ${schedule.frequency === option.value
-                                            ? 'text-primary-600 dark:text-primary-400'
-                                            : 'text-gray-400 dark:text-gray-500'
+                                            ? 'text-[var(--primary-blue)]'
+                                            : 'text-[var(--text-tertiary)]'
                                             }`}>
                                             {option.icon}
                                         </div>
                                         <p className={`font-semibold ${schedule.frequency === option.value
-                                            ? 'text-primary-700 dark:text-primary-300'
-                                            : 'text-gray-900 dark:text-white'
+                                            ? 'text-[var(--primary-blue-deep)]'
+                                            : 'text-[var(--text-primary)]'
                                             }`}>
                                             {option.label}
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        <p className="text-xs text-[var(--text-secondary)] mt-1">
                                             {option.description}
                                         </p>
                                     </button>
@@ -239,8 +239,8 @@ export default function CODSettingsPage() {
 
                         {/* Day Selection */}
                         {(schedule.frequency === 'weekly' || schedule.frequency === 'bi-weekly') && schedule.isEnabled && (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                     Payout Day
                                 </h2>
                                 <div className="grid grid-cols-7 gap-2">
@@ -249,8 +249,8 @@ export default function CODSettingsPage() {
                                             key={day.value}
                                             onClick={() => setSchedule(s => ({ ...s, dayOfWeek: day.value }))}
                                             className={`p-3 rounded-lg text-center text-sm font-medium transition-all ${schedule.dayOfWeek === day.value
-                                                ? 'bg-primary-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                ? 'bg-[var(--primary-blue)] text-white'
+                                                : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
                                                 }`}
                                         >
                                             {day.label.slice(0, 3)}
@@ -262,8 +262,8 @@ export default function CODSettingsPage() {
 
                         {/* Monthly Day Selection */}
                         {schedule.frequency === 'monthly' && schedule.isEnabled && (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                     Day of Month
                                 </h2>
                                 <div className="grid grid-cols-7 gap-2">
@@ -272,37 +272,37 @@ export default function CODSettingsPage() {
                                             key={day}
                                             onClick={() => setSchedule(s => ({ ...s, dayOfMonth: day }))}
                                             className={`p-2 rounded-lg text-center text-sm font-medium transition-all ${schedule.dayOfMonth === day
-                                                ? 'bg-primary-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                ? 'bg-[var(--primary-blue)] text-white'
+                                                : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
                                                 }`}
                                         >
                                             {day}
                                         </button>
                                     ))}
                                 </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                                <p className="text-xs text-[var(--text-secondary)] mt-3">
                                     Note: Days 29-31 are not available to ensure consistency across all months.
                                 </p>
                             </div>
                         )}
 
                         {/* Minimum Amount */}
-                        <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${!schedule.isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        <div className={`bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)] ${!schedule.isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
                                 Minimum Payout Amount
                             </h2>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            <p className="text-sm text-[var(--text-secondary)] mb-4">
                                 Payouts will only be processed when balance exceeds this amount
                             </p>
                             <div className="relative max-w-xs">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
                                     ₹
                                 </span>
                                 <input
                                     type="number"
                                     value={schedule.minimumAmount}
                                     onChange={(e) => setSchedule(s => ({ ...s, minimumAmount: parseInt(e.target.value) || 0 }))}
-                                    className="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    className="w-full pl-8 pr-4 py-3 border border-[var(--border-default)] rounded-lg focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent bg-[var(--bg-secondary)] text-[var(--text-primary)]"
                                     min="100"
                                     step="100"
                                 />
@@ -313,8 +313,8 @@ export default function CODSettingsPage() {
                                         key={amount}
                                         onClick={() => setSchedule(s => ({ ...s, minimumAmount: amount }))}
                                         className={`px-3 py-1 text-sm rounded-lg transition-colors ${schedule.minimumAmount === amount
-                                            ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            ? 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]'
+                                            : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
                                             }`}
                                     >
                                         {formatCurrency(amount)}
@@ -327,8 +327,8 @@ export default function CODSettingsPage() {
                     {/* Right Column - Summary & Bank Account */}
                     <div className="space-y-6">
                         {/* Next Payout Preview */}
-                        <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg shadow p-6 text-white">
-                            <h3 className="text-sm font-medium text-primary-100 mb-2">
+                        <div className="bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] rounded-lg shadow p-6 text-white">
+                            <h3 className="text-sm font-medium text-blue-100 mb-2">
                                 Next Scheduled Payout
                             </h3>
                             {schedule.isEnabled ? (
@@ -341,7 +341,7 @@ export default function CODSettingsPage() {
                                             year: 'numeric'
                                         })}
                                     </p>
-                                    <p className="text-sm text-primary-100">
+                                    <p className="text-sm text-blue-100">
                                         {schedule.frequency === 'daily' ? 'Every business day' :
                                             schedule.frequency === 'weekly' ? `Every ${DAYS_OF_WEEK[schedule.dayOfWeek!].label}` :
                                                 schedule.frequency === 'bi-weekly' ? `Every 2 weeks on ${DAYS_OF_WEEK[schedule.dayOfWeek!].label}` :
@@ -349,63 +349,63 @@ export default function CODSettingsPage() {
                                     </p>
                                 </>
                             ) : (
-                                <p className="text-primary-100">
+                                <p className="text-blue-100">
                                     Automatic payouts disabled
                                 </p>
                             )}
                         </div>
 
                         {/* Bank Account Info */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Payout Account
                             </h3>
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-10 h-10 rounded-full bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-[var(--primary-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                         </svg>
                                     </div>
                                     <div>
-                                        <p className="font-medium text-gray-900 dark:text-white">
+                                        <p className="font-medium text-[var(--text-primary)]">
                                             {bankAccount.bankName}
                                         </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                                        <p className="text-sm text-[var(--text-secondary)] font-mono">
                                             {bankAccount.accountNumber}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Account Holder</p>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                <div className="pt-3 border-t border-[var(--border-default)]">
+                                    <p className="text-xs text-[var(--text-secondary)]">Account Holder</p>
+                                    <p className="text-sm font-medium text-[var(--text-primary)]">
                                         {bankAccount.accountHolderName}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">IFSC Code</p>
-                                    <p className="text-sm font-mono text-gray-900 dark:text-white">
+                                    <p className="text-xs text-[var(--text-secondary)]">IFSC Code</p>
+                                    <p className="text-sm font-mono text-[var(--text-primary)]">
                                         {bankAccount.ifsc}
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => router.push('/seller/settings/bank')}
-                                className="mt-4 w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                className="mt-4 w-full px-4 py-2 text-sm border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
                             >
                                 Change Bank Account
                             </button>
                         </div>
 
                         {/* Info Card */}
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <div className="bg-[var(--primary-blue-soft)] border border-[var(--primary-blue)]/20 rounded-lg p-4">
                             <div className="flex gap-3">
-                                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-[var(--primary-blue)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <div className="text-sm text-blue-700 dark:text-blue-300">
+                                <div className="text-sm text-[var(--primary-blue-deep)]">
                                     <p className="font-medium mb-1">Processing Time</p>
-                                    <p className="text-blue-600 dark:text-blue-400">
+                                    <p className="text-[var(--text-secondary)]">
                                         Scheduled payouts are processed between 10:00 AM - 6:00 PM IST on business days.
                                     </p>
                                 </div>
@@ -418,14 +418,14 @@ export default function CODSettingsPage() {
                 <div className="mt-8 flex justify-end gap-4">
                     <button
                         onClick={() => router.back()}
-                        className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        className="px-6 py-3 border border-[var(--border-default)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                        className="px-8 py-3 bg-[var(--primary-blue)] text-white rounded-lg hover:bg-[var(--primary-blue-deep)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
                         {isSaving ? (
                             <>
