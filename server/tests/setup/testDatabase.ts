@@ -82,3 +82,7 @@ export const seedCollection = async <T extends mongoose.Document>(
 ): Promise<T[]> => {
     return Model.insertMany(documents) as unknown as T[];
 };
+
+// Aliases for compatibility
+export const setupTestDatabase = connectTestDb;
+export const teardownTestDatabase = closeTestDb;

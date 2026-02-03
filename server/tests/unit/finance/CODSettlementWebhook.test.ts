@@ -197,6 +197,7 @@ describe('COD Settlement Webhook Handler', () => {
                 companyId: mockShipment.companyId,
                 status: 'approved',
                 shipments: [mockShipment._id],
+                settlementDetails: undefined as any,
                 save: jest.fn()
             };
 
@@ -204,14 +205,15 @@ describe('COD Settlement Webhook Handler', () => {
                 .mockResolvedValueOnce(mockShipment)
                 .mockResolvedValueOnce({ ...mockShipment, select: jest.fn().mockReturnThis() });
             (Shipment.find as jest.Mock).mockResolvedValue([mockShipment]);
+
             (CODRemittance.find as jest.Mock).mockResolvedValue([mockBatch]);
 
             await CODRemittanceService.handleSettlementWebhook(mockPayload);
 
             expect(mockBatch.status).toBe('settled');
             expect(mockBatch.settlementDetails).toBeDefined();
-            expect(mockBatch.settlementDetails.settlementId).toBe('SETTLE-999');
-            expect(mockBatch.settlementDetails.utrNumber).toBe('UTR999888');
+            expect(mockBatch.settlementDetails?.settlementId).toBe('SETTLE-999');
+            expect(mockBatch.settlementDetails?.utrNumber).toBe('UTR999888');
             expect(mockBatch.save).toHaveBeenCalled();
         });
     });

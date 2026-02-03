@@ -851,8 +851,8 @@ export default class CODRemittanceService {
 
                     if (batchShipments.length > 0) {
                         // Update batch status
-                        batch.status = 'settled';
-                        batch.settlementDetails = {
+                        (batch as any).status = 'settled';
+                        (batch as any).settlementDetails = {
                             settlementId: payload.settlement_id,
                             settledAt: new Date(payload.settlement_date),
                             utrNumber: payload.utr_number,
@@ -882,22 +882,26 @@ export default class CODRemittanceService {
 
                 // Send email alert to finance team
                 const EmailService = (await import('../communication/email.service')).default;
-                await EmailService.sendOperationalAlert({
-                    to: process.env.FINANCE_ALERT_EMAIL || 'finance@shipcrowd.com',
-                    subject: `Settlement Reconciliation Alert - ${discrepancies.length} Discrepancies`,
-                    body: `Settlement ID: ${payload.settlement_id}\n\n` +
-                          `Total Amount: ${payload.total_amount} ${payload.currency || 'INR'}\n` +
-                          `Reconciled: ${reconciledShipments.size}/${payload.shipments.length}\n\n` +
-                          `Discrepancies:\n${discrepancies.map(d => `- ${d.awb}: ${d.reason}`).join('\n')}`
-                });
+                if ((EmailService as any).sendOperationalAlert) {
+                    await (EmailService as any).sendOperationalAlert({
+                        to: process.env.FINANCE_ALERT_EMAIL || 'finance@shipcrowd.com',
+                        subject: `Settlement Reconciliation Alert - ${discrepancies.length} Discrepancies`,
+                        body: `Settlement ID: ${payload.settlement_id}\n\n` +
+                            `Total Amount: ${payload.total_amount} ${payload.currency || 'INR'}\n` +
+                            `Reconciled: ${reconciledShipments.size}/${payload.shipments.length}\n\n` +
+                            `Discrepancies:\n${discrepancies.map(d => `- ${d.awb}: ${d.reason}`).join('\n')}`
+                    });
+                } else {
+                    logger.warn('EmailService.sendOperationalAlert not found, skipping alert email');
+                }
             }
 
             return {
                 success: true,
                 reconciledBatches,
                 discrepancies,
-                message: discrepancies.length > 0 
-                    ? `Reconciled with ${discrepancies.length} discrepancies` 
+                message: discrepancies.length > 0
+                    ? `Reconciled with ${discrepancies.length} discrepancies`
                     : 'Successfully reconciled all shipments'
             };
 

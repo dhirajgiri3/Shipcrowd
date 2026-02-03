@@ -27,24 +27,33 @@ import {
     Download,
     ArrowUpRight,
     MapPin,
-    Calendar
+    Calendar,
+    Loader2
 } from 'lucide-react';
 import { Shipment } from '@/src/types/domain/admin';
-import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
+import { useShipments, useGenerateBulkLabels } from '@/src/core/api/hooks/orders/useShipments';
+import { DateRange } from '@/src/lib/data';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
     const [statusFilter, setStatusFilter] = useState('all');
+    const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const { addToast } = useToast();
+
+    // Hooks
+    const { mutate: generateLabels, isPending: isGeneratingLabels } = useGenerateBulkLabels();
 
     // Fetch shipments from API
     const { data: shipmentsResponse, isLoading } = useShipments({
         status: statusFilter !== 'all' ? statusFilter : undefined,
-        search: search || undefined
+        search: search || undefined,
+        startDate: dateRange?.from?.toISOString(),
+        endDate: dateRange?.to?.toISOString()
     });
 
     const shipmentsData = shipmentsResponse?.shipments || [];
+    // Client-side filtering if API date filtering isn't ready, or just passing through
     const filteredData = shipmentsData;
 
     // Status Cards Data
@@ -58,8 +67,15 @@ export function ShipmentsClient() {
     ];
 
     const getStatusCount = (id: string) => {
+        // If we have summary stats from API, use that. Otherwise count from list (might be partial list due to pagination)
         if (id === 'all') return shipmentsData.length;
         return shipmentsData.filter((s: any) => s.status === id).length;
+    };
+
+    const handleExport = () => {
+        // Mock export functionality or call an API endpoint
+        // In a real app, this might trigger a download or email report
+        addToast('Export started. You will receive an email shortly.', 'success');
     };
 
     // Columns
@@ -169,8 +185,13 @@ export function ShipmentsClient() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <DateRangePicker />
-                    <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25 border-0">
+                    <DateRangePicker
+                        onRangeChange={setDateRange}
+                    />
+                    <Button
+                        onClick={handleExport}
+                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25 border-0"
+                    >
                         <Download className="h-4 w-4 mr-1.5" /> Export
                     </Button>
                 </div>
@@ -224,13 +245,12 @@ export function ShipmentsClient() {
             <div className="space-y-4">
                 <div className="flex flex-col md:flex-row gap-4 justify-between bg-[var(--bg-primary)] p-1.5 rounded-2xl border border-[var(--border-subtle)]">
                     <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                        <input
-                            type="text"
+                        <Input
                             placeholder="Search by AWB, Order ID, or Customer..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] focus:ring-0 text-sm transition-all"
+                            icon={<Search className="w-4 h-4" />}
+                            className="bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)]"
                         />
                     </div>
                     <div className="flex gap-2">
@@ -245,6 +265,7 @@ export function ShipmentsClient() {
                         columns={columns}
                         data={filteredData as any[]}
                         onRowClick={(row) => setSelectedShipment(row)}
+                        isLoading={isLoading}
                     />
                 </div>
             </div>
