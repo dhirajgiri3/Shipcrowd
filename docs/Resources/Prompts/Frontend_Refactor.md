@@ -528,32 +528,3 @@ P.S. — **Backend alignment & “everything must already exist” checklist (ve
     * Accessibility and performance smoke checks passed.
 
 **Bottom line:** every piece of code you add must be traceable to an existing backend contract, use existing shared types/hooks/utilities, follow the established API client and UI component patterns, and be fully covered by contract and UI tests. If anything in the backend is ambiguous or missing, open a single backend ticket and reference it in the PR rather than making front-end assumptions.
-
-Analytics
-Billing
-Commission
-Companies
-Coupons
-Couriers
-Disputes
-Financials
-Integrations
-Intelligence
-KYC
-NDR
-Orders
-Pricing
-Profit
-Ratecards
-Returns
-Sales
-Security
-Sellers
-Settings
-Shipments
-Support
-System Health
-Users
-Warehouses
-Weight
-Zones

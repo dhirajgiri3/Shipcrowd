@@ -1,37 +1,20 @@
 "use client";
 
-import { useState, FormEvent } from 'react';
-import { authApi } from '@/src/core/api/clients/auth/authApi';
-import { Button, Input, Card } from '@/src/components/ui';
-import { showSuccessToast, handleApiError } from '@/src/lib/error';
-import { Mail, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Card } from '@/src/components/ui';
+import { Mail, ArrowLeft } from 'lucide-react';
+import { useMagicLink } from '@/src/core/api/hooks/auth/useMagicLink';
 
 export function MagicLinkClient() {
-    const [email, setEmail] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [sent, setSent] = useState(false);
+    const { email, setEmail, isLoading, isSuccess, handleSubmit } = useMagicLink();
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-
-        try {
-            await authApi.requestMagicLink(email);
-            setSent(true);
-            showSuccessToast('Magic link sent! Check your email.');
-        } catch (error: any) {
-            handleApiError(error, 'Failed to send magic link');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    if (sent) {
+    if (isSuccess) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] p-4">
-                <Card className="w-full max-w-md p-8 text-center space-y-4">
-                    <div className="mx-auto w-16 h-16 bg-[var(--primary-blue-soft)] rounded-full flex items-center justify-center">
+                <Card className="w-full max-w-md p-8 text-center space-y-4 shadow-[var(--shadow-md)] bg-[var(--bg-elevated)] border-[var(--border-default)]">
+                    <div className="mx-auto w-16 h-16 bg-[var(--primary-blue)]/10 rounded-full flex items-center justify-center">
                         <Mail className="h-8 w-8 text-[var(--primary-blue)]" />
                     </div>
 
@@ -62,7 +45,7 @@ export function MagicLinkClient() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] p-4">
-            <Card className="w-full max-w-md p-8">
+            <Card className="w-full max-w-md p-8 shadow-[var(--shadow-md)] bg-[var(--bg-elevated)] border-[var(--border-default)]">
                 <div className="space-y-6">
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-[var(--text-primary)]">
@@ -86,16 +69,18 @@ export function MagicLinkClient() {
                                 required
                                 disabled={isLoading}
                                 autoFocus
+                                className="bg-[var(--bg-primary)]"
                             />
                         </div>
 
                         <Button
                             type="submit"
+                            variant="primary"
                             className="w-full"
                             disabled={isLoading}
                             isLoading={isLoading}
                         >
-                            {isLoading ? 'Sending...' : 'Send Magic Link'}
+                            Send Magic Link
                         </Button>
                     </form>
 

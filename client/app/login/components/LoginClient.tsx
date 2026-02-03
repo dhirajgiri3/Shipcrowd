@@ -13,8 +13,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     ArrowRight,
@@ -24,93 +23,59 @@ import {
     EyeOff,
 } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { useLogin } from '@/src/core/api/hooks/auth/useLogin';
 import { OAUTH_CONFIG } from '@/src/config/oauth';
-import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 export function LoginClient() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
+                <Loader variant="spinner" size="lg" />
+            </div>
+        }>
             <LoginForm />
         </Suspense>
     );
 }
 
 function LoginForm() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const redirectPath = searchParams.get('redirect');
-    const { login, isLoading, isInitialized, isAuthenticated, user } = useAuth();
+    const { isInitialized, isAuthenticated } = useAuth();
 
-    const [showPassword, setShowPassword] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
-    const [localError, setLocalError] = useState<string | null>(null);
-
-    // Redirect if already authenticated
-    useEffect(() => {
-        if (isInitialized && isAuthenticated && user) {
-            // Prioritize explicit redirect path from URL
-            if (redirectPath && redirectPath !== '/' && redirectPath !== '/login') {
-                router.push(redirectPath);
-                return;
-            }
-
-            // Role-based redirection
-            const destination = ['admin', 'super_admin'].includes(user.role) ? '/admin' : '/seller';
-            router.push(destination);
-        }
-    }, [isInitialized, isAuthenticated, user, router, redirectPath]);
+    // Use centralized hook for form state and submission
+    const {
+        email,
+        setEmail,
+        password,
+        setPassword,
+        isLoading,
+        showPassword,
+        togglePasswordVisibility,
+        handleSubmit
+    } = useLogin();
 
     // Don't render until auth is initialized
     if (!isInitialized) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading...</p>
-                </div>
+            <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
+                <Loader variant="spinner" size="lg" message="Loading..." />
             </div>
         );
     }
 
-    // Don't show page if redirecting
+    // Don't show page if redirecting (handled by middleware usually, but good fallback)
     if (isAuthenticated) {
         return null;
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLocalError(null);
-
-        // Client-side validation
-        if (!email || !password) {
-            const message = 'Please fill in all fields';
-            setLocalError(message);
-            return;
-        }
-
-        if (!email.includes('@')) {
-            const message = 'Please enter a valid email address';
-            setLocalError(message);
-            return;
-        }
-
-        const result = await login({ email, password, rememberMe });
-
-        if (!result.success) {
-            const errorMessage = result.error?.message || 'Login failed. Please try again.';
-            setLocalError(errorMessage);
-        }
-    };
-
     return (
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen bg-[var(--bg-primary)]">
             {/* Left Side - Form */}
             <motion.div
-                className="w-full lg:w-1/2 flex flex-col justify-center p-8 md:p-12 lg:p-20 bg-white"
+                className="w-full lg:w-1/2 flex flex-col justify-center p-8 md:p-12 lg:p-20 bg-[var(--bg-primary)]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4 }}
@@ -127,33 +92,20 @@ function LoginForm() {
 
                     {/* Header */}
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
                             Welcome back
                         </h1>
-                        <p className="text-gray-600">
+                        <p className="text-[var(--text-secondary)]">
                             Sign in to your account to continue
                         </p>
                     </div>
-
-                    {/* Error Alert */}
-                    {localError && (
-                        <motion.div
-                            className="mb-6"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            <Alert variant="error" dismissible onDismiss={() => setLocalError(null)}>
-                                <AlertDescription>{localError}</AlertDescription>
-                            </Alert>
-                        </motion.div>
-                    )}
 
                     {/* Google Login Button */}
                     <div className="mb-6">
                         <button
                             type="button"
                             onClick={() => window.location.href = OAUTH_CONFIG.google.authUrl}
-                            className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all group"
+                            className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-[var(--radius-lg)] hover:bg-[var(--bg-hover)] transition-all group"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24">
                                 <path
@@ -173,7 +125,7 @@ function LoginForm() {
                                     fill="#EA4335"
                                 />
                             </svg>
-                            <span className="font-medium text-gray-700 group-hover:text-gray-900">
+                            <span className="font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
                                 Continue with Google
                             </span>
                         </button>
@@ -181,10 +133,10 @@ function LoginForm() {
 
                     <div className="relative mb-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-200"></div>
+                            <div className="w-full border-t border-[var(--border-default)]"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+                            <span className="px-2 bg-[var(--bg-primary)] text-[var(--text-tertiary)]">Or continue with email</span>
                         </div>
                     </div>
 
@@ -192,47 +144,43 @@ function LoginForm() {
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Email Field */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+                            <label htmlFor="email" className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                                 Email
                             </label>
-                            <div className="relative">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="email"
-                                    id="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
-                                    placeholder="you@company.com"
-                                    disabled={isLoading}
-                                />
-                            </div>
+                            <Input
+                                type="email"
+                                id="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="you@company.com"
+                                disabled={isLoading}
+                                icon={<Mail className="w-5 h-5" />}
+                            />
                         </div>
 
                         {/* Password Field */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
+                            <label htmlFor="password" className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                                 Password
                             </label>
-                            <div className="relative">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    id="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
-                                    placeholder="Enter your password"
-                                    disabled={isLoading}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                            </div>
+                            <Input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Enter your password"
+                                disabled={isLoading}
+                                icon={<Lock className="w-5 h-5" />}
+                                rightIcon={
+                                    <button
+                                        type="button"
+                                        onClick={togglePasswordVisibility}
+                                        className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors focus:outline-none"
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                }
+                            />
                         </div>
 
                         {/* Remember & Forgot */}
@@ -240,41 +188,33 @@ function LoginForm() {
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-300 text-primaryBlue focus:ring-primaryBlue focus:ring-offset-0"
+                                    className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)] focus:ring-offset-0 bg-[var(--bg-elevated)]"
                                 />
-                                <span className="text-sm text-gray-600">Remember me for 30 days</span>
+                                <span className="text-sm text-[var(--text-secondary)]">Remember me for 30 days</span>
                             </label>
-                            <Link href="/forgot-password" className="text-sm font-medium text-primaryBlue hover:text-primaryBlue/80 transition-colors">
+                            <Link href="/forgot-password" className="text-sm font-medium text-[var(--primary-blue)] hover:brightness-110 transition-all">
                                 Forgot password?
                             </Link>
                         </div>
 
                         {/* Submit Button */}
-                        <button
+                        <Button
                             type="submit"
+                            variant="primary"
+                            size="lg"
+                            className="w-full"
+                            isLoading={isLoading}
                             disabled={isLoading}
-                            className="w-full h-auto py-3 text-white rounded-lg bg-primaryBlue hover:bg-primaryBlue/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Signing in...
-                                </>
-                            ) : (
-                                <>
-                                    Sign in
-                                    <ArrowRight className="w-4 h-4" />
-                                </>
-                            )}
-                        </button>
+                            Sign in
+                            <ArrowRight className="w-4 h-4 ml-2 my-auto" />
+                        </Button>
                     </form>
 
                     {/* Footer */}
-                    <p className="mt-8 text-center text-sm text-gray-600">
+                    <p className="mt-8 text-center text-sm text-[var(--text-secondary)]">
                         Don't have an account?{" "}
-                        <Link href="/signup" className="font-semibold text-primaryBlue hover:text-primaryBlue/80 transition-colors">
+                        <Link href="/signup" className="font-semibold text-[var(--primary-blue)] hover:brightness-110 transition-all">
                             Sign up
                         </Link>
                     </p>
@@ -283,7 +223,7 @@ function LoginForm() {
                     <div className="mt-4 text-center">
                         <Link
                             href="/magic-link"
-                            className="text-sm text-gray-500 hover:text-primaryBlue transition-colors"
+                            className="text-sm text-[var(--text-tertiary)] hover:text-[var(--primary-blue)] transition-colors"
                         >
                             Or sign in with a magic link →
                         </Link>
@@ -291,8 +231,8 @@ function LoginForm() {
                 </div>
             </motion.div>
 
-            {/* Right Side - Premium Hero (unchanged) */}
-            <div className="hidden lg:block lg:w-1/2 relative bg-gray-900">
+            {/* Right Side - Premium Hero */}
+            <div className="hidden lg:block lg:w-1/2 relative bg-[var(--black)]">
                 {/* Background Image */}
                 <div className="absolute inset-0">
                     <img
@@ -307,7 +247,7 @@ function LoginForm() {
                     <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-black/30" />
 
                     {/* Subtle Brand Tint */}
-                    <div className="absolute inset-0 bg-primaryBlue/[0.03]" />
+                    <div className="absolute inset-0 bg-[var(--primary-blue)]/[0.03]" />
                 </div>
 
                 {/* Premium Content */}

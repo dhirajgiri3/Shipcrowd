@@ -13,7 +13,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -26,25 +26,36 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } from '@/src/lib/utils/password';
-import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { useSignup } from '@/src/core/api/hooks/auth/useSignup';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
-import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
-import { consentApi } from '@/src/core/api/clients/auth/consentApi';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
 import { Loader } from '@/src/components/ui/feedback/Loader';
+import { PasswordStrengthIndicator } from '@/src/components/ui/form/PasswordStrengthIndicator';
 
 export function SignupClient() {
   const router = useRouter();
-  const { register, isLoading, isInitialized, isAuthenticated } = useAuth();
+  const { isInitialized, isAuthenticated } = useAuth();
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [marketingConsent, setMarketingConsent] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Use centralized hook for form state and logic
+  const {
+    name,
+    setName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    isLoading,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    termsAccepted,
+    setTermsAccepted,
+    handleSubmit
+  } = useSignup();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -69,62 +80,11 @@ export function SignupClient() {
     return null;
   }
 
-  // Get password strength
-  const passwordValidation = password ? validatePassword(password) : null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocalError(null);
-    setSuccessMessage(null);
-
-    // Client-side validation
-    if (!name || !email || !password) {
-      const message = 'Please fill in all fields';
-      setLocalError(message);
-      return;
-    }
-
-    if (!email.includes('@')) {
-      const message = 'Please enter a valid email address';
-      setLocalError(message);
-      return;
-    }
-
-    if (!agreedToTerms) {
-      const message = 'Please agree to the Terms of Service and Privacy Policy';
-      setLocalError(message);
-      return;
-    }
-
-    // Validate password strength
-    if (!passwordValidation?.isValid) {
-      const message = 'Password does not meet requirements';
-      setLocalError(message);
-      return;
-    }
-
-    const result = await register({ name, email, password });
-
-    if (result.success) {
-      const message = 'Registration successful! Please check your email to verify your account.';
-      setSuccessMessage(message);
-      showSuccessToast(message);
-
-      // Redirect to verify-email page after 2 seconds
-      setTimeout(() => {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-      }, 2000);
-    } else {
-      const errorMessage = result.error?.message || 'Registration failed. Please try again.';
-      setLocalError(errorMessage);
-    }
-  };
-
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[var(--bg-primary)]">
       {/* Left Side - Form */}
       <motion.div
-        className="w-full lg:w-1/2 flex flex-col justify-center p-8 md:p-12 lg:p-20 bg-white"
+        className="w-full lg:w-1/2 flex flex-col justify-center p-8 md:p-12 lg:p-20 bg-[var(--bg-primary)]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
@@ -141,46 +101,20 @@ export function SignupClient() {
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
               Create your account
             </h1>
-            <p className="text-gray-600">
+            <p className="text-[var(--text-secondary)]">
               Get started with your free account
             </p>
           </div>
-
-          {/* Success Alert */}
-          {successMessage && (
-            <motion.div
-              className="mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Alert variant="success" dismissible onDismiss={() => setSuccessMessage(null)}>
-                <AlertDescription>{successMessage}</AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-
-          {/* Error Alert */}
-          {localError && (
-            <motion.div
-              className="mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Alert variant="error" dismissible onDismiss={() => setLocalError(null)}>
-                <AlertDescription>{localError}</AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
 
           {/* Google Signup Button */}
           <div className="mb-6">
             <button
               type="button"
               onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all group"
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-[var(--radius-lg)] hover:bg-[var(--bg-hover)] transition-all group"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -200,7 +134,7 @@ export function SignupClient() {
                   fill="#EA4335"
                 />
               </svg>
-              <span className="font-medium text-gray-700 group-hover:text-gray-900">
+              <span className="font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
                 Sign up with Google
               </span>
             </button>
@@ -208,10 +142,10 @@ export function SignupClient() {
 
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-[var(--border-default)]"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or sign up with email</span>
+              <span className="px-2 bg-[var(--bg-primary)] text-[var(--text-tertiary)]">Or sign up with email</span>
             </div>
           </div>
 
@@ -219,107 +153,87 @@ export function SignupClient() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-900 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                 Full Name
               </label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
-                  placeholder="John Doe"
-                  disabled={isLoading || !!successMessage}
-                />
-              </div>
+              <Input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                disabled={isLoading}
+                icon={<User className="w-5 h-5" />}
+              />
             </div>
 
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                 Email
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
-                  placeholder="you@company.com"
-                  disabled={isLoading || !!successMessage}
-                />
-              </div>
+              <Input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                disabled={isLoading}
+                icon={<Mail className="w-5 h-5" />}
+              />
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                 Password
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
-                  placeholder="Create a strong password"
-                  disabled={isLoading || !!successMessage}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
+              <Input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a strong password"
+                disabled={isLoading}
+                icon={<Lock className="w-5 h-5" />}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                }
+              />
 
-              {/* Password strength indicator */}
-              {passwordValidation && (
-                <motion.div
-                  className="mt-3 space-y-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((level) => {
-                      const strengthScore = Object.values(passwordValidation.requirements).filter(Boolean).length;
-                      const color = getPasswordStrengthColor(passwordValidation.strength);
-                      const bgColor =
-                        color === 'red' ? 'bg-red-500' :
-                          color === 'amber' ? 'bg-amber-500' :
-                            color === 'blue' ? 'bg-blue-500' :
-                              'bg-emerald-500';
-                      return (
-                        <div
-                          key={level}
-                          className={`h-1 flex-1 rounded-full transition-all ${strengthScore >= level ? bgColor : 'bg-gray-200'}`}
-                        />
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-gray-500">
-                      Password strength
-                    </p>
-                    <span
-                      className={`text-xs font-semibold ${getPasswordStrengthColor(passwordValidation.strength) === 'red' ? 'text-red-500' :
-                        getPasswordStrengthColor(passwordValidation.strength) === 'amber' ? 'text-amber-500' :
-                          getPasswordStrengthColor(passwordValidation.strength) === 'blue' ? 'text-blue-500' :
-                            'text-emerald-500'
-                        }`}
-                    >
-                      {getPasswordStrengthLabel(passwordValidation.strength)}
-                    </span>
-                  </div>
-                </motion.div>
-              )}
+              {/* Password Strength */}
+              <PasswordStrengthIndicator password={password} />
+            </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-[var(--text-primary)] mb-2">
+                Confirm Password
+              </label>
+              <Input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                disabled={isLoading}
+                icon={<Lock className="w-5 h-5" />}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors focus:outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                }
+              />
             </div>
 
             {/* Terms Checkbox */}
@@ -327,57 +241,41 @@ export function SignupClient() {
               <input
                 type="checkbox"
                 id="terms"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primaryBlue focus:ring-primaryBlue focus:ring-offset-0"
-                disabled={isLoading || !!successMessage}
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)] focus:ring-offset-0 bg-[var(--bg-elevated)]"
+                disabled={isLoading}
               />
-              <label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer">
+              <label htmlFor="terms" className="text-sm text-[var(--text-secondary)] cursor-pointer">
                 I agree to the{" "}
-                <a href="/terms" className="text-primaryBlue hover:text-primaryBlue/80 font-medium">
+                <Link href="/terms" className="text-[var(--primary-blue)] hover:brightness-110 font-medium">
                   Terms of Service
-                </a>{" "}
+                </Link>{" "}
                 and{" "}
-                <a href="/privacy" className="text-primaryBlue hover:text-primaryBlue/80 font-medium">
+                <Link href="/privacy" className="text-[var(--primary-blue)] hover:brightness-110 font-medium">
                   Privacy Policy
-                </a>
+                </Link>
               </label>
             </div>
 
-            {/* Marketing Consent (Optional) */}
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="marketing"
-                checked={marketingConsent}
-                onChange={(e) => setMarketingConsent(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primaryBlue focus:ring-primaryBlue focus:ring-offset-0"
-                disabled={isLoading || !!successMessage}
-              />
-              <label htmlFor="marketing" className="text-sm text-gray-600 cursor-pointer">
-                I'd like to receive product updates, tips, and marketing emails (optional)
-              </label>
-            </div>
-
-            {/* Submit Button - Using LoadingButton */}
-            <LoadingButton
+            {/* Submit Button */}
+            <Button
               type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
               isLoading={isLoading}
-              loadingText="Creating account..."
-              disabled={!!successMessage}
-              className="w-full h-auto py-3 text-white rounded-lg bg-primaryBlue hover:bg-primaryBlue/90"
+              disabled={isLoading}
             >
-              <span className="flex items-center justify-center gap-2">
-                Create account
-                <ArrowRight className="w-4 h-4" />
-              </span>
-            </LoadingButton>
+              Create account
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
           </form>
 
           {/* Footer */}
-          <p className="mt-8 text-center text-sm text-gray-600">
+          <p className="mt-8 text-center text-sm text-[var(--text-secondary)]">
             Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-primaryBlue hover:text-primaryBlue/80 transition-colors">
+            <Link href="/login" className="font-semibold text-[var(--primary-blue)] hover:brightness-110 transition-all">
               Sign in
             </Link>
           </p>
@@ -385,7 +283,7 @@ export function SignupClient() {
       </motion.div>
 
       {/* Right Side - Premium Hero (unchanged) */}
-      <div className="hidden lg:block lg:w-1/2 relative bg-gray-900">
+      <div className="hidden lg:block lg:w-1/2 relative bg-[var(--black)]">
         <div className="absolute inset-0">
           <img
             src="/images/auth-bg.png"
@@ -395,7 +293,7 @@ export function SignupClient() {
           <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-l from-black/50 via-transparent to-black/30" />
-          <div className="absolute inset-0 bg-primaryBlue/[0.03]" />
+          <div className="absolute inset-0 bg-[var(--primary-blue)]/[0.03]" />
         </div>
 
         <div className="relative h-full flex flex-col justify-between p-16">
