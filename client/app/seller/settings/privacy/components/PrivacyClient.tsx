@@ -11,14 +11,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Shield, Download, Bell, FileText, Clock, Check, X } from 'lucide-react';
-import { Loader } from '@/src/components/ui';
+import { Shield, Download, Bell, FileText, Clock, Check, CheckCircle2, Loader2, X } from 'lucide-react';
+import { Loader, Button } from '@/src/components/ui';
 import { consentApi, type ConsentMap, type ConsentHistoryItem } from '@/src/core/api/clients/auth/consentApi';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import Link from 'next/link';
 
 export function PrivacyClient() {
+    const router = useRouter();
+
     const [consents, setConsents] = useState<ConsentMap>({});
     const [history, setHistory] = useState<ConsentHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -170,14 +173,14 @@ export function PrivacyClient() {
                             <p className="text-sm text-[var(--text-secondary)]">Receive product updates, tips, and offers</p>
                         </div>
                         <button
-                            onClick={() => handleToggle('marketing')}
-                            disabled={isUpdating}
+                            onClick={() => handleToggleConsent('marketing', consents.marketing?.accepted || false)}
+                            disabled={savingType === 'marketing'}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${consents.marketing?.accepted
                                 ? 'bg-[var(--primary-blue)]'
                                 : 'bg-[var(--bg-tertiary)]'
                                 }`}
                         >
-                            {isUpdating ? (
+                            {savingType === 'marketing' ? (
                                 <span className="absolute inset-0 flex items-center justify-center">
                                     <Loader variant="spinner" size="sm" />
                                 </span>
@@ -190,27 +193,27 @@ export function PrivacyClient() {
                         </button>
                     </div>
 
-                    {/* Analytics Consent */}
+                    {/* Cookies Consent */}
                     <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
                         <div>
                             <p className="font-medium text-[var(--text-primary)]">Analytics Cookies</p>
                             <p className="text-sm text-[var(--text-secondary)]">Help us improve your experience</p>
                         </div>
                         <button
-                            onClick={() => handleToggle('analytics')}
-                            disabled={isUpdating}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${consents.analytics?.accepted
+                            onClick={() => handleToggleConsent('cookies', consents.cookies?.accepted || false)}
+                            disabled={savingType === 'cookies'}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${consents.cookies?.accepted
                                 ? 'bg-[var(--primary-blue)]'
                                 : 'bg-[var(--bg-tertiary)]'
                                 }`}
                         >
-                            {isUpdating ? (
+                            {savingType === 'cookies' ? (
                                 <span className="absolute inset-0 flex items-center justify-center">
                                     <Loader variant="spinner" size="sm" />
                                 </span>
                             ) : (
                                 <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${consents.analytics?.accepted ? 'translate-x-6' : 'translate-x-1'
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${consents.cookies?.accepted ? 'translate-x-6' : 'translate-x-1'
                                         }`}
                                 />
                             )}
@@ -242,7 +245,7 @@ export function PrivacyClient() {
                 </p>
 
                 <Button
-                    onClick={handleDataExport}
+                    onClick={handleExportData}
                     variant="outline"
                     disabled={isExporting}
                     className="w-full"
