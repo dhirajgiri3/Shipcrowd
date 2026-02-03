@@ -109,11 +109,11 @@ export default function ShopifySettingsPage() {
                         Back to Dashboard
                     </Button>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                             <SettingsIcon className="w-6 h-6" />
                             Store Settings
                         </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-sm text-[var(--text-secondary)]">
                             {store?.storeName || 'Store'}
                         </p>
                     </div>
@@ -122,7 +122,7 @@ export default function ShopifySettingsPage() {
                 <Button
                     onClick={handleSaveSettings}
                     disabled={isUpdating}
-                    className="bg-[#95BF47] hover:bg-[#7da639] text-white"
+                    className="bg-[var(--primary-bg)] hover:opacity-90 text-[var(--accent-text)]"
                 >
                     <Save className="w-4 h-4 mr-2" />
                     {isUpdating ? 'Saving...' : 'Save Changes'}
@@ -133,7 +133,7 @@ export default function ShopifySettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-blue-500" />
+                        <Clock className="w-5 h-5 text-[var(--primary-blue)]" />
                         Sync Configuration
                     </CardTitle>
                 </CardHeader>
@@ -143,7 +143,7 @@ export default function ShopifySettingsPage() {
                         <select
                             value={settings.syncFrequency}
                             onChange={(e) => setSettings({ ...settings, syncFrequency: e.target.value as any })}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg bg-[var(--bg-primary)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent"
                         >
                             <option value="REALTIME">Real-time (Webhooks)</option>
                             <option value="EVERY_5_MIN">Every 5 minutes</option>
@@ -152,15 +152,15 @@ export default function ShopifySettingsPage() {
                             <option value="HOURLY">Hourly</option>
                             <option value="MANUAL">Manual only</option>
                         </select>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-[var(--text-secondary)] mt-1">
                             How often to check for new orders from Shopify
                         </p>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
                         <div className="flex-1">
-                            <div className="font-medium">Sync Historical Orders</div>
-                            <div className="text-sm text-gray-500">Import orders from before connection</div>
+                            <div className="font-medium text-[var(--text-primary)]">Sync Historical Orders</div>
+                            <div className="text-sm text-[var(--text-secondary)]">Import orders from before connection</div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -169,7 +169,7 @@ export default function ShopifySettingsPage() {
                                 onChange={(e) => setSettings({ ...settings, syncHistoricalOrders: e.target.checked })}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
                         </label>
                     </div>
 
@@ -182,9 +182,9 @@ export default function ShopifySettingsPage() {
                                 max="365"
                                 value={settings.historicalOrderDays}
                                 onChange={(e) => setSettings({ ...settings, historicalOrderDays: parseInt(e.target.value) })}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg bg-[var(--bg-primary)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent"
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-[var(--text-secondary)] mt-1">
                                 Number of days to look back (max 365)
                             </p>
                         </div>
@@ -196,15 +196,15 @@ export default function ShopifySettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-yellow-500" />
+                        <Zap className="w-5 h-5 text-[var(--warning)]" />
                         Automation
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
                         <div className="flex-1">
-                            <div className="font-medium">Auto-fulfill Orders</div>
-                            <div className="text-sm text-gray-500">Automatically mark orders as fulfilled when shipment is created</div>
+                            <div className="font-medium text-[var(--text-primary)]">Auto-fulfill Orders</div>
+                            <div className="text-sm text-[var(--text-secondary)]">Automatically mark orders as fulfilled when shipment is created</div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -213,14 +213,14 @@ export default function ShopifySettingsPage() {
                                 onChange={(e) => setSettings({ ...settings, autoFulfill: e.target.checked })}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
                         </label>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
                         <div className="flex-1">
-                            <div className="font-medium">Auto Tracking Updates</div>
-                            <div className="text-sm text-gray-500">Push tracking numbers back to Shopify automatically</div>
+                            <div className="font-medium text-[var(--text-primary)]">Auto Tracking Updates</div>
+                            <div className="text-sm text-[var(--text-secondary)]">Push tracking numbers back to Shopify automatically</div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -229,7 +229,7 @@ export default function ShopifySettingsPage() {
                                 onChange={(e) => setSettings({ ...settings, autoTrackingUpdate: e.target.checked })}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
                         </label>
                     </div>
                 </CardContent>
@@ -239,15 +239,15 @@ export default function ShopifySettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-purple-500" />
+                        <Shield className="w-5 h-5 text-[var(--secondary-purple)]" />
                         Notifications
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
                         <div className="flex-1">
-                            <div className="font-medium">Sync Errors</div>
-                            <div className="text-sm text-gray-500">Get notified when sync operations fail</div>
+                            <div className="font-medium text-[var(--text-primary)]">Sync Errors</div>
+                            <div className="text-sm text-[var(--text-secondary)]">Get notified when sync operations fail</div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -262,14 +262,14 @@ export default function ShopifySettingsPage() {
                                 }))}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
                         </label>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
                         <div className="flex-1">
-                            <div className="font-medium">Connection Issues</div>
-                            <div className="text-sm text-gray-500">Alert when connection to Shopify is lost</div>
+                            <div className="font-medium text-[var(--text-primary)]">Connection Issues</div>
+                            <div className="text-sm text-[var(--text-secondary)]">Alert when connection to Shopify is lost</div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -284,25 +284,25 @@ export default function ShopifySettingsPage() {
                                 }))}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
                         </label>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Danger Zone */}
-            <Card className="border-red-200 dark:border-red-800">
+            <Card className="border-[var(--error-border)]">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <CardTitle className="flex items-center gap-2 text-[var(--error)]">
                         <AlertTriangle className="w-5 h-5" />
                         Danger Zone
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-[var(--error-bg)] rounded-lg">
                         <div className="flex-1">
-                            <div className="font-medium text-red-700 dark:text-red-400">Disconnect Store</div>
-                            <div className="text-sm text-red-600 dark:text-red-300">
+                            <div className="font-medium text-[var(--error-text)]">Disconnect Store</div>
+                            <div className="text-sm text-[var(--error-text)] opacity-90">
                                 This will stop all syncs and remove the integration. This action cannot be undone.
                             </div>
                         </div>
@@ -323,19 +323,19 @@ export default function ShopifySettingsPage() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <Card className="w-full max-w-md mx-4">
                         <CardHeader>
-                            <CardTitle className="text-red-600 dark:text-red-400">Confirm Disconnection</CardTitle>
+                            <CardTitle className="text-[var(--error)]">Confirm Disconnection</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <p className="text-sm text-[var(--text-primary)]">
                                 Are you sure you want to disconnect <strong>{store?.storeName}</strong>?
                                 This will:
                             </p>
-                            <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                            <ul className="list-disc list-inside text-sm text-[var(--text-secondary)] space-y-1">
                                 <li>Stop all automatic syncs</li>
                                 <li>Remove webhook connections</li>
                                 <li>Disable order fulfillment updates</li>
                             </ul>
-                            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                            <p className="text-sm font-medium text-[var(--error)]">
                                 This action cannot be undone.
                             </p>
 
