@@ -2,32 +2,19 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+
+import { motion } from 'framer-motion';
 import { Button } from '@/src/components/ui/core/Button';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
 import {
     Activity,
     AlertTriangle,
     ArrowUpRight,
-    BarChart3,
     Box,
     BrainCircuit,
-    Calendar,
     CheckCircle2,
-    ChevronDown,
-    Clock,
-    CreditCard,
     DollarSign,
-    FileText,
-    Globe,
-    LayoutDashboard,
-    Map,
-    MapPin,
-    MoreHorizontal,
     Package,
-    PieChart,
-    Search,
     Server,
     Settings,
     TrendingUp,
@@ -37,8 +24,7 @@ import {
     X,
     Zap
 } from 'lucide-react';
-import { NotificationCenter } from '@/src/components/shared/NotificationCenter';
-import { SellerHealthDashboard } from '@/src/components/admin/SellerHealthDashboard';
+
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
@@ -60,7 +46,7 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { TopSellers } from '@/src/components/admin/TopSellers';
 import { useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { useUserList } from '@/src/core/api/hooks/admin/useUserManagement';
-import { DashboardMetrics } from '@/src/types/api/analytics';
+
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
