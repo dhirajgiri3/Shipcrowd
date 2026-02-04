@@ -63,7 +63,8 @@ export const useIntegrationHealth = (options?: UseQueryOptions<IntegrationHealth
         queryKey: ['integrations', 'health'], // Fallback query key
         queryFn: async () => {
             const response = await apiClient.get('/integrations/health');
-            return response.data;
+            // Backend response is wrapped by sendSuccess: { success, message, data }
+            return response.data?.data;
         },
         // ...CACHE_TIMES.SHORT, 
         retry: 1,

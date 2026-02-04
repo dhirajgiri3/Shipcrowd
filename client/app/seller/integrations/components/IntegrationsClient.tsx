@@ -2,51 +2,71 @@
 export const dynamic = "force-dynamic";
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Plug,
-    CheckCircle2,
     ArrowRight,
     RefreshCcw,
     Settings,
-    AlertCircle
+    AlertCircle,
+    Check,
+    Store,
+    ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { useIntegrationHealth, StoreHealth } from '@/src/core/api/hooks/integrations/useIntegrations';
+import { useIntegrationHealth } from '@/src/core/api/hooks/integrations/useIntegrations';
+import { useTriggerSync } from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
 import { cn } from '@/src/lib/utils';
-import { formatDate } from '@/src/lib/utils'; // Assuming this utility exists
+import { formatDate } from '@/src/lib/utils';
 
-// Platform Metadata
+// Platform Metadata with enhanced information
 const PLATFORMS = {
     shopify: {
         name: 'Shopify',
         description: 'Sync orders and inventory automatically from your Shopify store',
         icon: '/logos/shopify.svg',
-        color: '95BF47',
-        setupRoute: '/seller/integrations/shopify/setup'
+        colorClass: 'text-[#95BF47]',
+        bgClass: 'bg-[#95BF47]/10',
+        borderClass: 'border-[#95BF47]/20',
+        setupRoute: '/seller/integrations/shopify/setup',
+        features: ['Auto order sync', 'Inventory management', 'Real-time webhooks'],
+        popular: true,
     },
     woocommerce: {
         name: 'WooCommerce',
         description: 'WordPress e-commerce integration for seamless order management',
         icon: '/logos/woocommerce.svg',
-        color: '96588A',
-        setupRoute: '/seller/integrations/woocommerce/setup'
+        colorClass: 'text-[#96588A]',
+        bgClass: 'bg-[#96588A]/10',
+        borderClass: 'border-[#96588A]/20',
+        setupRoute: '/seller/integrations/woocommerce/setup',
+        features: ['REST API sync', 'Order tracking', 'Custom fields'],
+        popular: false,
     },
     amazon: {
         name: 'Amazon',
         description: 'Sync orders and inventory from Amazon Seller Central',
         icon: '/logos/amazon.svg',
-        color: 'FF9900',
-        setupRoute: '/seller/integrations/amazon/setup'
+        colorClass: 'text-[#FF9900]',
+        bgClass: 'bg-[#FF9900]/10',
+        borderClass: 'border-[#FF9900]/20',
+        setupRoute: '/seller/integrations/amazon/setup',
+        features: ['SP-API integration', 'Multi-marketplace', 'FBA support'],
+        popular: true,
     },
     flipkart: {
         name: 'Flipkart',
         description: 'Connect your Flipkart Seller account to manage orders',
-        icon: '/logos/flipkart.png', // Ensure this matches actual file extension
-        color: '2874F0',
-        setupRoute: '/seller/integrations/flipkart/setup'
+        icon: '/logos/flipkart.png',
+        colorClass: 'text-[#2874F0]',
+        bgClass: 'bg-[#2874F0]/10',
+        borderClass: 'border-[#2874F0]/20',
+        setupRoute: '/seller/integrations/flipkart/setup',
+        features: ['Seller Hub API', 'Returns handling', 'Analytics'],
+        popular: false,
     }
 };
 
@@ -54,6 +74,8 @@ export function IntegrationsClient() {
     const { addToast } = useToast();
     const router = useRouter();
     const { data, isLoading, error, refetch } = useIntegrationHealth();
+    const triggerSync = useTriggerSync();
+    const [syncingStores, setSyncingStores] = useState<Set<string>>(new Set());
 
     // Flatten connected stores from response
     const connectedStores = data?.platforms ? [
@@ -63,161 +85,325 @@ export function IntegrationsClient() {
         ...(data.platforms.flipkart?.stores?.map((s: any) => ({ ...s, platform: 'flipkart' })) || [])
     ] : [];
 
-    // Determine available integrations (platforms not yet connected, or allow multiple)
-    // For simplicity, we show all compatible platforms in "Available" unless they are one-time connect only.
-    // Assuming multi-store is allowed, we show all.
-    // If strict unique platform needed: const connectedPlatforms = new Set(connectedStores.map(s => s.platform));
-    const availablePlatforms = Object.entries(PLATFORMS).map(([key, meta]) => ({
+    // Get connected platform IDs
+    const connectedPlatformIds = new Set(connectedStores.map(s => s.platform));
+
+    // Separate available platforms into connected and not connected
+    const allPlatforms = Object.entries(PLATFORMS).map(([key, meta]) => ({
         id: key,
-        ...meta
+        ...meta,
+        isConnected: connectedPlatformIds.has(key)
     }));
+
+    // Handle sync
+    const handleSync = async (storeId: string, platform: string) => {
+        setSyncingStores(prev => new Set(prev).add(storeId));
+        try {
+            await triggerSync.mutateAsync({
+                integrationId: storeId,
+                type: platform.toUpperCase() as any,
+            });
+            addToast('Sync started successfully', 'success');
+            setTimeout(() => refetch(), 2000); // Refresh after sync starts
+        } catch (err: any) {
+            addToast(err?.message || 'Failed to start sync', 'error');
+        } finally {
+            setSyncingStores(prev => {
+                const next = new Set(prev);
+                next.delete(storeId);
+                return next;
+            });
+        }
+    };
 
     if (isLoading) {
         return (
-            <div className="py-20 flex flex-col items-center justify-center min-h-[400px]">
-                <div className="w-8 h-8 border-2 border-[var(--primary-blue-light)] border-t-[var(--primary-blue)] rounded-full animate-spin mb-4" />
-                <p className="text-sm text-[var(--text-tertiary)]">Loading integrations...</p>
+            <div className="space-y-6 animate-fade-in" aria-label="Loading integrations" role="status">
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="skeleton w-10 h-10 rounded-xl" />
+                    <div className="space-y-2">
+                        <div className="skeleton w-32 h-6 rounded-md" />
+                        <div className="skeleton w-48 h-4 rounded-md" />
+                    </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className={`skeleton h-[200px] animate-fade-in stagger-${i}`} />
+                    ))}
+                </div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="py-20 flex flex-col items-center justify-center min-h-[400px] text-center">
-                <div className="w-16 h-16 bg-[var(--error-bg)] rounded-full flex items-center justify-center text-[var(--error)] mb-4">
+            <div className="py-20 flex flex-col items-center justify-center min-h-[400px] text-center" role="alert">
+                <div className="w-16 h-16 bg-[var(--error-bg)] rounded-full flex items-center justify-center text-[var(--error)] mb-4 animate-scale-in">
                     <AlertCircle className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-semibold text-[var(--text-primary)]">Failed to load integrations</h3>
-                <p className="text-sm text-[var(--text-secondary)] mb-4">
-                    {error.message || "Something went wrong while fetching integration status."}
+                <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">Failed to load integrations</h3>
+                <p className="text-[var(--text-secondary)] mb-6 max-w-sm">
+                    {error.message || "We couldn't define your integrations. Please try again."}
                 </p>
-                <Button onClick={() => refetch()} variant="outline">Try Again</Button>
+                <Button onClick={() => refetch()} variant="outline" className="min-w-[120px]">
+                    Try Again
+                </Button>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+        <div className="space-y-8 animate-fade-in pb-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-[var(--border-subtle)] pb-6">
+                <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center shadow-xs">
                         <Plug className="h-6 w-6 text-[var(--primary-blue)]" />
-                        Integrations
-                    </h2>
-                    <p className="text-[var(--text-muted)] text-sm mt-1">Connect your stores and sync orders automatically</p>
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Integrations</h1>
+                        <p className="text-[var(--text-secondary)] mt-1">
+                            Connect your stores and sync orders automatically
+                        </p>
+                    </div>
                 </div>
-                {!isLoading && connectedStores.length > 0 && (
-                    <Badge variant="success" className="text-sm px-3 py-1 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4" />
+
+                {connectedStores.length > 0 && (
+                    <Badge
+                        variant="success"
+                        size="lg"
+                        className="px-4 py-1 self-start md:self-center bg-[var(--success-bg)] text-[var(--success)] shadow-none border border-[var(--success)]/20"
+                    >
+                        <Check className="w-4 h-4 mr-1.5" />
                         {connectedStores.length} Connected
                     </Badge>
                 )}
             </div>
 
-            {/* Connected Integrations */}
-            {connectedStores.length > 0 && (
+            {/* Connected Stores Section */}
+            {connectedStores.length > 0 ? (
                 <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Connected Stores</h3>
-                    {connectedStores.map((store, idx) => {
-                        const meta = PLATFORMS[store.platform as keyof typeof PLATFORMS];
-                        return (
-                            <Card key={store.storeId} className="border-[var(--success)]/20 bg-[var(--success-bg)] hover:shadow-md transition-shadow">
-                                <CardContent className="p-6">
-                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                        <div className="flex items-start gap-4 flex-1">
-                                            <div className="w-14 h-14 p-3 flex items-center justify-center bg-[var(--bg-primary)] rounded-xl shadow-sm flex-shrink-0">
-                                                <img src={meta?.icon || '/placeholder.svg'} className="w-full h-full object-contain" alt={meta?.name} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h4 className="text-lg font-semibold text-[var(--text-primary)]">
-                                                        {meta?.name} <span className="text-[var(--text-tertiary)] text-sm font-normal">({store.storeName})</span>
-                                                    </h4>
-                                                    <Badge
-                                                        variant={store.isActive ? "success" : "secondary"}
-                                                        className="text-xs flex items-center gap-1"
-                                                    >
-                                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                                        {store.isActive ? 'Active' : 'Inactive'}
-                                                    </Badge>
-                                                    {store.isPaused && (
-                                                        <Badge variant="warning" className="text-xs">Paused</Badge>
-                                                    )}
-                                                </div>
-                                                <p className="text-sm text-[var(--text-secondary)] mb-3">
-                                                    {store.storeUrl || meta?.description}
-                                                </p>
-                                                <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-muted)]">
-                                                    <span className="flex items-center gap-1">
-                                                        <div className={cn("h-1.5 w-1.5 rounded-full", store.isActive ? "bg-[var(--success)]" : "bg-[var(--text-muted)]")} />
-                                                        Last sync: {store.lastSyncAt ? formatDate(store.lastSyncAt) : 'Never'}
-                                                    </span>
-                                                    <span>•</span>
-                                                    <span className="font-medium text-[var(--text-secondary)]">
-                                                        {store.syncSuccessRate ? `${store.syncSuccessRate}% success rate` : 'No sync data'}
-                                                    </span>
-                                                    {store.errorCount24h > 0 && (
-                                                        <>
-                                                            <span>•</span>
-                                                            <span className="text-[var(--error)] font-medium">{store.errorCount24h} errors (24h)</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => addToast('Sync process started', 'info')}
-                                                disabled={!store.isActive}
-                                            >
-                                                <RefreshCcw className="h-4 w-4 mr-1.5" />
-                                                Sync Now
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => router.push(`/seller/integrations/${store.platform}/${store.storeId}`)}
-                                            >
-                                                <Settings className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xs font-bold tracking-widest text-[var(--text-tertiary)] uppercase flex items-center gap-2">
+                            <Store className="w-4 h-4" />
+                            Connected Stores
+                        </h2>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => refetch()}
+                            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                            aria-label="Refresh connected stores"
+                        >
+                            <RefreshCcw className="h-4 w-4 mr-2" />
+                            Refresh Status
+                        </Button>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-2">
+                        {connectedStores.map((store, idx) => {
+                            const meta = PLATFORMS[store.platform as keyof typeof PLATFORMS];
+                            const isSyncing = syncingStores.has(store.storeId);
+
+                            return (
+                                <Card
+                                    key={store.storeId}
+                                    className={cn(
+                                        "group overflow-hidden border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 hover:shadow-brand-sm transition-all duration-300",
+                                        `stagger-${(idx % 4) + 1}`
+                                    )}
+                                >
+                                    <div className="absolute top-0 right-0 p-4">
+                                        <Badge
+                                            className={cn(
+                                                "capitalize border font-medium",
+                                                store.isPaused
+                                                    ? 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20'
+                                                    : store.isActive
+                                                        ? 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20'
+                                                        : 'bg-[var(--bg-tertiary)] text-[var(--text-tertiary)] border-[var(--border-subtle)]'
+                                            )}
+                                            size="sm"
+                                        >
+                                            <span className={cn(
+                                                "w-1.5 h-1.5 rounded-full mr-2",
+                                                store.isPaused ? 'bg-[var(--warning)]' : store.isActive ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'
+                                            )} />
+                                            {store.isPaused ? 'Paused' : store.isActive ? 'Active' : 'Inactive'}
+                                        </Badge>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
+
+                                    <CardContent className="p-6">
+                                        <div className="flex items-start gap-4">
+                                            <div className="h-14 w-14 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0 p-3 group-hover:scale-105 transition-transform duration-300">
+                                                <img
+                                                    src={meta?.icon || '/placeholder.svg'}
+                                                    className="w-full h-full object-contain"
+                                                    alt={`${meta?.name} logo`}
+                                                    loading="lazy"
+                                                />
+                                            </div>
+
+                                            <div className="min-w-0 flex-1 pt-1">
+                                                <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                                                    {meta?.name}
+                                                </h3>
+                                                <p className="text-sm text-[var(--text-secondary)] mt-1 truncate font-medium">
+                                                    {store.storeName}
+                                                </p>
+
+                                                {store.lastSyncAt && (
+                                                    <p className="text-xs text-[var(--text-tertiary)] mt-2 flex items-center">
+                                                        <RefreshCcw className="w-3 h-3 mr-1.5" />
+                                                        Synced {formatDate(store.lastSyncAt)}
+                                                    </p>
+                                                )}
+
+                                                <div className="mt-6 flex gap-3">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="flex-1 rounded-[var(--radius-full)] border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] hover:border-[var(--border-strong)] transition-all font-medium text-[var(--text-secondary)]"
+                                                        onClick={() => router.push(`/seller/integrations/${store.platform}/${store.storeId}`)}
+                                                        aria-label={`Manage ${store.storeName}`}
+                                                    >
+                                                        <Settings className="h-4 w-4 mr-2" />
+                                                        Manage
+                                                    </Button>
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        isLoading={isSyncing}
+                                                        disabled={!store.isActive}
+                                                        className={cn(
+                                                            "flex-1 rounded-[var(--radius-full)] border transition-all font-medium",
+                                                            meta.bgClass,
+                                                            meta.colorClass,
+                                                            meta.borderClass,
+                                                            "hover:brightness-95"
+                                                        )}
+                                                        onClick={() => handleSync(store.storeId, store.platform)}
+                                                        aria-label={`Sync ${store.storeName}`}
+                                                        aria-busy={isSyncing}
+                                                    >
+                                                        {!isSyncing && <RefreshCcw className="h-4 w-4 mr-2" />}
+                                                        Sync Now
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
                 </div>
+            ) : (
+                // Empty State for Connect Stores
+                <Card className="border-dashed border-2 border-[var(--border-subtle)] bg-[var(--bg-primary)]/50">
+                    <CardContent className="md:p-12 p-8 flex flex-col items-center justify-center text-center">
+                        <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center mb-6 animate-float">
+                            <Store className="w-10 h-10 text-[var(--text-tertiary)]" />
+                        </div>
+                        <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+                            No stores connected yet
+                        </h3>
+                        <p className="text-[var(--text-secondary)] mb-8 max-w-md mx-auto leading-relaxed">
+                            Connect your e-commerce store to start importing orders automatically.
+                            Select a platform below to get started.
+                        </p>
+                        <Button
+                            onClick={() => {
+                                const element = document.getElementById('available-platforms');
+                                element?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="rounded-full px-8"
+                        >
+                            Connect a Store
+                        </Button>
+                    </CardContent>
+                </Card>
             )}
 
-            {/* Available Integrations */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Available Platforms</h3>
-                </div>
+            {/* Available Platforms */}
+            <div id="available-platforms" className="space-y-4 pt-4">
+                <h2 className="text-xs font-bold tracking-widest text-[var(--text-tertiary)] uppercase flex items-center gap-2">
+                    <Plug className="w-4 h-4" />
+                    Available Platforms
+                </h2>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    {availablePlatforms.map((platform) => (
-                        <Card key={platform.id} className="hover:shadow-md hover:border-[var(--primary-blue)]/20 transition-all group">
-                            <CardContent className="p-6">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-14 h-14 p-3 flex items-center justify-center bg-[var(--bg-secondary)] rounded-xl group-hover:bg-[var(--primary-blue-soft)] transition-colors flex-shrink-0">
-                                        <img src={platform.icon} className="w-full h-full object-contain" alt={platform.name} />
+                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-2">
+                    {allPlatforms.map((platform, idx) => (
+                        <Card
+                            key={platform.id}
+                            hover
+                            className={cn(
+                                "group border-[var(--border-subtle)] transition-all duration-300",
+                                `stagger-${(idx % 4) + 1}`
+                            )}
+                        >
+                            <CardContent className="p-6 h-full flex flex-col">
+                                <div className="flex items-start gap-4 flex-1">
+                                    <div className="h-14 w-14 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 p-3">
+                                        <img
+                                            src={platform.icon}
+                                            className="w-full h-full object-contain"
+                                            alt={`${platform.name} logo`}
+                                            loading="lazy"
+                                        />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-lg font-semibold text-[var(--text-primary)] mb-1">{platform.name}</h4>
-                                        <p className="text-sm text-[var(--text-secondary)] mb-4">{platform.description}</p>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full"
-                                            onClick={() => router.push(platform.setupRoute)}
-                                        >
-                                            Connect
-                                            <ArrowRight className="h-4 w-4 ml-1.5" />
-                                        </Button>
+
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                                                {platform.name}
+                                            </h3>
+                                            {platform.popular && (
+                                                <Badge variant="secondary" size="sm" className="bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border-transparent font-medium">
+                                                    Popular
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        <p className="text-sm text-[var(--text-secondary)] mb-4 leading-relaxed line-clamp-2">
+                                            {platform.description}
+                                        </p>
+
+                                        {/* Features List */}
+                                        <div className="flex flex-wrap gap-2 mb-6">
+                                            {platform.features.slice(0, 2).map((feature, i) => (
+                                                <span key={i} className="inline-flex items-center px-2 py-1 rounded-md bg-[var(--bg-secondary)] text-[10px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+                                                    {feature}
+                                                </span>
+                                            ))}
+                                            {platform.features.length > 2 && (
+                                                <span className="inline-flex items-center px-2 py-1 rounded-md bg-[var(--bg-secondary)] text-[10px] font-semibold text-[var(--text-tertiary)] border border-[var(--border-subtle)]">
+                                                    +{platform.features.length - 2}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
+                                </div>
+
+                                <div className="mt-auto pt-2">
+                                    <Button
+                                        onClick={() => router.push(platform.setupRoute)}
+                                        variant="ghost"
+                                        size="md"
+                                        className={cn(
+                                            "w-full rounded-[var(--radius-full)] border justify-center transition-all duration-300 group-hover:shadow-md",
+                                            platform.bgClass,
+                                            platform.borderClass,
+                                            "text-[var(--text-primary)] hover:brightness-95"
+                                        )}
+                                        aria-label={`Connect ${platform.name}`}
+                                    >
+                                        <span className="flex items-center gap-2 font-semibold">
+                                            Connect {platform.name}
+                                            <ArrowRight className={cn("h-4 w-4", platform.colorClass)} />
+                                        </span>
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
@@ -225,20 +411,22 @@ export function IntegrationsClient() {
                 </div>
             </div>
 
-            {/* Info Card */}
-            <Card className="bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/10">
-                <CardContent className="p-5">
-                    <div className="flex items-start gap-3">
-                        <div className="p-2 bg-[var(--primary-blue)]/10 rounded-lg">
-                            <Plug className="h-4 w-4 text-[var(--primary-blue)]" />
+            {/* Help Section */}
+            <Card className="bg-gradient-to-r from-[var(--bg-secondary)] to-[var(--bg-tertiary)] border-[var(--border-subtle)]">
+                <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                        <div className="h-12 w-12 rounded-full bg-[var(--bg-primary)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0 shadow-sm">
+                            <ExternalLink className="h-5 w-5 text-[var(--primary-blue)]" />
                         </div>
-                        <div>
-                            <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Need help with integrations?</h4>
-                            <p className="text-sm text-[var(--text-secondary)] mb-3">Our team can help you set up and configure your store integrations.</p>
-                            <Button variant="outline" size="sm">
-                                Contact Support
-                            </Button>
+                        <div className="flex-1">
+                            <h3 className="text-base font-bold text-[var(--text-primary)]">Need help with integrations?</h3>
+                            <p className="text-sm text-[var(--text-secondary)] mt-1 max-w-2xl">
+                                Our support team can help you set up and configure your store integrations properly. Check our documentation or contact support.
+                            </p>
                         </div>
+                        <Button variant="secondary" className="shrink-0 font-medium">
+                            Contact Support
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

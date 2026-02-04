@@ -20,7 +20,12 @@
 import {
     ShopifyStore,
     WooCommerceStore,
+    AmazonStore,
+    FlipkartStore,
     SyncLog,
+    AmazonSyncLog,
+    FlipkartSyncLog,
+    WooCommerceSyncLog,
 } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -247,21 +252,18 @@ export class IntegrationHealthService {
                     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
                     const [errors24h, errors7d, recentLogs] = await Promise.all([
-                        SyncLog.countDocuments({
+                        WooCommerceSyncLog.countDocuments({
                             storeId: store._id,
-                            integrationType: 'WOOCOMMERCE',
                             status: 'FAILED',
                             startedAt: { $gte: oneDayAgo },
                         }),
-                        SyncLog.countDocuments({
+                        WooCommerceSyncLog.countDocuments({
                             storeId: store._id,
-                            integrationType: 'WOOCOMMERCE',
                             status: 'FAILED',
                             startedAt: { $gte: sevenDaysAgo },
                         }),
-                        SyncLog.find({
+                        WooCommerceSyncLog.find({
                             storeId: store._id,
-                            integrationType: 'WOOCOMMERCE',
                             startedAt: { $gte: sevenDaysAgo },
                         })
                             .sort({ startedAt: -1 })
@@ -270,10 +272,10 @@ export class IntegrationHealthService {
                     ]);
 
                     const totalSyncs = recentLogs.length;
-                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'SUCCESS').length;
+                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'COMPLETED').length;
                     const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
 
-                    const lastSync = recentLogs.find((log: any) => log.status === 'SUCCESS');
+                    const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
 
                     return {
                         storeId: store._id.toString(),
@@ -282,8 +284,8 @@ export class IntegrationHealthService {
                         platform: 'woocommerce',
                         isActive: store.isActive,
                         isPaused: store.isPaused || false,
-                        lastSyncAt: lastSync?.completedAt,
-                        syncStatus: store.syncConfig?.order?.status || 'UNKNOWN',
+                        lastSyncAt: lastSync?.endTime,
+                        syncStatus: store.syncConfig?.orderSync?.syncStatus || 'UNKNOWN',
                         errorCount24h: errors24h,
                         errorCount7d: errors7d,
                         syncSuccessRate: Math.round(syncSuccessRate * 10) / 10,
@@ -321,14 +323,81 @@ export class IntegrationHealthService {
 
     /**
      * Get Amazon integration health
-     * 
-     * Note: Amazon doesn't have a sync log model yet, so we return basic store metrics
      */
     private static async getAmazonHealth(companyId: string): Promise<PlatformHealth | null> {
         try {
-            // TODO: Implement once AmazonStore and AmazonSyncLog models are available
-            // For now, return null indicating no Amazon stores configured
-            return null;
+            const stores = await AmazonStore.find({ companyId }).lean();
+
+            if (stores.length === 0) {
+                return null;
+            }
+
+            const storeHealth: StoreHealth[] = await Promise.all(
+                stores.map(async (store: any) => {
+                    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+                    const [errors24h, errors7d, recentLogs] = await Promise.all([
+                        AmazonSyncLog.countDocuments({
+                            storeId: store._id,
+                            status: 'FAILED',
+                            startedAt: { $gte: oneDayAgo },
+                        }),
+                        AmazonSyncLog.countDocuments({
+                            storeId: store._id,
+                            status: 'FAILED',
+                            startedAt: { $gte: sevenDaysAgo },
+                        }),
+                        AmazonSyncLog.find({
+                            storeId: store._id,
+                            startedAt: { $gte: sevenDaysAgo },
+                        })
+                            .sort({ startedAt: -1 })
+                            .limit(100)
+                            .lean(),
+                    ]);
+
+                    const totalSyncs = recentLogs.length;
+                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'SUCCESS').length;
+                    const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
+
+                    const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
+
+                    return {
+                        storeId: store._id.toString(),
+                        storeName: store.sellerName || store.sellerId,
+                        storeUrl: undefined,
+                        platform: 'amazon',
+                        isActive: store.isActive,
+                        isPaused: store.isPaused || false,
+                        lastSyncAt: lastSync?.endTime,
+                        syncStatus: store.syncConfig?.orderSync?.syncStatus || 'UNKNOWN',
+                        errorCount24h: errors24h,
+                        errorCount7d: errors7d,
+                        syncSuccessRate: Math.round(syncSuccessRate * 10) / 10,
+                        webhooksActive: store.webhooks?.filter((w: any) => w.isActive).length || 0,
+                        webhooksTotal: store.webhooks?.length || 0,
+                    };
+                })
+            );
+
+            const activeStores = stores.filter((s: any) => s.isActive).length;
+            const pausedStores = stores.filter((s: any) => s.isPaused).length;
+
+            const totalErrors = storeHealth.reduce((sum, s) => sum + s.errorCount7d, 0);
+            const avgSuccessRate =
+                storeHealth.reduce((sum, s) => sum + (s.syncSuccessRate || 0), 0) / storeHealth.length;
+
+            return {
+                platform: 'amazon',
+                totalStores: stores.length,
+                activeStores,
+                pausedStores,
+                inactiveStores: stores.length - activeStores,
+                stores: storeHealth,
+                overallErrorRate: totalErrors,
+                overallSuccessRate: Math.round(avgSuccessRate * 10) / 10,
+            };
         } catch (error: any) {
             logger.error('Failed to get Amazon health', {
                 companyId,
@@ -340,14 +409,81 @@ export class IntegrationHealthService {
 
     /**
      * Get Flipkart integration health
-     * 
-     * Note: Flipkart doesn't have a sync log model yet, so we return basic store metrics
      */
     private static async getFlipkartHealth(companyId: string): Promise<PlatformHealth | null> {
         try {
-            // TODO: Implement once FlipkartStore and FlipkartSyncLog models are available
-            // For now, return null indicating no Flipkart stores configured
-            return null;
+            const stores = await FlipkartStore.find({ companyId }).lean();
+
+            if (stores.length === 0) {
+                return null;
+            }
+
+            const storeHealth: StoreHealth[] = await Promise.all(
+                stores.map(async (store: any) => {
+                    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+                    const [errors24h, errors7d, recentLogs] = await Promise.all([
+                        FlipkartSyncLog.countDocuments({
+                            storeId: store._id,
+                            status: 'FAILED',
+                            startedAt: { $gte: oneDayAgo },
+                        }),
+                        FlipkartSyncLog.countDocuments({
+                            storeId: store._id,
+                            status: 'FAILED',
+                            startedAt: { $gte: sevenDaysAgo },
+                        }),
+                        FlipkartSyncLog.find({
+                            storeId: store._id,
+                            startedAt: { $gte: sevenDaysAgo },
+                        })
+                            .sort({ startedAt: -1 })
+                            .limit(100)
+                            .lean(),
+                    ]);
+
+                    const totalSyncs = recentLogs.length;
+                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'SUCCESS').length;
+                    const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
+
+                    const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
+
+                    return {
+                        storeId: store._id.toString(),
+                        storeName: store.sellerName || store.sellerId,
+                        storeUrl: store.storeUrl,
+                        platform: 'flipkart',
+                        isActive: store.isActive,
+                        isPaused: store.isPaused || false,
+                        lastSyncAt: lastSync?.endTime,
+                        syncStatus: store.syncConfig?.orderSync?.syncStatus || 'UNKNOWN',
+                        errorCount24h: errors24h,
+                        errorCount7d: errors7d,
+                        syncSuccessRate: Math.round(syncSuccessRate * 10) / 10,
+                        webhooksActive: store.webhooks?.filter((w: any) => w.isActive).length || 0,
+                        webhooksTotal: store.webhooks?.length || 0,
+                    };
+                })
+            );
+
+            const activeStores = stores.filter((s: any) => s.isActive).length;
+            const pausedStores = stores.filter((s: any) => s.isPaused).length;
+
+            const totalErrors = storeHealth.reduce((sum, s) => sum + s.errorCount7d, 0);
+            const avgSuccessRate =
+                storeHealth.reduce((sum, s) => sum + (s.syncSuccessRate || 0), 0) / storeHealth.length;
+
+            return {
+                platform: 'flipkart',
+                totalStores: stores.length,
+                activeStores,
+                pausedStores,
+                inactiveStores: stores.length - activeStores,
+                stores: storeHealth,
+                overallErrorRate: totalErrors,
+                overallSuccessRate: Math.round(avgSuccessRate * 10) / 10,
+            };
         } catch (error: any) {
             logger.error('Failed to get Flipkart health', {
                 companyId,

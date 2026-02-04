@@ -250,9 +250,7 @@ export const useCreateIntegration = (options?: UseMutationOptions<EcommerceInteg
 /**
  * Update integration settings or field mapping
  *
- * Note: Only Shopify has a dedicated /settings endpoint.
- * Other platforms don't support updating settings after creation.
- * Settings must be provided during initial connection.
+ * Now supports all platforms with PATCH /stores/:id/settings endpoints
  */
 export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceIntegration, ApiError, UpdateIntegrationPayload>) => {
     const queryClient = useQueryClient();
@@ -261,17 +259,13 @@ export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceInteg
         mutationFn: async ({ integrationId, type, ...payload }) => {
             const platform = type ? type.toLowerCase() : 'shopify';
 
-            // Only Shopify has a settings endpoint
-            if (type && type !== 'SHOPIFY') {
-                throw new Error(`Settings update not supported for ${type}. Please reconnect the integration with new settings.`);
-            }
-
             const response = await apiClient.patch(`/integrations/${platform}/stores/${integrationId}/settings`, payload);
             return response.data.data;
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(data.integrationId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
+            queryClient.invalidateQueries({ queryKey: ['integrations', 'health'] });
             showSuccessToast('Integration updated successfully');
         },
         onError: (error) => handleApiError(error),
