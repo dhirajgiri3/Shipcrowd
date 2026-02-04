@@ -25,7 +25,7 @@ import {
     DelhiveryNdrStatusResponse,
     DelhiveryDocumentResponse
 } from './delhivery.types';
-import { handleDelhiveryError, retryWithBackoff } from './delhivery-error-handler';
+import { handleDelhiveryError, retryWithBackoff, DelhiveryError } from './delhivery-error-handler';
 import { StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
 import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
 import { DELHIVERY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs';
@@ -80,7 +80,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
                 || warehouse?.name;
 
             if (!pickupLocationName) {
-                throw new Error('Delhivery pickup location name is required');
+                throw new DelhiveryError(400, 'Delhivery pickup location name is required', false);
             }
 
             let shipment = DelhiveryMapper.mapForwardShipment(data, options);
@@ -116,7 +116,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
             const awb = responseData.packages?.[0]?.waybill || responseData.waybill || responseData.packages?.[0]?.wbn;
 
             if (!awb) {
-                throw new Error('Delhivery did not return a waybill');
+                throw new DelhiveryError(502, 'Delhivery did not return a waybill', true);
             }
 
             return {
@@ -146,7 +146,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
             const shipment = data?.ShipmentData?.[0]?.Shipment;
 
             if (!shipment) {
-                throw new Error(`No tracking data for AWB: ${trackingNumber}`);
+                throw new DelhiveryError(404, `No tracking data for AWB: ${trackingNumber}`, false);
             }
 
             const status = shipment.Status;
@@ -308,7 +308,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
             const warehouse = await Warehouse.findById(data.returnWarehouseId).lean();
 
             if (!warehouse) {
-                throw new Error('Return warehouse not found');
+                throw new DelhiveryError(400, 'Return warehouse not found', false);
             }
 
             const pickupLocationName = options.pickupLocationName
@@ -316,7 +316,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
                 || warehouse?.name;
 
             if (!pickupLocationName) {
-                throw new Error('Delhivery pickup location name is required');
+                throw new DelhiveryError(400, 'Delhivery pickup location name is required', false);
             }
 
             const shipment = DelhiveryMapper.mapReverseShipment(data, {
@@ -354,7 +354,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
             const awb = responseData.packages?.[0]?.waybill || responseData.waybill || responseData.packages?.[0]?.wbn;
 
             if (!awb) {
-                throw new Error('Delhivery did not return a waybill for reverse shipment');
+                throw new DelhiveryError(502, 'Delhivery did not return a waybill for reverse shipment', true);
             }
 
             return {

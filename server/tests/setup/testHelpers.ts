@@ -9,7 +9,7 @@ function extractMongoDbName(uri: string): string | undefined {
     // Examples:
     // - mongodb://localhost:27017/shipcrowd_test
     // - mongodb://127.0.0.1:12345/?replicaSet=testset (no db name)
-    const match = uri.match(/mongodb(?:\\+srv)?:\\/\\/[^/]+\\/([^?]+)/i);
+    const match = uri.match(/mongodb(?:\+srv)?:\/\/[^/]+\/([^?]+)/i);
     const db = match?.[1]?.trim();
     if (!db) return undefined;
     return decodeURIComponent(db);

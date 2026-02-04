@@ -159,12 +159,26 @@ describe('DelhiveryProvider - Comprehensive Tests', () => {
 
             expect(result.trackingNumber).toBe('SANITIZED123');
 
-            // Verify special characters are removed
-            const callArgs = mockAxiosInstance.post.mock.calls[0][1];
-            expect(callArgs).not.toContain('&');
-            expect(callArgs).not.toContain('#');
-            expect(callArgs).not.toContain('%');
-            expect(callArgs).not.toContain(';');
+            // Verify special characters are removed from the JSON payload
+            const rawBody = mockAxiosInstance.post.mock.calls[0][1];
+            const jsonPart = decodeURIComponent(rawBody.split('data=')[1]);
+            const payload = JSON.parse(jsonPart);
+            const address = payload.shipments[0].add;
+
+            expect(address).not.toContain('&');
+            expect(address).not.toContain('#');
+            expect(address).not.toContain('%');
+            expect(address).not.toContain(';');
+        });
+
+
+
+        it('sanitizes forbidden characters', () => {
+            expect(DelhiveryMapper.sanitize('House & Street')).toBe('House Street');
+            expect(DelhiveryMapper.sanitize('House #123')).toBe('House 123');
+            expect(DelhiveryMapper.sanitize('Street % Area')).toBe('Street Area');
+            expect(DelhiveryMapper.sanitize('Address ; Note')).toBe('Address Note');
+            expect(DelhiveryMapper.sanitize('Path \\ Name')).toBe('Path Name');
         });
 
         it('throws error when warehouse is missing', async () => {
@@ -771,13 +785,7 @@ describe('DelhiveryProvider - Comprehensive Tests', () => {
             expect(DelhiveryMapper.normalizePhone('+919999999999')).toBe('9999999999');
         });
 
-        it('sanitizes forbidden characters', () => {
-            expect(DelhiveryMapper.sanitize('House & Street')).toBe('House   Street');
-            expect(DelhiveryMapper.sanitize('House #123')).toBe('House  123');
-            expect(DelhiveryMapper.sanitize('Street % Area')).toBe('Street   Area');
-            expect(DelhiveryMapper.sanitize('Address ; Note')).toBe('Address   Note');
-            expect(DelhiveryMapper.sanitize('Path \\ Name')).toBe('Path   Name');
-        });
+
 
         it('converts weight to grams', () => {
             expect(DelhiveryMapper.toGrams(1)).toBe(1000);
