@@ -32,7 +32,7 @@ export default function ShopifySettingsPage() {
     const { addToast } = useToast();
     const storeId = params.storeId as string;
 
-    const { data: store, isLoading } = useIntegration(storeId);
+    const { data: store, isLoading } = useIntegration(storeId, 'SHOPIFY');
     const { mutate: updateSettings, isPending: isUpdating } = useUpdateIntegration();
     const { mutate: deleteStore, isPending: isDeleting } = useDeleteIntegration();
 
@@ -64,24 +64,25 @@ export default function ShopifySettingsPage() {
     const handleSaveSettings = () => {
         updateSettings({
             integrationId: storeId,
+            type: 'SHOPIFY',
             settings
         }, {
             onSuccess: () => {
                 addToast('Settings saved successfully', 'success');
             },
-            onError: (error) => {
+            onError: (error: any) => {
                 addToast(error.message || 'Failed to save settings', 'error');
             }
         });
     };
 
     const handleDeleteStore = () => {
-        deleteStore(storeId, {
+        deleteStore({ integrationId: storeId, type: 'SHOPIFY' }, {
             onSuccess: () => {
                 addToast('Store disconnected successfully', 'success');
                 router.push('/seller/integrations');
             },
-            onError: (error) => {
+            onError: (error: any) => {
                 addToast(error.message || 'Failed to disconnect store', 'error');
             }
         });

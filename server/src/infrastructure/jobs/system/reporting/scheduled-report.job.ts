@@ -11,7 +11,7 @@ import ReportBuilderService from '../../../../core/application/services/analytic
 import CSVExportService from '../../../../core/application/services/analytics/export/csv-export.service';
 import ExcelExportService from '../../../../core/application/services/analytics/export/excel-export.service';
 import PDFExportService from '../../../../core/application/services/analytics/export/pdf-export.service';
-import CloudinaryStorageService from '../../../external/storage/cloudinary/cloudinary-storage.service';
+import SpacesStorageService from '../../../external/storage/spaces/spaces-storage.service';
 import QueueManager from '../../../utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -20,6 +20,13 @@ interface ScheduledReportJobData {
     companyId: string;
     type?: 'generate' | 'send';
 }
+
+const isSpacesConfigured = () => {
+    return process.env.SPACES_ENDPOINT &&
+        process.env.SPACES_ACCESS_KEY &&
+        process.env.SPACES_SECRET_KEY &&
+        process.env.SPACES_BUCKET;
+};
 
 export class ScheduledReportJob {
     private static readonly QUEUE_NAME = 'scheduled-reports';
@@ -96,6 +103,7 @@ export class ScheduledReportJob {
         const format = config.schedule?.format || 'excel';
         let buffer: Buffer;
         let filename: string;
+        let mimeType: string;
 
         const flatData = this.flattenReportData(reportResult.data);
 
@@ -103,6 +111,7 @@ export class ScheduledReportJob {
             case 'csv':
                 buffer = await CSVExportService.exportToCSV(flatData, CSVExportService.getOrderColumns());
                 filename = `${config.name}_${Date.now()}.csv`;
+                mimeType = 'text/csv';
                 break;
 
             case 'pdf':
@@ -110,6 +119,7 @@ export class ScheduledReportJob {
                     title: config.name
                 });
                 filename = `${config.name}_${Date.now()}.pdf`;
+                mimeType = 'application/pdf';
                 break;
 
             case 'excel':
@@ -119,25 +129,24 @@ export class ScheduledReportJob {
                     sheetName: config.reportType
                 });
                 filename = `${config.name}_${Date.now()}.xlsx`;
+                mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
                 break;
         }
 
-        // Upload to Cloudinary if configured
-        if (CloudinaryStorageService.isConfigured()) {
-            const uploadResult = await CloudinaryStorageService.uploadFile(
-                buffer,
-                filename,
-                format as 'csv' | 'xlsx' | 'pdf'
-            );
+        // Upload to Spaces if configured
+        if (isSpacesConfigured()) {
+            const spacesService = new SpacesStorageService();
+            const key = `reports/${companyId}/${filename}`;
+            await spacesService.uploadFile(buffer, key, mimeType);
 
             // Generate signed URL with 7-day expiry for scheduled reports
-            const signedUrl = CloudinaryStorageService.getSignedUrl(uploadResult.publicId, 7 * 24 * 3600);
+            const signedUrl = await spacesService.getFileUrl(key);
             const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
 
             logger.info('Scheduled report generated and uploaded', {
                 reportConfigId,
                 filename,
-                url: uploadResult.secureUrl
+                key
             });
 
             // Send email to recipients with download link

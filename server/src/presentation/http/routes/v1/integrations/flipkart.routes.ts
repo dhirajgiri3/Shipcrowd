@@ -17,6 +17,14 @@ const router = Router();
  * Connection Routes
  */
 
+// Test Flipkart credentials before connect
+router.post(
+  '/test',
+  authenticate,
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
+  FlipkartController.testConnectionCredentials
+);
+
 // Connect Flipkart seller account
 router.post(
   '/connect',
@@ -41,6 +49,14 @@ router.get(
   '/stores/:id',
   authenticate,
   FlipkartController.getStore
+);
+
+// Update store settings
+router.patch(
+  '/stores/:id/settings',
+  authenticate,
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
+  FlipkartController.updateSettings
 );
 
 // Disconnect store

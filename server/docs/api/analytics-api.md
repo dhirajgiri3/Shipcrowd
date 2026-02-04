@@ -260,7 +260,7 @@ POST /pdf
 **Response:**
 ```json
 {
-  "downloadUrl": "https://cloudinary.com/...",
+  "downloadUrl": "https://shipcrowd.ams3.digitaloceanspaces.com/...",
   "filename": "orders_export_123456.xlsx",
   "format": "xlsx",
   "recordCount": 150

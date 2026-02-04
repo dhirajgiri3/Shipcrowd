@@ -229,6 +229,7 @@ const ShopifyStoreSchema = new Schema<IShopifyStore>(
       lastInventorySyncAt: { type: Date },
       lastWebhookAt: { type: Date },
       lastSyncAt: { type: Date },
+      syncSuccessRate: { type: Number, default: 100 },
     },
 
     // User-facing settings (frontend compatibility)

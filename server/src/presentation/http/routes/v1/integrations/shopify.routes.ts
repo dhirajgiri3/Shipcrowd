@@ -16,7 +16,7 @@ router.get(
   '/install',
   authenticate,
   requireAccess({
-    tier: AccessTier.PRODUCTION,
+    tier: AccessTier.SANDBOX,
     kyc: false,
     teamRoles: ['owner', 'admin']
   }),
@@ -55,7 +55,7 @@ router.delete(
   '/stores/:id',
   authenticate,
   requireAccess({
-    tier: AccessTier.PRODUCTION,
+    tier: AccessTier.SANDBOX,
     kyc: true,
     teamRoles: ['owner', 'admin']
   }),

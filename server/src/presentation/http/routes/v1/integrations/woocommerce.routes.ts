@@ -30,6 +30,16 @@ router.use(requireAccess({ kyc: true }));
  */
 
 /**
+ * POST /api/v1/integrations/woocommerce/test
+ * Test credentials before connecting
+ */
+router.post(
+  '/test',
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
+  WooCommerceController.testConnectionCredentials
+);
+
+/**
  * POST /api/v1/integrations/woocommerce/install
  * Install (connect) a new WooCommerce store
  *
@@ -84,6 +94,16 @@ router.get('/stores', WooCommerceController.listStores);
  * }
  */
 router.get('/stores/:id', WooCommerceController.getStoreDetails);
+
+/**
+ * PATCH /api/v1/integrations/woocommerce/stores/:id/settings
+ * Update store settings
+ */
+router.patch(
+  '/stores/:id/settings',
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
+  WooCommerceController.updateSettings
+);
 
 /**
  * POST /api/v1/integrations/woocommerce/stores/:id/test

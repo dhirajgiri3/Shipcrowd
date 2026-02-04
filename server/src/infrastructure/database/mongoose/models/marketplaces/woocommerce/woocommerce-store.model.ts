@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import crypto from 'crypto';
+import { DEFAULT_STORE_SETTINGS, DEFAULT_SYNC_CONFIG } from '../../../../../../config/integration.defaults';
 
 /**
  * WooCommerceStore Model
@@ -36,6 +37,7 @@ export interface IWooCommerceStore extends Document {
   // Status
   isActive: boolean;
   isPaused: boolean;
+  connectedAt?: Date;
   lastSyncAt?: Date;
   syncStatus: 'active' | 'paused' | 'error';
   lastError?: string;
@@ -74,6 +76,26 @@ export interface IWooCommerceStore extends Document {
       lastError?: string;
     };
     webhooksEnabled: boolean;
+  };
+
+  // User-facing settings
+  settings?: {
+    syncFrequency?: string;
+    autoFulfill?: boolean;
+    autoTrackingUpdate?: boolean;
+    syncHistoricalOrders?: boolean;
+    historicalOrderDays?: number;
+    orderFilters?: {
+      minOrderValue?: number;
+      maxOrderValue?: number;
+      statusFilters?: string[];
+      excludeStatuses?: string[];
+    };
+    notifications?: {
+      syncErrors?: boolean;
+      connectionIssues?: boolean;
+      lowInventory?: boolean;
+    };
   };
 
   // Statistics
@@ -166,10 +188,14 @@ const WooCommerceStoreSchema = new Schema<IWooCommerceStore>(
       default: true,
       index: true,
     },
-    isPaused: {
-      type: Boolean,
-      default: false,
-    },
+  isPaused: {
+    type: Boolean,
+    default: false,
+  },
+  connectedAt: {
+    type: Date,
+    default: Date.now,
+  },
     lastSyncAt: {
       type: Date,
     },
@@ -206,31 +232,40 @@ const WooCommerceStoreSchema = new Schema<IWooCommerceStore>(
     // Sync configuration
     syncConfig: {
       orderSync: {
-        enabled: { type: Boolean, default: true },
-        autoSync: { type: Boolean, default: true },
-        syncInterval: { type: Number, default: 15 }, // 15 minutes
+        enabled: { type: Boolean, default: DEFAULT_SYNC_CONFIG.orderSync.enabled },
+        autoSync: { type: Boolean, default: DEFAULT_SYNC_CONFIG.orderSync.autoSync },
+        syncInterval: { type: Number, default: DEFAULT_SYNC_CONFIG.orderSync.syncInterval },
         lastSyncAt: { type: Date },
         syncStatus: {
           type: String,
           enum: ['IDLE', 'SYNCING', 'ERROR'],
-          default: 'IDLE',
+          default: DEFAULT_SYNC_CONFIG.orderSync.syncStatus,
         },
-        errorCount: { type: Number, default: 0 },
+        errorCount: { type: Number, default: DEFAULT_SYNC_CONFIG.orderSync.errorCount },
         lastError: { type: String },
       },
       inventorySync: {
-        enabled: { type: Boolean, default: true },
-        autoSync: { type: Boolean, default: false }, // Manual by default
+        enabled: { type: Boolean, default: DEFAULT_SYNC_CONFIG.inventorySync.enabled },
+        autoSync: { type: Boolean, default: DEFAULT_SYNC_CONFIG.inventorySync.autoSync },
         syncDirection: {
           type: String,
           enum: ['ONE_WAY', 'TWO_WAY'],
-          default: 'ONE_WAY', // Shipcrowd → WooCommerce
+          default: DEFAULT_SYNC_CONFIG.inventorySync.syncDirection,
         },
         lastSyncAt: { type: Date },
-        errorCount: { type: Number, default: 0 },
+        errorCount: { type: Number, default: DEFAULT_SYNC_CONFIG.inventorySync.errorCount },
         lastError: { type: String },
       },
-      webhooksEnabled: { type: Boolean, default: true },
+      webhooksEnabled: { type: Boolean, default: DEFAULT_SYNC_CONFIG.webhooksEnabled },
+    },
+
+    settings: {
+      type: Schema.Types.Mixed,
+      default: () => ({
+        ...DEFAULT_STORE_SETTINGS,
+        orderFilters: { ...DEFAULT_STORE_SETTINGS.orderFilters },
+        notifications: { ...DEFAULT_STORE_SETTINGS.notifications },
+      }),
     },
 
     // Statistics

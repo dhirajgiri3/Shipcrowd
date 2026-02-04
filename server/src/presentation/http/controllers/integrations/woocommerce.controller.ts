@@ -19,6 +19,7 @@ import { ValidationError, NotFoundError, AuthenticationError, AppError } from '.
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
+import { toEcommerceStoreDTO, applyDefaultsToSettings, applyDefaultsToSyncConfig } from '../../../../core/mappers/store.mapper';
 
 export default class WooCommerceController {
   /**
@@ -101,15 +102,13 @@ export default class WooCommerceController {
       sendSuccess(res, {
         count: stores.length,
         stores: stores.map((store) => ({
-          id: store._id,
+          ...toEcommerceStoreDTO(store, 'woocommerce'),
           storeUrl: store.storeUrl,
           storeName: store.storeName,
           currency: store.currency,
           wcVersion: store.wcVersion,
-          isActive: store.isActive,
-          isPaused: store.isPaused,
-          installedAt: store.installedAt,
           syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
           stats: store.stats,
           activeWebhooksCount: store.webhooks.filter((w: any) => w.isActive).length,
         })),
@@ -143,7 +142,7 @@ export default class WooCommerceController {
 
       sendSuccess(res, {
         store: {
-          id: store._id,
+          ...toEcommerceStoreDTO(store, 'woocommerce'),
           storeUrl: store.storeUrl,
           storeName: store.storeName,
           apiVersion: store.apiVersion,
@@ -151,11 +150,9 @@ export default class WooCommerceController {
           wcVersion: store.wcVersion,
           currency: store.currency,
           timezone: store.timezone,
-          isActive: store.isActive,
-          isPaused: store.isPaused,
-          installedAt: store.installedAt,
           uninstalledAt: store.uninstalledAt,
           syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
           stats: store.stats,
           webhooks: store.webhooks.map((webhook: any) => ({
             topic: webhook.topic,
@@ -203,6 +200,95 @@ export default class WooCommerceController {
       sendSuccess(res, {
         connected,
       }, connected ? 'Connection is valid' : 'Connection failed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Pre-connect credential test
+   * POST /api/v1/integrations/woocommerce/test
+   */
+  static async testConnectionCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { storeUrl, consumerKey, consumerSecret } = req.body;
+
+      if (!storeUrl || !consumerKey || !consumerSecret) {
+        throw new ValidationError('Store URL, consumer key, and consumer secret are required');
+      }
+
+      let normalizedUrl = storeUrl.trim();
+      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+        normalizedUrl = `https://${normalizedUrl}`;
+      }
+
+      const connected = await WooCommerceOAuthService.testConnection(
+        normalizedUrl,
+        consumerKey,
+        consumerSecret
+      );
+
+      sendSuccess(res, {
+        connected,
+        storeName: connected ? new URL(normalizedUrl).hostname : undefined,
+        details: {
+          storeUrl: normalizedUrl,
+        },
+      }, connected ? 'Connection is valid' : 'Connection failed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update store settings
+   * PATCH /api/v1/integrations/woocommerce/stores/:id/settings
+   */
+  static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { settings, syncConfig } = req.body;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
+      }
+
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+      }
+
+      if (settings) {
+        store.settings = applyDefaultsToSettings({
+          ...(store.settings || {}),
+          ...settings,
+        });
+      }
+
+      if (syncConfig) {
+        store.syncConfig = applyDefaultsToSyncConfig({
+          ...(store.syncConfig || {}),
+          ...syncConfig,
+        });
+      }
+
+      await store.save();
+
+      sendSuccess(res, {
+        store: {
+          ...toEcommerceStoreDTO(store, 'woocommerce'),
+          storeUrl: store.storeUrl,
+          storeName: store.storeName,
+          syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
+          stats: store.stats,
+        },
+      }, 'Settings updated successfully');
     } catch (error) {
       next(error);
     }

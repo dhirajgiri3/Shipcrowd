@@ -12,6 +12,7 @@ import {
     useInitiateOAuth,
     useTestConnection,
     useCreateIntegration,
+    useIntegrations,
 } from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
 import { useIntegrationState } from '@/src/core/api/hooks/integrations/useIntegrationState';
 import {
@@ -30,6 +31,7 @@ import {
     Info,
     Loader2,
     RefreshCw,
+    Settings,
     ShieldCheck,
     X,
 } from 'lucide-react';
@@ -73,6 +75,7 @@ export default function ShopifyIntegrationPage() {
 
     // Component-specific state (not managed by form hook)
     const [storeName, setStoreName] = useState('');
+    const [storeId, setStoreId] = useState<string>(''); // Store ID from OAuth callback
     const [accessToken, setAccessToken] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
@@ -115,14 +118,15 @@ export default function ShopifyIntegrationPage() {
 
     // Access form data through formData object
     const shopDomain = formData.shopDomain as string;
-    const settings = formData.settings as Partial<IntegrationSettings>;
+    const settings = (formData.settings || defaultSettings) as Partial<IntegrationSettings>;
 
     const setShopDomain = (val: string) => updateField('shopDomain', val);
     const setSettings = (val: any) => {
         if (typeof val === 'function') {
-            updateField('settings', val(formData.settings));
+            const newSettings = val(formData.settings || defaultSettings);
+            updateField('settings', { ...defaultSettings, ...newSettings });
         } else {
-            updateField('settings', val);
+            updateField('settings', { ...defaultSettings, ...val });
         }
     };
 
@@ -130,21 +134,40 @@ export default function ShopifyIntegrationPage() {
     const { mutate: testConnection, isPending: isTesting } = useTestConnection();
     const { mutate: createIntegration, isPending: isCreating } = useCreateIntegration();
 
+    const processedParamsRef = React.useRef(false);
+
     useEffect(() => {
         const status = searchParams.get('status');
         const store = searchParams.get('shop') || searchParams.get('store');
+        const id = searchParams.get('storeId'); // Get storeId from callback
         const message = searchParams.get('message');
 
         if (status === 'success' && store) {
+            if (processedParamsRef.current) return;
+            processedParamsRef.current = true;
+
             setIsAuthenticated(true);
             setShopDomain(store);
             setStoreName(store.replace('.myshopify.com', ''));
+            if (id) setStoreId(id); // Save storeId for test connection
             addToast('Successfully connected to Shopify!', 'success');
-            window.history.replaceState({}, '', window.location.pathname);
+            
+            // Clear search params without full reload
+            const url = new URL(window.location.href);
+            url.search = '';
+            window.history.replaceState({}, '', url.toString());
         } else if (status === 'error') {
+            if (processedParamsRef.current) return;
+            processedParamsRef.current = true;
+
             addToast(message || 'Shopify connection failed', 'error');
+            
+            // Clear search params without full reload
+            const url = new URL(window.location.href);
+            url.search = '';
+            window.history.replaceState({}, '', url.toString());
         }
-    }, [searchParams, addToast]);
+    }, [searchParams, addToast, setShopDomain, setStoreId]);
 
     // Online/offline detection
     useEffect(() => {
@@ -170,12 +193,35 @@ export default function ShopifyIntegrationPage() {
     // Show skeleton on initial load if we have a saved draft loading
     // In a real app we might also check for existing integration data here
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [existingIntegration, setExistingIntegration] = useState<any>(null);
+
+    const { data: integrations, isLoading: isLoadingIntegrations } = useIntegrations({ type: 'SHOPIFY' });
+
+    useEffect(() => {
+        if (integrations && integrations.length > 0) {
+            // Find if this shop is already integrated
+            const shop = searchParams.get('shop') || searchParams.get('store');
+            const existing = shop 
+                ? (integrations as any[]).find((i: any) => i.shopDomain === shop || i.shopDomain === `${shop}.myshopify.com` || i.storeUrl?.includes(shop))
+                : (integrations as any[])[0]; // Default to first one if no shop in URL
+            
+            if (existing) {
+                setExistingIntegration(existing);
+                setIsAuthenticated(true);
+                setShopDomain(existing.shopDomain || (existing.storeUrl?.replace('https://', '') || ''));
+                setStoreName(existing.shopName || existing.storeName || (existing.shopDomain || '').replace('.myshopify.com', ''));
+                setStoreId(existing.integrationId || existing.id || existing._id);
+            }
+        }
+    }, [integrations, searchParams]);
 
     useEffect(() => {
         // Simulate initial checks
-        const timer = setTimeout(() => setIsInitialLoad(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+        if (!isLoadingIntegrations) {
+            const timer = setTimeout(() => setIsInitialLoad(false), 800);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoadingIntegrations]);
 
     useEffect(() => {
         setTestResult(null);
@@ -315,6 +361,7 @@ export default function ShopifyIntegrationPage() {
         testConnection({
             type: 'SHOPIFY',
             credentials,
+            integrationId: storeId, // Pass storeId to use the correct endpoint
         }, {
             onSuccess: (data) => {
                 setTestResult(data);
@@ -338,6 +385,14 @@ export default function ShopifyIntegrationPage() {
     const handleSubmit = () => {
         if (!testResult?.success) {
             addToast('Please test the connection first', 'warning');
+            return;
+        }
+
+        // If store already exists (from existing integration), just navigate to it
+        if (existingIntegration && storeId) {
+            addToast('Store already connected!', 'success');
+            clearDraft();
+            router.push(`/seller/integrations/shopify/${storeId}`);
             return;
         }
 
@@ -377,12 +432,18 @@ export default function ShopifyIntegrationPage() {
             settings: settings as IntegrationSettings,
             fieldMapping,
         }, {
-            onSuccess: () => {
+            onSuccess: (data: any) => {
                 addToast('Shopify store connected successfully!', 'success');
-                clearDraft(); // Clear draft on success
-                router.push('/seller/integrations');
+                clearDraft();
+                // Navigate to the newly created store page
+                const newStoreId = data.integrationId || data._id || data.id;
+                if (newStoreId) {
+                    router.push(`/seller/integrations/shopify/${newStoreId}`);
+                } else {
+                    router.push('/seller/integrations');
+                }
             },
-            onError: (err) => {
+            onError: (err: any) => {
                 addToast(err.message || 'Failed to connect store', 'error');
             }
         });
@@ -460,28 +521,28 @@ export default function ShopifyIntegrationPage() {
                     <X className="w-5 h-5" />
                 </button>
 
-                <div className="flex-1 overflow-y-auto p-6 sm:p-8 scrollbar-premium">
-                    <div className="flex items-center gap-6 mb-6 pb-6 border-b border-[var(--border-subtle)]">
-                        <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#95BF47]/10 to-[#95BF47]/5 flex items-center justify-center flex-shrink-0 border border-[#95BF47]/20 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 scrollbar-premium">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-6 pb-6 border-b border-[var(--border-subtle)] text-center sm:text-left">
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#95BF47]/10 to-[#95BF47]/5 flex items-center justify-center flex-shrink-0 border border-[#95BF47]/20 overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-transparent opacity-40 animate-pulse" />
                             <img
                                 src="/logos/shopify.svg"
                                 alt="Shopify"
-                                className="w-12 h-12 relative"
+                                className="w-10 h-10 sm:w-12 sm:h-12 relative transition-transform duration-500 group-hover:scale-110"
                             />
                         </div>
 
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                                <DialogTitle className="text-2xl font-bold text-[var(--text-primary)]">
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
+                                <DialogTitle className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] truncate">
                                     Connect Shopify Store
                                 </DialogTitle>
                             </div>
-                            <p className="text-sm text-[var(--text-secondary)]">
+                            <p className="text-sm text-[var(--text-secondary)] text-balance">
                                 Sync orders automatically in real-time with webhooks
                             </p>
                             {isDraft && (
-                                <div className="flex items-center gap-2 mt-2 text-xs text-[var(--primary-blue)] font-medium animate-in fade-in slide-in-from-left-2">
+                                <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 text-xs text-[var(--primary-blue)] font-medium animate-in fade-in slide-in-from-left-2">
                                     <Clock className="w-3 h-3" />
                                     <span>Draft saved automatically</span>
                                 </div>
@@ -489,19 +550,19 @@ export default function ShopifyIntegrationPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 mb-6">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                            <Info className="w-3.5 h-3.5" />
+                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-3 sm:p-4 mb-6">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+                            <Info className="w-3.5 h-3.5 shrink-0" />
                             What you'll need
                         </div>
-                        <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
-                            <div className="flex items-start gap-2">
-                                <Check className="w-4 h-4 text-[var(--success)] mt-0.5" />
-                                Your Shopify store domain (for example: `your-store.myshopify.com`)
+                        <div className="space-y-2 text-xs sm:text-sm text-[var(--text-secondary)]">
+                            <div className="flex items-start gap-2.5">
+                                <Check className="w-4 h-4 text-[var(--success)] mt-0.5 shrink-0" />
+                                <span className="flex-1">Your Shopify store domain (e.g. `your-store.myshopify.com`)</span>
                             </div>
-                            <div className="flex items-start gap-2">
-                                <ShieldCheck className="w-4 h-4 text-[var(--primary-blue)] mt-0.5" />
-                                Admin access to approve Shopify OAuth
+                            <div className="flex items-start gap-2.5">
+                                <ShieldCheck className="w-4 h-4 text-[var(--primary-blue)] mt-0.5 shrink-0" />
+                                <span className="flex-1">Admin access to approve Shopify OAuth</span>
                             </div>
                         </div>
                     </div>
@@ -527,7 +588,7 @@ export default function ShopifyIntegrationPage() {
                                         }}
                                         onBlur={() => setDomainTouched(true)}
                                         placeholder="your-store.myshopify.com"
-                                        className={`pr-28 transition-all duration-200 ${validationStatus === 'valid' ? 'focus:ring-2 focus:ring-[var(--success)]/20' : validationStatus === 'invalid' ? 'focus:ring-2 focus:ring-[var(--error)]/20' : ''}`}
+                                        className={`pr-28 pl-4 py-2.5 sm:py-3 transition-all duration-200 ${validationStatus === 'valid' ? 'focus:ring-2 focus:ring-[var(--success)]/20' : validationStatus === 'invalid' ? 'focus:ring-2 focus:ring-[var(--error)]/20' : ''}`}
                                         autoFocus
                                         error={Boolean(domainError)}
                                         aria-invalid={Boolean(domainError)}
@@ -541,24 +602,24 @@ export default function ShopifyIntegrationPage() {
                                             <Check className="w-3.5 h-3.5 text-[var(--success)] animate-in fade-in duration-200" />
                                         )}
                                         {!shopDomain.includes('.myshopify.com') && shopDomain && (
-                                            <span className="text-xs text-[var(--text-muted)] font-mono">
+                                            <span className="hidden xs:inline text-xs text-[var(--text-muted)] font-mono">
                                                 .myshopify.com
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <p
+                                <div
                                     id="shopify-domain-hint"
-                                    className="mt-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5 justify-between"
+                                    className="mt-2 text-xs text-[var(--text-muted)] flex items-start sm:items-center gap-2 justify-between flex-wrap"
                                 >
-                                    <span className="flex items-center gap-1.5">
-                                        <Info className="w-3.5 h-3.5" />
+                                    <span className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                                        <Info className="w-3.5 h-3.5 shrink-0" />
                                         We will add `.myshopify.com` automatically if omitted.
                                     </span>
-                                    <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-500">
+                                    <span className="hidden sm:inline-flex text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-500 whitespace-nowrap">
                                         Press ⌘V to paste
                                     </span>
-                                </p>
+                                </div>
                                 {domainError && (
                                     <p
                                         id="shopify-domain-error"
@@ -578,14 +639,16 @@ export default function ShopifyIntegrationPage() {
                     ) : (
                         <div className="space-y-6">
                             <Alert className="bg-[var(--success-bg)] border-[var(--success)]/30">
-                                <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
-                                <AlertDescription className="text-sm text-[var(--text-primary)]">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <span>
-                                            Connected to <strong className="font-semibold">{storeName || shopDomain}</strong>
-                                        </span>
-                                        <Badge variant="success" size="sm">
-                                            Connected
+                                <AlertDescription className="text-sm text-[var(--text-primary)] w-full">
+                                    <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-3 w-full">
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircle2 className="w-5 h-5 text-[var(--success)] shrink-0" />
+                                            <span className="break-all">
+                                                Connected to <strong className="font-semibold">{storeName || shopDomain}</strong>
+                                            </span>
+                                        </div>
+                                        <Badge variant="success" size="sm" className="shrink-0 bg-[var(--success)]/10 text-[var(--success)] border-0">
+                                            Active
                                         </Badge>
                                     </div>
                                 </AlertDescription>
@@ -643,10 +706,10 @@ export default function ShopifyIntegrationPage() {
                             <div className="border-t border-[var(--border-subtle)] pt-4">
                                 <button
                                     onClick={() => setShowAdvanced(!showAdvanced)}
-                                    className="flex items-center justify-between w-full text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors uppercase tracking-wider"
+                                    className="flex items-center justify-between w-full p-2 py-3 -mx-2 hover:bg-[var(--bg-hover)] rounded-lg text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors uppercase tracking-wider group"
                                 >
                                     Advanced Options
-                                    {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    {showAdvanced ? <ChevronUp className="w-4 h-4 group-hover:text-[var(--text-primary)]" /> : <ChevronDown className="w-4 h-4 group-hover:text-[var(--text-primary)]" />}
                                 </button>
 
                                 {showAdvanced && (
@@ -698,22 +761,22 @@ export default function ShopifyIntegrationPage() {
                                     variant={testResult ? 'outline' : 'primary'}
                                     onClick={handleTest}
                                     disabled={isTesting}
-                                    className={testResult
-                                        ? 'w-full border-[#95BF47]/40 text-[#6E8F34] hover:bg-[#95BF47]/10'
-                                        : 'w-full bg-[#95BF47] hover:bg-[#829F3C] text-white'
-                                    }
-                                    size="sm"
+                                    className={`w-full h-11 sm:h-12 transition-all duration-200 font-medium ${testResult
+                                        ? 'border-[#95BF47]/40 text-[#6E8F34] hover:bg-[#95BF47]/10'
+                                        : 'bg-[#95BF47] hover:bg-[#829F3C] text-white'
+                                        }`}
+                                    size="md"
                                 >
                                     {isTesting ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            Testing...
-                                        </>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Testing Connection...</span>
+                                        </div>
                                     ) : (
-                                        <>
-                                            <RefreshCw className="w-4 h-4 mr-2" />
-                                            {testResult ? 'Test Again' : 'Test Connection'}
-                                        </>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <RefreshCw className={`w-4 h-4 ${testResult ? '' : 'text-white/90'}`} />
+                                            <span>{testResult ? 'Test Again' : 'Test Connection'}</span>
+                                        </div>
                                     )}
                                 </Button>
 
@@ -724,45 +787,43 @@ export default function ShopifyIntegrationPage() {
                                 )}
 
                                 {testResult && (
-                                    <Alert className={`transition-all duration-300 ${testResult.success
+                                    <Alert className={`transition-all duration-300 ${testResult.connected || testResult.success
                                         ? 'bg-[var(--success-bg)] border-[var(--success)]/30'
                                         : 'bg-[var(--error-bg)] border-[var(--error)]/30'
                                         }`}>
-                                        {testResult.success ? (
-                                            <>
-                                                <Check className="w-4 h-4 text-[var(--success)]" />
-                                                <AlertDescription className="text-sm text-[var(--text-primary)]">
-                                                    Connection verified!
-                                                </AlertDescription>
-                                            </>
+                                        {testResult.connected || testResult.success ? (
+                                            <AlertDescription className="text-sm text-[var(--text-primary)] flex items-center gap-2">
+                                                <Check className="w-5 h-5 text-[var(--success)] shrink-0" />
+                                                Connection verified!
+                                            </AlertDescription>
                                         ) : (
-                                            <>
-                                                <AlertCircle className="w-4 h-4 text-[var(--error)]" />
-                                                <AlertDescription className="text-sm w-full">
-                                                    <div className="space-y-2">
-                                                        <p className="text-[var(--error-text)] font-medium">
-                                                            {testResult.message}
+                                            <AlertDescription className="text-sm w-full">
+                                                <div className="space-y-2">
+                                                    <div className="flex items-start gap-2">
+                                                        <AlertCircle className="w-5 h-5 text-[var(--error)] shrink-0 mt-0.5" />
+                                                        <p className="text-[var(--error-text)] font-medium break-words flex-1">
+                                                            {testResult.message || 'Connection failed'}
                                                         </p>
-                                                        {testResult.error?.suggestion && (
-                                                            <p className="text-xs text-[var(--text-secondary)]">
-                                                                {testResult.error.suggestion}
-                                                            </p>
-                                                        )}
-
-                                                        {testResult.error?.retryable && (
-                                                            <Button
-                                                                onClick={handleTest}
-                                                                disabled={isTesting}
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="mt-2 text-xs h-7 w-full border-[var(--error)]/20 text-[var(--error-text)] hover:bg-[var(--error-bg)]"
-                                                            >
-                                                                {isTesting ? 'Retrying...' : 'Retry Connection'}
-                                                            </Button>
-                                                        )}
                                                     </div>
-                                                </AlertDescription>
-                                            </>
+                                                    {testResult.error?.suggestion && (
+                                                        <p className="text-xs text-[var(--text-secondary)] break-words ml-7">
+                                                            {testResult.error.suggestion}
+                                                        </p>
+                                                    )}
+
+                                                    {testResult.error?.retryable && (
+                                                        <Button
+                                                            onClick={handleTest}
+                                                            disabled={isTesting}
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="mt-3 text-xs h-9 w-full border-[var(--error)]/20 text-[var(--error-text)] hover:bg-[var(--error-bg)]"
+                                                        >
+                                                            {isTesting ? 'Retrying...' : 'Retry Connection'}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </AlertDescription>
                                         )}
                                     </Alert>
                                 )}
@@ -771,9 +832,76 @@ export default function ShopifyIntegrationPage() {
                     )}
                 </div>
 
-                <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        {footerActions}
+                <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 sm:p-6 pb-6 sm:pb-6 safe-pb-4">
+                    <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
+                        {isAuthenticated ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.back()}
+                                    className="flex-1 sm:flex-initial sm:min-w-[140px] h-11 sm:h-12"
+                                    disabled={isCreating}
+                                >
+                                    Cancel
+                                </Button>
+                                {existingIntegration && storeId ? (
+                                    <Button
+                                        onClick={() => router.push(`/seller/integrations/shopify/${storeId}`)}
+                                        className="flex-1 h-11 sm:h-12 bg-[#95BF47] hover:bg-[#829F3C] text-white font-medium"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Settings className="w-4 h-4" />
+                                            <span>View Store Details</span>
+                                        </div>
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={handleSubmit}
+                                        disabled={isCreating || !testResult?.success}
+                                        className="flex-1 h-11 sm:h-12 bg-[#95BF47] hover:bg-[#829F3C] text-white font-medium"
+                                    >
+                                        {isCreating ? (
+                                            <div className="flex items-center gap-2">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <span>Saving Integration...</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                                <span>Complete Setup</span>
+                                            </div>
+                                        )}
+                                    </Button>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.back()}
+                                    className="flex-1 sm:flex-initial sm:min-w-[140px] h-11 sm:h-12"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleConnect}
+                                    disabled={!shopDomain || Boolean(domainError) || isInitiating}
+                                    className="flex-1 h-11 sm:h-12 bg-[#95BF47] hover:bg-[#829F3C] text-white font-medium"
+                                >
+                                    {isInitiating ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Connecting Store...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <ExternalLink className="w-4 h-4" />
+                                            <span>Connect Store</span>
+                                        </div>
+                                    )}
+                                </Button>
+                            </>
+                        )}
                     </div>
                     {isAuthenticated && !testResult?.success && (
                         <p className="mt-2 text-xs text-[var(--text-muted)]">

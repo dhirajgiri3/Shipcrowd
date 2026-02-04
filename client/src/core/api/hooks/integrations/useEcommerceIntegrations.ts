@@ -1,9 +1,34 @@
 /**
  * E-Commerce Integrations API Hooks
- * 
+ *
  * React Query hooks for marketplace integrations, OAuth flows,
  * field mapping, and order synchronization.
  * Backend: GET/POST /api/v1/integrations/*
+ *
+ * ==================== PLATFORM API COVERAGE ====================
+ *
+ * Feature Availability Matrix:
+ *
+ * | Feature              | Shopify | WooCommerce | Amazon      | Flipkart    |
+ * |----------------------|---------|-------------|-------------|-------------|
+ * | OAuth Flow           | ✅ Yes  | ❌ No       | ❌ No       | ❌ No       |
+ * | List Stores          | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
+ * | Get Store Details    | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
+ * | Test Connection      | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
+ * | Disconnect Store     | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
+ * | Update Settings      | ✅ Yes  | ❌ No       | ❌ No       | ❌ No       |
+ * | Sync Logs            | ✅ Yes  | ❌ No       | ❌ No       | ❌ No       |
+ * | Manual Sync          | ✅ Yes  | ✅ Yes      | ✅ Yes*     | ❌ No       |
+ * | Pause/Resume Sync    | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
+ * | Refresh Credentials  | ❌ OAuth| ✅ Yes      | ✅ Yes      | ⚠️ Limited  |
+ *
+ * * Amazon uses `/sync-orders` endpoint (hyphenated)
+ *
+ * Connection Methods:
+ * - Shopify: OAuth (useInitiateOAuth → OAuth callback)
+ * - WooCommerce: Direct (API credentials via useCreateIntegration)
+ * - Amazon: Direct (MWS credentials via useCreateIntegration)
+ * - Flipkart: Direct (API credentials via useCreateIntegration)
  */
 
 import { useState } from 'react';
@@ -41,8 +66,48 @@ export const useIntegrations = (
     return useQuery<EcommerceIntegration[]>({
         queryKey: queryKeys.ecommerce.integrationsList(filters),
         queryFn: async () => {
-            const response = await apiClient.get('/integrations/shopify/stores', { params: filters });
-            return response.data.data;
+            // We need to fetch from all platforms because they have separate endpoints
+            const platforms = ['shopify', 'woocommerce', 'amazon', 'flipkart'];
+
+            // If a specific type is filtered, only fetch that
+            const targetPlatforms = filters?.type
+                ? [filters.type.toLowerCase()]
+                : platforms;
+
+            const promises = targetPlatforms.map(platform =>
+                apiClient.get(`/integrations/${platform}/stores`, { params: filters })
+                    .then(res => {
+                        // Handle different response structures
+                        const data = res.data.data;
+                        
+                        // If it's an array of stores directly
+                        if (Array.isArray(data)) {
+                            return data.map((store: any) => ({
+                                ...store,
+                                integrationId: store.storeId || store._id || store.id,
+                                type: platform.toUpperCase() as IntegrationType,
+                            }));
+                        }
+                        
+                        // If it's a wrapper object with stores array
+                        if (data && Array.isArray(data.stores)) {
+                            return data.stores.map((store: any) => ({
+                                ...store,
+                                integrationId: store.storeId || store._id || store.id,
+                                type: platform.toUpperCase() as IntegrationType,
+                            }));
+                        }
+                        
+                        return [];
+                    })
+                    .catch(err => {
+                        console.warn(`Failed to fetch ${platform} stores:`, err);
+                        return [];
+                    })
+            );
+
+            const results = await Promise.all(promises);
+            return results.flat();
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
@@ -55,16 +120,34 @@ export const useIntegrations = (
  */
 export const useIntegration = (
     integrationId: string,
+    type?: IntegrationType, // Added type to construct correct URL
     options?: Omit<UseQueryOptions<EcommerceIntegration>, 'queryKey' | 'queryFn'>
 ) => {
     // Prevent query if integrationId is "new" or invalid
     const isValidId = Boolean(integrationId && integrationId !== 'new' && integrationId.length === 24);
+    // Default to 'shopify' if type is missing to maintain backward compatibility (or throw error)
+    const platform = type ? type.toLowerCase() : 'shopify';
 
     return useQuery<EcommerceIntegration>({
         queryKey: queryKeys.ecommerce.integration(integrationId),
         queryFn: async () => {
-            const response = await apiClient.get(`/integrations/shopify/stores/${integrationId}`);
-            return response.data.data;
+            const response = await apiClient.get(`/integrations/${platform}/stores/${integrationId}`);
+            const data = response.data.data;
+            
+            // Handle nested store object (Shopify returns { store: {...}, recentLogs: [...] })
+            if (data.store) {
+                return {
+                    ...data.store,
+                    _id: data.store._id || data.store.id || data.store.storeId,
+                    integrationId: data.store.storeId || data.store._id || data.store.id,
+                };
+            }
+            
+            // Direct store object
+            return {
+                ...data,
+                integrationId: data.storeId || data._id || data.id,
+            };
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
@@ -76,23 +159,38 @@ export const useIntegration = (
 /**
  * Get sync logs for an integration
  */
+/**
+ * Get sync logs for an integration
+ *
+ * Note: Only Shopify has a dedicated /sync/logs endpoint.
+ * Other platforms may not have sync log history available via API.
+ */
 export const useSyncLogs = (
     integrationId: string,
+    type?: IntegrationType,
     options?: Omit<UseQueryOptions<SyncLog[]>, 'queryKey' | 'queryFn'>
 ) => {
     // Prevent query if integrationId is "new" or invalid
     const isValidId = Boolean(integrationId && integrationId !== 'new' && integrationId.length === 24);
+    const platform = type ? type.toLowerCase() : 'shopify';
+
+    // Only enable for Shopify - other platforms don't have this endpoint
+    const isSupportedPlatform = !type || type === 'SHOPIFY';
 
     return useQuery<SyncLog[]>({
         queryKey: queryKeys.ecommerce.syncLogs(integrationId),
         queryFn: async () => {
-            const response = await apiClient.get(`/integrations/shopify/stores/${integrationId}/sync/logs`);
+            if (!isSupportedPlatform) {
+                // Return empty array for unsupported platforms
+                return [];
+            }
+            const response = await apiClient.get(`/integrations/${platform}/stores/${integrationId}/sync/logs`);
             return response.data.data;
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
-        enabled: isValidId && (options?.enabled !== false), // Combine our validation with user options
+        enabled: isValidId && isSupportedPlatform && (options?.enabled !== false),
     });
 };
 
@@ -100,13 +198,40 @@ export const useSyncLogs = (
 
 /**
  * Create a new e-commerce integration
+ *
+ * Routes to platform-specific endpoints:
+ * - Shopify: Handled via OAuth callback, not this endpoint
+ * - WooCommerce: POST /integrations/woocommerce/install
+ * - Amazon: POST /integrations/amazon/connect
+ * - Flipkart: POST /integrations/flipkart/connect
  */
 export const useCreateIntegration = (options?: UseMutationOptions<EcommerceIntegration, ApiError, CreateIntegrationPayload>) => {
     const queryClient = useQueryClient();
 
     return useMutation<EcommerceIntegration, ApiError, CreateIntegrationPayload>({
         mutationFn: async (payload) => {
-            const response = await apiClient.post('/integrations', payload);
+            let endpoint: string;
+
+            // Route to the correct platform-specific endpoint
+            switch (payload.type) {
+                case 'SHOPIFY':
+                    // Shopify is handled via OAuth callback, but if called directly:
+                    endpoint = '/integrations/shopify/stores';
+                    break;
+                case 'WOOCOMMERCE':
+                    endpoint = '/integrations/woocommerce/install';
+                    break;
+                case 'AMAZON':
+                    endpoint = '/integrations/amazon/connect';
+                    break;
+                case 'FLIPKART':
+                    endpoint = '/integrations/flipkart/connect';
+                    break;
+                default:
+                    throw new Error(`Unsupported integration type: ${payload.type}`);
+            }
+
+            const response = await apiClient.post(endpoint, payload);
             return response.data.data;
         },
         onSuccess: () => {
@@ -122,12 +247,26 @@ export const useCreateIntegration = (options?: UseMutationOptions<EcommerceInteg
 /**
  * Update integration settings or field mapping
  */
+/**
+ * Update integration settings or field mapping
+ *
+ * Note: Only Shopify has a dedicated /settings endpoint.
+ * Other platforms don't support updating settings after creation.
+ * Settings must be provided during initial connection.
+ */
 export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceIntegration, ApiError, UpdateIntegrationPayload>) => {
     const queryClient = useQueryClient();
 
     return useMutation<EcommerceIntegration, ApiError, UpdateIntegrationPayload>({
-        mutationFn: async ({ integrationId, ...payload }) => {
-            const response = await apiClient.patch(`/integrations/shopify/stores/${integrationId}/settings`, payload);
+        mutationFn: async ({ integrationId, type, ...payload }) => {
+            const platform = type ? type.toLowerCase() : 'shopify';
+
+            // Only Shopify has a settings endpoint
+            if (type && type !== 'SHOPIFY') {
+                throw new Error(`Settings update not supported for ${type}. Please reconnect the integration with new settings.`);
+            }
+
+            const response = await apiClient.patch(`/integrations/${platform}/stores/${integrationId}/settings`, payload);
             return response.data.data;
         },
         onSuccess: (data) => {
@@ -144,12 +283,16 @@ export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceInteg
 /**
  * Delete/disconnect an integration
  */
+/**
+ * Delete/disconnect an integration
+ */
 export const useDeleteIntegration = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<void, Error, string>({
-        mutationFn: async (integrationId) => {
-            await apiClient.delete(`/integrations/shopify/stores/${integrationId}`);
+    return useMutation<void, Error, { integrationId: string; type?: IntegrationType }>({
+        mutationFn: async ({ integrationId, type }) => {
+            const platform = type ? type.toLowerCase() : 'shopify';
+            await apiClient.delete(`/integrations/${platform}/stores/${integrationId}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
@@ -164,18 +307,35 @@ export const useDeleteIntegration = () => {
 /**
  * Test connection credentials before creating integration
  * Enhanced with retry logic, timeout handling, and detailed error reporting
+ * 
+ * Routes to platform-specific test endpoints:
+ * - Shopify: POST /integrations/shopify/stores/:id/test (requires storeId)
+ * - WooCommerce: POST /integrations/woocommerce/stores/:id/test
+ * - Amazon: POST /integrations/amazon/stores/:id/test
+ * - Flipkart: POST /integrations/flipkart/stores/:id/test
  */
 export const useTestConnection = () => {
     const [retryCount, setRetryCount] = useState(0);
 
-    return useMutation<TestConnectionResponse, Error, TestConnectionPayload>({
+    return useMutation<TestConnectionResponse, Error, TestConnectionPayload & { integrationId?: string }>({
         mutationFn: async (payload) => {
             const { wrapApiCall } = await import('./apiUtils');
             const { parseIntegrationError, formatErrorMessage } = await import('./integrationErrors');
 
             return wrapApiCall(
                 async () => {
-                    const response = await apiClient.post('/integrations/test-connection', payload);
+                    const platform = payload.type ? payload.type.toLowerCase() : 'shopify';
+
+                    // If integrationId is provided, use the store-specific test endpoint
+                    // This is the case after OAuth callback when the store is already created
+                    if (payload.integrationId) {
+                        const response = await apiClient.post(`/integrations/${platform}/stores/${payload.integrationId}/test`, {});
+                        return response.data.data;
+                    }
+
+                    // Fallback to generic test endpoint (if it exists for the platform)
+                    // This would be used for testing credentials before creating the integration
+                    const response = await apiClient.post(`/integrations/${platform}/test`, payload.credentials);
                     return response.data.data;
                 },
                 {
@@ -198,8 +358,8 @@ export const useTestConnection = () => {
         },
         onSuccess: (data) => {
             setRetryCount(0);
-            if (data.success) {
-                showSuccessToast(`Connection successful! Found store: ${data.storeName}`);
+            if ((data as any).connected || (data as any).success) {
+                showSuccessToast(`Connection successful! Found store: ${data.storeName || 'store'}`);
             }
         },
         onError: (error: any) => {
@@ -224,12 +384,39 @@ export const useTestConnection = () => {
 /**
  * Trigger manual sync for an integration
  */
+/**
+ * Trigger manual sync for an integration
+ *
+ * Endpoint variations by platform:
+ * - Shopify: POST /integrations/shopify/stores/:id/sync/orders
+ * - WooCommerce: POST /integrations/woocommerce/stores/:id/sync/orders
+ * - Amazon: POST /integrations/amazon/stores/:id/sync-orders (note: hyphenated)
+ * - Flipkart: Not supported
+ */
 export const useTriggerSync = () => {
     const queryClient = useQueryClient();
 
     return useMutation<SyncLog, Error, TriggerSyncPayload>({
         mutationFn: async (payload) => {
-            const response = await apiClient.post(`/integrations/shopify/stores/${payload.integrationId}/sync/orders`, payload);
+            const platform = payload.type ? payload.type.toLowerCase() : 'shopify';
+
+            // Handle platform-specific endpoint variations
+            let endpoint: string;
+            switch (payload.type) {
+                case 'SHOPIFY':
+                case 'WOOCOMMERCE':
+                    endpoint = `/integrations/${platform}/stores/${payload.integrationId}/sync/orders`;
+                    break;
+                case 'AMAZON':
+                    endpoint = `/integrations/amazon/stores/${payload.integrationId}/sync-orders`;
+                    break;
+                case 'FLIPKART':
+                    throw new Error('Manual sync not supported for Flipkart. Orders are synced automatically.');
+                default:
+                    endpoint = `/integrations/${platform}/stores/${payload.integrationId}/sync/orders`;
+            }
+
+            const response = await apiClient.post(endpoint, payload);
             return response.data.data;
         },
         onSuccess: (_, { integrationId }) => {
@@ -246,12 +433,39 @@ export const useTriggerSync = () => {
 /**
  * Reconnect/refresh integration credentials
  */
+/**
+ * Reconnect/refresh integration credentials
+ */
 export const useReconnectIntegration = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<void, Error, { integrationId: string; credentials: any }>({
-        mutationFn: async ({ integrationId, credentials }) => {
-            await apiClient.post(`/integrations/${integrationId}/reconnect`, { credentials });
+    return useMutation<void, Error, { integrationId: string; type?: IntegrationType; credentials: any }>({
+        mutationFn: async ({ integrationId, type, credentials }) => {
+            let endpoint = '';
+            const platform = type ? type.toLowerCase() : 'shopify';
+
+            // Map to correct endpoint based on type
+            switch (type) {
+                case 'WOOCOMMERCE':
+                    endpoint = `/integrations/woocommerce/stores/${integrationId}/credentials`;
+                    await apiClient.put(endpoint, credentials);
+                    return;
+                case 'AMAZON':
+                    endpoint = `/integrations/amazon/stores/${integrationId}/refresh`;
+                    await apiClient.post(endpoint, credentials);
+                    return;
+                case 'FLIPKART':
+                    // Assuming similar pattern or re-connect
+                    endpoint = `/integrations/flipkart/stores/${integrationId}/test`; // Fallback or distinct route?
+                    // Use default behavior for now or throw if not supported
+                    throw new Error('Reconnection manual flow not fully supported for Flipkart via this hook yet.');
+                case 'SHOPIFY':
+                    // Shopify uses OAuth, no manual credential update usually
+                    throw new Error('Shopify uses OAuth. Please reconnect via "Add Integration".');
+                default:
+                    // Try generic or fail
+                    throw new Error(`Reconnection not supported for ${type}`);
+            }
         },
         onSuccess: (_, { integrationId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });
@@ -267,17 +481,39 @@ export const useReconnectIntegration = () => {
 // ==================== OAuth Hooks ====================
 
 /**
- * Initiate OAuth flow for Shopify/other platforms
+ * Initiate OAuth flow for Shopify
+ *
+ * Note: This hook is specifically for Shopify OAuth flow.
+ * Other platforms (WooCommerce, Amazon, Flipkart) use direct credential connection
+ * via their respective /connect or /install endpoints.
  */
 export const useInitiateOAuth = () => {
     return useMutation<OAuthInitiateResponse, Error, { type: IntegrationType; shop?: string }>({
         mutationFn: async (payload) => {
-            const response = await apiClient.post('/integrations/oauth/initiate', payload);
-            return response.data.data;
+            // Shopify uses OAuth flow with GET /integrations/shopify/install
+            if (payload.type === 'SHOPIFY') {
+                if (!payload.shop) {
+                    throw new Error('Shop domain is required for Shopify OAuth');
+                }
+                const response = await apiClient.get('/integrations/shopify/install', {
+                    params: { shop: payload.shop }
+                });
+                return response.data.data;
+            }
+
+            // Other platforms (WooCommerce, Amazon, Flipkart) don't use OAuth
+            // They should use their respective direct connection methods
+            throw new Error(`OAuth flow not supported for ${payload.type}. Please use direct connection.`);
         },
         onSuccess: (data) => {
             // Redirect to OAuth URL
-            window.location.href = data.authUrl;
+            // Shopify returns 'installUrl', generic OAuth might return 'authUrl'
+            const redirectUrl = data.installUrl || data.authUrl;
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                throw new Error('No redirect URL received from OAuth provider');
+            }
         },
         onError: (error) => {
             handleApiError(error, 'Failed to Initiate OAuth');
@@ -309,12 +545,23 @@ export const useCompleteOAuth = () => {
 /**
  * Pause/resume integration syncing
  */
+/**
+ * Pause/resume integration syncing
+ */
 export const useToggleIntegrationSync = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<void, Error, { integrationId: string; isPaused: boolean }>({
-        mutationFn: async ({ integrationId, isPaused }) => {
-            await apiClient.patch(`/integrations/${integrationId}/toggle-sync`, { isPaused });
+    return useMutation<void, Error, { integrationId: string; type?: IntegrationType; isPaused: boolean }>({
+        mutationFn: async ({ integrationId, type, isPaused }) => {
+            const platform = type ? type.toLowerCase() : 'shopify';
+
+            // Most platforms use explicit pause/resume endpoints
+            const action = isPaused ? 'pause' : 'resume';
+
+            // Exceptions logic can be added here if needed
+            // e.g. if (type === 'SHOPIFY') ...
+
+            await apiClient.post(`/integrations/${platform}/stores/${integrationId}/${action}`, {});
         },
         onSuccess: (_, { integrationId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });

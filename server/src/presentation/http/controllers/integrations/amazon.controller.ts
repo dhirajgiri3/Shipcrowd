@@ -22,6 +22,7 @@ import { ValidationError, NotFoundError, AuthenticationError, AppError } from '.
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
+import { toEcommerceStoreDTO, applyDefaultsToSettings, applyDefaultsToSyncConfig } from '../../../../core/mappers/store.mapper';
 
 export class AmazonController {
     /**
@@ -130,6 +131,7 @@ export class AmazonController {
             sendSuccess(res, {
                 count: stores.length,
                 stores: stores.map((store) => ({
+                    ...toEcommerceStoreDTO(store, 'amazon'),
                     id: store._id,
                     sellerId: store.sellerId,
                     marketplaceId: store.marketplaceId,
@@ -141,6 +143,7 @@ export class AmazonController {
                     installedAt: store.installedAt,
                     lastSyncAt: store.lastSyncAt,
                     syncConfig: store.syncConfig,
+                    settings: applyDefaultsToSettings(store.settings),
                     stats: store.stats,
                     errorCount: store.errorCount,
                     lastError: store.lastError,
@@ -172,6 +175,7 @@ export class AmazonController {
 
             sendSuccess(res, {
                 store: {
+                    ...toEcommerceStoreDTO(store, 'amazon'),
                     id: store._id,
                     sellerId: store.sellerId,
                     marketplaceId: store.marketplaceId,
@@ -184,6 +188,7 @@ export class AmazonController {
                     installedAt: store.installedAt,
                     lastSyncAt: store.lastSyncAt,
                     syncConfig: store.syncConfig,
+                    settings: applyDefaultsToSettings(store.settings),
                     webhooks: store.webhooks,
                     stats: store.stats,
                     errorCount: store.errorCount,
@@ -267,6 +272,106 @@ export class AmazonController {
             sendSuccess(res, {
                 connected: isValid,
             }, isValid ? 'Connection is valid' : 'Connection failed');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Pre-connect credential test
+     * POST /integrations/amazon/test
+     */
+    static async testConnectionCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const {
+                sellerId,
+                marketplaceId,
+                lwaClientId,
+                lwaClientSecret,
+                lwaRefreshToken,
+                awsAccessKeyId,
+                awsSecretAccessKey,
+                region,
+            } = req.body;
+
+            if (!sellerId || !marketplaceId || !lwaClientId || !lwaClientSecret || !lwaRefreshToken || !awsAccessKeyId || !awsSecretAccessKey) {
+                throw new ValidationError('Missing required Amazon credentials');
+            }
+
+            const connected = await AmazonOAuthService.testConnection({
+                lwaClientId,
+                lwaClientSecret,
+                lwaRefreshToken,
+                awsAccessKeyId,
+                awsSecretAccessKey,
+                region: region || 'eu-west-1',
+                marketplaceId,
+            });
+
+            sendSuccess(res, {
+                connected,
+                storeName: sellerId ? `Amazon Store - ${sellerId}` : undefined,
+                details: {
+                    marketplaceId,
+                    region: region || 'eu-west-1',
+                },
+            }, connected ? 'Connection is valid' : 'Connection failed');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Update store settings
+     * PATCH /integrations/amazon/stores/:id/settings
+     */
+    static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params;
+            const { settings, syncConfig } = req.body;
+            const companyId = req.user?.companyId;
+
+            if (!companyId) {
+                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
+            }
+
+            const store = await AmazonStore.findOne({
+                _id: id,
+                companyId,
+            });
+
+            if (!store) {
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+            }
+
+            if (settings) {
+                store.settings = applyDefaultsToSettings({
+                    ...(store.settings || {}),
+                    ...settings,
+                });
+            }
+
+            if (syncConfig) {
+                store.syncConfig = applyDefaultsToSyncConfig({
+                    ...(store.syncConfig || {}),
+                    ...syncConfig,
+                });
+            }
+
+            await store.save();
+
+            sendSuccess(res, {
+                store: {
+                    ...toEcommerceStoreDTO(store, 'amazon'),
+                    sellerId: store.sellerId,
+                    marketplaceId: store.marketplaceId,
+                    sellerName: store.sellerName,
+                    region: store.region,
+                    syncConfig: store.syncConfig,
+                    settings: applyDefaultsToSettings(store.settings),
+                    stats: store.stats,
+                },
+            }, 'Settings updated successfully');
         } catch (error) {
             next(error);
         }

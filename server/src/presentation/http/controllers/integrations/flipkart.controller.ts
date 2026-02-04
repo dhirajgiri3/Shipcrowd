@@ -4,6 +4,7 @@ import { ValidationError, NotFoundError, AuthenticationError, AppError } from '.
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
+import { toEcommerceStoreDTO, applyDefaultsToSettings, applyDefaultsToSyncConfig } from '../../../../core/mappers/store.mapper';
 
 /**
  * FlipkartController
@@ -103,6 +104,7 @@ export class FlipkartController {
       sendSuccess(res, {
         count: stores.length,
         stores: stores.map((store) => ({
+          ...toEcommerceStoreDTO(store, 'flipkart'),
           id: store._id,
           sellerEmail: store.sellerEmail,
           sellerName: store.sellerName,
@@ -111,6 +113,7 @@ export class FlipkartController {
           isPaused: store.isPaused,
           connectedAt: store.connectedAt,
           syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
           stats: store.stats,
           activeWebhooksCount: store.webhooks.filter((w: any) => w.isActive).length,
         })),
@@ -142,6 +145,7 @@ export class FlipkartController {
 
       sendSuccess(res, {
         store: {
+          ...toEcommerceStoreDTO(store, 'flipkart'),
           id: store._id,
           sellerEmail: store.sellerEmail,
           sellerName: store.sellerName,
@@ -150,6 +154,7 @@ export class FlipkartController {
           isPaused: store.isPaused,
           connectedAt: store.connectedAt,
           syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
           webhooks: store.webhooks,
           stats: store.stats,
         },
@@ -224,6 +229,87 @@ export class FlipkartController {
       sendSuccess(res, {
         connected: isValid,
       }, isValid ? 'Connection is valid' : 'Connection failed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Pre-connect credential test
+   * POST /integrations/flipkart/test
+   */
+  static async testConnectionCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { sellerId, apiKey, apiSecret } = req.body;
+
+      if (!sellerId || !apiKey || !apiSecret) {
+        throw new ValidationError('Seller ID, API key, and API secret are required');
+      }
+
+      const connected = await FlipkartOAuthService.testConnection(apiKey, apiSecret, sellerId);
+
+      sendSuccess(res, {
+        connected,
+        storeName: sellerId ? `Flipkart Store - ${sellerId}` : undefined,
+        details: {
+          sellerId,
+        },
+      }, connected ? 'Connection is valid' : 'Connection failed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update store settings
+   * PATCH /integrations/flipkart/stores/:id/settings
+   */
+  static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { settings, syncConfig } = req.body;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
+      }
+
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
+      const store = await FlipkartStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+      }
+
+      if (settings) {
+        store.settings = applyDefaultsToSettings({
+          ...(store.settings || {}),
+          ...settings,
+        });
+      }
+
+      if (syncConfig) {
+        store.syncConfig = applyDefaultsToSyncConfig({
+          ...(store.syncConfig || {}),
+          ...syncConfig,
+        });
+      }
+
+      await store.save();
+
+      sendSuccess(res, {
+        store: {
+          ...toEcommerceStoreDTO(store, 'flipkart'),
+          sellerEmail: store.sellerEmail,
+          sellerName: store.sellerName,
+          syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
+          stats: store.stats,
+        },
+      }, 'Settings updated successfully');
     } catch (error) {
       next(error);
     }

@@ -18,6 +18,14 @@ const router = Router();
  * Connection Routes
  */
 
+// Test Amazon credentials before connect
+router.post(
+    '/test',
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
+    AmazonController.testConnectionCredentials
+);
+
 // Connect Amazon seller account
 router.post(
     '/connect',
@@ -42,6 +50,14 @@ router.get(
     '/stores/:id',
     authenticate,
     AmazonController.getStore
+);
+
+// Update store settings
+router.patch(
+    '/stores/:id/settings',
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
+    AmazonController.updateSettings
 );
 
 // Disconnect store

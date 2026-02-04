@@ -53,8 +53,8 @@ const startServer = async (): Promise<void> => {
         logger.info('PubSub service initialized');
 
         // Initialize Courier Status Mapper (register all courier status mappings)
-        const { StatusMapperService } = await import('./core/application/services/courier/status-mappings/status-mapper.service.js');
-        const { VELOCITY_STATUS_MAPPINGS } = await import('./core/application/services/courier/status-mappings/index.js');
+        const { StatusMapperService } = await import('./core/application/services/courier/status-mappings/status-mapper.service');
+        const { VELOCITY_STATUS_MAPPINGS } = await import('./core/application/services/courier/status-mappings/index');
 
         StatusMapperService.register(VELOCITY_STATUS_MAPPINGS);
         logger.info('Courier status mappings registered', {

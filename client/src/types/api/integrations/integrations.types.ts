@@ -32,34 +32,64 @@ export type SyncFrequency =
 
 export interface EcommerceIntegration {
     _id: string;
-    integrationId: string;
-    type: IntegrationType;
-    name: string; // User-defined name
+    integrationId?: string;
+    id?: string;
+    storeId?: string;
+    type?: IntegrationType;
+    platform?: 'shopify' | 'woocommerce' | 'amazon' | 'flipkart';
+    name?: string; // User-defined name
     storeName: string; // Actual store name
     storeUrl?: string;
 
+    // Shopify-specific fields
+    shopDomain?: string;
+    shopName?: string;
+    shopEmail?: string;
+    shopCountry?: string;
+    shopCurrency?: string;
+    shopPlan?: string;
+    scope?: string;
+
+    // WooCommerce-specific fields
+    siteUrl?: string;
+
     // Connection details
-    status: IntegrationStatus;
-    isActive?: boolean;
-    connectedAt: string;
+    status?: IntegrationStatus;
+    isActive: boolean;
+    isPaused?: boolean;
+    connectedAt?: string;
+    installedAt?: string;
     lastSyncAt?: string;
     expiresAt?: string;
+    uninstalledAt?: string;
 
-    // Credentials (encrypted on backend)
-    credentials: IntegrationCredentials;
+    // Credentials (encrypted on backend) - not returned in GET requests
+    credentials?: IntegrationCredentials;
 
     // Settings
-    settings: IntegrationSettings;
+    settings?: IntegrationSettings;
 
     // Field mapping
-    fieldMapping: FieldMapping;
+    fieldMapping?: FieldMapping;
+
+    // Sync configuration
+    syncConfig?: any;
+
+    // Webhooks
+    webhooks?: Array<{
+        topic: string;
+        shopifyWebhookId?: string;
+        address: string;
+        isActive: boolean;
+        createdAt: string;
+    }>;
 
     // Stats
-    stats: IntegrationStats;
+    stats?: IntegrationStats;
 
     // Metadata
     createdAt: string;
-    updatedAt: string;
+    updatedAt?: string;
     createdBy?: string;
 }
 
@@ -89,16 +119,16 @@ export interface WooCommerceCredentials {
 
 export interface AmazonCredentials {
     type: 'AMAZON';
-    sellerId: string;
-    mwsAuthToken: string;
-    region: 'IN' | 'US' | 'EU' | 'JP';
+    sellerId?: string;
+    mwsAuthToken?: string;
+    region?: 'IN' | 'US' | 'EU' | 'JP';
 }
 
 export interface FlipkartCredentials {
     type: 'FLIPKART';
-    appId: string;
-    appSecret: string;
-    accessToken: string;
+    appId?: string;
+    appSecret?: string;
+    accessToken?: string;
 }
 
 export interface CustomApiCredentials {
@@ -169,23 +199,28 @@ export interface FieldMapping {
 // ==================== Stats Types ====================
 
 export interface IntegrationStats {
-    totalOrders: number;
-    ordersToday: number;
-    ordersThisWeek: number;
-    ordersThisMonth: number;
+    totalOrders?: number;
+    ordersToday?: number;
+    ordersThisWeek?: number;
+    ordersThisMonth?: number;
 
-    lastSyncStatus: 'SUCCESS' | 'PARTIAL' | 'FAILED';
-    lastSyncOrderCount: number;
-    lastSyncErrorCount: number;
+    lastSyncStatus?: 'SUCCESS' | 'PARTIAL' | 'FAILED';
+    lastSyncOrderCount?: number;
+    lastSyncErrorCount?: number;
 
-    totalSyncs: number;
-    successfulSyncs: number;
-    failedSyncs: number;
+    totalSyncs?: number;
+    successfulSyncs?: number;
+    failedSyncs?: number;
 
     // Shopify-specific stats
     totalOrdersSynced?: number;
+    totalProductsMapped?: number;
+    totalInventorySyncs?: number;
     syncSuccessRate?: number;
     lastSyncAt?: string;
+    lastOrderSyncAt?: string;
+    lastInventorySyncAt?: string;
+    lastWebhookAt?: string;
 }
 
 // ==================== Sync Types ====================
@@ -262,6 +297,7 @@ export interface CreateIntegrationPayload {
 
 export interface UpdateIntegrationPayload {
     integrationId: string;
+    type?: IntegrationType; // Added for routing
     settings?: Partial<IntegrationSettings>;
     fieldMapping?: Partial<FieldMapping>;
 }
@@ -272,7 +308,8 @@ export interface TestConnectionPayload {
 }
 
 export interface TestConnectionResponse {
-    success: boolean;
+    success?: boolean;
+    connected?: boolean;
     storeName?: string;
     message: string;
     details?: {
@@ -284,6 +321,7 @@ export interface TestConnectionResponse {
 
 export interface TriggerSyncPayload {
     integrationId: string;
+    type?: IntegrationType; // Added for routing
     syncType?: string;
     sinceDate?: string;
     syncHistorical?: boolean;
@@ -299,8 +337,9 @@ export interface IntegrationListFilters {
 // ==================== OAuth Types ====================
 
 export interface OAuthInitiateResponse {
-    authUrl: string;
-    state: string; // CSRF protection
+    authUrl?: string;
+    installUrl?: string; // Shopify uses 'installUrl' instead of 'authUrl'
+    state?: string; // CSRF protection
 }
 
 export interface OAuthCallbackPayload {

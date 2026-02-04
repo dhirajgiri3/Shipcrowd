@@ -545,21 +545,21 @@ export default function AmazonIntegrationPage() {
                                 onClick={handleTest}
                                 disabled={!canTest || isTesting}
                                 className={testResult
-                                    ? 'w-full border border-[#FF9900]/40 text-[#E68A00] bg-transparent hover:bg-[#FF9900]/10'
-                                    : 'w-full bg-[#FF9900] hover:bg-[#E68A00] text-white'
+                                    ? 'w-full h-11 sm:h-12 border border-[#FF9900]/40 text-[#E68A00] bg-transparent hover:bg-[#FF9900]/10'
+                                    : 'w-full h-11 sm:h-12 bg-[#FF9900] hover:bg-[#E68A00] text-white'
                                 }
                                 variant={testResult ? 'outline' : 'primary'}
                             >
                                 {isTesting ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Testing Connection...
-                                    </>
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Testing Connection...</span>
+                                    </div>
                                 ) : (
-                                    <>
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        {testResult ? 'Test Again' : 'Test Connection'}
-                                    </>
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        <span>{testResult ? 'Test Again' : 'Test Connection'}</span>
+                                    </div>
                                 )}
                             </Button>
 
@@ -699,11 +699,11 @@ export default function AmazonIntegrationPage() {
                 </div>
 
                 <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
                         <Button
                             variant="outline"
                             onClick={() => router.back()}
-                            className="flex-1"
+                            className="flex-1 sm:flex-initial sm:min-w-[140px] h-11 sm:h-12"
                             disabled={isCreating}
                         >
                             Cancel
@@ -711,18 +711,18 @@ export default function AmazonIntegrationPage() {
                         <Button
                             onClick={handleSubmit}
                             disabled={isCreating || !testResult?.success}
-                            className="flex-1 bg-[#FF9900] hover:bg-[#E68A00] text-white"
+                            className="flex-1 h-11 sm:h-12 bg-[#FF9900] hover:bg-[#E68A00] text-white font-medium"
                         >
                             {isCreating ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Saving...
-                                </>
+                                <div className="flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Saving Integration...</span>
+                                </div>
                             ) : (
-                                <>
-                                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                                    Complete Setup
-                                </>
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span>Complete Setup</span>
+                                </div>
                             )}
                         </Button>
                     </div>

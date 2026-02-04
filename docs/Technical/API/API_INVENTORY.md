@@ -531,12 +531,12 @@
 {
   "success": true,
   "data": {
-    "imageUrl": "https://cloudinary.com/..."
+    "imageUrl": "https://shipcrowd.ams3.digitaloceanspaces.com/..."
   }
 }
 ```
 **Controller**: `ProfileController.uploadImage`
-**Service**: `CloudinaryStorageService.upload`
+**Service**: `SpacesStorageService.uploadFile`
 
 ---
 

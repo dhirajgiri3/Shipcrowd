@@ -87,7 +87,10 @@ export class ShopifyOAuthService {
    * @returns OAuth installation URL
    */
   static generateInstallUrl(params: InstallUrlParams): string {
-    const { shop, companyId, redirectUri } = params;
+    const { shop: rawShop, companyId, redirectUri } = params;
+
+    // Sanitize shop domain (remove protocol and trailing slash)
+    const shop = rawShop.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
     // Validate shop domain
     if (!shop.match(/^[a-z0-9-]+\.myshopify\.com$/)) {
@@ -365,6 +368,12 @@ export class ShopifyOAuthService {
     for (const topic of this.WEBHOOK_TOPICS) {
       try {
         const address = `${webhookBaseUrl}/${topic.replace('/', '/')}`;
+
+        // Skip webhook registration on localhost to avoid errors
+        if (address.includes('localhost') || address.includes('127.0.0.1')) {
+          logger.warn('Skipping webhook registration: localhost URL detected', { topic });
+          continue;
+        }
 
         // Register webhook via REST API
         const response = await client.post<{ webhook: any }>('/webhooks.json', {

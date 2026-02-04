@@ -2,12 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import ShopifyOAuthService from '../../../../core/application/services/shopify/shopify-oauth.service';
 import ShopifyFulfillmentService from '../../../../core/application/services/shopify/shopify-fulfillment.service';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
-import ShopifyStore from '../../../../infrastructure/database/mongoose/models/marketplaces/shopify/shopify-store.model';
-import { SyncLog } from '../../../../infrastructure/database/mongoose/models/marketplaces/sync-log.model';
+import { ShopifyStore, SyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
+import { toEcommerceStoreDTO, applyDefaultsToSettings } from '../../../../core/mappers/store.mapper';
 
 /**
  * ShopifyController
@@ -125,18 +125,17 @@ export class ShopifyController {
       sendSuccess(res, {
         count: stores.length,
         stores: stores.map((store) => ({
-          id: store._id,
+          ...toEcommerceStoreDTO(store, 'shopify'),
           shopDomain: store.shopDomain,
           shopName: store.shopName,
           shopEmail: store.shopEmail,
           shopCountry: store.shopCountry,
           shopCurrency: store.shopCurrency,
           shopPlan: store.shopPlan,
-          isActive: store.isActive,
-          isPaused: store.isPaused,
-          installedAt: store.installedAt,
-          syncConfig: store.syncConfig,
+          scope: store.scope,
           stats: store.stats,
+          syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
           activeWebhooksCount: store.webhooks.filter((w) => w.isActive).length,
         })),
       }, 'Stores retrieved successfully');
@@ -179,7 +178,7 @@ export class ShopifyController {
 
       sendSuccess(res, {
         store: {
-          id: store._id,
+          ...toEcommerceStoreDTO(store, 'shopify'),
           shopDomain: store.shopDomain,
           shopName: store.shopName,
           shopEmail: store.shopEmail,
@@ -187,12 +186,9 @@ export class ShopifyController {
           shopCurrency: store.shopCurrency,
           shopPlan: store.shopPlan,
           scope: store.scope,
-          isActive: store.isActive,
-          isPaused: store.isPaused,
-          installedAt: store.installedAt,
           syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
           webhooks: store.webhooks,
-          storeUrl: `https://${store.shopDomain}`,
           stats: {
             ...stats,
             lastSyncAt: logs[0]?.startedAt || store.stats?.lastSyncAt
@@ -254,7 +250,6 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,
@@ -336,7 +331,6 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,
@@ -366,7 +360,6 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,

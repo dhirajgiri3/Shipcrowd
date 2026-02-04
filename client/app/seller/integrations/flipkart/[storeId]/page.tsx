@@ -27,19 +27,19 @@ import { cn } from '@/src/lib/utils';
 
 export const dynamic = "force-dynamic";
 
-export default function ShopifyStorePage() {
+export default function FlipkartStorePage() {
     const params = useParams();
     const router = useRouter();
     const { addToast } = useToast();
     const storeId = params.storeId as string;
 
-    const { data: store, isLoading: isStoreLoading } = useIntegration(storeId, 'SHOPIFY');
-    const { data: logs, isLoading: isLogsLoading } = useSyncLogs(storeId, 'SHOPIFY');
+    const { data: store, isLoading: isStoreLoading } = useIntegration(storeId, 'FLIPKART');
+    const { data: logs, isLoading: isLogsLoading } = useSyncLogs(storeId, 'FLIPKART');
     const { mutate: disconnectStore, isPending: isDisconnecting } = useDeleteIntegration();
 
     const handleDisconnect = () => {
         if (window.confirm('Are you sure you want to disconnect this store? This will stop all syncs.')) {
-            disconnectStore({ integrationId: storeId, type: 'SHOPIFY' }, {
+            disconnectStore({ integrationId: storeId, type: 'FLIPKART' }, {
                 onSuccess: () => {
                     addToast('Store disconnected successfully', 'success');
                     router.push('/seller/integrations');
@@ -79,13 +79,13 @@ export default function ShopifyStorePage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[var(--border-subtle)]">
                 <div className="flex items-start gap-5">
-                    <div className="w-20 h-20 bg-[#95BF47]/10 rounded-2xl flex items-center justify-center border border-[#95BF47]/20 shadow-sm transition-transform hover:scale-105">
-                        <img src="/logos/shopify.svg" alt="Shopify" className="w-12 h-12" />
+                    <div className="w-20 h-20 bg-[#2874F0]/10 rounded-2xl flex items-center justify-center border border-[#2874F0]/20 shadow-sm transition-transform hover:scale-105">
+                        <img src="/logos/flipkart.png" alt="Flipkart" className="w-12 h-12 object-contain" />
                     </div>
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-3 flex-wrap">
                             <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
-                                {store.shopName || store.storeName || 'Shopify Store'}
+                                {store.storeName || 'Flipkart Store'}
                             </h1>
                             <Badge 
                                 variant={store.isActive ? 'success' : 'secondary'} 
@@ -101,18 +101,12 @@ export default function ShopifyStorePage() {
                             )}
                         </div>
                         <div className="flex flex-col gap-1">
-                            <a
-                                href={store.storeUrl || `https://${store.shopDomain}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] transition-colors flex items-center gap-1.5 group w-fit"
-                            >
-                                {store.shopDomain || store.storeUrl?.replace('https://', '')}
-                                <ExternalLink className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
-                            </a>
+                            <div className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
+                                <span className="opacity-70">App ID: {(store.credentials as any)?.appId?.substring(0, 6)}****</span>
+                            </div>
                             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                                 <Clock className="w-3 h-3" />
-                                <span>Connected {formatDate(store.installedAt || store.connectedAt || store.createdAt)}</span>
+                                <span>Connected {formatDate(store.connectedAt || store.createdAt)}</span>
                             </div>
                         </div>
                     </div>
@@ -122,7 +116,7 @@ export default function ShopifyStorePage() {
                     <Button 
                         variant="outline" 
                         size="md"
-                        onClick={() => router.push(`/seller/integrations/shopify/${storeId}/settings`)}
+                        onClick={() => router.push(`/seller/integrations/flipkart/${storeId}/settings`)}
                         className="h-11 px-5 font-medium border-[var(--border-default)] hover:bg-[var(--bg-secondary)] transition-all"
                     >
                         <Settings className="w-4 h-4 mr-2 text-[var(--text-secondary)]" />
@@ -220,7 +214,7 @@ export default function ShopifyStorePage() {
                     <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => router.push(`/seller/integrations/shopify/${storeId}/sync`)}
+                        onClick={() => router.push(`/seller/integrations/flipkart/${storeId}/sync`)}
                         className="text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] font-semibold"
                     >
                         View All Activity
@@ -235,7 +229,7 @@ export default function ShopifyStorePage() {
                         </div>
                     ) : logs && logs.length > 0 ? (
                         <div className="divide-y divide-[var(--border-subtle)]">
-                            {logs.slice(0, 5).map((log) => (
+                            {logs.slice(0, 5).map((log: any) => (
                                 <div key={log._id} className="flex items-center justify-between p-4 px-6 hover:bg-[var(--bg-primary)]/30 transition-colors">
                                     <div className="flex items-center gap-4">
                                         <div className={cn(
@@ -250,10 +244,10 @@ export default function ShopifyStorePage() {
                                         </div>
                                         <div>
                                             <div className="font-bold text-[var(--text-primary)]">
-                                                {log.triggerType === 'WEBHOOK' ? 'Real-time Webhook' : 'Manual Synchronization'}
+                                                {log.triggerType === 'SCHEDULED' ? 'Scheduled Sync' : 'Manual Synchronization'}
                                             </div>
                                             <div className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
-                                                {formatDate(log.startedAt)} • {log.durationMs ? `${(log.durationMs/1000).toFixed(1)}s` : 'Instant'}
+                                                {formatDate(log.startedAt)} • {log.durationMs ? `${(log.durationMs/1000).toFixed(1)}s` : 'Processing'}
                                             </div>
                                         </div>
                                     </div>

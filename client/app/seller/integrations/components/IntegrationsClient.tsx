@@ -57,10 +57,10 @@ export function IntegrationsClient() {
 
     // Flatten connected stores from response
     const connectedStores = data?.platforms ? [
-        ...(data.platforms.shopify?.stores || []),
-        ...(data.platforms.woocommerce?.stores || []),
-        ...(data.platforms.amazon?.stores || []),
-        ...(data.platforms.flipkart?.stores || [])
+        ...(data.platforms.shopify?.stores?.map((s: any) => ({ ...s, platform: 'shopify' })) || []),
+        ...(data.platforms.woocommerce?.stores?.map((s: any) => ({ ...s, platform: 'woocommerce' })) || []),
+        ...(data.platforms.amazon?.stores?.map((s: any) => ({ ...s, platform: 'amazon' })) || []),
+        ...(data.platforms.flipkart?.stores?.map((s: any) => ({ ...s, platform: 'flipkart' })) || [])
     ] : [];
 
     // Determine available integrations (platforms not yet connected, or allow multiple)
@@ -84,8 +84,8 @@ export function IntegrationsClient() {
     if (error) {
         return (
             <div className="py-20 flex flex-col items-center justify-center min-h-[400px] text-center">
-                <div className="w-12 h-12 bg-[var(--error-bg)] rounded-full flex items-center justify-center text-[var(--error)] mb-4">
-                    <AlertCircle className="w-6 h-6" />
+                <div className="w-16 h-16 bg-[var(--error-bg)] rounded-full flex items-center justify-center text-[var(--error)] mb-4">
+                    <AlertCircle className="w-8 h-8" />
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">Failed to load integrations</h3>
                 <p className="text-sm text-[var(--text-secondary)] mb-4">
@@ -106,9 +106,12 @@ export function IntegrationsClient() {
                     </h2>
                     <p className="text-[var(--text-muted)] text-sm mt-1">Connect your stores and sync orders automatically</p>
                 </div>
-                <Badge variant="success" className="text-sm px-3 py-1">
-                    {connectedStores.length} Connected
-                </Badge>
+                {!isLoading && connectedStores.length > 0 && (
+                    <Badge variant="success" className="text-sm px-3 py-1 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" />
+                        {connectedStores.length} Connected
+                    </Badge>
+                )}
             </div>
 
             {/* Connected Integrations */}
@@ -132,9 +135,9 @@ export function IntegrationsClient() {
                                                     </h4>
                                                     <Badge
                                                         variant={store.isActive ? "success" : "secondary"}
-                                                        className="text-xs"
+                                                        className="text-xs flex items-center gap-1"
                                                     >
-                                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
                                                         {store.isActive ? 'Active' : 'Inactive'}
                                                     </Badge>
                                                     {store.isPaused && (
