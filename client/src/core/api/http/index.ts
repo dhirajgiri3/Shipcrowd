@@ -320,19 +320,15 @@ const createApiClient = (): AxiosInstance => {
             // Only log unexpected errors (skip 401 auth and 404 not-found which are expected)
             if (process.env.NODE_ENV === 'development' && error.response?.status !== 401 && error.response?.status !== 404) {
                 // Extract error details with fallbacks
+                const responseData = error.response?.data as any;
                 const errorDetails: any = {
                     url: error.config?.url || 'unknown',
                     method: (error.config?.method || 'unknown').toUpperCase(),
                     status: error.response?.status || 'no response',
+                    message: responseData?.message || responseData?.error?.message || error.message || 'No message',
+                    code: responseData?.code || responseData?.error?.code || 'No code',
+                    data: responseData
                 };
-
-                // Add response data if available
-                if (error.response?.data) {
-                    const responseData = error.response.data as any;
-                    errorDetails.message = responseData.message || 'No message';
-                    errorDetails.code = responseData.code || 'No code';
-                    errorDetails.data = responseData;
-                }
 
                 // Handle network errors
                 if (!error.response) {
@@ -340,7 +336,12 @@ const createApiClient = (): AxiosInstance => {
                     errorDetails.status = 'NETWORK_ERROR';
                 }
 
-                console.error('[API Response Error]', errorDetails);
+                console.group('🚫 [API Response Error]');
+                console.error('Context:', { url: errorDetails.url, method: errorDetails.method, status: errorDetails.status });
+                console.error('Message:', errorDetails.message);
+                console.error('Code:', errorDetails.code);
+                if (errorDetails.data) console.error('Response Data:', errorDetails.data);
+                console.groupEnd();
             }
 
             return Promise.reject(normalizeError(error));

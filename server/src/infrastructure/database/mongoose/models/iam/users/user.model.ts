@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { KYCState } from '../../../../../../core/domain/types/kyc-state';
 import bcrypt from 'bcrypt';
 import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
 import { fieldEncryption } from 'mongoose-field-encryption';
@@ -122,6 +123,7 @@ export interface IUser extends Document {
   banReason?: string;
   kycStatus: {
     isComplete: boolean;
+    state?: KYCState;
     lastUpdated?: Date;
   };
   // Progressive verification system
@@ -362,6 +364,10 @@ const UserSchema = new Schema<IUser>(
       isComplete: {
         type: Boolean,
         default: false,
+      },
+      state: {
+        type: String,
+        enum: Object.values(KYCState),
       },
       lastUpdated: Date,
     },

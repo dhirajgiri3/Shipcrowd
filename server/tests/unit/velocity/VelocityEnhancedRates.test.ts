@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
 import { CourierRateRequest } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
 import { DynamicPricingService } from '../../../src/core/application/services/pricing/dynamic-pricing.service';
+import { VELOCITY_CARRIER_IDS } from '../../../src/infrastructure/external/couriers/velocity/velocity-carrier-ids';
 
 jest.mock('../../../src/infrastructure/external/couriers/velocity/velocity.auth');
 jest.mock('../../../src/core/application/services/pricing/dynamic-pricing.service');
@@ -40,8 +41,8 @@ describe('Velocity Enhanced getRates', () => {
         mockHttpClient.post = jest.fn().mockResolvedValue({
             data: {
                 serviceability_results: [
-                    { carrier_id: 'BD-001', carrier_name: 'Bluedart' },
-                    { carrier_id: 'DTDC-001', carrier_name: 'DTDC' }
+                    { carrier_id: VELOCITY_CARRIER_IDS.BLUEDART_STANDARD, carrier_name: 'Bluedart' },
+                    { carrier_id: VELOCITY_CARRIER_IDS.DELHIVERY_STANDARD, carrier_name: 'Delhivery' }
                 ],
                 zone: 'zone_b'
             }
@@ -65,10 +66,10 @@ describe('Velocity Enhanced getRates', () => {
 
         expect(result).toHaveLength(2);
         expect(result[0].total).toBe(82.6); // Sorted by price
-        expect(result[0].carrierId).toBe('DTDC-001');
+        expect(result[0].carrierId).toBe(VELOCITY_CARRIER_IDS.DELHIVERY_STANDARD);
         expect(result[0].zone).toBe('zone_b');
         expect(result[1].total).toBe(94.4);
-        expect(result[1].carrierId).toBe('BD-001');
+        expect(result[1].carrierId).toBe(VELOCITY_CARRIER_IDS.BLUEDART_STANDARD);
     });
 
     it('should include carrier_id and zone in results', async () => {
@@ -76,7 +77,7 @@ describe('Velocity Enhanced getRates', () => {
         mockHttpClient.post = jest.fn().mockResolvedValue({
             data: {
                 serviceability_results: [
-                    { carrier_id: 'XPB-001', carrier_name: 'Xpressbees' }
+                    { carrier_id: VELOCITY_CARRIER_IDS.EKART_STANDARD, carrier_name: 'Ekart' }
                 ],
                 zone: 'zone_a'
             }
@@ -96,7 +97,7 @@ describe('Velocity Enhanced getRates', () => {
             paymentMode: 'prepaid'
         });
 
-        expect(result[0].carrierId).toBe('XPB-001');
+        expect(result[0].carrierId).toBe(VELOCITY_CARRIER_IDS.EKART_STANDARD);
         expect(result[0].zone).toBe('zone_a');
         expect(result[0].basePrice).toBe(50);
         expect(result[0].taxes).toBe(9);

@@ -6,6 +6,8 @@ import { AuthenticationError, NotFoundError, AuthorizationError } from '../../..
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { DocumentVerificationState } from '../../../../core/domain/types/document-verification-state';
+import { resolveVerificationState } from '../../../../shared/utils/kyc-utils';
 
 /**
  * Middleware to check if user has completed KYC verification
@@ -90,7 +92,7 @@ export const checkKYC = async (
                 userId: user._id,
                 companyId: user.companyId,
                 state: KYCState.VERIFIED, // Use proper Enum state
-            }).select('_id state');
+            }).select('_id state documents');
 
             if (!kycRecord) {
                 logger.warn(`KYC bypass attempt or missing KYC for company access`, {
@@ -101,6 +103,31 @@ export const checkKYC = async (
 
                 throw new AuthorizationError(
                     'Access denied. You must complete KYC for your current company.',
+                    ErrorCode.AUTH_KYC_NOT_VERIFIED
+                );
+            }
+
+            const expired = (['pan', 'aadhaar', 'gstin', 'bankAccount'] as const).some((docType) => {
+                const doc = (kycRecord.documents as any)?.[docType];
+                return resolveVerificationState(doc).state === DocumentVerificationState.EXPIRED;
+            });
+
+            if (expired) {
+                await KYC.findByIdAndUpdate(kycRecord._id, {
+                    $set: {
+                        state: KYCState.EXPIRED,
+                        status: 'pending',
+                    },
+                });
+
+                await User.findByIdAndUpdate(user._id, {
+                    'kycStatus.isComplete': false,
+                    'kycStatus.state': KYCState.EXPIRED,
+                    'kycStatus.lastUpdated': new Date(),
+                });
+
+                throw new AuthorizationError(
+                    'Your KYC has expired. Please re-verify to continue.',
                     ErrorCode.AUTH_KYC_NOT_VERIFIED
                 );
             }

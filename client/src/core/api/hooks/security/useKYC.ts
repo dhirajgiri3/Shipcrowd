@@ -5,8 +5,7 @@ import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 // KYC Types
-import { KYCDocument } from '../../clients/auth/kycApi';
-export type { KYCDocument };
+import { KYCData } from '../../clients/auth/kycApi';
 
 export interface KYCFilters {
     status?: 'pending' | 'verified' | 'rejected';
@@ -15,7 +14,7 @@ export interface KYCFilters {
 }
 
 export interface KYCsResponse {
-    kycs: KYCDocument[];
+    kycs: KYCData[];
     pagination: {
         total: number;
         page: number;

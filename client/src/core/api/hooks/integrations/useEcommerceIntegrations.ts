@@ -6,6 +6,7 @@
  * Backend: GET/POST /api/v1/integrations/*
  */
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '@/src/core/api/http';
 import { queryKeys } from '../../config/query-keys';
@@ -56,16 +57,19 @@ export const useIntegration = (
     integrationId: string,
     options?: Omit<UseQueryOptions<EcommerceIntegration>, 'queryKey' | 'queryFn'>
 ) => {
+    // Prevent query if integrationId is "new" or invalid
+    const isValidId = Boolean(integrationId && integrationId !== 'new' && integrationId.length === 24);
+
     return useQuery<EcommerceIntegration>({
         queryKey: queryKeys.ecommerce.integration(integrationId),
         queryFn: async () => {
             const response = await apiClient.get(`/integrations/shopify/stores/${integrationId}`);
             return response.data.data;
         },
-        enabled: !!integrationId,
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
+        enabled: isValidId && (options?.enabled !== false), // Combine our validation with user options
     });
 };
 
@@ -76,16 +80,19 @@ export const useSyncLogs = (
     integrationId: string,
     options?: Omit<UseQueryOptions<SyncLog[]>, 'queryKey' | 'queryFn'>
 ) => {
+    // Prevent query if integrationId is "new" or invalid
+    const isValidId = Boolean(integrationId && integrationId !== 'new' && integrationId.length === 24);
+
     return useQuery<SyncLog[]>({
         queryKey: queryKeys.ecommerce.syncLogs(integrationId),
         queryFn: async () => {
             const response = await apiClient.get(`/integrations/shopify/stores/${integrationId}/sync/logs`);
             return response.data.data;
         },
-        enabled: !!integrationId,
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
+        enabled: isValidId && (options?.enabled !== false), // Combine our validation with user options
     });
 };
 
@@ -156,20 +163,60 @@ export const useDeleteIntegration = () => {
 
 /**
  * Test connection credentials before creating integration
+ * Enhanced with retry logic, timeout handling, and detailed error reporting
  */
 export const useTestConnection = () => {
+    const [retryCount, setRetryCount] = useState(0);
+
     return useMutation<TestConnectionResponse, Error, TestConnectionPayload>({
         mutationFn: async (payload) => {
-            const response = await apiClient.post('/integrations/test-connection', payload);
-            return response.data.data;
+            const { wrapApiCall } = await import('./apiUtils');
+            const { parseIntegrationError, formatErrorMessage } = await import('./integrationErrors');
+
+            return wrapApiCall(
+                async () => {
+                    const response = await apiClient.post('/integrations/test-connection', payload);
+                    return response.data.data;
+                },
+                {
+                    timeout: {
+                        timeoutMs: 30000, // 30 second timeout
+                        timeoutMessage: 'Connection test timed out. Please check your network and try again.',
+                    },
+                    retry: {
+                        maxRetries: 3,
+                        initialDelay: 1000,
+                        maxDelay: 5000,
+                        backoffMultiplier: 2,
+                    },
+                    onRetry: (attempt, error) => {
+                        setRetryCount(attempt + 1);
+                        console.log(`Retry attempt ${attempt + 1}/3:`, error.message);
+                    },
+                }
+            );
         },
         onSuccess: (data) => {
+            setRetryCount(0);
             if (data.success) {
                 showSuccessToast(`Connection successful! Found store: ${data.storeName}`);
             }
         },
-        onError: (error) => {
-            handleApiError(error, 'Connection Test Failed');
+        onError: (error: any) => {
+            const { parseIntegrationError } = require('./integrationErrors');
+            const parsedError = parseIntegrationError(error, retryCount);
+
+            // Show detailed error with suggestion
+            const errorMessage = parsedError.suggestion
+                ? `${parsedError.message}. ${parsedError.suggestion}`
+                : parsedError.message;
+
+            handleApiError(
+                { ...error, message: errorMessage },
+                'Connection Test Failed'
+            );
+
+            setRetryCount(0);
         },
     });
 };

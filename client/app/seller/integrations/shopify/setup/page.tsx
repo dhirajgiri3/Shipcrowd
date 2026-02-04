@@ -1,32 +1,37 @@
 /**
- * Shopify Integration Setup Wizard
- * 
- * Multi-step wizard for connecting Shopify store with OAuth.
- * Steps:
- * 1. Enter store domain
- * 2. OAuth authentication
- * 3. Configure settings
- * 4. Test & Complete
+ * Shopify Integration Setup (Modal)
+ *
+ * Beautiful modal-style integration flow with proper branding
  */
 
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { WizardLayout, type WizardStep } from '@/src/features/shared/components/WizardLayout';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     useInitiateOAuth,
     useTestConnection,
     useCreateIntegration,
 } from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
+import { useIntegrationState } from '@/src/core/api/hooks/integrations/useIntegrationState';
 import {
-    Store,
-    Check,
+    parseIntegrationError,
+    formatErrorMessage
+} from '@/src/core/api/hooks/integrations/integrationErrors';
+import {
     AlertCircle,
-    Loader2,
+    Check,
+    CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    Clock,
     ExternalLink,
-    Settings,
+    HelpCircle,
+    Info,
+    Loader2,
     RefreshCw,
+    ShieldCheck,
+    X,
 } from 'lucide-react';
 import type {
     IntegrationSettings,
@@ -35,167 +40,318 @@ import type {
     SyncFrequency,
 } from '@/src/types/api/integrations';
 
-const wizardSteps: WizardStep[] = [
-    { id: 1, title: 'Store Details', description: 'Enter your Shopify store' },
-    { id: 2, title: 'Connect', description: 'Authenticate with Shopify' },
-    { id: 3, title: 'Settings', description: 'Configure sync options' },
-    { id: 4, title: 'Complete', description: 'Test & complete setup' },
-];
+// Shared Components
+import { Input } from '@/src/components/ui/core/Input';
+import { Button } from '@/src/components/ui/core/Button';
+import { Select } from '@/src/components/ui/form/Select';
+import { Switch } from '@/src/components/ui/core/Switch';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Dialog, DialogContent, DialogTitle } from '@/src/components/ui/feedback/Dialog';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
+import { IntegrationSkeleton } from '@/src/components/ui/feedback/IntegrationSkeleton';
 
-const syncFrequencyOptions: { value: SyncFrequency; label: string }[] = [
+const syncFrequencyOptions = [
     { value: 'REALTIME', label: 'Real-time (via webhooks)' },
     { value: 'EVERY_5_MIN', label: 'Every 5 minutes' },
     { value: 'EVERY_15_MIN', label: 'Every 15 minutes' },
-    { value: 'EVERY_30_MIN', label: 'Every 30 minutes' },
     { value: 'HOURLY', label: 'Hourly' },
-    { value: 'MANUAL', label: 'Manual only' },
+    { value: 'MANUAL', label: 'Manual sync only' },
 ];
+
+const formatTestedAt = (date: Date) =>
+    new Intl.DateTimeFormat('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }).format(date);
 
 export default function ShopifyIntegrationPage() {
     const router = useRouter();
-    const [currentStep, setCurrentStep] = useState(1);
+    const searchParams = useSearchParams();
+    const { addToast } = useToast();
 
-    // Step 1: Store details
-    const [shopDomain, setShopDomain] = useState('');
+    // Component-specific state (not managed by form hook)
     const [storeName, setStoreName] = useState('');
-
-    // Step 2: OAuth (handled by backend redirect)
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [accessToken, setAccessToken] = useState('');
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [testResult, setTestResult] = useState<any>(null);
+    const [lastTestedAt, setLastTestedAt] = useState<string | null>(null);
+    const [domainTouched, setDomainTouched] = useState(false);
+    const [connectAttempted, setConnectAttempted] = useState(false);
+    const [testAttempted, setTestAttempted] = useState(false);
+    const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+    const [isOnline, setIsOnline] = useState(true);
 
-    // Step 3: Settings
-    const [settings, setSettings] = useState<Partial<IntegrationSettings>>({
-        syncFrequency: 'EVERY_15_MIN',
-        autoFulfill: true,
+    const defaultSettings: Partial<IntegrationSettings> = {
+        syncFrequency: 'REALTIME',
+        autoFulfill: false,
         autoTrackingUpdate: true,
         syncHistoricalOrders: false,
-        historicalOrderDays: 30,
         orderFilters: {},
         notifications: {
             syncErrors: true,
             connectionIssues: true,
-            lowInventory: false,
+            lowInventory: true,
         },
+    };
+
+    const {
+        formData,
+        updateField,
+        clearDraft,
+        isDraft,
+        saveDraft
+    } = useIntegrationState({
+        integrationType: 'SHOPIFY',
+        initialState: {
+            shopDomain: '',
+            settings: defaultSettings,
+        },
+        autoSave: true, // Enable auto-save
+        autoSaveDelay: 500
     });
 
-    // Step 4: Test
-    const [testResult, setTestResult] = useState<any>(null);
+    // Access form data through formData object
+    const shopDomain = formData.shopDomain as string;
+    const settings = formData.settings as Partial<IntegrationSettings>;
 
-    // API hooks
-    const { mutate: initiateOAuth, isPending: isInitiatingOAuth } = useInitiateOAuth();
+    const setShopDomain = (val: string) => updateField('shopDomain', val);
+    const setSettings = (val: any) => {
+        if (typeof val === 'function') {
+            updateField('settings', val(formData.settings));
+        } else {
+            updateField('settings', val);
+        }
+    };
+
+    const { mutate: initiateOAuth, isPending: isInitiating } = useInitiateOAuth();
     const { mutate: testConnection, isPending: isTesting } = useTestConnection();
     const { mutate: createIntegration, isPending: isCreating } = useCreateIntegration();
 
-    // Step validation
-    const canProceedStep1 = () => {
-        return shopDomain.length > 0 && /^[a-zA-Z0-9-]+\.myshopify\.com$/.test(shopDomain);
-    };
-
-    const canProceedStep2 = () => {
-        return isAuthenticated && accessToken.length > 0;
-    };
-
-    const canProceedStep3 = () => {
-        return true; // Settings are optional with defaults
-    };
-
-    const canProceed = () => {
-        switch (currentStep) {
-            case 1: return canProceedStep1();
-            case 2: return canProceedStep2();
-            case 3: return canProceedStep3();
-            case 4: return testResult?.success;
-            default: return false;
-        }
-    };
-
-    // Navigation handlers
-    const handleNext = () => {
-        if (currentStep === 1) {
-            // Initiate OAuth (Redirect to backend)
-            initiateOAuth({
-                type: 'SHOPIFY',
-                shop: shopDomain,
-            }, {
-                onSuccess: (data) => {
-                    // Backend returns the install URL
-                    if (data.authUrl) {
-                        window.location.href = data.authUrl;
-                    }
-                }
-            });
-        } else if (currentStep < wizardSteps.length) {
-            setCurrentStep(currentStep + 1);
-        }
-    };
-
-    // Handle OAuth callback
-    React.useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const status = params.get('status');
-        const store = params.get('store');
-        const storeId = params.get('storeId');
-        const message = params.get('message');
-        const step = params.get('step');
+    useEffect(() => {
+        const status = searchParams.get('status');
+        const store = searchParams.get('shop') || searchParams.get('store');
+        const message = searchParams.get('message');
 
         if (status === 'success' && store) {
             setIsAuthenticated(true);
             setShopDomain(store);
             setStoreName(store.replace('.myshopify.com', ''));
-            // Optionally set token if returned, relying on backend auth state mostly
-            if (step) {
-                setCurrentStep(parseInt(step));
-                // Clean URL
-                window.history.replaceState({}, '', window.location.pathname);
-            }
+            addToast('Successfully connected to Shopify!', 'success');
+            window.history.replaceState({}, '', window.location.pathname);
         } else if (status === 'error') {
-            // Show error message
-            console.error('Installation failed:', message);
-            // You might want to use a toast here if available
+            addToast(message || 'Shopify connection failed', 'error');
         }
+    }, [searchParams, addToast]);
+
+    // Online/offline detection
+    useEffect(() => {
+        const handleOffline = () => {
+            setIsOnline(false);
+            addToast('You are offline. Please check your internet connection.', 'warning');
+        };
+
+        const handleOnline = () => {
+            setIsOnline(true);
+            addToast('Connection restored', 'success');
+        };
+
+        window.addEventListener('offline', handleOffline);
+        window.addEventListener('online', handleOnline);
+
+        return () => {
+            window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, [addToast]);
+
+    // Show skeleton on initial load if we have a saved draft loading
+    // In a real app we might also check for existing integration data here
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+    useEffect(() => {
+        // Simulate initial checks
+        const timer = setTimeout(() => setIsInitialLoad(false), 800);
+        return () => clearTimeout(timer);
     }, []);
 
-    const handleBack = () => {
-        if (currentStep > 1) {
-            setCurrentStep(currentStep - 1);
+    useEffect(() => {
+        setTestResult(null);
+        setLastTestedAt(null);
+    }, [shopDomain, accessToken]);
+
+    // Real-time validation with debouncing
+    useEffect(() => {
+        if (!shopDomain) {
+            setValidationStatus('idle');
+            return;
         }
+
+        setValidationStatus('validating');
+        const timer = setTimeout(() => {
+            const isValid = isValidDomain(shopDomain);
+            setValidationStatus(isValid ? 'valid' : 'invalid');
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [shopDomain]);
+
+    const isValidDomain = (domain: string) => {
+        return domain.includes('.myshopify.com') || /^[a-zA-Z0-9-]+$/.test(domain);
     };
 
-    const handleTestConnection = () => {
-        const params = new URLSearchParams(window.location.search);
-        const storeId = params.get('storeId'); // We need storeId for testing now
+    const domainError = useMemo(() => {
+        if (!shopDomain) {
+            return domainTouched || connectAttempted ? 'Store domain is required' : '';
+        }
+        if (!isValidDomain(shopDomain)) {
+            return 'Enter a valid Shopify store domain (e.g., your-store.myshopify.com)';
+        }
+        return '';
+    }, [shopDomain, domainTouched, connectAttempted]);
 
-        // Should use storeId if available, or just mock success since we are connected
+    // Keyboard shortcut for paste
+    useEffect(() => {
+        const handlePaste = async (e: ClipboardEvent) => {
+            // Only trigger if no active input to avoid double paste
+            if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text && !shopDomain && !isAuthenticated) {
+                    // Smart detection for shopify domain
+                    if (text.includes('myshopify.com') || /^[a-zA-Z0-9-]+$/.test(text)) {
+                        setShopDomain(text.trim());
+                        addToast('Pasted from clipboard', 'info');
+                    }
+                }
+            } catch (err) {
+                // Clipboard access denied or empty
+            }
+        };
+
+        // Listen for Cmd+V / Ctrl+V
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+                // The actual paste event will follow, or we can trigger manual read if needed
+                // But native simple paste might handle it if focused.
+                // If NOT focused, we want to capture it.
+                if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+                    navigator.clipboard.readText().then(text => {
+                        if (text && !shopDomain && !isAuthenticated) {
+                            if (text.includes('myshopify.com') || /^[a-zA-Z0-9-]+$/.test(text)) {
+                                setShopDomain(text.trim());
+                                addToast('Pasted domain from clipboard', 'info');
+                            }
+                        }
+                    }).catch(() => { });
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [shopDomain, isAuthenticated, addToast]);
+
+    if (isInitialLoad) {
+        return (
+            <Dialog open={true}>
+                <DialogContent
+                    hideClose
+                    className="z-[var(--z-modal)] w-[100vw] max-w-none sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] p-0 overflow-hidden rounded-none sm:rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] shadow-[var(--shadow-xl)]"
+                >
+                    <DialogTitle className="sr-only">Loading setup</DialogTitle>
+                    <div className="p-6 sm:p-8">
+                        <IntegrationSkeleton type="shopify" />
+                    </div>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+
+    const handleConnect = () => {
+        setConnectAttempted(true);
+        if (!shopDomain || !isValidDomain(shopDomain)) {
+            addToast('Please enter a valid Shopify store domain', 'error');
+            return;
+        }
+
+        const fullDomain = shopDomain.includes('.myshopify.com')
+            ? shopDomain
+            : `${shopDomain}.myshopify.com`;
+
+        initiateOAuth({
+            type: 'SHOPIFY',
+            shop: fullDomain,
+        }, {
+            onSuccess: (data) => {
+                if (data.authUrl) {
+                    window.location.href = data.authUrl;
+                }
+            },
+            onError: (err: any) => {
+                addToast(err.message || 'Failed to connect to Shopify', 'error');
+            }
+        });
+    };
+
+    const handleTest = () => {
+        setTestAttempted(true);
+        if (!shopDomain || !isValidDomain(shopDomain)) {
+            addToast('Please enter a valid Shopify store domain', 'error');
+            return;
+        }
+
+        const credentials: ShopifyCredentials = {
+            type: 'SHOPIFY',
+            shopDomain,
+            accessToken: accessToken || 'connected',
+        };
+
         testConnection({
             type: 'SHOPIFY',
-            credentials: {
-                type: 'SHOPIFY',
-                shopDomain,
-                accessToken: 'connected' // Backend handles auth
-            },
+            credentials,
         }, {
             onSuccess: (data) => {
                 setTestResult(data);
                 if (data.storeName) {
                     setStoreName(data.storeName);
                 }
+                setLastTestedAt(formatTestedAt(new Date()));
+                addToast('Connection verified successfully!', 'success');
             },
+            onError: (err: any) => {
+                const parsedError = parseIntegrationError(err);
+                setTestResult({ success: false, message: parsedError.message, error: parsedError });
+                setLastTestedAt(null);
+
+                // Enhanced error with retry suggestion
+                addToast(formatErrorMessage(parsedError, 'SHOPIFY'), 'error');
+            }
         });
     };
 
     const handleSubmit = () => {
+        if (!testResult?.success) {
+            addToast('Please test the connection first', 'warning');
+            return;
+        }
+
         const credentials: ShopifyCredentials = {
             type: 'SHOPIFY',
             shopDomain,
-            accessToken,
+            accessToken: accessToken || 'connected',
         };
 
-        // Default field mapping for Shopify
         const fieldMapping: FieldMapping = {
             orderNumber: 'order_number',
             orderDate: 'created_at',
             orderTotal: 'total_price',
-            paymentMethod: 'payment_gateway_names',
+            paymentMethod: 'payment_gateway_names[0]',
             customerName: 'customer.name',
             customerEmail: 'customer.email',
             customerPhone: 'customer.phone',
@@ -222,373 +378,410 @@ export default function ShopifyIntegrationPage() {
             fieldMapping,
         }, {
             onSuccess: () => {
+                addToast('Shopify store connected successfully!', 'success');
+                clearDraft(); // Clear draft on success
                 router.push('/seller/integrations');
             },
+            onError: (err) => {
+                addToast(err.message || 'Failed to connect store', 'error');
+            }
         });
     };
 
-    const handleClose = () => {
-        if (window.confirm('Are you sure you want to cancel the setup?')) {
-            router.back();
-        }
-    };
+    const footerActions = isAuthenticated ? (
+        <>
+            <Button
+                variant="outline"
+                onClick={() => router.back()}
+                className="flex-1"
+                disabled={isCreating}
+            >
+                Cancel
+            </Button>
+            <Button
+                onClick={handleSubmit}
+                disabled={isCreating || !testResult?.success}
+                className="flex-1 bg-[#95BF47] hover:bg-[#829F3C] text-white"
+            >
+                {isCreating ? (
+                    <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                    </>
+                ) : (
+                    <>
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Complete Setup
+                    </>
+                )}
+            </Button>
+        </>
+    ) : (
+        <>
+            <Button
+                variant="outline"
+                onClick={() => router.back()}
+                className="flex-1"
+            >
+                Cancel
+            </Button>
+            <Button
+                onClick={handleConnect}
+                disabled={!shopDomain || Boolean(domainError) || isInitiating}
+                className="flex-1 bg-[#95BF47] hover:bg-[#829F3C] text-white"
+            >
+                {isInitiating ? (
+                    <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Connecting...
+                    </>
+                ) : (
+                    <>
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Connect Store
+                    </>
+                )}
+            </Button>
+        </>
+    );
 
     return (
-        <WizardLayout
-            steps={wizardSteps}
-            currentStep={currentStep}
-            onStepChange={setCurrentStep}
-            onClose={handleClose}
-            title="Connect Shopify Store"
-            subtitle="Automatically sync your Shopify orders to Shipcrowd"
-            canGoBack={currentStep > 1}
-            canGoNext={canProceed()}
-            onBack={handleBack}
-            onNext={handleNext}
-            onSubmit={handleSubmit}
-            isFinalStep={currentStep === 4}
-            isSubmitting={isCreating}
-        >
-            {/* Step 1: Store Details */}
-            {currentStep === 1 && (
-                <div className="space-y-6">
-                    <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-[var(--success-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Store className="w-8 h-8 text-[var(--success)]" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-                            Enter Your Shopify Store Domain
-                        </h3>
-                        <p className="text-[var(--text-secondary)]">
-                            We'll connect to your Shopify store to sync orders automatically
-                        </p>
-                    </div>
+        <Dialog open onOpenChange={(open) => !open && router.back()}>
+            <DialogContent
+                hideClose
+                overlayClassName="bg-black/60 backdrop-blur-sm z-[var(--z-modal-backdrop)] data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+                className="z-[var(--z-modal)] w-[100vw] max-w-none sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] p-0 overflow-hidden rounded-none sm:rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] shadow-[var(--shadow-xl)] flex flex-col gap-0"
+            >
+                <button
+                    onClick={() => router.back()}
+                    className="absolute right-4 top-4 p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors z-10"
+                    aria-label="Close"
+                >
+                    <X className="w-5 h-5" />
+                </button>
 
-                    <div>
-                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Store Domain *
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={shopDomain}
-                                onChange={(e) => setShopDomain(e.target.value.toLowerCase())}
-                                placeholder="your-store.myshopify.com"
-                                className="w-full px-4 py-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
+                <div className="flex-1 overflow-y-auto p-6 sm:p-8 scrollbar-premium">
+                    <div className="flex items-center gap-6 mb-6 pb-6 border-b border-[var(--border-subtle)]">
+                        <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#95BF47]/10 to-[#95BF47]/5 flex items-center justify-center flex-shrink-0 border border-[#95BF47]/20 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-transparent opacity-40 animate-pulse" />
+                            <img
+                                src="/logos/shopify.svg"
+                                alt="Shopify"
+                                className="w-12 h-12 relative"
                             />
-                            {shopDomain && !canProceedStep1() && (
-                                <p className="mt-2 text-sm text-[var(--error)] flex items-center gap-1">
-                                    <AlertCircle className="w-4 h-4" />
-                                    Please enter a valid Shopify domain (e.g., store.myshopify.com)
-                                </p>
-                            )}
-                            {canProceedStep1() && (
-                                <p className="mt-2 text-sm text-[var(--success)] flex items-center gap-1">
-                                    <Check className="w-4 h-4" />
-                                    Valid domain format
-                                </p>
-                            )}
                         </div>
-                    </div>
 
-                    <div className="bg-[var(--primary-blue)]/5 rounded-lg p-4 border border-[var(--primary-blue)]/20">
-                        <h4 className="font-medium text-[var(--primary-blue)] mb-2 flex items-center gap-2">
-                            <Store className="w-4 h-4" />
-                            What you'll need
-                        </h4>
-                        <ul className="text-sm text-[var(--text-secondary)] space-y-1">
-                            <li>• Your Shopify store admin access</li>
-                            <li>• Permission to install apps on your store</li>
-                            <li>• Active Shopify plan</li>
-                        </ul>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 2: OAuth Authentication */}
-            {currentStep === 2 && (
-                <div className="space-y-6">
-                    <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-[var(--success-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <ExternalLink className="w-8 h-8 text-[var(--success)]" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-                            Authenticate with Shopify
-                        </h3>
-                        <p className="text-[var(--text-secondary)]">
-                            Click the button below to authorize Shipcrowd to access your Shopify store
-                        </p>
-                    </div>
-
-                    {isAuthenticated ? (
-                        <div className="bg-[var(--success-bg)] rounded-lg p-6 border border-[var(--success)] text-center">
-                            <Check className="w-12 h-12 text-[var(--success)] mx-auto mb-4" />
-                            <h4 className="font-semibold text-[var(--success)] mb-2">
-                                Successfully Connected!
-                            </h4>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                                <DialogTitle className="text-2xl font-bold text-[var(--text-primary)]">
+                                    Connect Shopify Store
+                                </DialogTitle>
+                            </div>
                             <p className="text-sm text-[var(--text-secondary)]">
-                                Your Shopify store is now connected
+                                Sync orders automatically in real-time with webhooks
                             </p>
+                            {isDraft && (
+                                <div className="flex items-center gap-2 mt-2 text-xs text-[var(--primary-blue)] font-medium animate-in fade-in slide-in-from-left-2">
+                                    <Clock className="w-3 h-3" />
+                                    <span>Draft saved automatically</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 mb-6">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                            <Info className="w-3.5 h-3.5" />
+                            What you'll need
+                        </div>
+                        <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
+                            <div className="flex items-start gap-2">
+                                <Check className="w-4 h-4 text-[var(--success)] mt-0.5" />
+                                Your Shopify store domain (for example: `your-store.myshopify.com`)
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <ShieldCheck className="w-4 h-4 text-[var(--primary-blue)] mt-0.5" />
+                                Admin access to approve Shopify OAuth
+                            </div>
+                        </div>
+                    </div>
+
+                    {!isAuthenticated ? (
+                        <div className="space-y-6">
+                            <div>
+                                <div className="flex items-center gap-2 mb-2.5">
+                                    <label className="block text-sm font-semibold text-[var(--text-primary)]">
+                                        Store Domain
+                                    </label>
+                                    <Tooltip content="Find this in your Shopify admin URL (e.g., your-store.myshopify.com)" side="right">
+                                        <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
+                                    </Tooltip>
+                                </div>
+                                <div className="relative">
+                                    <Input
+                                        type="text"
+                                        value={shopDomain}
+                                        onChange={(e) => {
+                                            setShopDomain(e.target.value.toLowerCase());
+                                            setDomainTouched(true);
+                                        }}
+                                        onBlur={() => setDomainTouched(true)}
+                                        placeholder="your-store.myshopify.com"
+                                        className={`pr-28 transition-all duration-200 ${validationStatus === 'valid' ? 'focus:ring-2 focus:ring-[var(--success)]/20' : validationStatus === 'invalid' ? 'focus:ring-2 focus:ring-[var(--error)]/20' : ''}`}
+                                        autoFocus
+                                        error={Boolean(domainError)}
+                                        aria-invalid={Boolean(domainError)}
+                                        aria-describedby="shopify-domain-hint shopify-domain-error"
+                                    />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                        {validationStatus === 'validating' && (
+                                            <Loader2 className="w-3.5 h-3.5 text-[var(--text-muted)] animate-spin" />
+                                        )}
+                                        {validationStatus === 'valid' && (
+                                            <Check className="w-3.5 h-3.5 text-[var(--success)] animate-in fade-in duration-200" />
+                                        )}
+                                        {!shopDomain.includes('.myshopify.com') && shopDomain && (
+                                            <span className="text-xs text-[var(--text-muted)] font-mono">
+                                                .myshopify.com
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <p
+                                    id="shopify-domain-hint"
+                                    className="mt-2 text-xs text-[var(--text-muted)] flex items-center gap-1.5 justify-between"
+                                >
+                                    <span className="flex items-center gap-1.5">
+                                        <Info className="w-3.5 h-3.5" />
+                                        We will add `.myshopify.com` automatically if omitted.
+                                    </span>
+                                    <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-500">
+                                        Press ⌘V to paste
+                                    </span>
+                                </p>
+                                {domainError && (
+                                    <p
+                                        id="shopify-domain-error"
+                                        className="mt-2 text-xs text-[var(--error-text)] animate-in slide-in-from-top-1 duration-200"
+                                    >
+                                        {domainError}
+                                    </p>
+                                )}
+                            </div>
+
+                            <Alert className="bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
+                                <AlertDescription className="text-sm text-[var(--text-secondary)]">
+                                    You'll be redirected to Shopify to securely authorize this connection
+                                </AlertDescription>
+                            </Alert>
                         </div>
                     ) : (
-                        <>
-                            <button
-                                onClick={() => setIsAuthenticated(true)}
-                                disabled={isInitiatingOAuth}
-                                className="w-full py-4 bg-[var(--success)] hover:bg-[var(--success-hover)] text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
-                            >
-                                {isInitiatingOAuth ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        Connecting...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Store className="w-5 h-5" />
-                                        Connect to Shopify
-                                    </>
+                        <div className="space-y-6">
+                            <Alert className="bg-[var(--success-bg)] border-[var(--success)]/30">
+                                <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
+                                <AlertDescription className="text-sm text-[var(--text-primary)]">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span>
+                                            Connected to <strong className="font-semibold">{storeName || shopDomain}</strong>
+                                        </span>
+                                        <Badge variant="success" size="sm">
+                                            Connected
+                                        </Badge>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                            {lastTestedAt && (
+                                <div className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    Last tested {lastTestedAt}
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+                                    Sync Configuration
+                                </h3>
+
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center gap-2">
+                                        <label className="block text-sm font-medium text-[var(--text-primary)]">
+                                            Sync Frequency
+                                        </label>
+                                        <Tooltip content="Real-time uses webhooks for instant updates. Other options poll Shopify at intervals." side="right">
+                                            <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
+                                        </Tooltip>
+                                    </div>
+                                    <Select
+                                        value={settings.syncFrequency}
+                                        onChange={(e) => setSettings((prev: Partial<IntegrationSettings>) => ({
+                                            ...prev,
+                                            syncFrequency: e.target.value as SyncFrequency
+                                        }))}
+                                        options={syncFrequencyOptions}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                                    <div className="flex-1 pr-4">
+                                        <p className="text-sm font-medium text-[var(--text-primary)]">
+                                            Auto-update tracking
+                                        </p>
+                                        <p className="text-xs text-[var(--text-muted)] mt-1">
+                                            Push tracking details back to Shopify
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        checked={settings.autoTrackingUpdate}
+                                        onCheckedChange={(checked) => setSettings((prev: Partial<IntegrationSettings>) => ({
+                                            ...prev,
+                                            autoTrackingUpdate: checked
+                                        }))}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="border-t border-[var(--border-subtle)] pt-4">
+                                <button
+                                    onClick={() => setShowAdvanced(!showAdvanced)}
+                                    className="flex items-center justify-between w-full text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors uppercase tracking-wider"
+                                >
+                                    Advanced Options
+                                    {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                </button>
+
+                                {showAdvanced && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                                            <div className="flex-1 pr-4">
+                                                <p className="text-sm font-medium text-[var(--text-primary)]">
+                                                    Import historical orders
+                                                </p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                                    Sync last 30 days
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                checked={settings.syncHistoricalOrders}
+                                                onCheckedChange={(checked) => setSettings((prev: Partial<IntegrationSettings>) => ({
+                                                    ...prev,
+                                                    syncHistoricalOrders: checked
+                                                }))}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                                            <div className="flex-1 pr-4">
+                                                <p className="text-sm font-medium text-[var(--text-primary)]">
+                                                    Low inventory alerts
+                                                </p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                                    Email when stock is low
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                checked={settings.notifications?.lowInventory}
+                                                onCheckedChange={(checked) => setSettings((prev: Partial<IntegrationSettings>) => ({
+                                                    ...prev,
+                                                    notifications: {
+                                                        ...prev.notifications!,
+                                                        lowInventory: checked
+                                                    }
+                                                }))}
+                                            />
+                                        </div>
+                                    </div>
                                 )}
-                            </button>
-
-                            <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
-                                <h4 className="font-medium text-[var(--text-primary)] mb-2">
-                                    What happens next?
-                                </h4>
-                                <ol className="text-sm text-[var(--text-secondary)] space-y-2">
-                                    <li>1. You'll be redirected to Shopify to log in</li>
-                                    <li>2. Review the permissions Shipcrowd is requesting</li>
-                                    <li>3. Click "Install app" to authorize</li>
-                                    <li>4. You'll be brought back here to continue setup</li>
-                                </ol>
                             </div>
-                        </>
-                    )}
-                </div>
-            )}
 
-            {/* Step 3: Settings */}
-            {currentStep === 3 && (
-                <div className="space-y-6">
-                    <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
-                            Configure Sync Settings
-                        </h3>
-                        <p className="text-[var(--text-secondary)]">
-                            Customize how orders are synced between Shopify and Shipcrowd
-                        </p>
-                    </div>
+                            <div className="space-y-3 pt-2">
+                                <Button
+                                    variant={testResult ? 'outline' : 'primary'}
+                                    onClick={handleTest}
+                                    disabled={isTesting}
+                                    className={testResult
+                                        ? 'w-full border-[#95BF47]/40 text-[#6E8F34] hover:bg-[#95BF47]/10'
+                                        : 'w-full bg-[#95BF47] hover:bg-[#829F3C] text-white'
+                                    }
+                                    size="sm"
+                                >
+                                    {isTesting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Testing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 mr-2" />
+                                            {testResult ? 'Test Again' : 'Test Connection'}
+                                        </>
+                                    )}
+                                </Button>
 
-                    {/* Sync Frequency */}
-                    <div>
-                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Sync Frequency
-                        </label>
-                        <select
-                            value={settings.syncFrequency}
-                            onChange={(e) => setSettings(prev => ({ ...prev, syncFrequency: e.target.value as SyncFrequency }))}
-                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
-                        >
-                            {syncFrequencyOptions.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Auto-fulfill */}
-                    <div className="flex items-start gap-3">
-                        <input
-                            type="checkbox"
-                            id="autoFulfill"
-                            checked={settings.autoFulfill}
-                            onChange={(e) => setSettings(prev => ({ ...prev, autoFulfill: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                        />
-                        <div>
-                            <label htmlFor="autoFulfill" className="font-medium text-[var(--text-primary)] cursor-pointer">
-                                Auto-fulfill orders
-                            </label>
-                            <p className="text-sm text-[var(--text-secondary)]">
-                                Automatically mark Shopify orders as fulfilled when shipment is created
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Auto tracking update */}
-                    <div className="flex items-start gap-3">
-                        <input
-                            type="checkbox"
-                            id="autoTrackingUpdate"
-                            checked={settings.autoTrackingUpdate}
-                            onChange={(e) => setSettings(prev => ({ ...prev, autoTrackingUpdate: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                        />
-                        <div>
-                            <label htmlFor="autoTrackingUpdate" className="font-medium text-[var(--text-primary)] cursor-pointer">
-                                Push tracking updates
-                            </label>
-                            <p className="text-sm text-[var(--text-secondary)]">
-                                Send tracking numbers and status updates back to Shopify
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Historical orders */}
-                    <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                            <input
-                                type="checkbox"
-                                id="syncHistorical"
-                                checked={settings.syncHistoricalOrders}
-                                onChange={(e) => setSettings(prev => ({ ...prev, syncHistoricalOrders: e.target.checked }))}
-                                className="mt-1 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                            />
-                            <div className="flex-1">
-                                <label htmlFor="syncHistorical" className="font-medium text-[var(--text-primary)] cursor-pointer">
-                                    Sync historical orders
-                                </label>
-                                <p className="text-sm text-[var(--text-secondary)]">
-                                    Import past orders from Shopify
-                                </p>
-                            </div>
-                        </div>
-
-                        {settings.syncHistoricalOrders && (
-                            <div className="ml-7">
-                                <label className="block text-sm text-[var(--text-secondary)] mb-1">
-                                    How many days back?
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="365"
-                                    value={settings.historicalOrderDays}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, historicalOrderDays: parseInt(e.target.value) }))}
-                                    className="w-32 px-3 py-2 rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
-                                />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Step 4: Test & Complete */}
-            {currentStep === 4 && (
-                <div className="space-y-6">
-                    <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-[var(--primary-blue)]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Settings className="w-8 h-8 text-[var(--primary-blue)]" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-                            Test Connection & Complete Setup
-                        </h3>
-                        <p className="text-[var(--text-secondary)]">
-                            Verify the connection before activating the integration
-                        </p>
-                    </div>
-
-                    {/* Test Connection Button */}
-                    {!testResult && (
-                        <button
-                            onClick={handleTestConnection}
-                            disabled={isTesting}
-                            className="w-full py-3 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {isTesting ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Testing Connection...
-                                </>
-                            ) : (
-                                <>
-                                    <RefreshCw className="w-5 h-5" />
-                                    Test Connection
-                                </>
-                            )}
-                        </button>
-                    )}
-
-                    {/* Test Results */}
-                    {testResult && (
-                        <div className={`rounded-lg p-6 border ${testResult.success
-                            ? 'bg-[var(--success-bg)] border-[var(--success)]'
-                            : 'bg-[var(--error-bg)] border-[var(--error)]'
-                            }`}>
-                            {testResult.success ? (
-                                <>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <Check className="w-6 h-6 text-[var(--success)]" />
-                                        <h4 className="font-semibold text-[var(--success)]">
-                                            Connection Successful!
-                                        </h4>
-                                    </div>
-                                    <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-                                        <p>Store: <strong>{testResult.storeName}</strong></p>
-                                        {testResult.details?.ordersFound && (
-                                            <p>Orders found: <strong>{testResult.details.ordersFound}</strong></p>
-                                        )}
-                                        {testResult.details?.apiVersion && (
-                                            <p>API Version: <strong>{testResult.details.apiVersion}</strong></p>
-                                        )}
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <AlertCircle className="w-6 h-6 text-[var(--error)]" />
-                                        <h4 className="font-semibold text-[var(--error)]">
-                                            Connection Failed
-                                        </h4>
-                                    </div>
-                                    <p className="text-sm text-[var(--error)]">
-                                        {testResult.message}
+                                {testAttempted && !testResult && (
+                                    <p className="text-xs text-[var(--text-muted)]">
+                                        Testing checks your Shopify permissions and store access.
                                     </p>
-                                    <button
-                                        onClick={handleTestConnection}
-                                        className="mt-4 px-4 py-2 bg-[var(--error)] hover:bg-[var(--error-hover)] text-white rounded-lg transition-colors"
-                                    >
-                                        Try Again
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
+                                )}
 
-                    {/* Summary */}
-                    {testResult?.success && (
-                        <div className="bg-[var(--bg-secondary)] rounded-lg p-6">
-                            <h4 className="font-semibold text-[var(--text-primary)] mb-4">
-                                Integration Summary
-                            </h4>
-                            <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-                                <div className="flex justify-between">
-                                    <span>Store:</span>
-                                    <span className="font-medium text-[var(--text-primary)]">{shopDomain}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Sync Frequency:</span>
-                                    <span className="font-medium text-[var(--text-primary)]">
-                                        {syncFrequencyOptions.find(o => o.value === settings.syncFrequency)?.label}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Auto-fulfill:</span>
-                                    <span className="font-medium text-[var(--text-primary)]">
-                                        {settings.autoFulfill ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Tracking Updates:</span>
-                                    <span className="font-medium text-[var(--text-primary)]">
-                                        {settings.autoTrackingUpdate ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                </div>
+                                {testResult && (
+                                    <Alert className={`transition-all duration-300 ${testResult.success
+                                        ? 'bg-[var(--success-bg)] border-[var(--success)]/30'
+                                        : 'bg-[var(--error-bg)] border-[var(--error)]/30'
+                                        }`}>
+                                        {testResult.success ? (
+                                            <>
+                                                <Check className="w-4 h-4 text-[var(--success)]" />
+                                                <AlertDescription className="text-sm text-[var(--text-primary)]">
+                                                    Connection verified!
+                                                </AlertDescription>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertCircle className="w-4 h-4 text-[var(--error)]" />
+                                                <AlertDescription className="text-sm w-full">
+                                                    <div className="space-y-2">
+                                                        <p className="text-[var(--error-text)] font-medium">
+                                                            {testResult.message}
+                                                        </p>
+                                                        {testResult.error?.suggestion && (
+                                                            <p className="text-xs text-[var(--text-secondary)]">
+                                                                {testResult.error.suggestion}
+                                                            </p>
+                                                        )}
+
+                                                        {testResult.error?.retryable && (
+                                                            <Button
+                                                                onClick={handleTest}
+                                                                disabled={isTesting}
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="mt-2 text-xs h-7 w-full border-[var(--error)]/20 text-[var(--error-text)] hover:bg-[var(--error-bg)]"
+                                                            >
+                                                                {isTesting ? 'Retrying...' : 'Retry Connection'}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </AlertDescription>
+                                            </>
+                                        )}
+                                    </Alert>
+                                )}
                             </div>
                         </div>
                     )}
                 </div>
-            )}
-        </WizardLayout>
+
+                <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        {footerActions}
+                    </div>
+                    {isAuthenticated && !testResult?.success && (
+                        <p className="mt-2 text-xs text-[var(--text-muted)]">
+                            Test your Shopify connection to enable setup.
+                        </p>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

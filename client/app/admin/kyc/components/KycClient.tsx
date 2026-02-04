@@ -28,7 +28,7 @@ import {
     Calendar,
     ArrowUpRight
 } from 'lucide-react';
-import { useAllKYCs, useVerifyKYC, useRejectKYC, KYCDocument } from '@/src/core/api/hooks/security/useKYC';
+import { useAllKYCs, useVerifyKYC, useRejectKYC } from '@/src/core/api/hooks/security/useKYC';
 
 
 const statusFilters = [

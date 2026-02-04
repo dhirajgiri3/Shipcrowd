@@ -1302,3 +1302,17 @@ If you want next, I can:
 * Help you decide **which missing APIs are blockers vs nice-to-have**
 
 You’re asking the **right questions** — this is how real systems get built 👌
+
+### Most Important - Velocity latest carrier Id's please use only this carrier ids for velocity shipfast 
+
+Delhivery Standard - Please use this carrier ID (CAR2CHKPXAC5T)
+Amazon Transportation	CAR71OFLZNOSI
+Delhivery Special Standard Prime 20 kg	CARBYISS34LSS
+Shadowfax Standard	CAR7RFCSBPAV7
+Delhivery Standard	CAR2CHKPXAC5T
+Delhivery Special Standard 10 kg	CARVPHPLJQJOA
+Bluedart Standard	CAR2FZNOLGJ2X
+Delhivery Standard 5 Kg	CAR5IXXJVT5MD
+Bluedart Air	CARISGEX1QMVB
+Delhivery Express	CARFRQQXRTZQ9
+Ekart Standard	CARR5H4WQY3PM

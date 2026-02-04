@@ -107,6 +107,7 @@ export const mockRateEstimation = (
     rates: [
         {
             serviceType: 'EXPRESS',
+            carrierId: 'CARFRQQXRTZQ9', // Delhivery Express
             estimatedDays: 2,
             baseRate: 80,
             weightCharge: weight * 20,
@@ -115,6 +116,7 @@ export const mockRateEstimation = (
         },
         {
             serviceType: 'STANDARD',
+            carrierId: 'CAR2CHKPXAC5T', // Delhivery Standard
             estimatedDays: 5,
             baseRate: 50,
             weightCharge: weight * 15,

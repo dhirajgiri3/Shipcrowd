@@ -3,8 +3,34 @@ import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
 import { fieldEncryption } from 'mongoose-field-encryption';
 import crypto from 'crypto';
 import { KYCState } from '../../../../../../core/domain/types/kyc-state';
+import { DocumentVerificationState } from '../../../../../../core/domain/types/document-verification-state';
+import { KYC_VERIFICATION_HISTORY_LIMIT } from '../../../../../../shared/config/kyc.config';
 
 // Define the interface for KYC document
+export interface IKYCVerificationMeta {
+  state: DocumentVerificationState;
+  provider?: string;
+  verifiedAt?: Date;
+  expiresAt?: Date;
+  attemptId?: string;
+  inputHash?: string;
+  lastCheckedAt?: Date;
+  failureReason?: string;
+  revokedAt?: Date;
+}
+
+export interface IKYCVerificationHistoryEntry {
+  id: string;
+  state: DocumentVerificationState;
+  provider?: string;
+  verifiedAt?: Date;
+  expiresAt?: Date;
+  attemptId?: string;
+  inputHash?: string;
+  createdAt: Date;
+  reason?: string;
+}
+
 export interface IKYC extends Document {
   userId: mongoose.Types.ObjectId;
   companyId: mongoose.Types.ObjectId;
@@ -23,6 +49,8 @@ export interface IKYC extends Document {
       verifiedAt?: Date;
       verificationData?: any; // Store API response
       name?: string; // Name as per PAN
+      verification?: IKYCVerificationMeta;
+      verificationHistory?: IKYCVerificationHistoryEntry[];
     };
     aadhaar?: {
       number: string;
@@ -31,6 +59,8 @@ export interface IKYC extends Document {
       verified: boolean;
       verifiedAt?: Date;
       verificationData?: any; // Store API response
+      verification?: IKYCVerificationMeta;
+      verificationHistory?: IKYCVerificationHistoryEntry[];
     };
     gstin?: {
       number: string;
@@ -49,6 +79,8 @@ export interface IKYC extends Document {
       }[];
       registrationDate?: string; // Date of GST registration
       lastUpdated?: string; // Last updated date in GST records
+      verification?: IKYCVerificationMeta;
+      verificationHistory?: IKYCVerificationHistoryEntry[];
     };
     bankAccount?: {
       accountNumber: string;
@@ -59,6 +91,8 @@ export interface IKYC extends Document {
       verifiedAt?: Date;
       proofImage?: string;
       verificationData?: any; // Store API response
+      verification?: IKYCVerificationMeta;
+      verificationHistory?: IKYCVerificationHistoryEntry[];
     };
   };
   completionStatus: {
@@ -79,6 +113,48 @@ export interface IKYC extends Document {
   deletedBy?: mongoose.Types.ObjectId;
   schemaVersion: number;
 }
+
+// Reusable sub-schemas for verification metadata + history
+const verificationSchema = new Schema(
+  {
+    state: {
+      type: String,
+      enum: Object.values(DocumentVerificationState),
+      default: DocumentVerificationState.NOT_STARTED,
+    },
+    provider: String,
+    verifiedAt: Date,
+    expiresAt: Date,
+    attemptId: String,
+    inputHash: String,
+    lastCheckedAt: Date,
+    failureReason: String,
+    revokedAt: Date,
+  },
+  { _id: false }
+);
+
+const verificationHistorySchema = new Schema(
+  {
+    id: { type: String, required: true },
+    state: {
+      type: String,
+      enum: Object.values(DocumentVerificationState),
+      required: true,
+    },
+    provider: String,
+    verifiedAt: Date,
+    expiresAt: Date,
+    attemptId: String,
+    inputHash: String,
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    reason: String,
+  },
+  { _id: false }
+);
 
 // Create the KYC schema
 const KYCSchema = new Schema<IKYC>(
@@ -116,6 +192,14 @@ const KYCSchema = new Schema<IKYC>(
         verifiedAt: Date,
         verificationData: mongoose.Schema.Types.Mixed,
         name: String,
+        verification: verificationSchema,
+        verificationHistory: {
+          type: [verificationHistorySchema],
+          validate: [
+            arrayLimit(KYC_VERIFICATION_HISTORY_LIMIT),
+            `Maximum ${KYC_VERIFICATION_HISTORY_LIMIT} verification history entries`,
+          ],
+        },
       },
       aadhaar: {
         number: String,
@@ -127,6 +211,14 @@ const KYCSchema = new Schema<IKYC>(
         },
         verifiedAt: Date,
         verificationData: mongoose.Schema.Types.Mixed,
+        verification: verificationSchema,
+        verificationHistory: {
+          type: [verificationHistorySchema],
+          validate: [
+            arrayLimit(KYC_VERIFICATION_HISTORY_LIMIT),
+            `Maximum ${KYC_VERIFICATION_HISTORY_LIMIT} verification history entries`,
+          ],
+        },
       },
       gstin: {
         number: String,
@@ -160,6 +252,14 @@ const KYCSchema = new Schema<IKYC>(
         },
         registrationDate: String,
         lastUpdated: String,
+        verification: verificationSchema,
+        verificationHistory: {
+          type: [verificationHistorySchema],
+          validate: [
+            arrayLimit(KYC_VERIFICATION_HISTORY_LIMIT),
+            `Maximum ${KYC_VERIFICATION_HISTORY_LIMIT} verification history entries`,
+          ],
+        },
       },
       bankAccount: {
         accountNumber: String,
@@ -173,6 +273,14 @@ const KYCSchema = new Schema<IKYC>(
         verifiedAt: Date,
         proofImage: String,
         verificationData: mongoose.Schema.Types.Mixed,
+        verification: verificationSchema,
+        verificationHistory: {
+          type: [verificationHistorySchema],
+          validate: [
+            arrayLimit(KYC_VERIFICATION_HISTORY_LIMIT),
+            `Maximum ${KYC_VERIFICATION_HISTORY_LIMIT} verification history entries`,
+          ],
+        },
       },
     },
     completionStatus: {

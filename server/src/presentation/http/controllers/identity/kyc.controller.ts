@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import { KYC } from '../../../../infrastructure/database/mongoose/models';
-import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
+import { KYC, KYCVerificationAttempt, User, IUser } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
@@ -14,7 +13,18 @@ import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 // Import validation schemas
-import { panSchema, aadhaarSchema, gstinSchema, bankAccountSchema, submitKYCSchema, verifyDocumentSchema } from '../../../../shared/validation/schemas';
+import { submitKYCSchema, verifyDocumentSchema, invalidateDocumentSchema } from '../../../../shared/validation/schemas';
+import { DocumentVerificationState } from '../../../../core/domain/types/document-verification-state';
+import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { KYC_DEFAULT_PROVIDER } from '../../../../shared/config/kyc.config';
+import {
+  appendVerificationHistory,
+  buildExpiryDate,
+  buildKycSnapshot,
+  buildVerifiedData,
+  createKycInputHash,
+  resolveVerificationState,
+} from '../../../../shared/utils/kyc-utils';
 
 
 /**
@@ -89,6 +99,67 @@ const findOrCreateKyc = async (userId: mongoose.Types.ObjectId, companyId: mongo
   return kyc;
 };
 
+const DOCUMENT_TYPES = ['pan', 'aadhaar', 'gstin', 'bankAccount'] as const;
+type DocumentType = typeof DOCUMENT_TYPES[number];
+
+const recordVerificationAttempt = async (params: {
+  userId: mongoose.Types.ObjectId | string;
+  companyId?: mongoose.Types.ObjectId | string;
+  documentType: DocumentType;
+  status: 'success' | 'soft_failed' | 'hard_failed' | 'error';
+  attemptId: string;
+  errorCode?: string;
+  errorMessage?: string;
+  metadata?: Record<string, unknown>;
+  req?: Request;
+}) => {
+  try {
+    await KYCVerificationAttempt.create({
+      userId: params.userId,
+      companyId: params.companyId,
+      documentType: params.documentType,
+      provider: KYC_DEFAULT_PROVIDER,
+      status: params.status,
+      attemptId: params.attemptId,
+      errorCode: params.errorCode,
+      errorMessage: params.errorMessage,
+      metadata: params.metadata,
+      ipAddress: params.req?.ip,
+      userAgent: params.req?.headers['user-agent'],
+    });
+  } catch (error) {
+    logger.warn('Failed to record KYC verification attempt', { error });
+  }
+};
+
+const isDocumentVerified = (doc: any): boolean =>
+  resolveVerificationState(doc).state === DocumentVerificationState.VERIFIED;
+
+const refreshCompletionStatus = (kyc: any, gstinRequired = false) => {
+  const panVerified = isDocumentVerified(kyc?.documents?.pan);
+  const aadhaarVerified = kyc?.documents?.aadhaar ? isDocumentVerified(kyc.documents.aadhaar) : true;
+  const bankVerified = isDocumentVerified(kyc?.documents?.bankAccount);
+  const gstinVerified = isDocumentVerified(kyc?.documents?.gstin);
+
+  kyc.completionStatus.personalKycComplete = panVerified && aadhaarVerified;
+  kyc.completionStatus.bankDetailsComplete = bankVerified;
+  kyc.completionStatus.companyInfoComplete = gstinRequired ? gstinVerified : true;
+};
+
+const maybeSetSubmittedState = (kyc: any) => {
+  const allComplete =
+    kyc.completionStatus.personalKycComplete &&
+    kyc.completionStatus.companyInfoComplete &&
+    kyc.completionStatus.bankDetailsComplete &&
+    kyc.completionStatus.agreementComplete;
+
+  if (allComplete) {
+    kyc.state = KYCState.SUBMITTED;
+    kyc.status = 'pending';
+    kyc.submittedAt = new Date();
+  }
+};
+
 /**
  * Submit KYC documents
  * @route POST /kyc
@@ -104,65 +175,68 @@ export const submitKYC = async (req: Request, res: Response, next: NextFunction)
     }
 
     const validatedData = submitKYCSchema.parse(req.body);
-
-    // Check if KYC already exists for this user
-    let kyc = await KYC.findOne({ userId: req.user._id });
-
-    if (kyc) {
-      // Update existing KYC
-      const updateData: any = {};
-
-      if (validatedData.pan) {
-        updateData['documents.pan'] = {
-          ...validatedData.pan,
-          verified: false,
-        };
-      }
-
-      if (validatedData.aadhaar) {
-        updateData['documents.aadhaar'] = {
-          ...validatedData.aadhaar,
-          verified: false,
-        };
-      }
-
-      if (validatedData.gstin) {
-        updateData['documents.gstin'] = {
-          ...validatedData.gstin,
-          verified: false,
-        };
-      }
-
-      if (validatedData.bankAccount) {
-        updateData['documents.bankAccount'] = {
-          ...validatedData.bankAccount,
-          verified: false,
-        };
-      }
-
-      // Set status to pending if it was rejected before
-      if (kyc.status === 'rejected') {
-        updateData.status = 'pending';
-        updateData.rejectionReason = undefined;
-      }
-
-      kyc = await KYC.findByIdAndUpdate(kyc._id, { $set: updateData }, { new: true });
-    } else {
-      // Create new KYC
-      kyc = new KYC({
-        userId: req.user._id,
-        companyId: req.user.companyId,
-        status: 'pending',
-        documents: {
-          ...(validatedData.pan && { pan: { ...validatedData.pan, verified: false } }),
-          ...(validatedData.aadhaar && { aadhaar: { ...validatedData.aadhaar, verified: false } }),
-          ...(validatedData.gstin && { gstin: { ...validatedData.gstin, verified: false } }),
-          ...(validatedData.bankAccount && { bankAccount: { ...validatedData.bankAccount, verified: false } }),
-        },
-      });
-
-      await kyc.save();
+    if (!validatedData.pan) {
+      throw new ValidationError('PAN is required');
     }
+
+    if (!validatedData.bankAccount) {
+      throw new ValidationError('Bank account details are required');
+    }
+
+    const kyc = await findOrCreateKyc(
+      req.user._id as any,
+      req.user.companyId as any
+    );
+
+    const ensureVerifiedMatch = (documentType: DocumentType, input: Record<string, string>, label: string) => {
+      const doc = (kyc.documents as any)?.[documentType];
+      const { state } = resolveVerificationState(doc);
+
+      if (state !== DocumentVerificationState.VERIFIED) {
+        throw new ConflictError(`${label} must be verified before submission`, ErrorCode.RES_KYC_CONFLICT);
+      }
+
+      const expectedHash = doc?.verification?.inputHash;
+      const inputHash = createKycInputHash(documentType, input);
+
+      if (!expectedHash || expectedHash !== inputHash) {
+        throw new ConflictError(`${label} does not match verified data. Please re-verify.`, ErrorCode.RES_KYC_CONFLICT);
+      }
+    };
+
+    ensureVerifiedMatch('pan', { pan: validatedData.pan }, 'PAN');
+
+    const bankIfsc = validatedData.bankAccount.ifsc || validatedData.bankAccount.ifscCode || '';
+    if (!bankIfsc) {
+      throw new ValidationError('IFSC code is required');
+    }
+    ensureVerifiedMatch(
+      'bankAccount',
+      {
+        accountNumber: validatedData.bankAccount.accountNumber,
+        ifsc: bankIfsc,
+      },
+      'Bank account'
+    );
+
+    if (validatedData.gstin) {
+      ensureVerifiedMatch('gstin', { gstin: validatedData.gstin }, 'GSTIN');
+    }
+
+    if (validatedData.aadhaar) {
+      ensureVerifiedMatch('aadhaar', { aadhaar: validatedData.aadhaar }, 'Aadhaar');
+    }
+
+    if (kyc.status === 'rejected') {
+      kyc.status = 'pending';
+      kyc.rejectionReason = undefined;
+      kyc.state = KYCState.ACTION_REQUIRED;
+    }
+
+    refreshCompletionStatus(kyc, Boolean(validatedData.gstin));
+    maybeSetSubmittedState(kyc);
+
+    await kyc.save();
 
     await createAuditLog(
       req.user._id,
@@ -213,7 +287,47 @@ export const getKYC = async (req: Request, res: Response, next: NextFunction): P
       throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
     }
 
-    sendSuccess(res, { kyc }, 'KYC retrieved successfully');
+    const now = new Date();
+    let expiredUpdated = false;
+
+    DOCUMENT_TYPES.forEach((documentType) => {
+      const doc = (kyc.documents as any)?.[documentType];
+      const verification = doc?.verification;
+
+      if (
+        verification?.state === DocumentVerificationState.VERIFIED &&
+        verification.expiresAt &&
+        verification.expiresAt.getTime() <= now.getTime()
+      ) {
+        verification.state = DocumentVerificationState.EXPIRED;
+        doc.verified = false;
+        verification.lastCheckedAt = now;
+        appendVerificationHistory(doc, {
+          id: verification.attemptId || new mongoose.Types.ObjectId().toString(),
+          state: DocumentVerificationState.EXPIRED,
+          provider: verification.provider,
+          verifiedAt: verification.verifiedAt,
+          expiresAt: verification.expiresAt,
+          attemptId: verification.attemptId,
+          inputHash: verification.inputHash,
+          createdAt: now,
+          reason: 'auto_expired',
+        });
+        expiredUpdated = true;
+      }
+    });
+
+    if (expiredUpdated) {
+      kyc.state = KYCState.EXPIRED;
+      kyc.status = 'pending';
+      refreshCompletionStatus(kyc, Boolean(kyc.documents?.gstin?.number));
+      await kyc.save();
+    }
+
+    const snapshot = buildKycSnapshot(kyc, now);
+    const verifiedData = buildVerifiedData(kyc);
+
+    sendSuccess(res, { kyc, snapshot, verifiedData }, 'KYC retrieved successfully');
   } catch (error) {
     logger.error('Error fetching KYC:', error);
     next(error);
@@ -242,45 +356,68 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
       throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
     }
 
-    // Update the document verification status
-    const updateData: any = {};
-    const documentPath = `documents.${validatedData.documentType}`;
+    const now = new Date();
+    const docKey = validatedData.documentType as DocumentType;
+    const doc = (kyc.documents as any)[docKey];
 
-    if (!kyc.documents[validatedData.documentType]) {
+    if (!doc) {
       throw new ValidationError(`${validatedData.documentType} document not found`);
     }
 
-    updateData[`${documentPath}.verified`] = validatedData.verified;
-    if (validatedData.verified) {
-      updateData[`${documentPath}.verifiedAt`] = new Date();
+    if (!doc.verification) {
+      doc.verification = {
+        state: DocumentVerificationState.NOT_STARTED,
+      };
     }
+
+    if (validatedData.verified) {
+      doc.verified = true;
+      doc.verifiedAt = now;
+      doc.verification.state = DocumentVerificationState.VERIFIED;
+      doc.verification.verifiedAt = now;
+      doc.verification.provider = doc.verification.provider || 'manual';
+      doc.verification.expiresAt = doc.verification.expiresAt || buildExpiryDate(docKey, now) || undefined;
+      doc.verification.lastCheckedAt = now;
+      doc.verification.failureReason = undefined;
+    } else {
+      doc.verified = false;
+      doc.verification.state = DocumentVerificationState.HARD_FAILED;
+      doc.verification.provider = doc.verification.provider || 'manual';
+      doc.verification.lastCheckedAt = now;
+      doc.verification.failureReason = validatedData.notes;
+    }
+
+    appendVerificationHistory(doc, {
+      id: doc.verification.attemptId || new mongoose.Types.ObjectId().toString(),
+      state: doc.verification.state,
+      provider: doc.verification.provider,
+      verifiedAt: doc.verification.verifiedAt,
+      expiresAt: doc.verification.expiresAt,
+      attemptId: doc.verification.attemptId,
+      inputHash: doc.verification.inputHash,
+      createdAt: now,
+      reason: validatedData.notes,
+    });
 
     if (validatedData.notes) {
-      updateData.verificationNotes = validatedData.notes;
+      kyc.verificationNotes = validatedData.notes;
     }
 
-    // Check if all documents are verified
-    const allDocumentsVerified = Object.keys(kyc.documents)
-      .filter(key => {
-        return ['pan', 'aadhaar', 'gstin', 'bankAccount'].includes(key) &&
-          kyc.documents[key as 'pan' | 'aadhaar' | 'gstin' | 'bankAccount'] !== undefined;
-      })
-      .every(key => {
-        const docKey = key as 'pan' | 'aadhaar' | 'gstin' | 'bankAccount';
-        if (docKey === validatedData.documentType) {
-          return validatedData.verified;
-        }
-        return kyc.documents[docKey]?.verified || false;
-      });
+    // Check if all documents are verified (for those present)
+    const allDocumentsVerified = DOCUMENT_TYPES
+      .filter((type) => Boolean((kyc.documents as any)[type]))
+      .every((type) => isDocumentVerified((kyc.documents as any)[type]));
 
     if (allDocumentsVerified) {
-      updateData.status = 'verified';
+      kyc.state = KYCState.VERIFIED;
+      kyc.status = 'verified';
 
       // ✅ ONBOARDING HOOK: Update progress
       try {
         // Fix KYC Deadlock: Update user KYC status
         await User.findByIdAndUpdate(kyc.userId, {
           'kycStatus.isComplete': true,
+          'kycStatus.state': KYCState.VERIFIED,
           'kycStatus.lastUpdated': new Date()
         });
 
@@ -290,9 +427,12 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
       } catch (err) {
         logger.error('Error updating onboarding progress/user status for KYC approval:', err);
       }
+    } else if (!validatedData.verified) {
+      kyc.state = KYCState.ACTION_REQUIRED;
+      kyc.status = 'pending';
     }
 
-    const updatedKYC = await KYC.findByIdAndUpdate(kycId, { $set: updateData }, { new: true });
+    const updatedKYC = await kyc.save();
 
     await createAuditLog(
       req.user._id,
@@ -353,11 +493,22 @@ export const rejectKYC = async (req: Request, res: Response, next: NextFunction)
       {
         $set: {
           status: 'rejected',
+          state: KYCState.REJECTED,
           rejectionReason: reason,
         },
       },
       { new: true }
     );
+
+    try {
+      await User.findByIdAndUpdate(kyc.userId, {
+        'kycStatus.isComplete': false,
+        'kycStatus.state': KYCState.REJECTED,
+        'kycStatus.lastUpdated': new Date(),
+      });
+    } catch (err) {
+      logger.error('Error updating user KYC status after rejection:', err);
+    }
 
     await createAuditLog(
       req.user._id,
@@ -444,6 +595,8 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
       throw new ValidationError('Invalid PAN format');
     }
 
+    const attemptId = new mongoose.Types.ObjectId().toString();
+
     try {
       // Get the latest user data from the database to ensure we have the most up-to-date companyId
       const userDoc = await User.findById(req.user._id);
@@ -493,32 +646,91 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
         (verificationResult.data && verificationResult.data.name) ||
         name || '';
 
-      // Update PAN details
-      const panData: {
-        number: string;
-        image: string;
-        verified: boolean;
-        verificationData?: any;
-        verifiedAt?: Date;
-        name?: string;
-      } = {
-        number: pan,
-        image: '', // Required field, set to empty string if not available
-        verified: isValid,
-        verificationData: verificationResult,
-        verifiedAt: new Date(),
-        name: panName,
-      };
+      const now = new Date();
+      const inputHash = createKycInputHash('pan', { pan });
+      const existingState = resolveVerificationState(kyc.documents?.pan).state;
+      const existingHash = kyc.documents?.pan?.verification?.inputHash;
+      const sameInput = Boolean(existingHash && existingHash === inputHash);
 
-      // Update KYC document
-      kyc.documents.pan = panData;
+      const verificationState = isValid
+        ? DocumentVerificationState.VERIFIED
+        : DocumentVerificationState.SOFT_FAILED;
 
-      // Check if personal KYC is complete
-      if (kyc.documents.aadhaar && kyc.documents.aadhaar.verified && kyc.documents.pan.verified) {
-        kyc.completionStatus.personalKycComplete = true;
+      const expiresAt = isValid ? buildExpiryDate('pan', now) || undefined : undefined;
+
+      if (isValid || existingState !== DocumentVerificationState.VERIFIED || sameInput) {
+        if (!kyc.documents.pan) {
+          kyc.documents.pan = {
+            number: '',
+            image: '',
+            verified: false,
+          };
+        }
+
+        if (isValid) {
+          kyc.documents.pan.number = pan;
+          kyc.documents.pan.name = panName;
+          kyc.documents.pan.verified = true;
+          kyc.documents.pan.verifiedAt = now;
+          kyc.documents.pan.verificationData = verificationResult;
+        } else {
+          kyc.documents.pan.verified = false;
+          kyc.documents.pan.verifiedAt = undefined;
+        }
+
+        kyc.documents.pan.image = kyc.documents.pan.image || '';
+        kyc.documents.pan.verification = {
+          ...(kyc.documents.pan.verification || {}),
+          state: verificationState,
+          provider: KYC_DEFAULT_PROVIDER,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt: expiresAt,
+          attemptId,
+          inputHash,
+          lastCheckedAt: now,
+          failureReason: isValid ? undefined : 'verification_failed',
+        };
+
+        appendVerificationHistory(kyc.documents.pan, {
+          id: attemptId,
+          state: verificationState,
+          provider: KYC_DEFAULT_PROVIDER,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+          inputHash,
+          createdAt: now,
+          reason: isValid ? undefined : 'verification_failed',
+        });
+      }
+
+      kyc.completionStatus.personalKycComplete =
+        isDocumentVerified(kyc.documents.pan) &&
+        (kyc.documents.aadhaar ? isDocumentVerified(kyc.documents.aadhaar) : true);
+
+      if (!isValid && kyc.state === KYCState.VERIFIED) {
+        kyc.state = KYCState.ACTION_REQUIRED;
+        kyc.status = 'pending';
+        await User.findByIdAndUpdate(kyc.userId, {
+          'kycStatus.isComplete': false,
+          'kycStatus.state': KYCState.ACTION_REQUIRED,
+          'kycStatus.lastUpdated': new Date(),
+        });
       }
 
       await kyc.save();
+
+      await recordVerificationAttempt({
+        userId: user._id,
+        companyId: user.companyId,
+        documentType: 'pan',
+        status: isValid ? 'success' : 'soft_failed',
+        attemptId,
+        metadata: {
+          providerStatus: verificationResult.status,
+        },
+        req,
+      });
 
       await createAuditLog(
         user._id.toString(),
@@ -532,10 +744,26 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
 
       sendSuccess(res, {
         verified: isValid,
+        verification: {
+          state: verificationState,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+        },
         data: verificationResult.data || verificationResult,
       }, 'PAN verification completed');
     } catch (error) {
       logger.error('Error in DeepVue PAN verification:', error);
+
+      await recordVerificationAttempt({
+        userId: req.user?._id as any,
+        companyId: req.user?.companyId as any,
+        documentType: 'pan',
+        status: 'error',
+        attemptId: attemptId || new mongoose.Types.ObjectId().toString(),
+        errorMessage: error instanceof Error ? error.message : 'PAN verification error',
+        req,
+      });
 
       throw new AppError('PAN verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
@@ -567,6 +795,8 @@ export const verifyGstin = async (req: Request, res: Response, next: NextFunctio
     if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
       throw new ValidationError('Invalid GSTIN format');
     }
+
+    const attemptId = new mongoose.Types.ObjectId().toString();
 
     try {
       // Get the latest user data from the database to ensure we have the most up-to-date companyId
@@ -667,35 +897,114 @@ export const verifyGstin = async (req: Request, res: Response, next: NextFunctio
       // Log the formatted addresses for debugging
       logger.info('Formatted GSTIN addresses:', formattedAddresses);
 
-      // Update GSTIN details with enhanced information
-      kyc.documents.gstin = {
-        number: gstin,
-        verified: isValid,
-        verificationData: verificationResult,
-        verifiedAt: new Date(),
-        businessName: data.tradeName || '',
-        legalName: data.legalName || '',
-        status: data.status || '',
-        registrationType: data.registrationType || '',
-        businessType: Array.isArray(data.businessType) ? data.businessType : [],
-        addresses: formattedAddresses,
-        registrationDate: data.registrationDate || '',
-        lastUpdated: data.lastUpdated || '',
-      };
+      const now = new Date();
+      const inputHash = createKycInputHash('gstin', { gstin });
+      const existingState = resolveVerificationState(kyc.documents?.gstin).state;
+      const existingHash = kyc.documents?.gstin?.verification?.inputHash;
+      const sameInput = Boolean(existingHash && existingHash === inputHash);
+
+      const verificationState = isValid
+        ? DocumentVerificationState.VERIFIED
+        : DocumentVerificationState.SOFT_FAILED;
+
+      const expiresAt = isValid ? buildExpiryDate('gstin', now) || undefined : undefined;
+
+      if (isValid || existingState !== DocumentVerificationState.VERIFIED || sameInput) {
+        if (!kyc.documents.gstin) {
+          kyc.documents.gstin = {
+            number: '',
+            verified: false,
+          };
+        }
+
+        if (isValid) {
+          kyc.documents.gstin.number = gstin;
+          kyc.documents.gstin.verified = true;
+          kyc.documents.gstin.verifiedAt = now;
+          kyc.documents.gstin.verificationData = verificationResult;
+          kyc.documents.gstin.businessName = data.tradeName || '';
+          kyc.documents.gstin.legalName = data.legalName || '';
+          kyc.documents.gstin.status = data.status || '';
+          kyc.documents.gstin.registrationType = data.registrationType || '';
+          kyc.documents.gstin.businessType = Array.isArray(data.businessType) ? data.businessType : [];
+          kyc.documents.gstin.addresses = formattedAddresses;
+          kyc.documents.gstin.registrationDate = data.registrationDate || '';
+          kyc.documents.gstin.lastUpdated = data.lastUpdated || '';
+        } else {
+          kyc.documents.gstin.verified = false;
+          kyc.documents.gstin.verifiedAt = undefined;
+          kyc.documents.gstin.businessName = undefined;
+          kyc.documents.gstin.legalName = undefined;
+          kyc.documents.gstin.status = undefined;
+          kyc.documents.gstin.registrationType = undefined;
+          kyc.documents.gstin.businessType = [];
+          kyc.documents.gstin.addresses = [];
+          kyc.documents.gstin.registrationDate = undefined;
+          kyc.documents.gstin.lastUpdated = undefined;
+        }
+
+        kyc.documents.gstin.verification = {
+          ...(kyc.documents.gstin.verification || {}),
+          state: verificationState,
+          provider: KYC_DEFAULT_PROVIDER,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+          inputHash,
+          lastCheckedAt: now,
+          failureReason: isValid ? undefined : 'verification_failed',
+        };
+
+        appendVerificationHistory(kyc.documents.gstin, {
+          id: attemptId,
+          state: verificationState,
+          provider: KYC_DEFAULT_PROVIDER,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+          inputHash,
+          createdAt: now,
+          reason: isValid ? undefined : 'verification_failed',
+        });
+      }
+
+      const gstinDoc = kyc.documents.gstin;
 
       // Log the enhanced GSTIN information
       logger.info('Enhanced GSTIN information:', {
         gstin,
-        businessName: kyc.documents.gstin.businessName,
-        legalName: kyc.documents.gstin.legalName,
-        status: kyc.documents.gstin.status,
-        addressCount: kyc.documents.gstin.addresses?.length || 0
+        businessName: gstinDoc?.businessName,
+        legalName: gstinDoc?.legalName,
+        status: gstinDoc?.status,
+        addressCount: gstinDoc?.addresses?.length || 0
       });
 
       // Update company info completion status
-      kyc.completionStatus.companyInfoComplete = true;
+      kyc.completionStatus.companyInfoComplete = gstinDoc ? isDocumentVerified(gstinDoc) : false;
+
+      if (!isValid && kyc.state === KYCState.VERIFIED) {
+        kyc.state = KYCState.ACTION_REQUIRED;
+        kyc.status = 'pending';
+        await User.findByIdAndUpdate(kyc.userId, {
+          'kycStatus.isComplete': false,
+          'kycStatus.state': KYCState.ACTION_REQUIRED,
+          'kycStatus.lastUpdated': new Date(),
+        });
+      }
 
       await kyc.save();
+
+      await recordVerificationAttempt({
+        userId: user._id,
+        companyId: user.companyId,
+        documentType: 'gstin',
+        status: isValid ? 'success' : 'soft_failed',
+        attemptId,
+        metadata: {
+          providerStatus: verificationResult.status,
+        },
+        req,
+      });
 
       await createAuditLog(
         user._id.toString(),
@@ -711,24 +1020,40 @@ export const verifyGstin = async (req: Request, res: Response, next: NextFunctio
       const enhancedResponse = {
         message: 'GSTIN verification completed',
         verified: isValid,
+        verification: {
+          state: verificationState,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+        },
         businessInfo: {
           gstin: gstin,
-          businessName: kyc.documents.gstin.businessName,
-          legalName: kyc.documents.gstin.legalName,
-          status: kyc.documents.gstin.status,
-          registrationType: kyc.documents.gstin.registrationType,
-          businessType: kyc.documents.gstin.businessType,
+          businessName: gstinDoc?.businessName || '',
+          legalName: gstinDoc?.legalName || '',
+          status: gstinDoc?.status || '',
+          registrationType: gstinDoc?.registrationType || '',
+          businessType: gstinDoc?.businessType || [],
           addresses: formattedAddresses, // Use the formatted addresses
-          registrationDate: kyc.documents.gstin.registrationDate,
-          lastUpdated: kyc.documents.gstin.lastUpdated,
+          registrationDate: gstinDoc?.registrationDate || '',
+          lastUpdated: gstinDoc?.lastUpdated || '',
         },
         // Include the raw data for debugging or advanced use cases
         rawData: verificationResult.data || verificationResult,
       };
 
-      sendSuccess(res, enhancedResponse, 'GSTIN verification completed');
+      sendSuccess(res, enhancedResponse, 'Bank account verification completed');
     } catch (error) {
       logger.error('Error in DeepVue GSTIN verification:', error);
+
+      await recordVerificationAttempt({
+        userId: req.user?._id as any,
+        companyId: req.user?.companyId as any,
+        documentType: 'gstin',
+        status: 'error',
+        attemptId: attemptId || new mongoose.Types.ObjectId().toString(),
+        errorMessage: error instanceof Error ? error.message : 'GSTIN verification error',
+        req,
+      });
 
       throw new AppError('GSTIN verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
@@ -762,6 +1087,8 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
       throw new ValidationError('Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.');
     }
+
+    const attemptId = new mongoose.Types.ObjectId().toString();
 
     try {
       // First verify the IFSC code to get bank details
@@ -815,28 +1142,102 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       const utr = verificationResult.data?.utr || '';
       const amountDeposited = verificationResult.data?.amountDeposited || verificationResult.data?.amount_deposited || 0;
 
-      // Update bank account details with enhanced information
-      kyc.documents.bankAccount = {
-        accountNumber,
-        ifscCode: ifsc,
-        accountHolderName: holderName,
-        bankName: bankNameValue,
-        verified: isValid,
-        verificationData: {
-          ...verificationResult,
-          ifscDetails: bankDetails,
-          nameClean: holderNameClean,
-          utr,
-          amountDeposited,
-          verificationTimestamp: new Date().toISOString(),
-        },
-        verifiedAt: new Date(),
-      };
+      const now = new Date();
+      const inputHash = createKycInputHash('bankAccount', { accountNumber, ifsc });
+      const existingState = resolveVerificationState(kyc.documents?.bankAccount).state;
+      const existingHash = kyc.documents?.bankAccount?.verification?.inputHash;
+      const sameInput = Boolean(existingHash && existingHash === inputHash);
+
+      const verificationState = isValid
+        ? DocumentVerificationState.VERIFIED
+        : DocumentVerificationState.SOFT_FAILED;
+
+      const expiresAt = isValid ? buildExpiryDate('bankAccount', now) || undefined : undefined;
+
+      if (isValid || existingState !== DocumentVerificationState.VERIFIED || sameInput) {
+        if (!kyc.documents.bankAccount) {
+          kyc.documents.bankAccount = {
+            accountNumber: '',
+            ifscCode: '',
+            accountHolderName: '',
+            bankName: '',
+            verified: false,
+          };
+        }
+
+        if (isValid) {
+          kyc.documents.bankAccount.accountNumber = accountNumber;
+          kyc.documents.bankAccount.ifscCode = ifsc;
+          kyc.documents.bankAccount.accountHolderName = holderName;
+          kyc.documents.bankAccount.bankName = bankNameValue;
+          kyc.documents.bankAccount.verified = true;
+          kyc.documents.bankAccount.verifiedAt = now;
+          kyc.documents.bankAccount.verificationData = {
+            ...verificationResult,
+            ifscDetails: bankDetails,
+            nameClean: holderNameClean,
+            utr,
+            amountDeposited,
+            verificationTimestamp: now.toISOString(),
+          };
+        } else {
+          kyc.documents.bankAccount.verified = false;
+          kyc.documents.bankAccount.verifiedAt = undefined;
+          kyc.documents.bankAccount.accountHolderName = '';
+          kyc.documents.bankAccount.bankName = '';
+        }
+
+        kyc.documents.bankAccount.verification = {
+          ...(kyc.documents.bankAccount.verification || {}),
+          state: verificationState,
+          provider: KYC_DEFAULT_PROVIDER,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+          inputHash,
+          lastCheckedAt: now,
+          failureReason: isValid ? undefined : 'verification_failed',
+        };
+
+        appendVerificationHistory(kyc.documents.bankAccount, {
+          id: attemptId,
+          state: verificationState,
+          provider: KYC_DEFAULT_PROVIDER,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+          inputHash,
+          createdAt: now,
+          reason: isValid ? undefined : 'verification_failed',
+        });
+      }
 
       // Update bank details completion status
-      kyc.completionStatus.bankDetailsComplete = isValid;
+      kyc.completionStatus.bankDetailsComplete = isDocumentVerified(kyc.documents.bankAccount);
+
+      if (!isValid && kyc.state === KYCState.VERIFIED) {
+        kyc.state = KYCState.ACTION_REQUIRED;
+        kyc.status = 'pending';
+        await User.findByIdAndUpdate(kyc.userId, {
+          'kycStatus.isComplete': false,
+          'kycStatus.state': KYCState.ACTION_REQUIRED,
+          'kycStatus.lastUpdated': new Date(),
+        });
+      }
 
       await kyc.save();
+
+      await recordVerificationAttempt({
+        userId: user._id,
+        companyId: user.companyId,
+        documentType: 'bankAccount',
+        status: isValid ? 'success' : 'soft_failed',
+        attemptId,
+        metadata: {
+          providerStatus: verificationResult.status,
+        },
+        req,
+      });
 
       // Create audit log
       await createAuditLog(
@@ -859,6 +1260,12 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       const enhancedResponse = {
         message: isValid ? 'Bank account verification completed successfully' : 'Bank account verification failed',
         verified: isValid,
+        verification: {
+          state: verificationState,
+          verifiedAt: isValid ? now : undefined,
+          expiresAt,
+          attemptId,
+        },
         data: {
           accountNumber: `****${accountNumber.slice(-4)}`, // Mask account number for security
           ifsc,
@@ -875,6 +1282,15 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       sendSuccess(res, enhancedResponse, 'GSTIN verification completed');
     } catch (error) {
       logger.error('Error in DeepVue bank account verification:', error);
+      await recordVerificationAttempt({
+        userId: user?._id,
+        companyId: user?.companyId,
+        documentType: 'bankAccount',
+        status: 'error',
+        attemptId: attemptId || new mongoose.Types.ObjectId().toString(),
+        errorMessage: error instanceof Error ? error.message : 'Bank verification error',
+        req,
+      });
       throw new AppError('Bank account verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
   } catch (error) {
@@ -946,6 +1362,7 @@ export const updateAgreement = async (req: Request, res: Response, next: NextFun
       await withTransaction(async (session) => {
         // ✅ FEATURE 4: Require admin approval instead of auto-verification
         kyc.status = 'pending'; // Changed from 'verified' to 'pending'
+        kyc.state = KYCState.SUBMITTED;
         kyc.submittedAt = new Date(); // Track submission time
         await kyc.save({ session });
 
@@ -969,6 +1386,116 @@ export const updateAgreement = async (req: Request, res: Response, next: NextFun
     sendSuccess(res, { kycComplete: allComplete }, 'Agreement status updated');
   } catch (error) {
     logger.error('Error updating agreement status:', error);
+    next(error);
+  }
+};
+
+/**
+ * Invalidate a verified KYC document (user-initiated re-verification)
+ * @route POST /kyc/invalidate
+ */
+export const invalidateKYCDocument = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = await validateUserAndCompany(req, res);
+    if (!user) return;
+
+    const { documentType, reason } = invalidateDocumentSchema.parse(req.body);
+
+    const kyc = await KYC.findOne({ userId: user._id });
+    if (!kyc) {
+      throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
+    }
+
+    const doc = (kyc.documents as any)[documentType];
+    if (!doc) {
+      throw new ValidationError(`${documentType} document not found`);
+    }
+
+    const now = new Date();
+
+    // Clear sensitive fields to avoid retaining unverified data
+    if (documentType === 'pan') {
+      doc.number = '';
+      doc.name = undefined;
+      doc.verificationData = undefined;
+    }
+    if (documentType === 'gstin') {
+      doc.number = '';
+      doc.businessName = undefined;
+      doc.legalName = undefined;
+      doc.status = undefined;
+      doc.registrationType = undefined;
+      doc.businessType = [];
+      doc.addresses = [];
+      doc.registrationDate = undefined;
+      doc.lastUpdated = undefined;
+      doc.verificationData = undefined;
+    }
+    if (documentType === 'bankAccount') {
+      doc.accountNumber = '';
+      doc.ifscCode = '';
+      doc.accountHolderName = '';
+      doc.bankName = '';
+      doc.verificationData = undefined;
+    }
+    if (documentType === 'aadhaar') {
+      doc.number = '';
+      doc.frontImage = '';
+      doc.backImage = '';
+      doc.verificationData = undefined;
+    }
+
+    doc.verified = false;
+    doc.verifiedAt = undefined;
+    doc.verification = {
+      ...(doc.verification || {}),
+      state: DocumentVerificationState.REVOKED,
+      revokedAt: now,
+      lastCheckedAt: now,
+      failureReason: reason,
+    };
+
+    appendVerificationHistory(doc, {
+      id: new mongoose.Types.ObjectId().toString(),
+      state: DocumentVerificationState.REVOKED,
+      provider: doc.verification?.provider,
+      verifiedAt: doc.verification?.verifiedAt,
+      expiresAt: doc.verification?.expiresAt,
+      attemptId: doc.verification?.attemptId,
+      inputHash: doc.verification?.inputHash,
+      createdAt: now,
+      reason: reason || 'user_invalidated',
+    });
+
+    refreshCompletionStatus(kyc, Boolean(kyc.documents?.gstin?.number));
+    kyc.state = KYCState.ACTION_REQUIRED;
+    kyc.status = 'pending';
+
+    await kyc.save();
+
+    await User.findByIdAndUpdate(kyc.userId, {
+      'kycStatus.isComplete': false,
+      'kycStatus.state': KYCState.ACTION_REQUIRED,
+      'kycStatus.lastUpdated': new Date(),
+    });
+
+    await createAuditLog(
+      user._id.toString(),
+      user.companyId?.toString() || '',
+      'update',
+      'kyc',
+      getDocumentIdString(kyc),
+      {
+        message: 'KYC document invalidated',
+        documentType,
+        reason: reason || 'user_invalidated',
+      },
+      req
+    );
+
+    sendSuccess(res, { kyc }, 'KYC document invalidated');
+  } catch (error) {
+    logger.error('Error invalidating KYC document:', error);
     next(error);
   }
 };
@@ -1008,79 +1535,163 @@ export const verifyAadhaar = async (req: Request, res: Response, next: NextFunct
       throw new AuthenticationError('User is not associated with any company. Please create a company first.', ErrorCode.AUTH_REQUIRED);
     }
 
+    const attemptId = new mongoose.Types.ObjectId().toString();
+
     // Call DeepVue API for basic Aadhaar verification
-    const verificationResult = await deepvueService.verifyAadhaar(aadhaar);
+    let verificationResult: any;
+    try {
+      verificationResult = await deepvueService.verifyAadhaar(aadhaar);
+    } catch (error) {
+      await recordVerificationAttempt({
+        userId: user._id,
+        companyId: user.companyId,
+        documentType: 'aadhaar',
+        status: 'error',
+        attemptId,
+        errorMessage: error instanceof Error ? error.message : 'Aadhaar verification error',
+        req,
+      });
 
-    // Check if the response indicates success
-    if (verificationResult.status === 'success' || (verificationResult.code === 200 && verificationResult.data)) {
-      // Find existing KYC record or create a new one
-      let kyc = await KYC.findOne({ userId: user._id });
+      throw new AppError('Aadhaar verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
+    }
 
-      if (!kyc) {
-        kyc = new KYC({
-          userId: user._id,
-          companyId: user.companyId,
-          status: 'pending',
-          documents: {},
-          completionStatus: {
-            personalKycComplete: false,
-            companyInfoComplete: false,
-            bankDetailsComplete: false,
-            agreementComplete: false,
-          },
-        });
-      }
+    const isValid = verificationResult.status === 'success' || (verificationResult.code === 200 && verificationResult.data);
 
-      // Update Aadhaar details
+    // Find existing KYC record or create a new one
+    let kyc = await KYC.findOne({ userId: user._id });
+
+    if (!kyc) {
+      kyc = new KYC({
+        userId: user._id,
+        companyId: user.companyId,
+        status: 'pending',
+        documents: {},
+        completionStatus: {
+          personalKycComplete: false,
+          companyInfoComplete: false,
+          bankDetailsComplete: false,
+          agreementComplete: false,
+        },
+      });
+    }
+
+    const now = new Date();
+    const inputHash = createKycInputHash('aadhaar', { aadhaar });
+    const existingState = resolveVerificationState(kyc.documents?.aadhaar).state;
+    const existingHash = kyc.documents?.aadhaar?.verification?.inputHash;
+    const sameInput = Boolean(existingHash && existingHash === inputHash);
+
+    const verificationState = isValid
+      ? DocumentVerificationState.VERIFIED
+      : DocumentVerificationState.SOFT_FAILED;
+
+    const expiresAt = isValid ? buildExpiryDate('aadhaar', now) || undefined : undefined;
+
+    if (isValid || existingState !== DocumentVerificationState.VERIFIED || sameInput) {
       if (!kyc.documents.aadhaar) {
         kyc.documents.aadhaar = {
-          number: aadhaar,
-          verified: true,
+          number: '',
+          verified: false,
           frontImage: '',
           backImage: '',
-          verifiedAt: new Date()
         };
-      } else {
+      }
+
+      if (isValid) {
         kyc.documents.aadhaar.number = aadhaar;
         kyc.documents.aadhaar.verified = true;
-        kyc.documents.aadhaar.verifiedAt = new Date();
+        kyc.documents.aadhaar.verifiedAt = now;
+        kyc.documents.aadhaar.verificationData = verificationResult.data;
+      } else {
+        kyc.documents.aadhaar.verified = false;
+        kyc.documents.aadhaar.verifiedAt = undefined;
       }
 
-      // Store verification data
-      kyc.documents.aadhaar.verificationData = verificationResult.data;
-
-      // Check if personal KYC is complete
-      if (kyc.documents.pan && kyc.documents.pan.verified) {
-        kyc.completionStatus.personalKycComplete = true;
-      }
-
-      await kyc.save();
-
-      await createAuditLog(
-        user._id.toString(),
-        user.companyId?.toString() || '',
-        'verify',
-        'kyc',
-        getDocumentIdString(kyc),
-        { message: 'Aadhaar verification completed' },
-        req
-      );
-
-      // Prepare response data
-      const responseData = {
-        aadhaarNumber: aadhaar,
-        verified: true,
-        ageRange: verificationResult.data.age_range || '',
-        state: verificationResult.data.state || '',
-        gender: verificationResult.data.gender || '',
-        lastDigits: verificationResult.data.last_digits || '',
-        isMobile: verificationResult.data.is_mobile || false,
+      kyc.documents.aadhaar.verification = {
+        ...(kyc.documents.aadhaar.verification || {}),
+        state: verificationState,
+        provider: KYC_DEFAULT_PROVIDER,
+        verifiedAt: isValid ? now : undefined,
+        expiresAt,
+        attemptId,
+        inputHash,
+        lastCheckedAt: now,
+        failureReason: isValid ? undefined : 'verification_failed',
       };
 
-      sendSuccess(res, responseData, 'Aadhaar verification successful');
-    } else {
+      appendVerificationHistory(kyc.documents.aadhaar, {
+        id: attemptId,
+        state: verificationState,
+        provider: KYC_DEFAULT_PROVIDER,
+        verifiedAt: isValid ? now : undefined,
+        expiresAt,
+        attemptId,
+        inputHash,
+        createdAt: now,
+        reason: isValid ? undefined : 'verification_failed',
+      });
+    }
+
+    kyc.completionStatus.personalKycComplete =
+      isDocumentVerified(kyc.documents.pan) &&
+      (kyc.documents.aadhaar ? isDocumentVerified(kyc.documents.aadhaar) : true);
+
+    if (!isValid && kyc.state === KYCState.VERIFIED) {
+      kyc.state = KYCState.ACTION_REQUIRED;
+      kyc.status = 'pending';
+      await User.findByIdAndUpdate(kyc.userId, {
+        'kycStatus.isComplete': false,
+        'kycStatus.state': KYCState.ACTION_REQUIRED,
+        'kycStatus.lastUpdated': new Date(),
+      });
+    }
+
+    await kyc.save();
+
+    await recordVerificationAttempt({
+      userId: user._id,
+      companyId: user.companyId,
+      documentType: 'aadhaar',
+      status: isValid ? 'success' : 'soft_failed',
+      attemptId,
+      metadata: {
+        providerStatus: verificationResult.status,
+      },
+      req,
+    });
+
+    if (!isValid) {
       throw new AppError(verificationResult.message || 'Failed to verify Aadhaar', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
+
+    await createAuditLog(
+      user._id.toString(),
+      user.companyId?.toString() || '',
+      'verify',
+      'kyc',
+      getDocumentIdString(kyc),
+      { message: 'Aadhaar verification completed' },
+      req
+    );
+
+    // Prepare response data
+    const responseData = {
+      aadhaarNumber: aadhaar,
+      verified: true,
+      verification: {
+        state: verificationState,
+        verifiedAt: now,
+        expiresAt,
+        attemptId,
+      },
+      ageRange: verificationResult.data.age_range || '',
+      state: verificationResult.data.state || '',
+      gender: verificationResult.data.gender || '',
+      lastDigits: verificationResult.data.last_digits || '',
+      isMobile: verificationResult.data.is_mobile || false,
+    };
+
+    sendSuccess(res, responseData, 'Aadhaar verification successful');
   } catch (error) {
     logger.error('Error verifying Aadhaar:', error);
     next(error);
@@ -1155,4 +1766,5 @@ export default {
   verifyBankAccount,
   verifyIfscCode,
   updateAgreement,
+  invalidateKYCDocument,
 };

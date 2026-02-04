@@ -75,6 +75,7 @@ import {
 } from './velocity.types';
 import { VelocityAuth } from './velocity.auth';
 import { VelocityMapper } from './velocity.mapper';
+import { VELOCITY_CARRIER_IDS, isDeprecatedVelocityId } from './velocity-carrier-ids';
 import { DynamicPricingService } from '../../../../core/application/services/pricing/dynamic-pricing.service';
 import {
   handleVelocityError,
@@ -235,6 +236,11 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       // ✅ Add idempotency key if provided
       idempotency_key: data.idempotencyKey
     };
+
+    // Validate carrier ID if provided
+    if (velocityRequest.carrier_id) {
+      this.validateCarrierId(velocityRequest.carrier_id);
+    }
 
     // Apply rate limiting
     await VelocityRateLimiters.forwardOrder.acquire();
@@ -419,8 +425,44 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     // Map carriers to rate responses with actual pricing
     const rates: CourierRateResponse[] = [];
 
-    for (const carrier of serviceabilityData.serviceability_results) {
+    // Prioritize high-performance carriers based on Velocity Carrier IDs
+    const prioritizeCarriers = (carriers: any[]) => {
+      const priorityMap: Record<string, number> = {
+        [VELOCITY_CARRIER_IDS.DELHIVERY_STANDARD]: 100,
+        [VELOCITY_CARRIER_IDS.DELHIVERY_EXPRESS]: 95,
+        [VELOCITY_CARRIER_IDS.BLUEDART_STANDARD]: 90,
+        [VELOCITY_CARRIER_IDS.BLUEDART_AIR]: 85,
+        [VELOCITY_CARRIER_IDS.AMAZON_TRANSPORTATION]: 80,
+        [VELOCITY_CARRIER_IDS.SHADOWFAX_STANDARD]: 70,
+        [VELOCITY_CARRIER_IDS.EKART_STANDARD]: 60,
+      };
+
+      return [...carriers].sort((a, b) => {
+        const priorityA = priorityMap[a.carrier_id] || 0;
+        const priorityB = priorityMap[b.carrier_id] || 0;
+        
+        // If priorities are different, use them
+        if (priorityB !== priorityA) {
+          return priorityB - priorityA;
+        }
+        
+        // If priorities same, fallback to original order (often cheapest)
+        return 0;
+      });
+    };
+
+    const sortedCarriers = prioritizeCarriers(serviceabilityData.serviceability_results);
+
+    for (const carrier of sortedCarriers) {
       try {
+        // Log warning if carrier is deprecated
+        if (isDeprecatedVelocityId(carrier.carrier_id)) {
+          logger.warn('Received deprecated carrier ID in serviceability', {
+            carrierId: carrier.carrier_id,
+            carrierName: carrier.carrier_name
+          });
+        }
+
         const pricing = await pricingService.calculatePricing({
           companyId: this.companyId.toString(),
           fromPincode: request.origin.pincode,
@@ -718,6 +760,10 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
    * Endpoint: POST /custom/api/v1/forward-order-shipment
    */
   async assignCourier(shipmentId: string, carrierId?: string): Promise<CourierShipmentResponse> {
+    if (carrierId) {
+      this.validateCarrierId(carrierId);
+    }
+
     const request: VelocityAssignCourierRequest = {
       shipment_id: shipmentId,
       carrier_id: carrierId
@@ -1471,5 +1517,17 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
    */
   getProviderCode(): string {
     return 'velocity-shipfast';
+  }
+
+  /**
+   * Internal validation for carrier IDs
+   */
+  private validateCarrierId(carrierId: string): void {
+    if (isDeprecatedVelocityId(carrierId)) {
+      logger.warn('Using deprecated Velocity carrier ID', {
+        carrierId,
+        recommendation: 'Update to latest carrier IDs from documentation'
+      });
+    }
   }
 }

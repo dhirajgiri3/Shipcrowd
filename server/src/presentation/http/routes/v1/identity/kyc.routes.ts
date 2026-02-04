@@ -117,6 +117,13 @@ router.post('/verify-ifsc', authenticate, csrfProtection,
 router.post('/agreement', authenticate, csrfProtection, wrapController(kycController.updateAgreement));
 
 /**
+ * @route POST /kyc/invalidate
+ * @desc Invalidate a verified KYC document (re-verification)
+ * @access Private
+ */
+router.post('/invalidate', authenticate, csrfProtection, wrapController(kycController.invalidateKYCDocument));
+
+/**
  * @route GET /kyc/test-deepvue
  * @desc Test DeepVue API connection
  * @access Private (Admin)

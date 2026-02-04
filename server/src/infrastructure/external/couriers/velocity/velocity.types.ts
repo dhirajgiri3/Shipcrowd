@@ -71,6 +71,7 @@ export interface VelocityForwardOrderRequest {
   warehouse_id: string;
   vendor_details?: VelocityVendorDetails;
   idempotency_key?: string;               // Optional idempotency key
+  carrier_id?: string;                    // Optional carrier selection
 }
 
 export interface VelocityShipmentResponse {

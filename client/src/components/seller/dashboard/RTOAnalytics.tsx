@@ -77,10 +77,12 @@ const RTOAnalytics = memo(function RTOAnalytics({
     const isImproving = rtoData.summary.change < 0;
     const isBetterThanAverage = rtoData.summary.currentRate < rtoData.summary.industryAverage;
 
-    // Find best and worst courier
-    const sortedCouriers = [...rtoData.byCourier].sort((a, b) => a.rate - b.rate);
-    const bestCourier = sortedCouriers[0];
-    const worstCourier = sortedCouriers[sortedCouriers.length - 1];
+    // Find best and worst courier - safe array operations
+    const sortedCouriers = rtoData.byCourier && Array.isArray(rtoData.byCourier) && rtoData.byCourier.length > 0
+        ? [...rtoData.byCourier].sort((a, b) => a.rate - b.rate)
+        : [];
+    const bestCourier = sortedCouriers[0] || null;
+    const worstCourier = sortedCouriers.length > 0 ? sortedCouriers[sortedCouriers.length - 1] : null;
 
     return (
         <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden">

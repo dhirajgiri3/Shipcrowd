@@ -10,6 +10,7 @@ declare global {
                 isEmailVerified?: boolean;
                 kycStatus?: {
                     isComplete: boolean;
+                    state?: string;
                     lastUpdated?: Date;
                 };
                 teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';

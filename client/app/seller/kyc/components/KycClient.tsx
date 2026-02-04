@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { showSuccessToast } from '@/src/lib/error';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import {
     User,
     Building2,
@@ -21,10 +21,12 @@ import {
     XCircle,
     ShieldCheck,
     Briefcase,
-    ChevronRight
+    ChevronRight,
+    AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { kycApi } from "@/src/core/api";
+import type { DocumentVerificationState } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/lib/utils';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
@@ -40,10 +42,12 @@ const kycSteps = [
 ];
 
 interface VerificationStatus {
-    verified: boolean;
+    state: DocumentVerificationState;
     loading: boolean;
     error?: string;
     data?: any;
+    verifiedAt?: string | null;
+    expiresAt?: string | null;
 }
 
 export function KycClient() {
@@ -64,9 +68,9 @@ export function KycClient() {
     const [existingKYC, setExistingKYC] = useState<any>(null); // TODO: replace with proper KYC types
 
     // Verification states
-    const [panVerification, setPanVerification] = useState<VerificationStatus>({ verified: false, loading: false });
-    const [bankVerification, setBankVerification] = useState<VerificationStatus>({ verified: false, loading: false });
-    const [gstinVerification, setGstinVerification] = useState<VerificationStatus>({ verified: false, loading: false });
+    const [panVerification, setPanVerification] = useState<VerificationStatus>({ state: 'not_started', loading: false });
+    const [bankVerification, setBankVerification] = useState<VerificationStatus>({ state: 'not_started', loading: false });
+    const [gstinVerification, setGstinVerification] = useState<VerificationStatus>({ state: 'not_started', loading: false });
     const [ifscData, setIfscData] = useState<{ bank: string; branch: string } | null>(null);
 
     // Form data
@@ -84,7 +88,7 @@ export function KycClient() {
         confirmationAccepted: false,
     });
 
-    // Fetch existing KYC on mount
+    // Fetch existing KYC on mount - ONLY load verified documents for security
     useEffect(() => {
         const fetchKYC = async () => {
             if (!user) return;
@@ -93,32 +97,94 @@ export function KycClient() {
                 const response = await kycApi.getKYC();
                 if (response.kyc) {
                     setExistingKYC(response.kyc);
-                    // Pre-fill form if KYC exists
-                    const docs = response.kyc.documents || [];
-                    const panDoc = docs.find(d => d.type === 'pan');
-                    const bankDoc = docs.find(d => d.type === 'bank_account');
-                    const gstinDoc = docs.find(d => d.type === 'gstin');
+                    const snapshot = response.snapshot;
+                    const restored = response.verifiedData;
 
-                    if (panDoc?.status === 'verified') {
-                        setPanVerification({ verified: true, loading: false, data: { name: 'Verified User' } }); // Data might need to be fetched or stored differently if not in doc
-                        setFormData(prev => ({ ...prev, pan: panDoc.number }));
-                    }
-                    if (bankDoc?.status === 'verified') {
-                        setBankVerification({ verified: true, loading: false });
-                        setFormData(prev => ({ ...prev, accountNumber: bankDoc.number, confirmAccountNumber: bankDoc.number }));
-                    }
-                    if (gstinDoc?.status === 'verified') {
-                        setGstinVerification({ verified: true, loading: false });
-                        setFormData(prev => ({ ...prev, gstin: gstinDoc.number }));
+                    // ✅ BEST PRACTICE: Only restore VERIFIED documents via snapshot + verifiedData
+                    if (snapshot?.pan?.state === 'verified' && restored?.pan?.number) {
+                        setPanVerification({
+                            state: 'verified',
+                            loading: false,
+                            data: { name: restored.pan.name || 'Verified User', pan: restored.pan.number },
+                            verifiedAt: snapshot.pan.verifiedAt,
+                            expiresAt: snapshot.pan.expiresAt,
+                        });
+                        setFormData(prev => ({ ...prev, pan: restored.pan!.number }));
+                    } else if (snapshot?.pan) {
+                        setPanVerification(prev => ({
+                            ...prev,
+                            state: snapshot.pan.state,
+                            loading: false,
+                            verifiedAt: snapshot.pan.verifiedAt,
+                            expiresAt: snapshot.pan.expiresAt,
+                        }));
                     }
 
-                    if (response.kyc.agreementAccepted) {
+                    if (snapshot?.bankAccount?.state === 'verified' && restored?.bankAccount?.accountNumber) {
+                        setBankVerification({
+                            state: 'verified',
+                            loading: false,
+                            data: {
+                                accountHolderName: restored.bankAccount.accountHolderName,
+                                bankName: restored.bankAccount.bankName
+                            },
+                            verifiedAt: snapshot.bankAccount.verifiedAt,
+                            expiresAt: snapshot.bankAccount.expiresAt,
+                        });
+                        setFormData(prev => ({
+                            ...prev,
+                            accountNumber: restored.bankAccount!.accountNumber,
+                            confirmAccountNumber: restored.bankAccount!.accountNumber,
+                            ifscCode: restored.bankAccount!.ifscCode
+                        }));
+
+                        if (restored.bankAccount.bankName) {
+                            setIfscData({
+                                bank: restored.bankAccount.bankName,
+                                branch: ''
+                            });
+                        }
+                    } else if (snapshot?.bankAccount) {
+                        setBankVerification(prev => ({
+                            ...prev,
+                            state: snapshot.bankAccount.state,
+                            loading: false,
+                            verifiedAt: snapshot.bankAccount.verifiedAt,
+                            expiresAt: snapshot.bankAccount.expiresAt,
+                        }));
+                    }
+
+                    if (snapshot?.gstin?.state === 'verified' && restored?.gstin?.number) {
+                        setGstinVerification({
+                            state: 'verified',
+                            loading: false,
+                            data: {
+                                businessName: restored.gstin.businessName || '',
+                                gstin: restored.gstin.number,
+                                status: restored.gstin.status || ''
+                            },
+                            verifiedAt: snapshot.gstin.verifiedAt,
+                            expiresAt: snapshot.gstin.expiresAt,
+                        });
+                        setFormData(prev => ({ ...prev, gstin: restored.gstin!.number }));
+                    } else if (snapshot?.gstin) {
+                        setGstinVerification(prev => ({
+                            ...prev,
+                            state: snapshot.gstin.state,
+                            loading: false,
+                            verifiedAt: snapshot.gstin.verifiedAt,
+                            expiresAt: snapshot.gstin.expiresAt,
+                        }));
+                    }
+
+                    // Load agreement status
+                    if (response.kyc.completionStatus?.agreementComplete) {
                         setFormData(prev => ({ ...prev, agreementAccepted: true, confirmationAccepted: true }));
                     }
                 }
             } catch (err) {
-                // No existing KYC, that's fine
-                console.error("Error fetching KYC:", err);
+                // No existing KYC, that's fine - 404 is expected for users who haven't completed KYC
+                console.log("No existing KYC record found (expected for new users)");
             } finally {
                 setIsLoading(false);
             }
@@ -139,31 +205,41 @@ export function KycClient() {
     // PAN Verification
     const verifyPAN = useCallback(async () => {
         if (!isValidPAN(formData.pan) || formData.pan.length !== 10) {
-            setPanVerification({ verified: false, loading: false, error: 'Invalid PAN format' });
+            setPanVerification({ state: 'soft_failed', loading: false, error: 'Invalid PAN format' });
             return;
         }
 
-        setPanVerification({ verified: false, loading: true });
+        setPanVerification({ state: 'pending_provider', loading: true });
 
         try {
-            const response = await kycApi.verifyPAN({ panNumber: formData.pan });
-            if (response.verified) {
+            const response = await kycApi.verifyPAN({ pan: formData.pan });
+            const isVerified = response.data?.verified;
+            const panData = response.data?.data;
+            const verificationState = response.data?.verification?.state || (isVerified ? 'verified' : 'soft_failed');
+            
+            if (isVerified && panData) {
                 setPanVerification({
-                    verified: true,
+                    state: verificationState,
                     loading: false,
-                    data: response.data
+                    data: { 
+                        name: panData.nameClean || panData.name || '',
+                        pan: panData.pan 
+                    },
+                    verifiedAt: response.data?.verification?.verifiedAt,
+                    expiresAt: response.data?.verification?.expiresAt,
                 });
                 showSuccessToast('PAN verified successfully!');
             } else {
                 setPanVerification({
-                    verified: false,
+                    state: verificationState,
                     loading: false,
                     error: response.message || 'PAN verification failed'
                 });
             }
         } catch (err: any) {
+            handleApiError(err, 'PAN verification failed');
             setPanVerification({
-                verified: false,
+                state: 'soft_failed',
                 loading: false,
                 error: err.message || 'Verification failed'
             });
@@ -179,8 +255,13 @@ export function KycClient() {
 
         try {
             const response = await kycApi.verifyIFSC(formData.ifscCode);
-            if (response.success && response.data) {
-                setIfscData({ bank: response.data.bank, branch: response.data.branch });
+            // Backend returns success in root or checks data validity
+            const isValid = response.success !== false && response.data;
+            if (isValid && response.data) {
+                setIfscData({ 
+                    bank: response.data.bankName || response.data.bank || '', 
+                    branch: response.data.branch || '' 
+                });
             } else {
                 setIfscData(null);
             }
@@ -193,81 +274,154 @@ export function KycClient() {
     // Bank Verification
     const verifyBank = useCallback(async () => {
         if (!isValidBankAccount(formData.accountNumber) || !isValidIFSC(formData.ifscCode)) {
-            setBankVerification({ verified: false, loading: false, error: 'Invalid bank details' });
+            setBankVerification({ state: 'soft_failed', loading: false, error: 'Invalid bank details' });
             return;
         }
 
         if (formData.accountNumber !== formData.confirmAccountNumber) {
-            setBankVerification({ verified: false, loading: false, error: 'Account numbers do not match' });
+            setBankVerification({ state: 'soft_failed', loading: false, error: 'Account numbers do not match' });
             return;
         }
 
-        setBankVerification({ verified: false, loading: true });
+        setBankVerification({ state: 'pending_provider', loading: true });
 
         try {
             const response = await kycApi.verifyBankAccount({
                 accountNumber: formData.accountNumber,
-                ifscCode: formData.ifscCode
+                ifsc: formData.ifscCode
             });
 
-            if (response.verified) {
+            const isVerified = response.data?.verified;
+            const bankData = response.data?.data;
+            const verificationState = response.data?.verification?.state || (isVerified ? 'verified' : 'soft_failed');
+
+            if (isVerified && bankData) {
                 setBankVerification({
-                    verified: true,
+                    state: verificationState,
                     loading: false,
-                    data: response.data
+                    data: {
+                        accountHolderName: bankData.accountHolderNameClean || bankData.accountHolderName || '',
+                        bankName: bankData.bankName || ''
+                    },
+                    verifiedAt: response.data?.verification?.verifiedAt,
+                    expiresAt: response.data?.verification?.expiresAt,
                 });
+                
+                // ✅ Auto-fill bank details from verification response
+                if (bankData.bankDetails) {
+                    setIfscData({
+                        bank: bankData.bankName || bankData.bankDetails.bankName || '',
+                        branch: bankData.bankDetails.branch || ''
+                    });
+                } else if (bankData.bankName) {
+                    setIfscData(prev => ({
+                        bank: bankData.bankName || '',
+                        branch: prev?.branch || ''
+                    }));
+                }
+
+                // Fallback: if provider didn't return bank details, resolve via IFSC lookup
+                const hasBankName = Boolean(bankData.bankName || bankData.bankDetails?.bankName || ifscData?.bank);
+                const hasBranch = Boolean(bankData.bankDetails?.branch || ifscData?.branch);
+                if (!hasBankName || !hasBranch) {
+                    await lookupIFSC();
+                }
+                
                 showSuccessToast('Bank account verified successfully!');
             } else {
                 setBankVerification({
-                    verified: false,
+                    state: verificationState,
                     loading: false,
                     error: response.message || 'Bank verification failed'
                 });
             }
         } catch (err: any) {
+            handleApiError(err, 'Bank verification failed');
             setBankVerification({
-                verified: false,
+                state: 'soft_failed',
                 loading: false,
                 error: err.message || 'Verification failed'
             });
         }
-    }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode]);
+    }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode, ifscData?.bank, ifscData?.branch, lookupIFSC]);
 
     // GSTIN Verification
     const verifyGSTIN = useCallback(async () => {
         if (!formData.gstin) return; // GSTIN is optional
 
         if (!isValidGSTIN(formData.gstin)) {
-            setGstinVerification({ verified: false, loading: false, error: 'Invalid GSTIN format' });
+            setGstinVerification({ state: 'soft_failed', loading: false, error: 'Invalid GSTIN format' });
             return;
         }
 
-        setGstinVerification({ verified: false, loading: true });
+        setGstinVerification({ state: 'pending_provider', loading: true });
 
         try {
             const response = await kycApi.verifyGSTIN({ gstin: formData.gstin });
-            if (response.verified) {
+            const isVerified = response.data?.verified;
+            const businessData = response.data?.businessInfo;
+            const verificationState = response.data?.verification?.state || (isVerified ? 'verified' : 'soft_failed');
+            
+            if (isVerified && businessData) {
                 setGstinVerification({
-                    verified: true,
+                    state: verificationState,
                     loading: false,
-                    data: response.data
+                    data: {
+                        businessName: businessData.businessName || '',
+                        gstin: businessData.gstin || formData.gstin,
+                        status: businessData.status || ''
+                    },
+                    verifiedAt: response.data?.verification?.verifiedAt,
+                    expiresAt: response.data?.verification?.expiresAt,
                 });
                 showSuccessToast('GSTIN verified!');
             } else {
                 setGstinVerification({
-                    verified: false,
+                    state: verificationState,
                     loading: false,
                     error: response.message || 'GSTIN verification failed'
                 });
             }
         } catch (err: any) {
+            handleApiError(err, 'GSTIN verification failed');
             setGstinVerification({
-                verified: false,
+                state: 'soft_failed',
                 loading: false,
                 error: err.message || 'Verification failed'
             });
         }
     }, [formData.gstin]);
+
+    const invalidateDocument = useCallback(async (documentType: 'pan' | 'bankAccount' | 'gstin') => {
+        try {
+            await kycApi.invalidateDocument(documentType);
+
+            if (documentType === 'pan') {
+                setPanVerification({ state: 'not_started', loading: false });
+                setFormData(prev => ({ ...prev, pan: '' }));
+            }
+
+            if (documentType === 'bankAccount') {
+                setBankVerification({ state: 'not_started', loading: false });
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: '',
+                    confirmAccountNumber: '',
+                    ifscCode: ''
+                }));
+                setIfscData(null);
+            }
+
+            if (documentType === 'gstin') {
+                setGstinVerification({ state: 'not_started', loading: false });
+                setFormData(prev => ({ ...prev, gstin: '' }));
+            }
+
+            showSuccessToast('Verification cleared. Please re-verify to continue.');
+        } catch (err: any) {
+            handleApiError(err, 'Failed to clear verification');
+        }
+    }, []);
 
     // Step validation
     const validateCurrentStep = (): boolean => {
@@ -278,7 +432,7 @@ export function KycClient() {
                 setError('Please enter a valid 10-character PAN');
                 return false;
             }
-            if (!panVerification.verified) {
+            if (panVerification.state !== 'verified') {
                 setError('Please verify your PAN before proceeding');
                 return false;
             }
@@ -293,7 +447,7 @@ export function KycClient() {
                 setError('Account numbers do not match');
                 return false;
             }
-            if (!bankVerification.verified) {
+            if (bankVerification.state !== 'verified') {
                 setError('Please verify your bank account before proceeding');
                 return false;
             }
@@ -301,7 +455,7 @@ export function KycClient() {
 
         if (currentStep === 3) {
             // GSTIN is optional, but if provided must be valid
-            if (formData.gstin && !gstinVerification.verified) {
+            if (formData.gstin && gstinVerification.state !== 'verified') {
                 setError('Please verify your GSTIN or leave it empty');
                 return false;
             }
@@ -335,11 +489,14 @@ export function KycClient() {
         setError(null);
 
         try {
+            // First update agreement status if not already done
+            await kycApi.updateAgreement(true);
+
             await kycApi.submitKYC({
-                panNumber: formData.pan,
-                bankDetails: {
+                pan: formData.pan,
+                bankAccount: {
                     accountNumber: formData.accountNumber,
-                    ifscCode: formData.ifscCode,
+                    ifsc: formData.ifscCode,
                     bankName: ifscData?.bank
                 },
                 gstin: formData.gstin || undefined
@@ -348,6 +505,7 @@ export function KycClient() {
             showSuccessToast('KYC submitted successfully!');
             router.push('/seller');
         } catch (err: any) {
+            handleApiError(err, 'Failed to submit KYC');
             setError(err.message || 'Failed to submit KYC');
         } finally {
             setIsSubmitting(false);
@@ -356,7 +514,7 @@ export function KycClient() {
 
     // Render verification badge - Updated design
     const VerificationBadge = ({ status }: { status: VerificationStatus }) => {
-        if (status.loading) {
+        if (status.loading || status.state === 'pending_provider') {
             return (
                 <div className="flex items-center gap-2 text-xs font-medium text-[var(--primary-blue)]">
                     <Loader variant="dots" size="sm" />
@@ -364,7 +522,7 @@ export function KycClient() {
                 </div>
             );
         }
-        if (status.verified) {
+        if (status.state === 'verified') {
             return (
                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--success)] bg-[var(--success-bg)] px-2.5 py-1 rounded-full border border-[var(--success)]/20 shadow-sm">
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -372,7 +530,23 @@ export function KycClient() {
                 </div>
             );
         }
-        if (status.error) {
+        if (status.state === 'expired') {
+            return (
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning-bg)] px-2.5 py-1 rounded-full border border-[var(--warning)]/20 shadow-sm">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Expired
+                </div>
+            );
+        }
+        if (status.state === 'revoked') {
+            return (
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--error)] bg-[var(--error-bg)] px-2.5 py-1 rounded-full border border-[var(--error)]/20 shadow-sm">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Revoked
+                </div>
+            );
+        }
+        if (status.state === 'soft_failed' || status.state === 'hard_failed') {
             return (
                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--error)] bg-[var(--error-bg)] px-2.5 py-1 rounded-full border border-[var(--error)]/20 shadow-sm">
                     <XCircle className="w-3.5 h-3.5" />
@@ -393,7 +567,7 @@ export function KycClient() {
     }
 
     // Already verified
-    if (existingKYC?.status === 'verified') {
+    if (existingKYC?.status === 'verified' || existingKYC?.state === 'verified') {
         return (
             <div className="flex items-center justify-center min-h-[70vh]">
                 <Card className="max-w-md w-full bg-[var(--bg-primary)] border-[var(--border-subtle)] shadow-xl">
@@ -419,25 +593,58 @@ export function KycClient() {
         );
     }
 
+    const overallStatus = existingKYC?.state || existingKYC?.status;
+    const statusLabel =
+        overallStatus === 'verified'
+            ? 'Verified'
+            : overallStatus === 'submitted' || overallStatus === 'under_review' || overallStatus === 'pending'
+                ? 'Under Review'
+                : overallStatus === 'action_required'
+                    ? 'Action Required'
+                    : overallStatus === 'expired'
+                        ? 'Expired'
+                        : overallStatus === 'rejected'
+                            ? 'Rejected'
+                            : 'Incomplete';
+    const statusTone =
+        overallStatus === 'action_required' || overallStatus === 'expired' || overallStatus === 'rejected'
+            ? "text-[var(--error)]"
+            : overallStatus === 'submitted' || overallStatus === 'under_review' || overallStatus === 'pending'
+                ? "text-[var(--warning)]"
+                : "text-[var(--text-primary)]";
+
     return (
         <div className="max-w-5xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Seller Onboarding</h1>
-                    <p className="text-[var(--text-secondary)] mt-1 text-lg">
-                        Complete your verification to unlock Shipcrowd
-                    </p>
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Seller Onboarding</h1>
+                        <p className="text-[var(--text-secondary)] mt-1 text-lg">
+                            Complete your verification to unlock Shipcrowd
+                        </p>
+                    </div>
+                    <div className="px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] backdrop-blur-md">
+                        <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Status: </span>
+                        <span className={cn(
+                            "text-xs font-bold uppercase tracking-wider ml-1",
+                            statusTone
+                        )}>
+                            {statusLabel}
+                        </span>
+                    </div>
                 </div>
-                <div className="px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] backdrop-blur-md">
-                    <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Status: </span>
-                    <span className={cn(
-                        "text-xs font-bold uppercase tracking-wider ml-1",
-                        existingKYC?.status === 'pending' ? "text-[var(--warning)]" : "text-[var(--text-primary)]"
-                    )}>
-                        {existingKYC?.status === 'pending' ? 'Under Review' : 'Incomplete'}
-                    </span>
-                </div>
+
+                {/* Show progress banner if user has verified documents */}
+                {(panVerification.state === 'verified' || bankVerification.state === 'verified' || gstinVerification.state === 'verified') && (
+                    <Alert variant="info" className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 flex items-center justify-center">
+                        <AlertDescription className="flex items-center gap-2">
+                            <span className="text-sm text-blue-800 dark:text-blue-200">
+                                <strong>Progress Saved!</strong> Your verified documents have been restored. Continue where you left off.
+                            </span>
+                        </AlertDescription>
+                    </Alert>
+                )}
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8">
@@ -566,10 +773,10 @@ export function KycClient() {
                                                         value={formData.pan}
                                                         onChange={(e) => handleInputChange('pan', formatPAN(e.target.value))}
                                                         maxLength={10}
-                                                        disabled={panVerification.verified}
+                                                        disabled={panVerification.state === 'verified'}
                                                         className={cn(
                                                             "h-12 text-lg uppercase tracking-widest font-mono",
-                                                            panVerification.verified && "bg-[var(--success-bg)] border-[var(--success)]/30 text-[var(--success)]"
+                                                            panVerification.state === 'verified' && "bg-[var(--success-bg)] border-[var(--success)]/30 text-[var(--success)]"
                                                         )}
                                                     />
                                                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -579,17 +786,37 @@ export function KycClient() {
 
                                                 <div className="flex justify-between items-center mt-2">
                                                     <p className="text-xs text-[var(--text-muted)]">Enter your 10-digit PAN as per card</p>
-                                                    {!panVerification.verified && (
-                                                        <Button
-                                                            size="sm"
+                                                    {panVerification.state !== 'verified' ? (
+                                                        <LoadingButton
                                                             onClick={verifyPAN}
-                                                            disabled={formData.pan.length !== 10 || panVerification.loading}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
+                                                            isLoading={panVerification.loading}
+                                                            loadingText="Verifying..."
+                                                            disabled={formData.pan.length !== 10}
+                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white h-9 px-4 text-sm"
                                                         >
-                                                            {panVerification.loading ? "Verifying..." : "Verify Now"}
+                                                            Verify Now
+                                                        </LoadingButton>
+                                                    ) : (
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => invalidateDocument('pan')}
+                                                            className="h-9 px-4 text-xs"
+                                                        >
+                                                            Change PAN
                                                         </Button>
                                                     )}
                                                 </div>
+
+                                                {panVerification.error && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        className="mt-2 flex items-center gap-2 text-xs font-medium text-[var(--error)] bg-[var(--error-bg)]/50 p-2 rounded-lg border border-[var(--error)]/10"
+                                                    >
+                                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                                        {panVerification.error}
+                                                    </motion.div>
+                                                )}
 
                                                 {panVerification.data?.name && (
                                                     <motion.div
@@ -628,7 +855,7 @@ export function KycClient() {
                                                         placeholder="Enter account number"
                                                         value={formData.accountNumber}
                                                         onChange={(e) => handleInputChange('accountNumber', e.target.value.replace(/\D/g, ''))}
-                                                        disabled={bankVerification.verified}
+                                                        disabled={bankVerification.state === 'verified'}
                                                         className="h-11 bg-[var(--bg-secondary)]"
                                                     />
                                                 </div>
@@ -638,7 +865,7 @@ export function KycClient() {
                                                         placeholder="Re-enter account number"
                                                         value={formData.confirmAccountNumber}
                                                         onChange={(e) => handleInputChange('confirmAccountNumber', e.target.value.replace(/\D/g, ''))}
-                                                        disabled={bankVerification.verified}
+                                                        disabled={bankVerification.state === 'verified'}
                                                         className="h-11 bg-[var(--bg-secondary)]"
                                                     />
                                                 </div>
@@ -656,7 +883,7 @@ export function KycClient() {
                                                             }}
                                                             onBlur={lookupIFSC}
                                                             maxLength={11}
-                                                            disabled={bankVerification.verified}
+                                                            disabled={bankVerification.state === 'verified'}
                                                             className="h-11 uppercase font-mono"
                                                         />
                                                         {ifscData && (
@@ -687,18 +914,28 @@ export function KycClient() {
                                             </div>
 
                                             <div className="pt-2 flex items-center gap-4">
-                                                {!bankVerification.verified && (
-                                                    <Button
+                                                {bankVerification.state !== 'verified' ? (
+                                                    <LoadingButton
                                                         onClick={verifyBank}
-                                                        disabled={!formData.accountNumber || !formData.ifscCode || bankVerification.loading}
-                                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white px-6"
+                                                        isLoading={bankVerification.loading}
+                                                        loadingText="Verifying..."
+                                                        disabled={!formData.accountNumber || !formData.ifscCode}
+                                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white px-6 h-10"
                                                     >
-                                                        {bankVerification.loading ? 'Verifying...' : 'Verify Account'}
+                                                        Verify Account
+                                                    </LoadingButton>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => invalidateDocument('bankAccount')}
+                                                        className="px-5 h-10 text-xs"
+                                                    >
+                                                        Change Account
                                                     </Button>
                                                 )}
 
                                                 <div className="flex-1">
-                                                    {bankVerification.verified && (
+                                                    {bankVerification.state === 'verified' && (
                                                         <motion.div
                                                             initial={{ opacity: 0, x: -10 }}
                                                             animate={{ opacity: 1, x: 0 }}
@@ -710,6 +947,17 @@ export function KycClient() {
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {bankVerification.error && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    className="flex items-center gap-2 text-xs font-medium text-[var(--error)] bg-[var(--error-bg)]/50 p-2 rounded-lg border border-[var(--error)]/10"
+                                                >
+                                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                                    {bankVerification.error}
+                                                </motion.div>
+                                            )}
 
                                             {bankVerification.data?.accountHolderName && (
                                                 <motion.div
@@ -738,10 +986,10 @@ export function KycClient() {
                                                         value={formData.gstin}
                                                         onChange={(e) => handleInputChange('gstin', formatGSTIN(e.target.value))}
                                                         maxLength={15}
-                                                        disabled={gstinVerification.verified}
+                                                        disabled={gstinVerification.state === 'verified'}
                                                         className={cn(
                                                             "h-12 text-lg uppercase tracking-widest font-mono",
-                                                            gstinVerification.verified && "bg-[var(--success-bg)] border-[var(--success)]/30 text-[var(--success)]"
+                                                            gstinVerification.state === 'verified' && "bg-[var(--success-bg)] border-[var(--success)]/30 text-[var(--success)]"
                                                         )}
                                                     />
                                                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -751,17 +999,37 @@ export function KycClient() {
 
                                                 <div className="flex justify-between items-center mt-2">
                                                     <p className="text-xs text-[var(--text-muted)]">15-digit Goods and Services Tax Identification Number</p>
-                                                    {!gstinVerification.verified && formData.gstin.length > 0 && (
-                                                        <Button
-                                                            size="sm"
+                                                    {gstinVerification.state !== 'verified' && formData.gstin.length > 0 ? (
+                                                        <LoadingButton
                                                             onClick={verifyGSTIN}
-                                                            disabled={formData.gstin.length !== 15 || gstinVerification.loading}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
+                                                            isLoading={gstinVerification.loading}
+                                                            loadingText="Verifying..."
+                                                            disabled={formData.gstin.length !== 15}
+                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white h-9 px-4 text-sm"
                                                         >
-                                                            {gstinVerification.loading ? "Verifying..." : "Verify Now"}
+                                                            Verify Now
+                                                        </LoadingButton>
+                                                    ) : gstinVerification.state === 'verified' ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => invalidateDocument('gstin')}
+                                                            className="h-9 px-4 text-xs"
+                                                        >
+                                                            Change GSTIN
                                                         </Button>
-                                                    )}
+                                                    ) : null}
                                                 </div>
+
+                                                {gstinVerification.error && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        className="mt-2 flex items-center gap-2 text-xs font-medium text-[var(--error)] bg-[var(--error-bg)]/50 p-2 rounded-lg border border-[var(--error)]/10"
+                                                    >
+                                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                                        {gstinVerification.error}
+                                                    </motion.div>
+                                                )}
                                             </div>
 
                                             {gstinVerification.data?.businessName && (

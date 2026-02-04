@@ -13,6 +13,7 @@ import { VelocityShipfastProvider } from '../../../src/infrastructure/external/c
 import { CourierShipmentData, CourierReverseShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
 import Warehouse from '../../../src/infrastructure/database/mongoose/models/logistics/warehouse/structure/warehouse.model';
 import { VelocityError } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
+import { VELOCITY_CARRIER_IDS } from '../../../src/infrastructure/external/couriers/velocity/velocity-carrier-ids';
 
 // Mock dependencies
 jest.mock('../../../src/infrastructure/external/couriers/velocity/velocity.auth');
@@ -153,7 +154,7 @@ describe('Velocity Split Flow APIs', () => {
                     order_id: 'ORD-12345',
                     awb_code: 'VEL123456789',
                     courier_name: 'Bluedart',
-                    courier_company_id: 'BD-001',
+                    courier_company_id: VELOCITY_CARRIER_IDS.BLUEDART_STANDARD,
                     label_url: 'https://s3.amazonaws.com/label.pdf',
                     status: 'created',
                     frwd_charges: {
@@ -165,7 +166,7 @@ describe('Velocity Split Flow APIs', () => {
                 }
             });
 
-            const result = await velocityProvider.assignCourier('VEL-SHIP-123', 'BD-001');
+            const result = await velocityProvider.assignCourier('VEL-SHIP-123', VELOCITY_CARRIER_IDS.BLUEDART_STANDARD);
 
             expect(result.trackingNumber).toBe('VEL123456789');
             expect(result.labelUrl).toBe('https://s3.amazonaws.com/label.pdf');
@@ -174,7 +175,7 @@ describe('Velocity Split Flow APIs', () => {
                 '/custom/api/v1/forward-order-shipment',
                 expect.objectContaining({
                     shipment_id: 'VEL-SHIP-123',
-                    carrier_id: 'BD-001'
+                    carrier_id: VELOCITY_CARRIER_IDS.BLUEDART_STANDARD
                 })
             );
         });
@@ -288,7 +289,7 @@ describe('Velocity Split Flow APIs', () => {
                     order_id: 'RTO-ORD-12345',
                     awb_code: 'RTO123456789',
                     courier_name: 'Bluedart',
-                    courier_company_id: 'BD-001',
+                    courier_company_id: VELOCITY_CARRIER_IDS.BLUEDART_STANDARD,
                     label_url: 'https://s3.amazonaws.com/rto-label.pdf'
                 }
             });
@@ -296,7 +297,7 @@ describe('Velocity Split Flow APIs', () => {
             const result = await (velocityProvider as any).assignReverseCourier(
                 'RTO-VEL-123',
                 mockWarehouse._id.toString(),
-                'BD-001'
+                VELOCITY_CARRIER_IDS.BLUEDART_STANDARD
             );
 
             expect(result.trackingNumber).toBe('RTO123456789');

@@ -51,6 +51,7 @@ export interface User {
   // KYC Status (required, not optional)
   kycStatus: {
     isComplete: boolean;
+    state?: string;
     lastUpdated?: string;
   };
 

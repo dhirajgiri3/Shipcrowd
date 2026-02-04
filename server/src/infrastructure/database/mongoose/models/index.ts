@@ -24,6 +24,8 @@ export { default as Company } from './organization/core/company.model';
 export * from './organization/core/company.model';
 export { default as KYC } from './organization/core/kyc.model';
 export * from './organization/core/kyc.model';
+export { default as KYCVerificationAttempt } from './organization/core/kyc-verification-attempt.model';
+export * from './organization/core/kyc-verification-attempt.model';
 export { default as TeamActivity } from './organization/teams/team-activity.model';
 export * from './organization/teams/team-activity.model';
 

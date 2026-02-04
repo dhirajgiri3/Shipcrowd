@@ -371,8 +371,8 @@ export function DashboardClient() {
     // Smart insights data - Use REAL API (Phase 5: 100% Real Data)
     const smartInsights = smartInsightsData || [];
 
-    // Order Trend Chart Data - Transform API data or use mock
-    const orderTrendChartData = (orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : []) || [];
+    // Order Trend Chart Data - Transform API data (always returns array)
+    const orderTrendChartData = orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : [];
 
     // 3. Refresh Handler
     const handleRefresh = async () => {

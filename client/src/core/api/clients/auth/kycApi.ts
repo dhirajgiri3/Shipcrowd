@@ -6,33 +6,108 @@
 import { apiClient } from '@/src/core/api/http';
 
 // Types
-export interface KYCDocument {
-    type: 'pan' | 'aadhaar' | 'gstin' | 'bank_account';
-    number: string;
-    status: 'pending' | 'verified' | 'rejected';
+// Backend document structure (nested object, not array)
+export type DocumentVerificationState =
+    | 'not_started'
+    | 'pending_provider'
+    | 'verified'
+    | 'soft_failed'
+    | 'hard_failed'
+    | 'expired'
+    | 'revoked';
+
+export interface VerificationMeta {
+    state: DocumentVerificationState;
+    provider?: string;
     verifiedAt?: string;
-    rejectionReason?: string;
+    expiresAt?: string | null;
+    attemptId?: string;
+    inputHash?: string;
+    lastCheckedAt?: string;
+    failureReason?: string;
+    revokedAt?: string;
+}
+
+export interface VerificationHistoryEntry {
+    id: string;
+    state: DocumentVerificationState;
+    provider?: string;
+    verifiedAt?: string;
+    expiresAt?: string | null;
+    attemptId?: string;
+    inputHash?: string;
+    createdAt: string;
+    reason?: string;
+}
+
+export interface KYCDocuments {
+    pan?: {
+        number: string;
+        verified: boolean;
+        verifiedAt?: Date;
+        verificationData?: any;
+        name?: string;
+        verification?: VerificationMeta;
+        verificationHistory?: VerificationHistoryEntry[];
+    };
+    aadhaar?: {
+        number: string;
+        verified: boolean;
+        verifiedAt?: Date;
+        verificationData?: any;
+        verification?: VerificationMeta;
+        verificationHistory?: VerificationHistoryEntry[];
+    };
+    gstin?: {
+        number: string;
+        verified: boolean;
+        verifiedAt?: Date;
+        verificationData?: any;
+        businessName?: string;
+        legalName?: string;
+        status?: string;
+        verification?: VerificationMeta;
+        verificationHistory?: VerificationHistoryEntry[];
+    };
+    bankAccount?: {
+        accountNumber: string;
+        ifscCode: string;
+        accountHolderName: string;
+        bankName: string;
+        verified: boolean;
+        verifiedAt?: Date;
+        verificationData?: any;
+        verification?: VerificationMeta;
+        verificationHistory?: VerificationHistoryEntry[];
+    };
 }
 
 export interface KYCData {
     _id: string;
     userId: string;
     companyId: string;
-    documents: KYCDocument[];
+    documents: KYCDocuments;
     status: 'pending' | 'verified' | 'rejected' | 'incomplete';
-    agreementAccepted: boolean;
-    agreementAcceptedAt?: string;
+    state?: string;
+    completionStatus: {
+        personalKycComplete: boolean;
+        companyInfoComplete: boolean;
+        bankDetailsComplete: boolean;
+        agreementComplete: boolean;
+    };
     createdAt: string;
     updatedAt: string;
 }
 
 export interface VerifyPANRequest {
-    panNumber: string;
+    pan: string;
+    name?: string;
 }
 
 export interface VerifyBankAccountRequest {
     accountNumber: string;
-    ifscCode: string;
+    ifsc: string;
+    accountHolderName?: string;
 }
 
 export interface VerifyGSTINRequest {
@@ -40,13 +115,49 @@ export interface VerifyGSTINRequest {
 }
 
 export interface SubmitKYCRequest {
-    panNumber: string;
-    bankDetails?: {
+    pan: string;
+    bankAccount?: {
         accountNumber: string;
-        ifscCode: string;
+        ifsc?: string;
+        ifscCode?: string;
         bankName?: string;
     };
     gstin?: string;
+}
+
+export interface KycDocumentSnapshot {
+    state: DocumentVerificationState;
+    verifiedAt?: string | null;
+    expiresAt?: string | null;
+    lastCheckedAt?: string | null;
+    provider?: string | null;
+    canRetry: boolean;
+    masked?: string;
+}
+
+export interface KycSnapshot {
+    pan: KycDocumentSnapshot;
+    aadhaar: KycDocumentSnapshot;
+    gstin: KycDocumentSnapshot;
+    bankAccount: KycDocumentSnapshot;
+}
+
+export interface VerifiedKycData {
+    pan?: {
+        number: string;
+        name?: string;
+    };
+    gstin?: {
+        number: string;
+        businessName?: string;
+        status?: string;
+    };
+    bankAccount?: {
+        accountNumber: string;
+        ifscCode: string;
+        accountHolderName: string;
+        bankName: string;
+    };
 }
 
 /**
@@ -55,9 +166,9 @@ export interface SubmitKYCRequest {
  * Class-based pattern for consistency and maintainability
  */
 class KYCApiService {
-    async getKYC(): Promise<{ kyc: KYCData | null }> {
+    async getKYC(): Promise<{ kyc: KYCData | null; snapshot?: KycSnapshot; verifiedData?: VerifiedKycData }> {
         const response = await apiClient.get('/kyc');
-        return response.data;
+        return response.data?.data ?? response.data;
     }
 
     async submitKYC(data: SubmitKYCRequest): Promise<{ message: string; kyc: KYCData }> {
@@ -67,8 +178,15 @@ class KYCApiService {
 
     async verifyPAN(data: VerifyPANRequest): Promise<{
         success: boolean;
-        verified: boolean;
-        data?: { name: string; pan: string };
+        data: {
+            verified: boolean;
+            verification?: VerificationMeta;
+            data: {
+                name?: string;
+                nameClean?: string;
+                pan: string;
+            };
+        };
         message?: string;
     }> {
         const response = await apiClient.post('/kyc/verify-pan', data);
@@ -77,35 +195,64 @@ class KYCApiService {
 
     async verifyBankAccount(data: VerifyBankAccountRequest): Promise<{
         success: boolean;
-        verified: boolean;
-        data?: { accountHolderName: string; bankName: string };
+        data: {
+            verified: boolean;
+            verification?: VerificationMeta;
+            data: {
+                accountHolderName?: string;
+                accountHolderNameClean?: string;
+                bankName?: string;
+                bankDetails?: {
+                    bankName?: string;
+                    branch?: string;
+                    address?: string;
+                };
+            };
+        };
         message?: string;
     }> {
         const response = await apiClient.post('/kyc/verify-bank-account', data);
         return response.data;
     }
 
-    async verifyIFSC(ifscCode: string): Promise<{
+    async verifyIFSC(ifsc: string): Promise<{
         success: boolean;
-        data?: { bank: string; branch: string; address: string };
+        data: {
+            bankName?: string;
+            bank?: string;
+            branch: string;
+            address: string;
+        };
         message?: string;
     }> {
-        const response = await apiClient.post('/kyc/verify-ifsc', { ifscCode });
+        const response = await apiClient.post('/kyc/verify-ifsc', { ifsc });
         return response.data;
     }
 
     async verifyGSTIN(data: VerifyGSTINRequest): Promise<{
         success: boolean;
-        verified: boolean;
-        data?: { businessName: string; gstin: string; status: string };
+        data: {
+            verified: boolean;
+            verification?: VerificationMeta;
+            businessInfo: {
+                gstin: string;
+                businessName: string;
+                status: string;
+            };
+        };
         message?: string;
     }> {
         const response = await apiClient.post('/kyc/verify-gstin', data);
         return response.data;
     }
 
-    async updateAgreement(accepted: boolean): Promise<{ message: string }> {
-        const response = await apiClient.post('/kyc/agreement', { accepted });
+    async updateAgreement(agreed: boolean): Promise<{ message: string; kycComplete: boolean }> {
+        const response = await apiClient.post('/kyc/agreement', { agreed });
+        return response.data;
+    }
+
+    async invalidateDocument(documentType: 'pan' | 'aadhaar' | 'gstin' | 'bankAccount', reason?: string): Promise<{ message: string; kyc: KYCData }> {
+        const response = await apiClient.post('/kyc/invalidate', { documentType, reason });
         return response.data;
     }
 }

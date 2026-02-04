@@ -62,6 +62,7 @@ export class UserDTO {
             },
             kycStatus: {
                 isComplete: user.kycStatus?.isComplete || false,
+                state: user.kycStatus?.state,
                 lastUpdated: user.kycStatus?.lastUpdated?.toISOString(),
             },
             isActive: user.isActive,
@@ -131,6 +132,7 @@ export interface UserResponse {
     };
     kycStatus: {
         isComplete: boolean;
+        state?: string;
         lastUpdated?: string;
     };
     isActive: boolean;

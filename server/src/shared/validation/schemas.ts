@@ -338,15 +338,30 @@ export const bankAccountSchema = z.object({
     proofImage: z.string().url().optional(),
 });
 
+const ifscSchema = z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/);
+
 export const submitKYCSchema = z.object({
-    pan: panSchema.optional(),
-    aadhaar: aadhaarSchema.optional(),
-    gstin: gstinSchema.optional(),
-    bankAccount: bankAccountSchema.optional(),
+    pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/).optional(),
+    aadhaar: z.string().regex(/^\d{12}$/).optional(),
+    gstin: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/).optional(),
+    bankAccount: z.object({
+        accountNumber: z.string().regex(/^\d{9,18}$/),
+        ifsc: ifscSchema.optional(),
+        ifscCode: ifscSchema.optional(),
+        bankName: z.string().min(2).optional(),
+    }).refine((data) => Boolean(data.ifsc || data.ifscCode), {
+        message: 'IFSC code is required',
+        path: ['ifsc'],
+    }).optional(),
 });
 
 export const verifyDocumentSchema = z.object({
     documentType: z.enum(['pan', 'aadhaar', 'gstin', 'bankAccount']),
     verified: z.boolean(),
     notes: z.string().optional(),
+});
+
+export const invalidateDocumentSchema = z.object({
+    documentType: z.enum(['pan', 'aadhaar', 'gstin', 'bankAccount']),
+    reason: z.string().max(500).optional(),
 });

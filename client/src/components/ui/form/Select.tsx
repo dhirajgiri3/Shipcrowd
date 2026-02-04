@@ -12,19 +12,19 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             <div className="relative">
                 <select
                     className={cn(
-                        'flex h-10 w-full appearance-none rounded-md border border-gray-200 bg-white px-3 py-2 pr-8 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2525FF] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                        'flex h-10 w-full appearance-none rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 pr-8 text-sm text-[var(--text-primary)] ring-offset-[var(--bg-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue-soft)] focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-[var(--duration-fast)]',
                         className
                     )}
                     ref={ref}
                     {...props}
                 >
                     {options.map((option) => (
-                        <option key={option.value} value={option.value}>
+                        <option key={option.value} value={option.value} className="bg-[var(--bg-primary)] text-[var(--text-primary)]">
                             {option.label}
                         </option>
                     ))}
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" />
             </div>
         );
     }

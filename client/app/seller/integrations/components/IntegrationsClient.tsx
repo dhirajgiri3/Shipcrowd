@@ -25,28 +25,28 @@ const PLATFORMS = {
         description: 'Sync orders and inventory automatically from your Shopify store',
         icon: '/logos/shopify.svg',
         color: '95BF47',
-        setupRoute: '/seller/integrations/shopify/new'
+        setupRoute: '/seller/integrations/shopify/setup'
     },
     woocommerce: {
         name: 'WooCommerce',
         description: 'WordPress e-commerce integration for seamless order management',
         icon: '/logos/woocommerce.svg',
         color: '96588A',
-        setupRoute: '/seller/integrations/woocommerce/new'
+        setupRoute: '/seller/integrations/woocommerce/setup'
     },
     amazon: {
         name: 'Amazon',
         description: 'Sync orders and inventory from Amazon Seller Central',
         icon: '/logos/amazon.svg',
         color: 'FF9900',
-        setupRoute: '/seller/integrations/amazon/new'
+        setupRoute: '/seller/integrations/amazon/setup'
     },
     flipkart: {
         name: 'Flipkart',
         description: 'Connect your Flipkart Seller account to manage orders',
         icon: '/logos/flipkart.png', // Ensure this matches actual file extension
         color: '2874F0',
-        setupRoute: '/seller/integrations/flipkart/new'
+        setupRoute: '/seller/integrations/flipkart/setup'
     }
 };
 

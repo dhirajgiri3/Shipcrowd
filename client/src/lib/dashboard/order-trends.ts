@@ -62,15 +62,15 @@ function isIndianFestival(dateStr: string): boolean {
 /**
  * Transform order analytics to chart data
  */
-export function transformOrderTrendsToChart(apiData: OrderTrendAPIResponse): ChartDataPoint[] | null {
-    if (!apiData || !apiData.ordersByDate) {
-        return null;
+export function transformOrderTrendsToChart(apiData: OrderTrendAPIResponse): ChartDataPoint[] {
+    if (!apiData || !apiData.ordersByDate || !Array.isArray(apiData.ordersByDate)) {
+        return []; // Return empty array instead of null
     }
 
     return apiData.ordersByDate.map((item) => ({
         date: item._id,
-        orders: item.orders,
-        revenue: item.revenue,
+        orders: item.orders || 0, // Fallback to 0
+        revenue: item.revenue || 0, // Fallback to 0
         dayOfWeek: new Date(item._id).getDay(),
         isWeekend: [0, 6].includes(new Date(item._id).getDay()),
         isFestival: isIndianFestival(item._id)
