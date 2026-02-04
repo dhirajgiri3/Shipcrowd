@@ -60,7 +60,7 @@ export class WarehouseSyncService {
 
         // Phase A: Only Velocity
         // Phase B: Add Delhivery, Ekart
-        const enabledCarriers = ['velocity'];
+        const enabledCarriers = ['velocity', 'delhivery'];
 
         for (const carrier of enabledCarriers) {
             try {

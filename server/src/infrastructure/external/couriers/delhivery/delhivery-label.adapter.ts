@@ -5,9 +5,8 @@ import logger from '../../../../shared/logger/winston.logger';
 /**
  * Delhivery Label Adapter
  * Fetches labels from Delhivery API
- * 
- * API: POST /api/c mu/label/create/
- * Response: Base64 encoded PDF
+ *
+ * API: GET /api/p/packing_slip?wbns={waybill}&pdf=true&pdf_size=4R
  */
 
 class DelhiveryLabelAdapter implements ICarrierLabelAdapter {
@@ -15,29 +14,29 @@ class DelhiveryLabelAdapter implements ICarrierLabelAdapter {
     private baseURL: string;
 
     constructor() {
-        this.apiKey = process.env.DELHIVERY_API_KEY || '';
+        this.apiKey = process.env.DELHIVERY_API_TOKEN || process.env.DELHIVERY_API_KEY || '';
         this.baseURL = process.env.DELHIVERY_BASE_URL || 'https://track.delhivery.com';
     }
 
     async generateLabel(shipment: any): Promise<LabelResponse> {
         try {
-            const response = await axios.post(
-                `${this.baseURL}/api/cmu/label/create/`,
-                {
-                    wbn: shipment.awb,  // Waybill number
-                    pdf: 1,              // Request PDF format
-                },
+            const response = await axios.get(
+                `${this.baseURL}/api/p/packing_slip`,
                 {
                     headers: {
                         'Authorization': `Token ${this.apiKey}`,
                         'Content-Type': 'application/json',
                     },
+                    params: {
+                        wbns: shipment.awb,
+                        pdf: true,
+                        pdf_size: '4R'
+                    },
                     responseType: 'arraybuffer',
                 }
             );
 
-            // Delhivery returns base64 encoded PDF
-            const buffer = Buffer.from(response.data, 'base64');
+            const buffer = Buffer.from(response.data);
 
             logger.info(`Delhivery label generated for AWB: ${shipment.awb}`);
 

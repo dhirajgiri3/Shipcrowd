@@ -29,7 +29,9 @@ const seedRoles = async () => {
 };
 
 beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await MongoMemoryServer.create({
+        instance: { ip: '127.0.0.1' }
+    });
     const uri = mongoServer.getUri();
     if (mongoose.connection.readyState !== 0) {
         await mongoose.disconnect();

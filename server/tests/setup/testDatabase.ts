@@ -17,14 +17,16 @@ export const connectTestDb = async (): Promise<void> => {
     }
 
     // Use the global URI if available (from globalSetup)
-    const uri = process.env.MONGO_TEST_URI;
+    const uri = process.env.MONGO_TEST_URI || process.env.MONGODB_URI;
     if (uri) {
         await mongoose.connect(uri);
         return;
     }
 
     // Otherwise create a new memory server
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await MongoMemoryServer.create({
+        instance: { ip: '127.0.0.1' }
+    });
     const mongoUri = mongoServer.getUri();
     await mongoose.connect(mongoUri);
 };

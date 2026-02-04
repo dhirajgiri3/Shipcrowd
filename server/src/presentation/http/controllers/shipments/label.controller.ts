@@ -78,7 +78,30 @@ class LabelController {
             let labelBuffer: Buffer;
             let labelFormat: string;
 
-            if (format === 'pdf') {
+            if (format === 'pdf' && shipment.carrier === 'delhivery') {
+                try {
+                    const adapter = this.carrierAdapters[shipment.carrier];
+                    if (adapter) {
+                        const label = await adapter.generateLabel({ awb: shipmentData.awb });
+                        if (label.format === 'pdf' && Buffer.isBuffer(label.data)) {
+                            labelBuffer = label.data as Buffer;
+                            labelFormat = 'application/pdf';
+                        } else {
+                            throw new Error('Delhivery label format not supported');
+                        }
+                    } else {
+                        throw new Error('Carrier adapter not found');
+                    }
+                } catch (error: any) {
+                    const status = error?.response?.status;
+                    // Fallback only on network/5xx
+                    if (status && status >= 400 && status < 500) {
+                        throw error;
+                    }
+                    labelBuffer = await LabelService.generatePDF(shipmentData);
+                    labelFormat = 'application/pdf';
+                }
+            } else if (format === 'pdf') {
                 labelBuffer = await LabelService.generatePDF(shipmentData);
                 labelFormat = 'application/pdf';
             } else {
@@ -141,6 +164,32 @@ class LabelController {
                 zone: undefined,
                 orderNumber: shipment.orderId.toString(),
             };
+
+            if (format === 'pdf' && shipment.carrier === 'delhivery') {
+                try {
+                    const adapter = this.carrierAdapters[shipment.carrier];
+                    if (adapter) {
+                        const label = await adapter.generateLabel({ awb: shipmentData.awb });
+                        if (label.format === 'pdf' && Buffer.isBuffer(label.data)) {
+                            res.setHeader('Content-Type', 'application/pdf');
+                            res.setHeader('Content-Disposition', `attachment; filename=\"label-${shipmentData.awb}.pdf\"`);
+                            res.send(label.data);
+                            return;
+                        }
+                    }
+                    throw new Error('Delhivery label format not supported');
+                } catch (error: any) {
+                    const status = error?.response?.status;
+                    if (status && status >= 400 && status < 500) {
+                        throw error;
+                    }
+                    const labelBuffer = await LabelService.generatePDF(shipmentData);
+                    res.setHeader('Content-Type', 'application/pdf');
+                    res.setHeader('Content-Disposition', `attachment; filename=\"label-${shipmentData.awb}.pdf\"`);
+                    res.send(labelBuffer);
+                    return;
+                }
+            }
 
             if (format === 'pdf') {
                 const labelBuffer = await LabelService.generatePDF(shipmentData);

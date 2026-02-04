@@ -505,24 +505,25 @@ export class ShipmentService {
             // saving locally so we have a reference point for retries if API fails.
             // ========================================================================
             const isVelocityCarrier = selectedOption.carrier.toLowerCase().includes('velocity');
-            const shouldCallCarrierApi = isVelocityCarrier && (useApiRates || process.env.USE_VELOCITY_API_RATES === 'true');
+            const isDelhiveryCarrier = selectedOption.carrier.toLowerCase().includes('delhivery');
+            const shouldCallCarrierApi = (isVelocityCarrier && (useApiRates || process.env.USE_VELOCITY_API_RATES === 'true')) || isDelhiveryCarrier;
 
             if (shouldCallCarrierApi && warehouseId) {
                 try {
-                    logger.info('Creating shipment with Velocity API', {
+                    logger.info('Creating shipment with carrier API', {
                         shipmentId: (shipment as any)._id?.toString() || 'pending',
                         orderId: order._id.toString(),
                         warehouseId: warehouseId.toString()
                     });
 
-                    // Get the Velocity provider
-                    const velocityProvider = await CourierFactory.getProvider('velocity-shipfast', companyId);
+                    const providerName = isVelocityCarrier ? 'velocity-shipfast' : 'delhivery';
+                    const courierProvider = await CourierFactory.getProvider(providerName, companyId);
 
-                    // Build proper CourierShipmentData structure for Velocity API
+                    // Build proper CourierShipmentData structure for Carrier API
                     // This matches the interface in courier.adapter.ts
                     const warehouse = warehouseId ? await Warehouse.findById(warehouseId).lean() : null;
 
-                    const velocityShipmentData = {
+                    const courierShipmentData = {
                         // Origin (warehouse/pickup location)
                         origin: {
                             name: warehouse?.name || 'Shipcrowd Warehouse',
@@ -556,33 +557,38 @@ export class ShipmentService {
                         orderNumber: order.orderNumber,
                         paymentMode: (order.paymentMethod === 'cod' ? 'cod' : 'prepaid') as 'prepaid' | 'cod',
                         codAmount: order.paymentMethod === 'cod' ? order.totals.total : 0,
-                        warehouseId: warehouseId?.toString()
+                        warehouseId: warehouseId?.toString(),
+                        carrierOptions: isDelhiveryCarrier ? {
+                            delhivery: {
+                                pickupLocationName: warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name
+                            }
+                        } : undefined
                     };
 
-                    // Call Velocity createShipment with proper data structure
+                    // Call carrier createShipment with proper data structure
                     // ✅ Generate idempotency key to prevent duplicates on retry
                     const idempotencyKey = `${companyId}-${(shipment as any)._id}`;
 
-                    const velocityResponse = await velocityProvider.createShipment({
-                        ...velocityShipmentData,
+                    const providerResponse = await courierProvider.createShipment({
+                        ...courierShipmentData,
                         idempotencyKey
                     });
 
-                    // Update shipment with AWB and label from Velocity response
-                    if (velocityResponse.trackingNumber) {
+                    // Update shipment with AWB and label from provider response
+                    if (providerResponse.trackingNumber) {
                         shipment.carrierDetails = {
                             ...shipment.carrierDetails,
-                            carrierTrackingNumber: velocityResponse.trackingNumber,
-                            carrierServiceType: 'velocity-shipfast',
-                            providerShipmentId: velocityResponse.providerShipmentId,
+                            carrierTrackingNumber: providerResponse.trackingNumber,
+                            carrierServiceType: providerName,
+                            providerShipmentId: providerResponse.providerShipmentId,
                             retryCount: 0, // Reset retry count on success
                         };
 
                         // Add label to documents if provided
-                        if (velocityResponse.labelUrl) {
+                        if (providerResponse.labelUrl) {
                             shipment.documents.push({
                                 type: 'label',
-                                url: velocityResponse.labelUrl,
+                                url: providerResponse.labelUrl,
                                 createdAt: new Date()
                             });
                         }
@@ -592,24 +598,24 @@ export class ShipmentService {
                         shipment.statusHistory.push({
                             status: 'pending_pickup',
                             timestamp: new Date(),
-                            description: `Carrier AWB assigned: ${velocityResponse.trackingNumber}`
+                            description: `Carrier AWB assigned: ${providerResponse.trackingNumber}`
                         });
 
                         await shipment.save({ session });
 
-                        logger.info('Velocity shipment created successfully', {
+                        logger.info('Carrier shipment created successfully', {
                             shipmentId: (shipment as any)._id?.toString() || 'pending',
-                            awb: velocityResponse.trackingNumber,
-                            labelUrl: velocityResponse.labelUrl
+                            awb: providerResponse.trackingNumber,
+                            labelUrl: providerResponse.labelUrl
                         });
                     }
-                } catch (velocityError: any) {
+                } catch (carrierError: any) {
                     // Don't fail the transaction - just log the error and continue
                     // Shipment is created locally, can retry carrier sync later
-                    logger.error('Failed to create shipment with Velocity API', {
+                    logger.error('Failed to create shipment with carrier API', {
                         shipmentId: (shipment as any)._id?.toString() || 'pending',
                         orderId: order._id.toString(),
-                        error: velocityError.message || velocityError
+                        error: carrierError.message || carrierError
                     });
 
                     // Mark shipment as awaiting_carrier_sync for explicit retry handling
@@ -965,6 +971,10 @@ export class ShipmentService {
         // ✅ Guard Clause #4: Validate warehouse exists
         const warehouseId = shipment.pickupDetails?.warehouseId;
         let warehouse = null;
+        const carrierName = (shipment.carrier || '').toLowerCase();
+        const isVelocityCarrier = carrierName.includes('velocity');
+        const isDelhiveryCarrier = carrierName.includes('delhivery');
+
         if (warehouseId) {
             warehouse = await Warehouse.findById(warehouseId).lean();
             if (!warehouse) {
@@ -973,18 +983,28 @@ export class ShipmentService {
                 return false;
             }
 
-            // ✅ ON-DEMAND SYNC: Ensure warehouse is synced with Velocity before creating shipment
-            const velocityStatus = warehouse.carrierDetails?.velocity?.status;
-            if (!velocityStatus || velocityStatus === 'pending' || velocityStatus === 'failed') {
-                logger.info('Warehouse not synced with Velocity, attempting sync', {
+            // ✅ ON-DEMAND SYNC: Ensure warehouse is synced with carrier before creating shipment
+            const syncStatus = isVelocityCarrier
+                ? warehouse.carrierDetails?.velocity?.status
+                : isDelhiveryCarrier
+                    ? warehouse.carrierDetails?.delhivery?.status
+                    : undefined;
+
+            if (!syncStatus || syncStatus === 'pending' || syncStatus === 'failed') {
+                logger.info('Warehouse not synced with carrier, attempting sync', {
                     shipmentId,
                     warehouseId: warehouse._id.toString(),
-                    currentStatus: velocityStatus
+                    carrier: shipment.carrier,
+                    currentStatus: syncStatus
                 });
 
                 try {
                     const { WarehouseSyncService } = await import('../logistics/warehouse-sync.service.js');
-                    await WarehouseSyncService.syncWithCarrier(warehouse as any, 'velocity');
+                    if (isVelocityCarrier) {
+                        await WarehouseSyncService.syncWithCarrier(warehouse as any, 'velocity');
+                    } else if (isDelhiveryCarrier) {
+                        await WarehouseSyncService.syncWithCarrier(warehouse as any, 'delhivery');
+                    }
 
                     // Refresh warehouse data after sync
                     warehouse = await Warehouse.findById(warehouseId).lean();
@@ -999,13 +1019,13 @@ export class ShipmentService {
                         warehouseId: warehouse?._id?.toString() || warehouseId.toString(),
                         error: syncError instanceof Error ? syncError.message : 'Unknown error'
                     });
-                    // Continue anyway - Velocity provider will handle missing warehouse ID
+                    // Continue anyway - provider will handle missing warehouse ID
                 }
             }
         }
 
         // Reconstruct shipment data from saved fields
-        const velocityShipmentData = {
+        const carrierShipmentData = {
             origin: {
                 name: warehouse?.name || 'Shipcrowd Warehouse',
                 phone: warehouse?.contactInfo?.phone || '',
@@ -1036,7 +1056,12 @@ export class ShipmentService {
             orderNumber: order.orderNumber,
             paymentMode: shipment.paymentDetails.type as 'prepaid' | 'cod',
             codAmount: shipment.paymentDetails.type === 'cod' ? shipment.paymentDetails.codAmount || 0 : 0,
-            warehouseId: warehouseId?.toString()
+            warehouseId: warehouseId?.toString(),
+            carrierOptions: isDelhiveryCarrier ? {
+                delhivery: {
+                    pickupLocationName: warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name
+                }
+            } : undefined
         };
 
         try {
@@ -1051,12 +1076,12 @@ export class ShipmentService {
             // ✅ Use shipment ID as idempotency key for deterministic retries
             const idempotencyKey = `${shipment.companyId}-${shipment._id}`;
 
-            const velocityResponse = await provider.createShipment({
-                ...velocityShipmentData,
+            const providerResponse = await provider.createShipment({
+                ...carrierShipmentData,
                 idempotencyKey
             });
 
-            if (velocityResponse.trackingNumber) {
+            if (providerResponse.trackingNumber) {
                 // ✅ Use transaction to ensure atomicity between shipment and order updates
                 const session = await mongoose.startSession();
                 session.startTransaction();
@@ -1065,17 +1090,17 @@ export class ShipmentService {
                     // Update shipment with carrier details
                     shipment.carrierDetails = {
                         ...shipment.carrierDetails,
-                        carrierTrackingNumber: velocityResponse.trackingNumber,
-                        carrierServiceType: 'velocity-shipfast',
-                        providerShipmentId: velocityResponse.providerShipmentId,
+                        carrierTrackingNumber: providerResponse.trackingNumber,
+                        carrierServiceType: shipment.carrier,
+                        providerShipmentId: providerResponse.providerShipmentId,
                         retryCount: 0, // Reset on success
                         lastRetryAttempt: new Date(),
                     };
 
-                    if (velocityResponse.labelUrl) {
+                    if (providerResponse.labelUrl) {
                         shipment.documents.push({
                             type: 'label',
-                            url: velocityResponse.labelUrl,
+                            url: providerResponse.labelUrl,
                             createdAt: new Date()
                         });
                     }
@@ -1084,7 +1109,7 @@ export class ShipmentService {
                     shipment.statusHistory.push({
                         status: 'pending_pickup',
                         timestamp: new Date(),
-                        description: `Carrier AWB assigned via retry (Attempt ${retryCount + 1}): ${velocityResponse.trackingNumber}`
+                        description: `Carrier AWB assigned via retry (Attempt ${retryCount + 1}): ${providerResponse.trackingNumber}`
                     });
 
                     await shipment.save({ session });
@@ -1113,7 +1138,7 @@ export class ShipmentService {
 
                     logger.info('Shipment creation retry successful', {
                         shipmentId,
-                        awb: velocityResponse.trackingNumber,
+                        awb: providerResponse.trackingNumber,
                         retryAttempt: retryCount + 1
                     });
                     return true;
