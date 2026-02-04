@@ -5,6 +5,16 @@
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
+function extractMongoDbName(uri: string): string | undefined {
+    // Examples:
+    // - mongodb://localhost:27017/shipcrowd_test
+    // - mongodb://127.0.0.1:12345/?replicaSet=testset (no db name)
+    const match = uri.match(/mongodb(?:\\+srv)?:\\/\\/[^/]+\\/([^?]+)/i);
+    const db = match?.[1]?.trim();
+    if (!db) return undefined;
+    return decodeURIComponent(db);
+}
+
 // Connect to MongoDB before all tests in a file
 beforeAll(async () => {
     let uri = process.env.MONGO_TEST_URI || process.env.MONGODB_URI;
@@ -26,7 +36,26 @@ beforeAll(async () => {
 
     if (!uri) {
         console.warn('MONGO_TEST_URI not set. Falling back to local test database.');
-        uri = 'mongodb://localhost:27017/shipcrowd_test_fallback';
+        uri = 'mongodb://localhost:27017/shipcrowd_test';
+    }
+
+    // Safety guard: tests wipe collections; prevent accidental use of a non-test external DB.
+    const usingMemoryServer = !!(globalThis as any).__MONGOD__
+        || uri.includes('replicaSet=testset')
+        || uri.includes('mongodb-memory-server');
+
+    if (!usingMemoryServer) {
+        const dbName = extractMongoDbName(uri);
+        const isTestDb = !!dbName && dbName.toLowerCase().includes('test');
+        const explicitlyAllowed = process.env.ALLOW_TEST_DB_WIPE === 'true';
+
+        if (!isTestDb && !explicitlyAllowed) {
+            throw new Error(
+                `Refusing to run tests against non-test MongoDB database (${dbName || 'unknown'}).\n` +
+                `Set MONGODB_URI to a test database (name includes "test"), e.g. mongodb://localhost:27017/shipcrowd_test\n` +
+                `OR set ALLOW_TEST_DB_WIPE=true if you understand tests will delete collections.`
+            );
+        }
     }
 
     if (mongoose.connection.readyState === 0) {

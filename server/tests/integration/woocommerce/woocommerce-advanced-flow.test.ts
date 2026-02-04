@@ -52,7 +52,9 @@ describe('WooCommerce Advanced Integration Flow', () => {
 
     beforeAll(async () => {
         // Start in-memory MongoDB
-        mongoServer = await MongoMemoryServer.create();
+        mongoServer = await MongoMemoryServer.create({
+            instance: { ip: '127.0.0.1' }
+        });
         const mongoUri = mongoServer.getUri();
 
         if (mongoose.connection.readyState === 0) {
