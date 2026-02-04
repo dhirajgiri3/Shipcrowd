@@ -37,7 +37,7 @@ export const DELHIVERY_RATE_LIMITER_CONFIG: RateLimiterConfig = {
         },
         {
             endpoint: '/api/cmu/create.json',
-            maxRequests: 1000,
+            maxRequests: 3000,
             windowMs: 5 * 60 * 1000, // 5 minutes (estimated, not documented)
         },
         {
@@ -49,6 +49,21 @@ export const DELHIVERY_RATE_LIMITER_CONFIG: RateLimiterConfig = {
             endpoint: '/api/cmu/cancel.json',
             maxRequests: 500,
             windowMs: 5 * 60 * 1000, // 5 minutes (estimated, not documented)
+        },
+        {
+            endpoint: '/fm/request/new/',
+            maxRequests: 4000,
+            windowMs: 5 * 60 * 1000, // 5 minutes
+        },
+        {
+            endpoint: '/api/p/update',
+            maxRequests: 1000,
+            windowMs: 5 * 60 * 1000, // 5 minutes (estimated)
+        },
+        {
+            endpoint: '/api/rest/fetch/pkg/document/',
+            maxRequests: 500,
+            windowMs: 5 * 60 * 1000, // 5 minutes (estimated)
         }
     ]
 };

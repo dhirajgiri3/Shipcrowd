@@ -8,10 +8,12 @@
  * - All rates now database-driven or stub-based
  */
 
+import mongoose from 'mongoose';
 import { DynamicPricingService } from '../pricing/dynamic-pricing.service';
 import { getDelhiveryStub } from '../../../../infrastructure/external/couriers/delhivery/delhivery-stub.adapter';
 import { getEkartStub } from '../../../../infrastructure/external/couriers/ekart/ekart-stub.adapter';
 import { getIndiaPostStub } from '../../../../infrastructure/external/couriers/india-post/india-post-stub.adapter';
+import { CourierFactory } from '../courier/courier.factory';
 
 export interface CarrierOption {
     carrier: string;
@@ -90,23 +92,60 @@ export class CarrierService {
         }
 
         try {
-            // 2. Delhivery - Stub rates
-            const delhiveryRate = await this.delhiveryStub.getRates(
-                input.fromPincode,
-                input.toPincode,
-                input.weight,
-                serviceType
+            // 2. Delhivery - Live if integration active, otherwise stub
+            const companyObjectId = new mongoose.Types.ObjectId(input.companyId);
+            const isActive = await CourierFactory.isProviderAvailable(
+                'delhivery',
+                companyObjectId
             );
 
-            carriers.push({
-                carrier: 'delhivery',
-                rate: delhiveryRate.total,
-                deliveryTime: delhiveryRate.estimatedDays,
-                score: 70, // Lower score - stub only
-                serviceType,
-                isStub: true,
-                message: delhiveryRate.message,
-            });
+            if (isActive) {
+                const provider = await CourierFactory.getProvider(
+                    'delhivery',
+                    companyObjectId
+                );
+
+                const rates = await provider.getRates({
+                    origin: { pincode: input.fromPincode },
+                    destination: { pincode: input.toPincode },
+                    package: {
+                        weight: input.weight,
+                        length: 20,
+                        width: 15,
+                        height: 10
+                    },
+                    paymentMode: input.paymentMode,
+                    orderValue: input.orderValue
+                });
+
+                if (rates && rates.length > 0) {
+                    carriers.push({
+                        carrier: 'delhivery',
+                        rate: rates[0].total,
+                        deliveryTime: rates[0].estimatedDeliveryDays || 3,
+                        score: 80,
+                        serviceType,
+                        isStub: false
+                    });
+                }
+            } else {
+                const delhiveryRate = await this.delhiveryStub.getRates(
+                    input.fromPincode,
+                    input.toPincode,
+                    input.weight,
+                    serviceType
+                );
+
+                carriers.push({
+                    carrier: 'delhivery',
+                    rate: delhiveryRate.total,
+                    deliveryTime: delhiveryRate.estimatedDays,
+                    score: 70, // Lower score - stub only
+                    serviceType,
+                    isStub: true,
+                    message: delhiveryRate.message,
+                });
+            }
         } catch (error) {
             console.error('[CarrierService] Delhivery stub failed:', error);
         }

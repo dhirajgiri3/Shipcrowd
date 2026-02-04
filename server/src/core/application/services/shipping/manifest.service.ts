@@ -452,6 +452,55 @@ class ManifestService {
                             shipmentCount: carrierBatch.length
                         });
 
+                        // Delhivery pickup requests are warehouse-level, not shipment-level
+                        if (carrier === 'delhivery') {
+                            const first = carrierBatch[0];
+                            const warehouseId = first.pickupDetails?.warehouseId;
+                            if (!warehouseId) {
+                                logger.warn('Missing warehouse for Delhivery pickup scheduling', {
+                                    manifestId,
+                                    carrier
+                                });
+                                continue;
+                            }
+
+                            const warehouse = await (await import('../../../../infrastructure/database/mongoose/models/logistics/warehouse/structure/warehouse.model.js')).default.findById(warehouseId).lean();
+
+                            const pickupLocationName = warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name;
+                            if (!pickupLocationName) {
+                                logger.warn('Missing pickup location name for Delhivery scheduling', {
+                                    warehouseId: warehouseId.toString()
+                                });
+                                continue;
+                            }
+
+                            try {
+                                await provider.schedulePickup({
+                                    pickupDate: manifest.pickup.scheduledDate.toISOString().split('T')[0],
+                                    pickupTime: `${manifest.pickup.timeSlot.split('-')[0]}:00`,
+                                    pickupLocation: pickupLocationName,
+                                    expectedCount: carrierBatch.length
+                                });
+                                pickupResults.successful += carrierBatch.length;
+                            } catch (pickupError: any) {
+                                const errorMsg = pickupError.message || 'Unknown error';
+                                logger.error('Failed to schedule Delhivery pickup', {
+                                    manifestId,
+                                    error: errorMsg
+                                });
+                                pickupResults.failed += carrierBatch.length;
+                                carrierBatch.forEach((shipment) => {
+                                    pickupResults.failedShipments.push({
+                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                        trackingNumber: shipment.trackingNumber,
+                                        error: errorMsg
+                                    });
+                                });
+                            }
+
+                            continue;
+                        }
+
                         // Process serially to avoid rate limits
                         for (const shipment of carrierBatch) {
                             if (shipment.carrierDetails?.providerShipmentId) {

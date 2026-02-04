@@ -31,6 +31,39 @@ export interface CourierShipmentData {
     paymentMode: 'prepaid' | 'cod';
     codAmount?: number;
     idempotencyKey?: string;
+    carrierOptions?: {
+        delhivery?: {
+            clientName?: string;
+            pickupLocationName?: string;
+            waybill?: string;
+            shippingMode?: 'Surface' | 'Express';
+            mps?: {
+                mps_amount?: number;
+                mps_children?: number;
+                master_id?: string;
+                waybill?: string;
+            };
+            returnAddress?: {
+                name?: string;
+                address?: string;
+                pincode?: string;
+                city?: string;
+                state?: string;
+                country?: string;
+                phone?: string;
+            };
+            qcPayload?: any;
+            transportSpeed?: 'F' | 'D';
+            ewaybill?: string;
+            hsn?: string;
+            sellerInv?: string;
+            productsDesc?: string;
+            totalAmount?: number;
+            sellerName?: string;
+            sellerAddress?: string;
+            quantity?: string | number;
+        };
+    };
 }
 
 export interface CourierShipmentResponse {
@@ -112,6 +145,33 @@ export interface CourierReverseShipmentData {
         height: number;
     };
     reason?: string;
+    carrierOptions?: {
+        delhivery?: {
+            clientName?: string;
+            pickupLocationName?: string;
+            waybill?: string;
+            shippingMode?: 'Surface' | 'Express';
+            returnAddress?: {
+                name?: string;
+                address?: string;
+                pincode?: string;
+                city?: string;
+                state?: string;
+                country?: string;
+                phone?: string;
+            };
+            qcPayload?: any;
+            transportSpeed?: 'F' | 'D';
+            ewaybill?: string;
+            hsn?: string;
+            sellerInv?: string;
+            productsDesc?: string;
+            totalAmount?: number;
+            sellerName?: string;
+            sellerAddress?: string;
+            quantity?: string | number;
+        };
+    };
 }
 
 export interface CourierReverseShipmentResponse {
@@ -178,7 +238,7 @@ export interface ICourierAdapter {
     /**
      * Request reattempt for undelivered shipment
      */
-    requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }>;
+    requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string; uplId?: string }>;
 
     /**
      * Update delivery address (if courier supports it)
@@ -268,7 +328,7 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
         );
     }
 
-    async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }> {
+    async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string; uplId?: string }> {
         throw new CourierFeatureNotSupportedError(
             this.constructor.name,
             'requestReattempt'

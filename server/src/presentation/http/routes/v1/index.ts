@@ -101,6 +101,7 @@ import featureFlagRoutes from './admin/feature-flag.routes';
 // 10. WEBHOOKS
 // ============================================================================
 import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
+import delhiveryWebhookRoutes from './webhooks/delhivery.webhook.routes';
 import shopifyWebhookRoutes from './webhooks/shopify.routes';
 import woocommerceWebhookRoutes from './webhooks/woocommerce.webhook.routes';
 import flipkartWebhookRoutes from './webhooks/flipkart.webhook.routes';
@@ -197,6 +198,7 @@ router.use('/admin/feature-flags', featureFlagRoutes);
 
 // 10. Webhooks
 router.use('/webhooks/velocity', velocityWebhookRoutes);
+router.use('/webhooks/delhivery', delhiveryWebhookRoutes);
 router.use('/webhooks/shopify', shopifyWebhookRoutes);
 router.use('/webhooks/woocommerce', woocommerceWebhookRoutes);
 router.use('/webhooks/flipkart', flipkartWebhookRoutes);

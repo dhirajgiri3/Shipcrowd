@@ -40,7 +40,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         metroCoverage: true,
         tier2Coverage: true,
         tier3Coverage: true,
-        isIntegrated: false,
+        isIntegrated: true,
     },
     bluedart: {
         name: 'bluedart',

@@ -485,6 +485,30 @@ Need help? Reply to this message.
                 actionConfig.notes // "notes" maps to "instructions" in interface
             );
 
+            if (result.success && (result as any).uplId && carrierName.toLowerCase().includes('delhivery')) {
+                try {
+                    const QueueManager = (await import('../../../../../infrastructure/utilities/queue-manager.js')).default as any;
+                    await QueueManager.addJob(
+                        'delhivery-ndr-status',
+                        'poll-ndr-status',
+                        {
+                            uplId: (result as any).uplId,
+                            awb: ndrEvent.awb,
+                            ndrEventId: ndrEvent._id.toString()
+                        },
+                        {
+                            attempts: 10,
+                            backoff: { type: 'exponential', delay: 60000 }
+                        }
+                    );
+                } catch (queueError) {
+                    logger.warn('Failed to queue Delhivery NDR status polling', {
+                        ndrEventId: ndrEvent._id,
+                        error: queueError instanceof Error ? queueError.message : 'Unknown error'
+                    });
+                }
+            }
+
             logger.info('Courier reattempt requested', {
                 ndrEventId: ndrEvent._id,
                 awb: ndrEvent.awb,
@@ -501,6 +525,7 @@ Need help? Reply to this message.
                     awb: ndrEvent.awb,
                     message: result.message,
                     carrier: carrierName,
+                    uplId: (result as any).uplId,
                     manualActionRequired: !result.success
                 },
                 error: result.success ? undefined : result.message
