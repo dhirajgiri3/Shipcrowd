@@ -1,0 +1,68 @@
+/**
+ * Velocity Webhook Handler
+ * 
+ * Handles Velocity-specific webhook processing with:
+ * - API key verification (Velocity doesn't provide signatures)
+ * - Custom payload parsing
+ * - Integration with StatusMapperService
+ */
+
+import { Request } from 'express';
+import { BaseWebhookHandler } from '../base-webhook-handler';
+import {
+    WebhookPayload,
+    WebhookConfig,
+    VerificationStrategy
+} from '../webhook-handler.interface';
+
+/**
+ * Velocity webhook handler implementation
+ */
+export class VelocityWebhookHandler extends BaseWebhookHandler {
+    constructor() {
+        const config: WebhookConfig = {
+            courier: 'velocity',
+            verificationStrategy: VerificationStrategy.API_KEY,
+            apiKeyHeader: 'x-api-key',
+            secretKey: process.env.VELOCITY_WEBHOOK_API_KEY
+        };
+
+        super(config);
+    }
+
+    /**
+     * Parse Velocity-specific webhook payload
+     * 
+     * NOTE: Velocity webhook documentation is limited. This is based on
+     * their tracking response structure. Adjust as needed when real webhooks arrive.
+     */
+    parseWebhook(req: Request): WebhookPayload {
+        const body = req.body;
+
+        // Velocity webhook structure (estimated from API docs)
+        const awb = body.awb_code || body.tracking_number || body.awb;
+        const status = body.shipment_status || body.status || 'UNKNOWN';
+        const timestamp = body.timestamp
+            ? new Date(body.timestamp)
+            : new Date();
+
+        return {
+            courier: 'velocity',
+            awb,
+            event: body.event_type || 'status_update',
+            status,
+            timestamp,
+            rawPayload: body,
+            metadata: {
+                location: body.current_location || body.location || '',
+                description: body.activity || body.description || '',
+                courierName: body.courier_name || '',
+                estimatedDelivery: body.estimated_delivery || '',
+                // Additional Velocity-specific fields
+                orderId: body.order_id,
+                shipmentId: body.shipment_id,
+                warehouseId: body.warehouse_id
+            }
+        };
+    }
+}

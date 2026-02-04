@@ -972,6 +972,36 @@ export class ShipmentService {
                 // Can't retry without warehouse - mark as failed
                 return false;
             }
+
+            // ✅ ON-DEMAND SYNC: Ensure warehouse is synced with Velocity before creating shipment
+            const velocityStatus = warehouse.carrierDetails?.velocity?.status;
+            if (!velocityStatus || velocityStatus === 'pending' || velocityStatus === 'failed') {
+                logger.info('Warehouse not synced with Velocity, attempting sync', {
+                    shipmentId,
+                    warehouseId: warehouse._id.toString(),
+                    currentStatus: velocityStatus
+                });
+
+                try {
+                    const { WarehouseSyncService } = await import('../logistics/warehouse-sync.service.js');
+                    await WarehouseSyncService.syncWithCarrier(warehouse as any, 'velocity');
+
+                    // Refresh warehouse data after sync
+                    warehouse = await Warehouse.findById(warehouseId).lean();
+
+                    if (!warehouse) {
+                        logger.error('Warehouse disappeared after sync attempt', { warehouseId });
+                        return false;
+                    }
+                } catch (syncError) {
+                    logger.error('On-demand warehouse sync failed', {
+                        shipmentId,
+                        warehouseId: warehouse?._id?.toString() || warehouseId.toString(),
+                        error: syncError instanceof Error ? syncError.message : 'Unknown error'
+                    });
+                    // Continue anyway - Velocity provider will handle missing warehouse ID
+                }
+            }
         }
 
         // Reconstruct shipment data from saved fields

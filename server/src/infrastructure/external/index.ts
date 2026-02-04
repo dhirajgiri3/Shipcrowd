@@ -24,4 +24,4 @@ export * from './communication/whatsapp/whatsapp.service';
 export * from './ai/openai/openai.service';
 
 // Storage services
-export * from './storage/cloudinary/cloudinary-storage.service';
+// export * from './storage/cloudinary/cloudinary-storage.service';

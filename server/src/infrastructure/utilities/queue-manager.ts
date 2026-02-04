@@ -239,6 +239,17 @@ export class QueueManager {
       },
     });
 
+    // Create Warehouse Sync queue
+    await this.createQueue({
+      name: 'warehouse-sync',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 30000 }, // 30s initial delay
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    });
+
     logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });

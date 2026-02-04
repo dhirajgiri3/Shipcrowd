@@ -15,6 +15,7 @@ import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { CarrierSyncJob } from './infrastructure/jobs/logistics/shipping/carrier-sync.job';
 import { ManifestPickupRetryJob } from './infrastructure/jobs/logistics/shipping/manifest-pickup-retry.job';
 import LostShipmentDetectionJob from './infrastructure/jobs/logistics/shipping/lost-shipment-detection.job';
+import { WarehouseSyncJob } from './infrastructure/jobs/logistics/warehouse-sync.job';
 
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import { initializeCRMListeners } from './core/application/listeners/crm/index';
@@ -51,6 +52,15 @@ const startServer = async (): Promise<void> => {
         await PubSubService.initialize();
         logger.info('PubSub service initialized');
 
+        // Initialize Courier Status Mapper (register all courier status mappings)
+        const { StatusMapperService } = await import('./core/application/services/courier/status-mappings/status-mapper.service.js');
+        const { VELOCITY_STATUS_MAPPINGS } = await import('./core/application/services/courier/status-mappings/index.js');
+
+        StatusMapperService.register(VELOCITY_STATUS_MAPPINGS);
+        logger.info('Courier status mappings registered', {
+            couriers: StatusMapperService.getRegisteredCouriers()
+        });
+
         // Initialize Queue Manager FIRST (creates all queues)
         await QueueManager.initialize();
         logger.info('Queue Manager initialized');
@@ -77,6 +87,7 @@ const startServer = async (): Promise<void> => {
 
         // Initialize Carrier Sync Retry Job
         await CarrierSyncJob.initialize();
+        await WarehouseSyncJob.initialize();
         logger.info('Carrier sync retry job initialized');
 
         // Initialize Manifest Pickup Retry Job

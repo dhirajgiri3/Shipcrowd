@@ -1,5 +1,21 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+// Sync error classification for smart retry logic
+export type SyncErrorType = 'NETWORK' | 'VALIDATION' | 'RATE_LIMIT' | 'UNKNOWN';
+
+// Per-carrier sync details
+export interface CarrierSyncDetails {
+  warehouseId?: string;           // Carrier's pickup location ID
+  status: 'pending' | 'synced' | 'failed';
+  lastSyncedAt?: Date;
+  lastAttemptAt?: Date;
+  error?: {
+    type: SyncErrorType;          // Classified error type
+    message: string;
+    timestamp: Date;
+  };
+}
+
 // Define the interface for Warehouse document
 export interface IWarehouse extends Document {
   name: string;
@@ -35,11 +51,11 @@ export interface IWarehouse extends Document {
   isDefault: boolean;
   isDeleted: boolean;
   carrierDetails?: {
-    velocityWarehouseId?: string;
-    delhiveryWarehouseId?: string;
-    dtdcWarehouseId?: string;
-    xpressbeesWarehouseId?: string;
-    lastSyncedAt?: Date;
+    velocity?: CarrierSyncDetails;
+    delhivery?: CarrierSyncDetails;
+    ekart?: CarrierSyncDetails;
+    dtdc?: CarrierSyncDetails;
+    xpressbees?: CarrierSyncDetails;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -120,11 +136,96 @@ const WarehouseSchema = new Schema<IWarehouse>(
       default: false,
     },
     carrierDetails: {
-      velocityWarehouseId: String,
-      delhiveryWarehouseId: String,
-      dtdcWarehouseId: String,
-      xpressbeesWarehouseId: String,
-      lastSyncedAt: Date,
+      velocity: {
+        warehouseId: String,
+        status: {
+          type: String,
+          enum: ['pending', 'synced', 'failed'],
+          default: 'pending'
+        },
+        lastSyncedAt: Date,
+        lastAttemptAt: Date,
+        error: {
+          type: {
+            type: String,
+            enum: ['NETWORK', 'VALIDATION', 'RATE_LIMIT', 'UNKNOWN']
+          },
+          message: String,
+          timestamp: Date
+        }
+      },
+      delhivery: {
+        warehouseId: String,
+        status: {
+          type: String,
+          enum: ['pending', 'synced', 'failed'],
+          default: 'pending'
+        },
+        lastSyncedAt: Date,
+        lastAttemptAt: Date,
+        error: {
+          type: {
+            type: String,
+            enum: ['NETWORK', 'VALIDATION', 'RATE_LIMIT', 'UNKNOWN']
+          },
+          message: String,
+          timestamp: Date
+        }
+      },
+      ekart: {
+        warehouseId: String,
+        status: {
+          type: String,
+          enum: ['pending', 'synced', 'failed'],
+          default: 'pending'
+        },
+        lastSyncedAt: Date,
+        lastAttemptAt: Date,
+        error: {
+          type: {
+            type: String,
+            enum: ['NETWORK', 'VALIDATION', 'RATE_LIMIT', 'UNKNOWN']
+          },
+          message: String,
+          timestamp: Date
+        }
+      },
+      dtdc: {
+        warehouseId: String,
+        status: {
+          type: String,
+          enum: ['pending', 'synced', 'failed'],
+          default: 'pending'
+        },
+        lastSyncedAt: Date,
+        lastAttemptAt: Date,
+        error: {
+          type: {
+            type: String,
+            enum: ['NETWORK', 'VALIDATION', 'RATE_LIMIT', 'UNKNOWN']
+          },
+          message: String,
+          timestamp: Date
+        }
+      },
+      xpressbees: {
+        warehouseId: String,
+        status: {
+          type: String,
+          enum: ['pending', 'synced', 'failed'],
+          default: 'pending'
+        },
+        lastSyncedAt: Date,
+        lastAttemptAt: Date,
+        error: {
+          type: {
+            type: String,
+            enum: ['NETWORK', 'VALIDATION', 'RATE_LIMIT', 'UNKNOWN']
+          },
+          message: String,
+          timestamp: Date
+        }
+      }
     },
   },
   {

@@ -16,7 +16,7 @@ import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import CSVExportService from '../../../../core/application/services/analytics/export/csv-export.service';
 import ExcelExportService from '../../../../core/application/services/analytics/export/excel-export.service';
 import PDFExportService from '../../../../core/application/services/analytics/export/pdf-export.service';
-import CloudinaryStorageService from '../../../../infrastructure/external/storage/cloudinary/cloudinary-storage.service';
+import SpacesStorageService from '../../../../infrastructure/external/storage/spaces/spaces-storage.service';
 import mongoose from 'mongoose';
 
 // Validation schema for export requests
@@ -30,6 +30,13 @@ const exportRequestSchema = z.object({
 });
 
 type ExportRequestBody = z.infer<typeof exportRequestSchema>;
+
+const isSpacesConfigured = () => {
+    return process.env.SPACES_ENDPOINT &&
+        process.env.SPACES_ACCESS_KEY &&
+        process.env.SPACES_SECRET_KEY &&
+        process.env.SPACES_BUCKET;
+};
 
 /**
  * Export to CSV
@@ -62,16 +69,18 @@ export const exportToCSV = async (
         const buffer = await CSVExportService.exportToCSV(data, columns);
         const filename = `${dataType}_export_${Date.now()}.csv`;
 
-        // Upload to Cloudinary if configured, otherwise stream directly
-        if (CloudinaryStorageService.isConfigured()) {
-            const result = await CloudinaryStorageService.uploadFile(buffer, filename, 'csv');
+        // Upload to Spaces if configured, otherwise stream directly
+        if (isSpacesConfigured()) {
+            const spacesService = new SpacesStorageService();
+            const key = `exports/${auth.companyId}/${filename}`;
+            await spacesService.uploadFile(buffer, key, 'text/csv');
 
-            // Generate signed URL with 24-hour expiry for security
-            const signedUrl = CloudinaryStorageService.getSignedUrl(result.publicId, 86400); // 24 hours
-            const expiresAt = new Date(Date.now() + 86400 * 1000);
+            // Generate signed URL
+            const signedUrl = await spacesService.getFileUrl(key);
+            const expiresAt = new Date(Date.now() + 86400 * 1000); // 24 hours
 
             sendSuccess(res, {
-                downloadUrl: signedUrl,  // Use signed URL, not permanent public URL
+                downloadUrl: signedUrl,
                 expiresAt: expiresAt.toISOString(),
                 filename,
                 format: 'csv',
@@ -122,15 +131,17 @@ export const exportToExcel = async (
 
         const filename = `${dataType}_export_${Date.now()}.xlsx`;
 
-        if (CloudinaryStorageService.isConfigured()) {
-            const result = await CloudinaryStorageService.uploadFile(buffer, filename, 'xlsx');
+        if (isSpacesConfigured()) {
+            const spacesService = new SpacesStorageService();
+            const key = `exports/${auth.companyId}/${filename}`;
+            await spacesService.uploadFile(buffer, key, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-            // Generate signed URL with 24-hour expiry for security
-            const signedUrl = CloudinaryStorageService.getSignedUrl(result.publicId, 86400);
+            // Generate signed URL
+            const signedUrl = await spacesService.getFileUrl(key);
             const expiresAt = new Date(Date.now() + 86400 * 1000);
 
             sendSuccess(res, {
-                downloadUrl: signedUrl,  // Use signed URL, not permanent public URL
+                downloadUrl: signedUrl,
                 expiresAt: expiresAt.toISOString(),
                 filename,
                 format: 'xlsx',
@@ -181,15 +192,17 @@ export const exportToPDF = async (
 
         const filename = `${dataType}_export_${Date.now()}.pdf`;
 
-        if (CloudinaryStorageService.isConfigured()) {
-            const result = await CloudinaryStorageService.uploadFile(buffer, filename, 'pdf');
+        if (isSpacesConfigured()) {
+            const spacesService = new SpacesStorageService();
+            const key = `exports/${auth.companyId}/${filename}`;
+            await spacesService.uploadFile(buffer, key, 'application/pdf');
 
-            // Generate signed URL with 24-hour expiry for security
-            const signedUrl = CloudinaryStorageService.getSignedUrl(result.publicId, 86400);
+            // Generate signed URL
+            const signedUrl = await spacesService.getFileUrl(key);
             const expiresAt = new Date(Date.now() + 86400 * 1000);
 
             sendSuccess(res, {
-                downloadUrl: signedUrl,  // Use signed URL, not permanent public URL
+                downloadUrl: signedUrl,
                 expiresAt: expiresAt.toISOString(),
                 filename,
                 format: 'pdf',

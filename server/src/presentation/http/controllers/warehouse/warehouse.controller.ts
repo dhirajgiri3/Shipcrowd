@@ -18,6 +18,7 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import WarehouseSyncService from '../../../../core/application/services/logistics/warehouse-sync.service';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 // Validation schemas
@@ -149,6 +150,14 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
     const warehouse = new Warehouse(warehouseData);
     await warehouse.save();
 
+    // Sync warehouse with courier partners (non-blocking)
+    WarehouseSyncService.syncWarehouse(warehouse).catch((error: Error) => {
+      logger.error('Warehouse sync failed (non-blocking)', {
+        warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
+        error: error.message
+      });
+    });
+
     const warehouseCount = await Warehouse.countDocuments({
       companyId: companyId,
       isDeleted: false,
@@ -184,7 +193,15 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
       (warehouseObj as any).formattedHours = formatOperatingHours(warehouseObj.operatingHours);
     }
 
-    sendCreated(res, { warehouse: warehouseObj }, 'Warehouse created successfully');
+    // Add sync metadata for frontend
+    const syncStatus = {
+      velocity: warehouse.carrierDetails?.velocity?.status || 'pending'
+    };
+
+    sendCreated(res, {
+      warehouse: warehouseObj,
+      syncStatus
+    }, 'Warehouse created successfully');
   } catch (error) {
     logger.error('Error creating warehouse:', error);
     next(error);

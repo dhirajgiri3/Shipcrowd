@@ -79,15 +79,18 @@ import { VELOCITY_CARRIER_IDS, isDeprecatedVelocityId } from './velocity-carrier
 import { DynamicPricingService } from '../../../../core/application/services/pricing/dynamic-pricing.service';
 import {
   handleVelocityError,
-  retryWithBackoff,
-  VelocityRateLimiters
+  retryWithBackoff
 } from './velocity-error-handler';
+import { StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
+import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
+import { VELOCITY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs/index';
 import logger from '../../../../shared/logger/winston.logger';
 
 export class VelocityShipfastProvider extends BaseCourierAdapter {
   private auth: VelocityAuth;
   private httpClient: AxiosInstance;
   private companyId: mongoose.Types.ObjectId;
+  private rateLimiter: RateLimiterService;
 
   constructor(
     companyId: mongoose.Types.ObjectId,
@@ -96,6 +99,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     super('', baseUrl);
     this.companyId = companyId;
     this.auth = new VelocityAuth(companyId, baseUrl);
+    this.rateLimiter = new RateLimiterService(VELOCITY_RATE_LIMITER_CONFIG);
 
     this.httpClient = axios.create({
       baseURL: baseUrl,
@@ -201,7 +205,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
 
     // Get or create Velocity warehouse ID
-    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    let velocityWarehouseId = warehouse.carrierDetails?.velocity?.warehouseId;
 
     if (!velocityWarehouseId) {
       logger.info('Warehouse not synced with Velocity, creating', {
@@ -243,7 +247,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
 
     // Apply rate limiting
-    await VelocityRateLimiters.forwardOrder.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/forward-order-orchestration');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityShipmentResponse }>(
@@ -297,7 +301,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.tracking.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/order-tracking');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityTrackingResponse[] }>(
@@ -343,12 +347,12 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     const tracking = shipmentData.tracking_data;
 
-    // Map status
-    const statusMapping = VelocityMapper.mapStatus(tracking.shipment_status);
+    // Map status using centralized StatusMapperService
+    const statusMapping = StatusMapperService.map('velocity', tracking.shipment_status);
 
     // Map tracking history to timeline
     const timeline = (tracking.shipment_track_activities || []).map((event: any) => ({
-      status: VelocityMapper.mapStatus(event.activity || '').status,
+      status: StatusMapperService.map('velocity', event.activity || '').internalStatus,
       message: event.activity || '',
       location: event.location || '',
       timestamp: new Date(event.date + ' ' + (event.time || '00:00:00'))
@@ -356,7 +360,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     return {
       trackingNumber: tracking.awb_code || trackingNumber,
-      status: statusMapping.status,
+      status: statusMapping.internalStatus,
       currentLocation: tracking.current_location,
       timeline,
       estimatedDelivery: tracking.estimated_delivery
@@ -378,7 +382,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.serviceability.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/serviceability');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
@@ -440,12 +444,12 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       return [...carriers].sort((a, b) => {
         const priorityA = priorityMap[a.carrier_id] || 0;
         const priorityB = priorityMap[b.carrier_id] || 0;
-        
+
         // If priorities are different, use them
         if (priorityB !== priorityA) {
           return priorityB - priorityA;
         }
-        
+
         // If priorities same, fallback to original order (often cheapest)
         return 0;
       });
@@ -545,7 +549,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.cancellation.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/cancel-order');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityCancelResponse }>(
@@ -590,7 +594,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.serviceability.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/serviceability');
 
     try {
       const response = await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
@@ -624,7 +628,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     const request = VelocityMapper.mapToWarehouseRequest(warehouse);
 
     // Apply rate limiting
-    await VelocityRateLimiters.warehouse.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/warehouse');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityWarehouseResponse }>(
@@ -649,8 +653,9 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     // Store Velocity warehouse ID in local warehouse model
     await Warehouse.findByIdAndUpdate(warehouse._id, {
       $set: {
-        'carrierDetails.velocityWarehouseId': velocityWarehouse.warehouse_id,
-        'carrierDetails.lastSyncedAt': new Date()
+        'carrierDetails.velocity.warehouseId': velocityWarehouse.warehouse_id,
+        'carrierDetails.velocity.status': 'synced',
+        'carrierDetails.velocity.lastSyncedAt': new Date()
       }
     });
 
@@ -696,7 +701,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       throw new VelocityError(404, { message: 'Warehouse not found', status_code: 404 }, false);
     }
 
-    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    let velocityWarehouseId = warehouse.carrierDetails?.velocity?.warehouseId;
     if (!velocityWarehouseId) {
       const velocityWarehouse = await this.createWarehouse(warehouse as any);
       velocityWarehouseId = velocityWarehouse.warehouse_id;
@@ -726,7 +731,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.forwardOrderOnly.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/forward-order');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityForwardOrderOnlyResponse }>(
@@ -770,7 +775,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.assignCourier.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/forward-order-shipment');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityShipmentResponse }>(
@@ -824,7 +829,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
 
     // Get or create Velocity warehouse ID
-    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    let velocityWarehouseId = warehouse.carrierDetails?.velocity?.warehouseId;
     if (!velocityWarehouseId) {
       logger.info('Warehouse not synced with Velocity for RTO, creating', {
         warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
@@ -887,7 +892,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     } as any; // Cast as any because type definition might be missing these fields
 
     // Apply rate limiting
-    await VelocityRateLimiters.reverseShipment.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/reverse-shipment');
 
     try {
       // Attempt real API call (with retry logic)
@@ -982,7 +987,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting (reuse schedulePickup limiter or creating new one if needed, using schedulePickup for now)
-    await VelocityRateLimiters.schedulePickup.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/schedule-pickup');
 
     try {
       logger.info('Scheduling pickup via Forward Order Shipment', { shipmentId: data.providerShipmentId });
@@ -1033,7 +1038,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.cancelReverseShipment.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/cancel-reverse-shipment');
 
     try {
       // Attempt real API call
@@ -1153,7 +1158,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.forwardOrder.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/forward-order-orchestration');
 
     try {
       const response = await retryWithBackoff<{ data: { status: string; message: string } }>(
@@ -1207,7 +1212,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
 
     // Apply rate limiting
-    await VelocityRateLimiters.tracking.acquire(); // Reuse tracking limiter
+    await this.rateLimiter.acquire('/custom/api/v1/order-tracking'); // Reuse tracking limiter
 
     try {
       const response = await retryWithBackoff<{
@@ -1255,7 +1260,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     // Apply rate limiting
     // Using serviceability limiter as it's a general info request, or tracking
-    await VelocityRateLimiters.tracking.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/order-tracking');
 
     try {
       const response = await retryWithBackoff<{ data: VelocitySettlementResponse }>(
@@ -1312,7 +1317,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       throw new VelocityError(404, { message: 'Return warehouse not found', status_code: 404 }, false);
     }
 
-    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    let velocityWarehouseId = warehouse.carrierDetails?.velocity?.warehouseId;
     if (!velocityWarehouseId) {
       const velocityWarehouse = await this.createWarehouse(warehouse as any);
       velocityWarehouseId = velocityWarehouse.warehouse_id;
@@ -1355,7 +1360,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.reverseOrderOnly.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/reverse-order');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityReverseOrderOnlyResponse }>(
@@ -1395,7 +1400,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       throw new VelocityError(404, { message: 'Warehouse not found', status_code: 404 }, false);
     }
 
-    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    let velocityWarehouseId = warehouse.carrierDetails?.velocity?.warehouseId;
     if (!velocityWarehouseId) {
       const velocityWarehouse = await this.createWarehouse(warehouse as any);
       velocityWarehouseId = velocityWarehouse.warehouse_id;
@@ -1408,7 +1413,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.assignReverseCourier.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/assign-reverse-courier');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityReverseShipmentResponse }>(
@@ -1448,7 +1453,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.reports.acquire();
+    await this.rateLimiter.acquire('/custom/api/v1/reports');
 
     // Make API call with retry
     const response = await retryWithBackoff<{ data: VelocityReportsResponse }>(

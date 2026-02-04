@@ -206,20 +206,21 @@ describe('Velocity Shipfast Integration', () => {
 
       // Verify warehouse was updated with Velocity ID
       const updatedWarehouse = await Warehouse.findById(testWarehouseId);
-      expect(updatedWarehouse?.carrierDetails?.velocityWarehouseId).toBe('WHVEL123');
+      expect(updatedWarehouse?.carrierDetails?.velocity?.warehouseId).toBe('WHVEL123');
     });
 
     it('should use existing Velocity warehouse ID if already synced', async () => {
       // Pre-sync warehouse
       await Warehouse.findByIdAndUpdate(testWarehouseId, {
         $set: {
-          'carrierDetails.velocityWarehouseId': 'WHVEL123',
-          'carrierDetails.lastSyncedAt': new Date()
+          'carrierDetails.velocity.warehouseId': 'WHVEL123',
+          'carrierDetails.velocity.status': 'synced',
+          'carrierDetails.velocity.lastSyncedAt': new Date()
         }
       });
 
       const warehouse = await Warehouse.findById(testWarehouseId);
-      expect(warehouse?.carrierDetails?.velocityWarehouseId).toBe('WHVEL123');
+      expect(warehouse?.carrierDetails?.velocity?.warehouseId).toBe('WHVEL123');
 
       // Should not call create warehouse API again
       const mockShipmentData: CourierShipmentData = {
@@ -288,7 +289,8 @@ describe('Velocity Shipfast Integration', () => {
       // Pre-sync warehouse to simplify tests
       await Warehouse.findByIdAndUpdate(testWarehouseId, {
         $set: {
-          'carrierDetails.velocityWarehouseId': 'WHVEL123'
+          'carrierDetails.velocity.warehouseId': 'WHVEL123',
+          'carrierDetails.velocity.status': 'synced'
         }
       });
 
