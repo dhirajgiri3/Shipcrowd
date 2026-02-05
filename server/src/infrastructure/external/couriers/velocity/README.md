@@ -387,11 +387,25 @@ await ShipmentService.createShipment({
    - [ ] Monitor metrics
    - [ ] Gradual rollout (10% → 100%)
 
-3. **Enhancements (Week 5+):**
-   - [ ] Circuit breaker pattern
-   - [ ] Caching layer
-   - [ ] Webhook handlers
-   - [ ] Reverse order (RTO) support
+
+3. **Enhancements (Completed):**
+   - [x] Webhook handlers (Status updates & Shipment creation)
+   - [x] HMAC SHA256 Signature Verification
+   - [x] Manifest URL redirection
+
+## 🔗 Manifest & Webhooks
+
+### Manifest Generation
+Velocity does not provide a dedicated manifest generation API. Instead, it provides a `manifest_url` in the shipment response.
+- **Implementation**: The `ManifestService` checks for `metadata.carrierManifestUrl`.
+- **Behavior**: If a manifest URL exists, the system redirects the user to the carrier's hosted PDF/URL instead of generating a local PDF.
+
+### Webhooks
+- **Endpoint**: `POST /webhooks/couriers/velocity`
+- **Security**: HMAC SHA256 verification using `x-velocity-signature` header.
+- **Events**:
+  - `SHIPMENT_CREATED`: Logs event.
+  - `SHIPMENT_STATUS_UPDATE`: Auto-updates internal shipment status based on mapping.
 
 ## 📞 Support
 
@@ -403,7 +417,7 @@ For issues or questions:
 
 ---
 
-**Implementation:** Session 5 Complete ✅
+**Implementation:** Phase 6 Integration Complete ✅
 **Status:** Production-Ready
-**Version:** 1.0
-**Last Updated:** December 27, 2025
+**Version:** 1.1
+**Last Updated:** February 05, 2026

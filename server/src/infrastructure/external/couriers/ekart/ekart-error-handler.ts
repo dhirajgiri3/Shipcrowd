@@ -123,7 +123,10 @@ export class EkartCircuitBreaker {
             if (this.failureCount >= this.config.failureThreshold) {
                 // Only transition to OPEN if not already OPEN
                 if (this.state === CircuitState.CLOSED || this.state === CircuitState.HALF_OPEN) {
-                    logger.error('Circuit breaker opening due to failures', {
+                    logger.error('ALERT: Ekart Circuit Breaker OPENING - Too many failures', {
+                        alert: true,
+                        component: 'EkartIntegration',
+                        metric: 'circuit_breaker_open',
                         failureCount: this.failureCount,
                         threshold: this.config.failureThreshold,
                     });
@@ -264,7 +267,7 @@ export function isRetryableError(error: any): boolean {
     }
 
     // HTTP status code errors
-    const status = error.response?.status;
+    const status = error.statusCode || error.response?.status || error.response?.status_code;
 
     if (!status) {
         // No status = network error, retry

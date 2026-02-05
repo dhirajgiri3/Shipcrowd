@@ -105,6 +105,7 @@ export const SEED_CONFIG = {
         dtdc: 0,
         xpressbees: 0,
         velocity: 100,
+        ekart: 0,
     },
 
     // City Tier Distribution (must sum to 100)
@@ -221,4 +222,4 @@ export type PaymentMethod = 'cod' | 'prepaid';
 export type DeliveryStatus = 'delivered' | 'ndr' | 'rto';
 export type NDRType = 'address_issue' | 'customer_unavailable' | 'refused' | 'payment_issue' | 'other';
 export type RTOReason = 'ndr_unresolved' | 'customer_cancellation' | 'damaged_in_transit' | 'refused' | 'other';
-export type CarrierName = 'delhivery' | 'bluedart' | 'ecom_express' | 'dtdc' | 'xpressbees' | 'velocity';
+export type CarrierName = 'delhivery' | 'bluedart' | 'ecom_express' | 'dtdc' | 'xpressbees' | 'velocity' | 'ekart';

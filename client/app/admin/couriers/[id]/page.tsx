@@ -32,13 +32,16 @@ import {
     XCircle,
     AlertCircle,
     TestTube,
+    Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Loader, StatusBadge } from '@/src/components/ui';
+import { EkartSetupModal } from '../../integrations/components/modals/EkartSetupModal';
 
 export default function CourierDetailPage({ params }: { params: { id: string } }) {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
+    const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
     const [editForm, setEditForm] = useState<UpdateCourierRequest>({});
 
     const { data: courier, isLoading } = useCourier(params.id);
@@ -153,6 +156,12 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    {courier.code.toLowerCase() === 'ekart' && (
+                        <Button variant="outline" onClick={() => setIsSetupModalOpen(true)}>
+                            <Settings className="h-4 w-4 mr-2" />
+                            Configure API
+                        </Button>
+                    )}
                     {!isEditing ? (
                         <>
                             <Button variant="outline" onClick={handleTestIntegration}>
@@ -184,6 +193,15 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
                     )}
                 </div>
             </div>
+
+            {/* Ekart Setup Modal */}
+            {courier.code.toLowerCase() === 'ekart' && (
+                <EkartSetupModal
+                    isOpen={isSetupModalOpen}
+                    onClose={() => setIsSetupModalOpen(false)}
+                    integration={{ status: courier.integrationStatus === 'HEALTHY' ? 'connected' : 'disconnected' }}
+                />
+            )}
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

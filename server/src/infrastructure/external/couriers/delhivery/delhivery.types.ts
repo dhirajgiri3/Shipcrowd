@@ -70,6 +70,7 @@ export interface DelhiveryTrackResponse {
             PickUpDate?: string;
             NSLCode?: string;
             ReferenceNo?: string;
+            ExpectedDeliveryDate?: string;
             AWB: string;
         };
     }>;
@@ -141,6 +142,7 @@ export interface DelhiveryWebhookPayload {
         PickUpDate?: string;
         NSLCode?: string;
         ReferenceNo?: string;
+        ExpectedDeliveryDate?: string;
         AWB: string;
     };
 }

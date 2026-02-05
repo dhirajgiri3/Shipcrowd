@@ -7,12 +7,14 @@ import { Badge } from '@/src/components/ui/core/Badge';
 import { Plug, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { useIntegrations } from '@/src/core/api/hooks/integrations/useIntegrations';
 import { useUserList } from '@/src/core/api/hooks/admin/useUserManagement';
+import { EkartSetupModal } from './modals/EkartSetupModal';
 
 const MOCK_INTEGRATIONS = [
     { name: 'Shopify', status: 'connected', ordersSync: 12450, lastSync: '2 mins ago', logo: 'https://cdn.worldvectorlogo.com/logos/shopify.svg' },
     { name: 'WooCommerce', status: 'connected', ordersSync: 6720, lastSync: '15 mins ago', logo: 'https://cdn.worldvectorlogo.com/logos/woocommerce.svg' },
     { name: 'Amazon Seller', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: 'https://toppng.com/uploads/preview/amazon-logo-vector-1157394522189k5iof9l3.png' },
     { name: 'Flipkart', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: 'https://cdn.worldvectorlogo.com/logos/flipkart.svg' },
+    { name: 'Ekart Logistics', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: '/logos/ekart.png' },
 ];
 
 const MOCK_USERS = [
@@ -27,12 +29,22 @@ export function IntegrationsClient() {
     const { data: integrationsResponse, isLoading: integrationsLoading } = useIntegrations();
     const { data: usersResponse, isLoading: usersLoading } = useUserList({ page: 1, limit: 10 });
 
+    const [isEkartModalOpen, setIsEkartModalOpen] = useState(false);
+    const [selectedIntegration, setSelectedIntegration] = useState<any>(null);
+
     // Extract data with fallback
     const integrations = integrationsResponse?.integrations || [];
     const isUsingMockIntegrations = !integrationsResponse?.integrations;
 
     const users = usersResponse?.users || [];
     const isUsingMockUsers = !usersResponse?.users;
+
+    const handleAction = (integration: any) => {
+        if (integration.name.toLowerCase().includes('ekart')) {
+            setSelectedIntegration(integration);
+            setIsEkartModalOpen(true);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -87,6 +99,7 @@ export function IntegrationsClient() {
                                     size="sm"
                                     variant={integration.status === 'connected' ? 'outline' : 'secondary'}
                                     className="w-full text-xs"
+                                    onClick={() => handleAction(integration)}
                                 >
                                     {integration.status === 'connected' ? 'Configure' : 'Connect Now'}
                                 </Button>
@@ -95,6 +108,12 @@ export function IntegrationsClient() {
                     ))}
                 </div>
             </div>
+
+            <EkartSetupModal 
+                isOpen={isEkartModalOpen} 
+                onClose={() => setIsEkartModalOpen(false)} 
+                integration={selectedIntegration}
+            />
 
             {/* 2. User Management Section */}
             <div>

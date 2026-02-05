@@ -27,15 +27,17 @@
 
 ## ❌ NOT IMPLEMENTED Features
 
-These features are **CLAIMED but NOT ACTUALLY IMPLEMENTED**:
+These features are **NOT AVAILABLE in Ekart API**:
 
 | Feature | Claimed Status | Actual Status | Reality |
-|---------|---------------|---------------|---------|
-| **POD (Proof of Delivery)** | ❌ "Via Webhook" | ❌ **NOT IMPLEMENTED** | No `getProofOfDelivery()` method exists |
-| **Manifest Generation** | ❌ "Implemented" | ❌ **NOT IMPLEMENTED** | No manifest method in provider |
-| **Label Generation** | ❌ "Implemented" | ⚠️ **SEPARATE ADAPTER** | Exists in `ekart-label.adapter.ts` but not integrated into main provider |
-| **Schedule Pickup** | ❌ "Supported" | ❌ **NOT IMPLEMENTED** | No `schedulePickup()` method |
-| **NDR Actions** | ❌ "Complete" | ❌ **NOT SUPPORTED** | `requestReattempt()` throws error |
+|---------|---------------|---------------|----------|
+| **POD (Proof of Delivery)** | ❌ "Via Webhook" | ❌ **NOT AVAILABLE** | No API endpoint exists |
+| **Schedule Pickup** | ❌ "Supported" | ❌ **NOT AVAILABLE** | Not in Ekart API v3.8.8 |
+
+**✅ RECENTLY COMPLETED (2026-02-05):**
+- ✅ **Manifest Generation** - Now implemented with chunking support
+- ✅ **NDR Actions/Reattempt** - Now implemented using `/api/v2/package/ndr`
+- ✅ **Label Generation** - Now integrated into main provider
 
 ---
 
@@ -61,75 +63,85 @@ These features are **CLAIMED but NOT ACTUALLY IMPLEMENTED**:
 
 ---
 
-### 2. Manifest Generation - ❌ FALSE CLAIM
+### 2. Manifest Generation - ✅ NOW IMPLEMENTED
 
-**Claimed:** "Manifest Generation ✅ Implemented"
+**Previously:** "Manifest Generation ❌ NOT IMPLEMENTED"
 
-**Reality:**
+**Current Status:** ✅ **IMPLEMENTED** (2026-02-05)
+
 ```typescript
-// NO generateManifest() or createManifest() method exists
-// Types define: EkartManifestRequest & EkartManifestResponse
-// BUT: No implementation in ekart.provider.ts
+// NOW EXISTS in ekart.provider.ts
+async generateManifest(trackingIds: string[]): Promise<{
+    manifestNumber: number;
+    downloadUrl: string;
+    ctime: number;
+}>
 ```
 
-**Verification:**
-```bash
-grep -n "generateManifest\|createManifest" ekart/*.ts
-# Result: NO MATCHES
-```
+**Features:**
+- ✅ Automatic chunking for >100 AWBs
+- ✅ Parallel processing
+- ✅ Error handling with retry logic
+- ✅ Unit tests added
+
+**API:** `POST /data/v2/generate/manifest`
 
 **Truth:** Types exist, endpoint is documented, but **METHOD NOT IMPLEMENTED**.
 
 ---
 
-### 3. Label Generation - ⚠️ MISLEADING CLAIM
+### 3. Label Generation - ✅ NOW IMPLEMENTED
 
-**Claimed:** "Label Generation ✅ Implemented"
+**Previously:** "Label Generation ⚠️ SEPARATE ADAPTER"
 
-**Reality:**
+**Current Status:** ✅ **INTEGRATED** (2026-02-05)
+
 ```typescript
-// EXISTS in separate file: ekart-label.adapter.ts
-// BUT: Not integrated into EkartProvider
-// Uses OLD approach with separate adapter interface
+// NOW INTEGRATED in ekart.provider.ts
+async getLabel(
+    trackingIds: string[],
+    format: 'pdf' | 'json' = 'pdf'
+): Promise<{
+    labels?: Array<{ tracking_id: string; label_url: string }>;
+    pdfBuffer?: Buffer;
+}>
 ```
 
-**File Structure:**
-```
-ekart/
-  ├── ekart.provider.ts         ❌ No label method
-  ├── ekart-label.adapter.ts    ✅ Has generateLabel()
-  └── ekart.types.ts            ✅ Has EkartLabelRequest/Response
-```
+**Features:**
+- ✅ Dual format support (PDF buffer or JSON URLs)
+- ✅ Batch limit validation (max 100)
+- ✅ Proper response type handling
+- ✅ Unit tests added
 
-**Truth:** Label functionality exists but is **NOT INTEGRATED** into the main provider. It's a separate adapter using deprecated patterns.
+**API:** `POST /api/v1/package/label`
 
 ---
 
-### 4. NDR Actions / Reattempt - ❌ FALSE CLAIM
+### 4. NDR Actions / Reattempt - ✅ NOW IMPLEMENTED
 
-**Claimed:** "NDR Action/Reattempt ✅ Complete"
+**Previously:** "NDR Action/Reattempt ❌ NOT SUPPORTED"
 
-**Reality:**
+**Current Status:** ✅ **IMPLEMENTED** (2026-02-05)
+
 ```typescript
-// From ekart.provider.ts line 439-459:
+// NOW IMPLEMENTED in ekart.provider.ts
 async requestReattempt(
     trackingNumber: string,
     preferredDate?: Date,
     instructions?: string
-): Promise<{ success: boolean; message: string; uplId?: string }> {
-    try {
-        // ... payload preparation ...
+): Promise<{ success: boolean; message: string; uplId?: string }>
 
-        // ACTUAL IMPLEMENTATION:
-        throw new CourierFeatureNotSupportedError('ekart', 'requestReattempt');
-
-    } catch (error) {
-        return { success: false, message: error.message };
-    }
-}
+// BONUS: Also added
+async requestRTO(trackingNumber: string): Promise<{ success: boolean; message: string }>
 ```
 
-**Truth:** Method exists but **IMMEDIATELY THROWS ERROR**. Feature is **NOT SUPPORTED**.
+**Features:**
+- ✅ Date validation (within 7 days)
+- ✅ Actual API integration (no longer throws error)
+- ✅ RTO support added
+- ✅ Unit tests added
+
+**API:** `POST /api/v2/package/ndr`
 
 ---
 

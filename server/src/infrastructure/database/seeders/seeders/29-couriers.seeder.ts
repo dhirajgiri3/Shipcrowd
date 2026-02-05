@@ -22,9 +22,9 @@ export const seedCouriers = async () => {
                     serviceTypes: carrier.serviceTypes.map(s => s.toLowerCase()),
                     regions: carrier.metroCoverage ? ['Pan India', 'Metro'] : ['Pan India'],
                     isActive: true,
-                    isApiIntegrated: true,
-                    codEnabled: true, // Defaulting to true as per static data
-                    pickupEnabled: true,
+                    isApiIntegrated: carrier.isIntegrated,
+                    codEnabled: carrier.codLimit > 0,
+                    pickupEnabled: carrier.capabilities ? carrier.capabilities.pickupScheduling : true, // Use capability or default
                     trackingEnabled: true,
                 },
                 { upsert: true, new: true, setDefaultsOnInsert: true }

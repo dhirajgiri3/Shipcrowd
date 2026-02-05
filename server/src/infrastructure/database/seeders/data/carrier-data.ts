@@ -1,14 +1,30 @@
 /**
- * Carrier Data
+ * Carrier Data (Enriched)
  *
- * Courier partner data with tracking number formats and service types.
+ * Courier partner data with tracking number formats, service types, and full capabilities.
  */
 
 import { selectRandom, randomInt, selectWeightedFromObject } from '../utils/random.utils';
 import { SEED_CONFIG, CarrierName } from '../config';
+import { EKART_CONFIG } from './ekart-config';
+import { VELOCITY_CONFIG } from './velocity-config';
+import { DELHIVERY_CONFIG } from './delhivery-config';
 
 // Tracking number counters per carrier to ensure uniqueness
 const trackingCounters: Map<CarrierName, number> = new Map();
+
+export interface CarrierCapabilities {
+    mps: boolean;
+    splitFlow: boolean;
+    qcSupport: boolean;
+    obd: boolean;
+    ndr: 'full' | 'weak' | 'none';
+    manifest: 'api' | 'auto' | 'missing';
+    webhook: 'full' | 'partial' | 'none';
+    pod: boolean;
+    pickupScheduling: boolean;
+    heavyShipment?: boolean; // Delhivery specific
+}
 
 export interface CarrierData {
     name: CarrierName;
@@ -24,6 +40,8 @@ export interface CarrierData {
     tier2Coverage: boolean;
     tier3Coverage: boolean;
     isIntegrated: boolean; // Flag to indicate if API integration exists
+    capabilities?: CarrierCapabilities; // Enriched capabilities from our analysis
+    paymentModes?: string[];
 }
 
 export const CARRIERS: Record<CarrierName, CarrierData> = {
@@ -32,7 +50,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         displayName: 'Delhivery',
         trackingPrefix: 'DHL',
         trackingLength: 14,
-        serviceTypes: ['Standard', 'Express', 'Surface', 'Same Day'],
+        serviceTypes: DELHIVERY_CONFIG.services.types,
         expressService: 'Express',
         pickupCutoffTime: '16:00',
         codLimit: 50000,
@@ -41,6 +59,8 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         tier2Coverage: true,
         tier3Coverage: true,
         isIntegrated: true,
+        capabilities: DELHIVERY_CONFIG.capabilities as CarrierCapabilities,
+        paymentModes: DELHIVERY_CONFIG.services.paymentModes
     },
     bluedart: {
         name: 'bluedart',
@@ -107,7 +127,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         displayName: 'Velocity',
         trackingPrefix: 'VEL',
         trackingLength: 12,
-        serviceTypes: ['Standard', 'Express', 'Surface', 'Same Day'],
+        serviceTypes: VELOCITY_CONFIG.services.types,
         expressService: 'Express',
         pickupCutoffTime: '18:00',
         codLimit: 100000,
@@ -116,6 +136,25 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         tier2Coverage: true,
         tier3Coverage: true,
         isIntegrated: true,
+        capabilities: VELOCITY_CONFIG.capabilities as CarrierCapabilities,
+        paymentModes: VELOCITY_CONFIG.services.paymentModes
+    },
+    ekart: {
+        name: 'ekart',
+        displayName: 'Ekart Logistics',
+        trackingPrefix: 'EK',
+        trackingLength: 14,
+        serviceTypes: EKART_CONFIG.services.types,
+        expressService: 'Express',
+        pickupCutoffTime: '14:00',
+        codLimit: 50000,
+        weightLimit: 100,
+        metroCoverage: true,
+        tier2Coverage: true,
+        tier3Coverage: true,
+        isIntegrated: true,
+        capabilities: EKART_CONFIG.capabilities as CarrierCapabilities,
+        paymentModes: EKART_CONFIG.services.paymentModes
     }
 };
 
@@ -257,6 +296,7 @@ export function calculateShippingCost(
         dtdc: 0.9,
         xpressbees: 0.85, // Budget carrier
         velocity: 0.95, // Balanced
+        ekart: 0.95, // Balanced
     };
 
     const multiplier = carrierMultipliers[carrierName];
@@ -276,12 +316,13 @@ export function calculateShippingCost(
  */
 export function generateCarrierWarehouseId(carrierName: CarrierName): string {
     const prefixes: Record<CarrierName, string> = {
-        delhivery: 'VEL',
+        delhivery: 'DEL',
         bluedart: 'BDR',
         ecom_express: 'ECM',
         dtdc: 'DTC',
         xpressbees: 'XPB',
         velocity: 'VEL',
+        ekart: 'EK',
     };
 
     return `${prefixes[carrierName]}${randomInt(100000, 999999)}`;

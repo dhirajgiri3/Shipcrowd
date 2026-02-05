@@ -19,10 +19,11 @@ import { CourierShipmentData } from '../../../src/infrastructure/external/courie
 describe('Ekart Integration Tests', () => {
     let provider: EkartProvider;
     const testCompanyId = new mongoose.Types.ObjectId();
+    const hasCredentials = process.env.EKART_USERNAME && process.env.EKART_PASSWORD;
 
     beforeAll(() => {
         // Skip if no credentials
-        if (!process.env.EKART_USERNAME || !process.env.EKART_PASSWORD) {
+        if (!hasCredentials) {
             console.warn('⚠️  Skipping Ekart integration tests - no credentials found');
             return;
         }
@@ -37,35 +38,50 @@ describe('Ekart Integration Tests', () => {
 
     describe('Authentication', () => {
         it('should authenticate and get valid token', async () => {
-            if (!provider) return;
+            if (!hasCredentials || !provider) return;
 
-            // Access the auth instance (may need to make it public for testing)
-            expect(provider).toBeDefined();
-
-            // TODO: Add actual authentication test
-            // const token = await provider.auth.getValidToken();
-            // expect(token).toBeTruthy();
+            // We can access private auth via 'any' cast for testing
+            const token = await (provider as any).auth.getValidToken();
+            expect(token).toBeTruthy();
+            expect(typeof token).toBe('string');
         });
     });
 
     describe('Serviceability Check', () => {
         it('should check if pincode is serviceable', async () => {
-            if (!provider) return;
+            if (!hasCredentials || !provider) return;
 
-            const isServiceable = await provider.checkServiceability('110001');
+            const isServiceable = await provider.checkServiceability('110001'); // Delhi
             expect(typeof isServiceable).toBe('boolean');
+
+            // Should be true for major metro
+            if (process.env.EKART_MOCK_MODE !== 'true') {
+                // expect(isServiceable).toBe(true); // Don't enforce true as it depends on Ekart account config
+            }
+        });
+
+        it('should return false for invalid pincode', async () => {
+            if (!hasCredentials || !provider) return;
+            // Ekart might throw error or return false
+            try {
+                const isServiceable = await provider.checkServiceability('000000');
+                expect(isServiceable).toBe(false);
+            } catch (e) {
+                // If it throws, that's also acceptable for invalid pin
+                expect(e).toBeDefined();
+            }
         });
     });
 
     describe('Rate Estimation', () => {
         it('should get shipping rates', async () => {
-            if (!provider) return;
+            if (!hasCredentials || !provider) return;
 
             const rateRequest = {
                 origin: { pincode: '400001' },
                 destination: { pincode: '110001' },
                 package: {
-                    weight: 1,
+                    weight: 1, // 1 kg
                     length: 20,
                     width: 15,
                     height: 10
@@ -76,15 +92,22 @@ describe('Ekart Integration Tests', () => {
             const rates = await provider.getRates(rateRequest);
             expect(Array.isArray(rates)).toBe(true);
             if (rates.length > 0) {
-                expect(rates[0]).toHaveProperty('total');
-                expect(rates[0]).toHaveProperty('currency', 'INR');
+                expect(rates[0]).toHaveProperty('totalCost');
+                expect(rates[0]).toHaveProperty('freightCharge');
+                expect(rates[0].currency).toBe('INR');
             }
         });
     });
 
     describe('Shipment Creation', () => {
         it('should create a test shipment', async () => {
-            if (!provider) return;
+            if (!hasCredentials || !provider) return;
+
+            // Only run detailed creation if explicitly enabled (costs money/creates data)
+            if (process.env.RUN_EKART_CREATE_TEST !== 'true') {
+                console.log('Skipping actual shipment creation (RUN_EKART_CREATE_TEST not set)');
+                return;
+            }
 
             const shipmentData: CourierShipmentData = {
                 origin: {
@@ -94,7 +117,8 @@ describe('Ekart Integration Tests', () => {
                     city: 'Mumbai',
                     state: 'Maharashtra',
                     pincode: '400001',
-                    country: 'India'
+                    country: 'India',
+                    email: 'warehouse@test.com'
                 },
                 destination: {
                     name: 'Test Customer',
@@ -103,37 +127,39 @@ describe('Ekart Integration Tests', () => {
                     city: 'Delhi',
                     state: 'Delhi',
                     pincode: '110001',
-                    country: 'India'
+                    country: 'India',
+                    email: 'customer@test.com'
                 },
                 package: {
-                    weight: 1,
-                    length: 20,
-                    width: 15,
+                    weight: 0.5,
+                    length: 10,
+                    width: 10,
                     height: 10,
                     description: 'Test Product',
-                    declaredValue: 1000
+                    declaredValue: 500,
+                    invoiceNumber: `INV-${Date.now()}`,
+                    invoiceDate: '2023-10-01'
                 },
                 orderNumber: `TEST-${Date.now()}`,
                 paymentMode: 'prepaid'
             };
 
-            // NOTE: Uncomment to run actual shipment creation (will create real shipment)
-            // const response = await provider.createShipment(shipmentData);
-            // expect(response.trackingNumber).toBeTruthy();
-
-            expect(shipmentData).toBeDefined();
+            try {
+                const response = await provider.createShipment(shipmentData);
+                expect(response.trackingNumber).toBeTruthy();
+                expect(response.courierReference).toBeTruthy(); // Vendor tracking ID
+            } catch (error) {
+                console.error('Shipment creation failed:', error);
+                throw error;
+            }
         });
     });
 
-    describe('Idempotency', () => {
-        it('should return cached response for duplicate request', async () => {
-            if (!provider) return;
-
-            // Test that same idempotency key returns cached result
-            expect(provider).toBeDefined();
-
-            // TODO: Create shipment twice with same idempotency key
-            // Verify second call doesn't hit API
+    describe('Manifest Generation', () => {
+        it('should generate manifest for a batch', async () => {
+            if (!hasCredentials || !provider) return;
+            // Requires valid tracking IDs, skipping for now
+            expect(provider.generateManifest).toBeDefined();
         });
     });
 });

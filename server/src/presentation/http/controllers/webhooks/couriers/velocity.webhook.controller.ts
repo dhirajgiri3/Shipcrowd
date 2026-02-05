@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendSuccess } from '../../../../../shared/utils/responseHelper';
 import { ValidationError } from '../../../../../shared/errors/app.error';
-import { WebhookProcessorService } from '../../../../../core/application/services/courier/webhook-processor.service';
-import { VelocityStatusMapper } from '../../../../../infrastructure/external/couriers/velocity/velocity-status.mapper';
+import { VelocityWebhookService } from '../../../../../infrastructure/external/couriers/velocity/velocity-webhook.service';
 
 /**
  * VelocityWebhookController
@@ -10,11 +9,10 @@ import { VelocityStatusMapper } from '../../../../../infrastructure/external/cou
  * Handles incoming webhooks from Velocity Courier.
  * Endpoint: POST /webhooks/couriers/velocity
  * 
- * Now uses the generic WebhookProcessorService for standardized webhook handling
+ * Uses specialized VelocityWebhookService for processing to handle
+ * all event types including status updates and creation events.
  */
 export class VelocityWebhookController {
-    private static mapper = new VelocityStatusMapper();
-
     /**
      * Handle incoming webhook event
      */
@@ -23,29 +21,20 @@ export class VelocityWebhookController {
             const payload = req.body;
 
             // Basic payload validation
-            if (!payload || !payload.awb) {
-                throw new ValidationError('Invalid payload: Missing AWB');
+            if (!payload) {
+                throw new ValidationError('Invalid payload: Missing body');
             }
 
-            // Process webhook using generic processor
-            const result = await WebhookProcessorService.processWebhook(
-                this.mapper,
-                payload
-            );
+            // Process webhook using specialized Velocity service
+            const result = await VelocityWebhookService.processWebhook(payload);
 
             // Send appropriate response based on result
-            if (result.success) {
-                sendSuccess(res, {
-                    status: result.status,
-                    message: result.message
-                });
-            } else {
-                // Return 200 even on errors to prevent webhook retries for operational issues
-                sendSuccess(res, {
-                    status: result.status,
-                    message: result.message
-                });
-            }
+            // We generally return success to the webhook provider to prevent retries
+            // unless it's a transient system error (handled by middleware/global handler)
+            sendSuccess(res, {
+                status: result.success ? 'success' : 'processed_with_warnings',
+                message: result.message
+            });
 
         } catch (error) {
             next(error);

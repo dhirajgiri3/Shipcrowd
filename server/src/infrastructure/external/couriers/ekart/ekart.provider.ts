@@ -89,6 +89,38 @@ export class EkartProvider implements ICourierAdapter {
             }
         });
 
+        // Add logging interceptors for performance monitoring
+        this.axiosInstance.interceptors.request.use((config) => {
+            (config as any).metadata = { startTime: Date.now() };
+            return config;
+        });
+
+        this.axiosInstance.interceptors.response.use(
+            (response) => {
+                const startTime = (response.config as any).metadata?.startTime;
+                const duration = startTime ? Date.now() - startTime : 0;
+                logger.info('Ekart API Success', {
+                    method: response.config.method?.toUpperCase(),
+                    endpoint: response.config.url,
+                    duration,
+                    status: 'success'
+                });
+                return response;
+            },
+            (error) => {
+                const startTime = (error.config as any)?.metadata?.startTime;
+                const duration = startTime ? Date.now() - startTime : 0;
+                logger.error('Ekart API Failure', {
+                    method: error.config?.method?.toUpperCase(),
+                    endpoint: error.config?.url,
+                    duration,
+                    status: 'failure',
+                    error: error.message
+                });
+                return Promise.reject(error);
+            }
+        );
+
         // Add request interceptor to inject auth token
         this.axiosInstance.interceptors.request.use(async (config) => {
             const token = await this.auth.getValidToken();
@@ -431,37 +463,108 @@ export class EkartProvider implements ICourierAdapter {
     }
 
     /**
-     * Request Reattempt
-     * Ekart might not have a direct API for this exposed simply, 
-     * implies manual intervention or specific NDR API.
-     * Assuming standard NDR action endpoint if available or not supported.
+     * Request Reattempt (NDR Action)
+     * 
+     * Uses Ekart NDR API to request delivery reattempt
+     * API: POST /api/v2/package/ndr
+     * 
+     * @param trackingNumber - Ekart tracking ID (WBN)
+     * @param preferredDate - Preferred reattempt date (must be within 7 days)
+     * @param instructions - Additional delivery instructions
      */
-    async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string; uplId?: string }> {
-        // Check if NDR action API exists in types
-        // Yes: EkartNDRActionRequest
+    async requestReattempt(
+        trackingNumber: string,
+        preferredDate?: Date,
+        instructions?: string
+    ): Promise<{ success: boolean; message: string; uplId?: string }> {
+        return this.circuitBreaker.execute(async () => {
+            try {
+                // Validate date is within 7 days if provided
+                if (preferredDate) {
+                    const now = new Date();
+                    const maxDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    if (preferredDate < now || preferredDate > maxDate) {
+                        throw new Error('Preferred date must be within 7 days from today');
+                    }
+                }
 
-        try {
-            const payload = {
-                tracking_id: trackingNumber,
-                action: 'REATTEMPT',
-                preferred_date: preferredDate?.toISOString().split('T')[0],
-                instructions
-            };
+                const payload = {
+                    action: 'Re-Attempt',
+                    wbn: trackingNumber,
+                    date: preferredDate ? preferredDate.getTime() : undefined,
+                    instructions
+                };
 
-            // Using a hypothetical endpoint based on types, 
-            // in reality Ekart uses /api/v1/action/update or similar. 
-            // We'll log warning and return mock unless we have exact endpoint.
-            // Docs in types hint at NDR actions structure.
+                const response = await retryWithBackoff(async () => {
+                    return await this.axiosInstance.post(
+                        '/api/v2/package/ndr',
+                        payload
+                    );
+                });
 
-            // For now, let's treat as supported if we found the endpoint in types
-            // But EKART_ENDPOINTS doesn't explicitly list NDR action endpoint.
-            // I'll throw not supported for now to be safe, or implement if I find it.
+                logger.info('Ekart reattempt requested', {
+                    trackingNumber,
+                    preferredDate,
+                    status: response.data.status
+                });
 
-            throw new CourierFeatureNotSupportedError('ekart', 'requestReattempt');
+                return {
+                    success: response.data.status || false,
+                    message: response.data.remark || 'Reattempt requested',
+                    uplId: response.data.tracking_id
+                };
 
-        } catch (error) {
-            return { success: false, message: error instanceof Error ? error.message : 'Failed' };
-        }
+            } catch (error) {
+                logger.error('Ekart requestReattempt failed', { error, trackingNumber });
+                return {
+                    success: false,
+                    message: error instanceof Error ? error.message : 'Reattempt request failed'
+                };
+            }
+        });
+    }
+
+    /**
+     * Request RTO (Return to Origin)
+     * 
+     * Uses Ekart NDR API to request RTO for a shipment
+     * API: POST /api/v2/package/ndr
+     * 
+     * @param trackingNumber - Ekart tracking ID (WBN)
+     */
+    async requestRTO(trackingNumber: string): Promise<{ success: boolean; message: string }> {
+        return this.circuitBreaker.execute(async () => {
+            try {
+                const payload = {
+                    action: 'RTO',
+                    wbn: trackingNumber
+                };
+
+                const response = await retryWithBackoff(async () => {
+                    return await this.axiosInstance.post(
+                        '/api/v2/package/ndr',
+                        payload
+                    );
+                });
+
+                logger.info('Ekart RTO requested', {
+                    trackingNumber,
+                    status: response.data.status
+                });
+
+                return {
+                    success: response.data.status || false,
+                    message: response.data.remark || 'RTO requested'
+                };
+
+            } catch (error) {
+                logger.error('Ekart requestRTO failed', { error, trackingNumber });
+                return {
+                    success: false,
+                    message: error instanceof Error ? error.message : 'RTO request failed'
+                };
+            }
+        });
     }
 
     // Optional methods
@@ -473,5 +576,140 @@ export class EkartProvider implements ICourierAdapter {
         } catch (error) {
             throw handleEkartError(error);
         }
+    }
+
+    /**
+     * Generate Manifest
+     * 
+     * Generates shipping manifest for given tracking IDs
+     * API: POST /data/v2/generate/manifest
+     * 
+     * @param trackingIds - Array of Ekart tracking IDs (max 100 per request)
+     * @returns Manifest number and download URL
+     */
+    async generateManifest(trackingIds: string[]): Promise<{
+        manifestNumber: number;
+        downloadUrl: string;
+        ctime: number;
+    }> {
+        return this.circuitBreaker.execute(async () => {
+            try {
+                if (!trackingIds || trackingIds.length === 0) {
+                    throw new Error('At least one tracking ID is required');
+                }
+
+                // Ekart API limit is 100 AWBs per request
+                if (trackingIds.length > 100) {
+                    // Chunk into batches of 100
+                    const chunks = [];
+                    for (let i = 0; i < trackingIds.length; i += 100) {
+                        chunks.push(trackingIds.slice(i, i + 100));
+                    }
+
+                    logger.info('Chunking manifest generation', {
+                        totalAwbs: trackingIds.length,
+                        chunks: chunks.length
+                    });
+
+                    // Generate manifests for each chunk
+                    const manifests = await Promise.all(
+                        chunks.map(chunk => this.generateManifest(chunk))
+                    );
+
+                    // Return the first manifest (or combine logic as needed)
+                    return manifests[0];
+                }
+
+                const payload = { ids: trackingIds };
+
+                const response = await retryWithBackoff(async () => {
+                    return await this.axiosInstance.post(
+                        EKART_ENDPOINTS.MANIFEST,
+                        payload
+                    );
+                });
+
+                logger.info('Ekart manifest generated', {
+                    manifestNumber: response.data.manifestNumber,
+                    awbCount: trackingIds.length
+                });
+
+                return {
+                    manifestNumber: response.data.manifestNumber,
+                    downloadUrl: response.data.manifestDownloadUrl,
+                    ctime: response.data.ctime
+                };
+
+            } catch (error) {
+                logger.error('Ekart generateManifest failed', {
+                    error,
+                    awbCount: trackingIds.length
+                });
+                throw handleEkartError(error);
+            }
+        });
+    }
+
+    /**
+     * Get Label(s)
+     * 
+     * Downloads shipping labels for given tracking IDs
+     * API: POST /api/v1/package/label
+     * 
+     * @param trackingIds - Array of Ekart tracking IDs (max 100 per request)
+     * @param format - 'pdf' for PDF buffer, 'json' for label URLs
+     * @returns Label data (PDF buffer or URLs)
+     */
+    async getLabel(
+        trackingIds: string[],
+        format: 'pdf' | 'json' = 'pdf'
+    ): Promise<{
+        labels?: Array<{ tracking_id: string; label_url: string }>;
+        pdfBuffer?: Buffer;
+    }> {
+        return this.circuitBreaker.execute(async () => {
+            try {
+                if (!trackingIds || trackingIds.length === 0) {
+                    throw new Error('At least one tracking ID is required');
+                }
+
+                if (trackingIds.length > 100) {
+                    throw new Error('Maximum 100 tracking IDs allowed per request');
+                }
+
+                const payload = { ids: trackingIds };
+                const params = format === 'json' ? { json_only: true } : {};
+
+                const response = await retryWithBackoff(async () => {
+                    return await this.axiosInstance.post(
+                        EKART_ENDPOINTS.LABEL,
+                        payload,
+                        {
+                            params,
+                            responseType: format === 'pdf' ? 'arraybuffer' : 'json'
+                        }
+                    );
+                });
+
+                logger.info('Ekart labels retrieved', {
+                    format,
+                    awbCount: trackingIds.length
+                });
+
+                if (format === 'json') {
+                    return { labels: response.data };
+                } else {
+                    return { pdfBuffer: Buffer.from(response.data) };
+                }
+
+            } catch (error) {
+                logger.error('Ekart getLabel failed', {
+                    error,
+                    format,
+                    awbCount: trackingIds.length
+                });
+                throw handleEkartError(error);
+            }
+        });
     }
 }

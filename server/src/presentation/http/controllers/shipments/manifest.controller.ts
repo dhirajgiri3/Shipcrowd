@@ -207,6 +207,18 @@ class ManifestController {
             const { id } = req.params;
 
             const manifest = await ManifestService.getManifest(id);
+
+            // Check if we have a carrier manifest URL available
+            const carrierUrl = manifest.metadata?.carrierManifestUrl || (manifest.metadata as any)?.manifestUrl;
+
+            if (carrierUrl && (carrierUrl.startsWith('http') || carrierUrl.startsWith('https'))) {
+                // Redirect to the carrier's S3 link or hosted PDF
+                // This ensures the user gets the official label/manifest from the carrier
+                logger.info(`Redirecting to carrier manifest URL: ${carrierUrl}`);
+                return res.redirect(carrierUrl);
+            }
+
+            // Fallback to internal PDF generation
             const pdfBuffer = await ManifestService.generatePDF(id);
 
             res.setHeader('Content-Type', 'application/pdf');
@@ -214,10 +226,10 @@ class ManifestController {
                 'Content-Disposition',
                 `attachment; filename="manifest-${manifest.manifestNumber}.pdf"`
             );
-        
+
             res.send(pdfBuffer);
 
-            logger.info(`Manifest PDF downloaded: ${manifest.manifestNumber}`);
+            logger.info(`Manifest PDF downloaded (Internal): ${manifest.manifestNumber}`);
         } catch (error) {
             next(error);
         }

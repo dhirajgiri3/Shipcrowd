@@ -13,6 +13,7 @@
  */
 
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { Shipment } from '../../../database/mongoose/models/index.js';
 import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service.js';
 import { EkartWebhookPayload, EKART_STATUS_MAP } from './ekart.types.js';
@@ -116,11 +117,34 @@ export class EkartWebhookService {
     }
 
     /**
-     * Verify webhook signature (if Ekart provides one)
-     * Note: Implementation depends on Ekart's specific signing mechanism (HMAC usually)
+     * Verify webhook signature (HMAC SHA256)
+     * 
+     * Verifies that the request actually came from Ekart.
+     * header: x-ekart-signature
+     * algorithm: hmac-sha256
+     * 
+     * @param signature The signature from x-ekart-signature header
+     * @param rawBody The raw request body string
+     * @param secret The webhook secret from config
      */
-    static verifySignature(signature: string, payload: any, secret: string): boolean {
-        // Placeholder: Implement actual verification if Ekart supports it
-        return true;
+    static verifySignature(signature: string, rawBody: string, secret: string): boolean {
+        try {
+            if (!signature || !secret || !rawBody) {
+                return false;
+            }
+
+            // Create HMAC SHA256 hash using secret
+            const hmac = crypto.createHmac('sha256', secret);
+            const expectedSignature = hmac.update(rawBody).digest('hex');
+
+            // Constant time comparison to prevent timing attacks
+            return crypto.timingSafeEqual(
+                Buffer.from(signature),
+                Buffer.from(expectedSignature)
+            );
+        } catch (error) {
+            logger.error('Error verifying Ekart signature', { error });
+            return false;
+        }
     }
 }
