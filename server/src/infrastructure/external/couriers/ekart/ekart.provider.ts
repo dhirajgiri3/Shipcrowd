@@ -269,7 +269,8 @@ export class EkartProvider implements ICourierAdapter {
                     height: request.package.height,
                     serviceType: 'SURFACE', // Defaulting to Surface
                     codAmount: request.paymentMode === 'cod' ? (request.orderValue || 0) : 0,
-                    invoiceAmount: request.orderValue
+                    invoiceAmount: request.orderValue,
+                    packages: [] // Added to match doc example
                 };
 
                 const response = await retryWithBackoff(async () => {
