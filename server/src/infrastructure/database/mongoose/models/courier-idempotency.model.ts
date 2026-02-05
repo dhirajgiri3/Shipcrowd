@@ -52,6 +52,10 @@ export interface ICourierIdempotency extends Document {
     labelUrl?: string;
     cost?: number;
 
+    // Full request/response for debugging and flexible idempotency
+    requestPayload?: any;
+    responseData?: any;
+
     // Metadata
     createdAt: Date;
     updatedAt: Date;
@@ -100,6 +104,14 @@ const CourierIdempotencySchema = new Schema<ICourierIdempotency>(
         cost: {
             type: Number,
             min: 0,
+        },
+        requestPayload: {
+            type: Schema.Types.Mixed,
+            required: false,
+        },
+        responseData: {
+            type: Schema.Types.Mixed,
+            required: false,
         },
         expiresAt: {
             type: Date,

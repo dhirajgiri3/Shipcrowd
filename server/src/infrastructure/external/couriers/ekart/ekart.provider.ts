@@ -50,7 +50,7 @@ import {
     waitForRateLimit
 } from './ekart-error-handler.js';
 
-import { CourierIdempotency } from '../../../database/mongoose/models/courier-idempotency.model.js';
+import CourierIdempotency from '../../../database/mongoose/models/courier-idempotency.model.js';
 import logger from '../../../../shared/logger/winston.logger.js';
 import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error.js';
 
@@ -182,6 +182,9 @@ export class EkartProvider implements ICourierAdapter {
                     idempotencyKey,
                     provider: 'ekart',
                     companyId: this.companyId,
+                    orderId: data.orderNumber,
+                    trackingNumber: shipmentResponse.trackingNumber,
+                    providerShipmentId: shipmentResponse.providerShipmentId,
                     requestPayload: ekartRequest,
                     responseData: shipmentResponse,
                     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
@@ -406,6 +409,8 @@ export class EkartProvider implements ICourierAdapter {
                     idempotencyKey,
                     provider: 'ekart',
                     companyId: this.companyId,
+                    orderId: data.orderId,
+                    trackingNumber: reverseResponse.trackingNumber,
                     requestPayload: ekartRequest,
                     responseData: reverseResponse,
                     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -450,7 +455,7 @@ export class EkartProvider implements ICourierAdapter {
             // But EKART_ENDPOINTS doesn't explicitly list NDR action endpoint.
             // I'll throw not supported for now to be safe, or implement if I find it.
 
-            throw new CourierFeatureNotSupportedError('requestReattempt not fully implemented for Ekart');
+            throw new CourierFeatureNotSupportedError('ekart', 'requestReattempt');
 
         } catch (error) {
             return { success: false, message: error instanceof Error ? error.message : 'Failed' };
