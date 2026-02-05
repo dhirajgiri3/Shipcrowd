@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
-import AddressValidationService from '../../../../core/application/services/logistics/address-validation.service'; // Import Service
+import RiskScoringService from '../../../../core/application/services/risk/risk-scoring.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -38,16 +38,48 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
             }));
             throw new ValidationError('Validation failed', errors);
         }
-        // Address Validation Logic
-        if (validation.data.customerInfo?.address?.postalCode) {
-            const deliveryVal = await AddressValidationService.validatePincode(validation.data.customerInfo.address.postalCode);
-            if (!deliveryVal.valid) {
-                throw new ValidationError('Invalid delivery pincode', [{
-                    field: 'customerInfo.address.postalCode',
-                    message: 'Invalid delivery pincode'
-                }]);
-            }
-        }
+        // Prevention Layer: Risk Scoring & Validation
+        const riskAssessment = await RiskScoringService.assessOrder({
+            orderValue: OrderService.calculateTotalsLegacy(validation.data.products).total,
+            paymentMethod: (validation.data.paymentMethod || 'prepaid').toUpperCase() as any,
+            customer: {
+                name: validation.data.customerInfo.name,
+                phone: validation.data.customerInfo.phone,
+                email: validation.data.customerInfo.email
+            },
+            shippingAddress: {
+                line1: validation.data.customerInfo.address.line1,
+                line2: validation.data.customerInfo.address.line2,
+                city: validation.data.customerInfo.address.city,
+                state: validation.data.customerInfo.address.state,
+                pincode: validation.data.customerInfo.address.postalCode
+            },
+            companyId: auth.companyId
+        });
+
+        // Add Risk & Validation Info to Payload
+        (validation.data as any).riskInfo = {
+            score: riskAssessment.riskScore,
+            level: riskAssessment.level,
+            factors: riskAssessment.flags,
+            recommendations: [riskAssessment.recommendation]
+        };
+
+        (validation.data as any).validationInfo = {
+            address: riskAssessment.validationResults?.address ? {
+                isValid: riskAssessment.validationResults.address.isValid,
+                score: riskAssessment.validationResults.address.score,
+                issues: riskAssessment.validationResults.address.issues,
+                normalizedAddress: riskAssessment.validationResults.address.normalizedAddress
+            } : undefined,
+            phone: {
+                isValid: riskAssessment.details.phoneValid
+            },
+            cod: riskAssessment.validationResults?.cod ? {
+                isAllowed: riskAssessment.validationResults.cod.isAllowed,
+                reason: riskAssessment.validationResults.cod.reasons.join(', ')
+            } : undefined
+        };
 
         // Note: Pickup address is determined by warehouse selection, validation should happen getting warehouse details or during shipment creation
 

@@ -80,6 +80,28 @@ export interface IOrder extends Document {
   };
   notes?: string;
   tags?: string[];
+  riskInfo?: {
+    score: number;
+    level: 'low' | 'medium' | 'high' | 'critical';
+    factors: string[];
+    recommendations: string[];
+  };
+  validationInfo?: {
+    address?: {
+      isValid: boolean;
+      score: number;
+      issues: string[];
+      normalizedAddress?: any;
+    };
+    phone?: {
+      isValid: boolean;
+      isReachable?: boolean;
+    };
+    cod?: {
+      isAllowed: boolean;
+      reason?: string;
+    };
+  };
   isDeleted: boolean;
   isDemoData?: boolean;
   createdAt: Date;
@@ -268,6 +290,28 @@ const OrderSchema = new Schema<IOrder>(
     },
     notes: String,
     tags: [String],
+    riskInfo: {
+      score: { type: Number, min: 0, max: 100 },
+      level: { type: String, enum: ['low', 'medium', 'high', 'critical'] },
+      factors: [String],
+      recommendations: [String]
+    },
+    validationInfo: {
+      address: {
+        isValid: Boolean,
+        score: Number,
+        issues: [String],
+        normalizedAddress: Schema.Types.Mixed
+      },
+      phone: {
+        isValid: Boolean,
+        isReachable: Boolean
+      },
+      cod: {
+        isAllowed: Boolean,
+        reason: String
+      }
+    },
     isDeleted: {
       type: Boolean,
       default: false,

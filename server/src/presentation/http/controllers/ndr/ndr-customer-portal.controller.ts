@@ -149,8 +149,19 @@ export class NDRCustomerPortalController {
             ndrEvent.status = 'in_resolution';
             await ndrEvent.save();
 
-            // TODO: Trigger reattempt request to courier (Phase 5)
-            // await CourierNDRActionService.requestReattempt(shipment, { updatedAddress: ... });
+            // Trigger reattempt request to courier (Phase 5)
+            const { default: CourierReattemptService } = await import('../../../../core/application/services/courier/courier-reattempt.service');
+            await CourierReattemptService.requestReattempt(ndrEvent.shipment._id.toString(), {
+                updatedAddress: {
+                    line1,
+                    line2,
+                    city: shipment.destination.city,
+                    state: shipment.destination.state,
+                    pincode: shipment.destination.pincode,
+                    country: shipment.destination.country
+                },
+                phone: alternatePhone
+            });
 
             res.json({
                 success: true,
@@ -182,7 +193,7 @@ export class NDRCustomerPortalController {
                 return;
             }
 
-            const ndrEvent = await NDREvent.findById(validation.ndrEventId);
+            const ndrEvent = await NDREvent.findById(validation.ndrEventId).populate('shipment');
             if (!ndrEvent) {
                 res.status(404).json({ success: false, error: 'NDR not found' });
                 return;
@@ -202,7 +213,11 @@ export class NDRCustomerPortalController {
             ndrEvent.status = 'in_resolution';
             await ndrEvent.save();
 
-            // TODO: Trigger reattempt request to courier (Phase 5)
+            // Trigger reattempt request to courier (Phase 5)
+            const { default: CourierReattemptService } = await import('../../../../core/application/services/courier/courier-reattempt.service');
+            await CourierReattemptService.requestReattempt(ndrEvent.shipment._id.toString(), {
+                preferredDate: new Date(date)
+            });
 
             res.json({
                 success: true,
@@ -250,7 +265,9 @@ export class NDRCustomerPortalController {
             ndrEvent.status = 'in_resolution';
             await ndrEvent.save();
 
-            // TODO: Trigger RTO/Cancellation to courier (Phase 5)
+            // Trigger RTO/Cancellation to courier (Phase 5)
+            const { default: CourierReattemptService } = await import('../../../../core/application/services/courier/courier-reattempt.service');
+            await CourierReattemptService.requestCancellation(ndrEvent.shipment._id.toString(), reason);
 
             res.json({
                 success: true,

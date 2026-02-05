@@ -149,7 +149,22 @@ export default class NDRDetectionService {
                 // const { default: NDRResolutionService } = await import('./ndr-resolution.service');
                 // await NDRResolutionService.executeResolutionWorkflow(String(ndrEvent._id));
 
-                // TODO: Send immediate notifications (Phase 4)
+                // Send immediate notifications (Phase 4)
+                const { default: NDRCommunicationService } = await import('../communication/ndr-communication.service.js');
+
+                // Notify Buyer
+                await NDRCommunicationService.sendNDRNotification({
+                    ndrEventId: String(ndrEvent._id),
+                    shipmentId: String(shipmentInfo._id),
+                    channel: 'all',
+                    templateType: 'ndr_alert'
+                });
+
+                // Notify Seller
+                await NDRCommunicationService.sendSellerNotification(
+                    String(ndrEvent._id),
+                    String(shipmentInfo._id)
+                );
 
             } catch (error) {
                 logger.error('NDR post-processing failed', { error });

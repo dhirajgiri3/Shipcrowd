@@ -1,14 +1,15 @@
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Shipment, Company } from '../../../../infrastructure/database/mongoose/models';
 import WhatsAppService from './whatsapp.service';
 import smsService from './sms.service';
 import { sendEmail } from './email.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError } from '../../../../shared/errors/app.error';
 import NotificationPreferenceService from './notification-preferences.service';
+import NDRMagicLinkService from '../ndr/ndr-magic-link.service';
 
 /**
  * NDR Communication Service
- * Handles buyer communication for NDR (Non-Delivery Report) scenarios
+ * Handles buyer and seller communication for NDR (Non-Delivery Report) scenarios
  * 
  * Channels:
  * - WhatsApp (primary)
@@ -16,13 +17,14 @@ import NotificationPreferenceService from './notification-preferences.service';
  * - Email (fallback)
  * 
  * Templates:
- * - NDR Alert
+ * - NDR Alert (uses secure Magic Links)
  * - Action Required
  * - Reattempt Scheduled
  * - RTO Initiated
  */
 
 interface NDRCommunicationOptions {
+    ndrEventId: string;
     shipmentId: string;
     channel: 'whatsapp' | 'sms' | 'email' | 'all';
     templateType: 'ndr_alert' | 'action_required' | 'reattempt' | 'rto';
@@ -31,10 +33,10 @@ interface NDRCommunicationOptions {
 
 class NDRCommunicationService {
     /**
-     * Send NDR notification to buyer
+     * Send NDR notification to buyer and optionally seller
      */
     async sendNDRNotification(options: NDRCommunicationOptions) {
-        const { shipmentId, channel, templateType, customMessage } = options;
+        const { ndrEventId, shipmentId, channel, templateType, customMessage } = options;
 
         try {
             // Fetch shipment
@@ -48,6 +50,9 @@ class NDRCommunicationService {
             const recipientEmail = shipment.deliveryDetails.recipientEmail;
             const awb = shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber;
             const ndrReason = shipment.ndrDetails?.ndrReason || 'Delivery attempt failed';
+
+            // Generate Magic Link
+            const magicLink = NDRMagicLinkService.generateMagicLink(ndrEventId);
 
             const results: any = {
                 shipmentId,
@@ -81,17 +86,17 @@ class NDRCommunicationService {
                                 '1': recipientName,
                                 '2': awb,
                                 '3': ndrReason,
+                                '4': magicLink // Replaced hardcoded AWB with magic link
                             }
                         );
                     } else if (templateType === 'action_required') {
-                        const actionLink = `${process.env.FRONTEND_URL}/track/${awb}/ndr-action`;
                         whatsappSent = await WhatsAppService.sendWhatsAppMessage(
                             recipientPhone,
                             'NDR_ACTION',
                             {
                                 '1': recipientName,
                                 '2': awb,
-                                '3': actionLink,
+                                '3': magicLink,
                             }
                         );
                     } else if (templateType === 'rto') {
@@ -124,9 +129,9 @@ class NDRCommunicationService {
 
                     // Format SMS based on template type
                     if (templateType === 'ndr_alert') {
-                        smsMessage = `Hi ${recipientName}, delivery for ${awb} failed. Reason: ${ndrReason}. Track: ${process.env.FRONTEND_URL}/track/${awb}`;
+                        smsMessage = `Hi ${recipientName}, delivery for ${awb} failed. Reason: ${ndrReason}. Update instructions: ${magicLink}`;
                     } else if (templateType === 'action_required') {
-                        smsMessage = `Hi ${recipientName}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${process.env.FRONTEND_URL}/track/${awb}/ndr-action`;
+                        smsMessage = `Hi ${recipientName}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${magicLink}`;
                     } else if (templateType === 'reattempt') {
                         smsMessage = `Hi ${recipientName}, delivery for ${awb} rescheduled. Track: ${process.env.FRONTEND_URL}/track/${awb}`;
                     } else if (templateType === 'rto') {
@@ -153,6 +158,7 @@ class NDRCommunicationService {
                         recipientName,
                         awb,
                         ndrReason,
+                        magicLink,
                         customMessage,
                     });
                     const textContent = customMessage || `Update for shipment ${awb}`;
@@ -183,6 +189,57 @@ class NDRCommunicationService {
     }
 
     /**
+     * Send alert to seller about NDR
+     */
+    async sendSellerNotification(ndrEventId: string, shipmentId: string) {
+        try {
+            // Dynamic import to avoid circular dependency
+            const { NDREvent } = await import('../../../../infrastructure/database/mongoose/models');
+
+            const shipment = await Shipment.findById(shipmentId).populate('orderId');
+            const ndrEvent = await NDREvent.findById(ndrEventId);
+
+            if (!shipment || !ndrEvent) {
+                logger.warn('Missing data for seller notification', { ndrEventId, shipmentId });
+                return;
+            }
+
+            const company = await Company.findById(shipment.companyId);
+            if (!company || !(company as any).settings?.notifications?.email?.ndr) {
+                return; // Seller disabled notifications or not found
+            }
+
+            const orderNumber = shipment.orderId ? (shipment.orderId as any).orderNumber : 'Unknown';
+
+            // Simple email to seller
+            await sendEmail(
+                [(company as any).email],
+                `NDR Alert: Order ${orderNumber}`,
+                this.generateSellerEmailTemplate(shipment, ndrEvent, orderNumber),
+                `NDR detected for order ${orderNumber}. Reason: ${ndrEvent.ndrReason}`
+            );
+
+            logger.info(`Seller notification sent for NDR on shipment ${shipment._id}`);
+        } catch (error) {
+            logger.error('Failed to send seller notification', error);
+        }
+    }
+
+    private generateSellerEmailTemplate(shipment: any, ndrEvent: any, orderNumber: string): string {
+        return `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2 style="color: #d97706;">NDR Detected for Order ${orderNumber}</h2>
+                <p><strong>AWB:</strong> ${shipment.trackingNumber}</p>
+                <p><strong>Reason:</strong> ${ndrEvent.ndrReason}</p>
+                <p><strong>Detected At:</strong> ${new Date(ndrEvent.detectedAt).toLocaleString()}</p>
+                <br/>
+                <p>Please log in to your dashboard to take action.</p>
+                <a href="${process.env.FRONTEND_URL}/dashboard/ndr" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Dashboard</a>
+            </div>
+        `;
+    }
+
+    /**
      * Generate email template for NDR
      */
     private generateEmailTemplate(
@@ -191,10 +248,11 @@ class NDRCommunicationService {
             recipientName: string;
             awb: string;
             ndrReason?: string;
+            magicLink?: string;
             customMessage?: string;
         }
     ): string {
-        const { recipientName, awb, ndrReason, customMessage } = data;
+        const { recipientName, awb, ndrReason, magicLink, customMessage } = data;
 
         const baseTemplate = `
       <!DOCTYPE html>
@@ -205,7 +263,7 @@ class NDRCommunicationService {
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
             .content { padding: 20px; background: #f9fafb; }
-            .button { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; }
+            .button { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; }
             .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
           </style>
         </head>
@@ -224,7 +282,12 @@ class NDRCommunicationService {
             content = `
         <p>We attempted to deliver your shipment <strong>${awb}</strong>, but were unable to complete the delivery.</p>
         <p><strong>Reason:</strong> ${ndrReason}</p>
-        <p>We will attempt redelivery soon. Please ensure someone is available to receive the package.</p>
+        <p>Please provide instructions for the next delivery attempt:</p>
+        <p style="text-align: center; margin: 20px 0;">
+          <a href="${magicLink}" class="button">
+            Resolve Issue
+          </a>
+        </p>
       `;
         } else if (templateType === 'action_required') {
             content = `
@@ -232,7 +295,7 @@ class NDRCommunicationService {
         <p><strong>Reason:</strong> ${ndrReason}</p>
         <p>Please take action to avoid return to origin (RTO):</p>
         <p style="text-align: center; margin: 20px 0;">
-          <a href="${process.env.FRONTEND_URL}/track/${awb}/ndr-action" class="button">
+          <a href="${magicLink}" class="button">
             Update Delivery Instructions
           </a>
         </p>
@@ -266,21 +329,22 @@ class NDRCommunicationService {
     /**
      * Send bulk NDR notifications
      */
-    async sendBulkNotifications(shipmentIds: string[], channel: 'whatsapp' | 'sms' | 'email' | 'all') {
+    async sendBulkNotifications(ndrEvents: Array<{ ndrEventId: string; shipmentId: string }>, channel: 'whatsapp' | 'sms' | 'email' | 'all') {
         const results = [];
 
-        for (const shipmentId of shipmentIds) {
+        for (const event of ndrEvents) {
             try {
                 const result = await this.sendNDRNotification({
-                    shipmentId,
+                    ndrEventId: event.ndrEventId,
+                    shipmentId: event.shipmentId,
                     channel,
                     templateType: 'ndr_alert',
                 });
                 results.push(result);
             } catch (error: any) {
-                logger.error(`Bulk NDR failed for ${shipmentId}:`, error);
+                logger.error(`Bulk NDR failed for ${event.shipmentId}:`, error);
                 results.push({
-                    shipmentId,
+                    shipmentId: event.shipmentId,
                     success: false,
                     error: error.message,
                 });
@@ -290,5 +354,6 @@ class NDRCommunicationService {
         return results;
     }
 }
+
 
 export default new NDRCommunicationService();

@@ -164,6 +164,10 @@ export class NDRActionExecutors {
                 };
             }
 
+            // Import Magic Link Service
+            const NDRMagicLinkService = (await import('../ndr-magic-link.service.js')).default;
+            const magicLink = NDRMagicLinkService.generateMagicLink(String(ndrEvent._id));
+
             // Generate personalized message if OpenAI is available
             let message: string;
             if (OpenAIService.isConfigured() && actionConfig.useAI !== false) {
@@ -173,7 +177,7 @@ export class NDRActionExecutors {
                     context.orderId,
                     ndrEvent.ndrReason
                 );
-                message = generated.message;
+                message = generated.message + `\n\nResolve here: ${magicLink}`;
             } else {
                 // Use default NDR notification
                 message = ''; // Will use default in sendNDRNotification
@@ -185,7 +189,8 @@ export class NDRActionExecutors {
                     customer.phone,
                     customer.name,
                     context.orderId,
-                    ndrEvent.ndrReason
+                    ndrEvent.ndrReason,
+                    magicLink
                 );
 
             if (!result.success) {
@@ -252,8 +257,10 @@ export class NDRActionExecutors {
                 };
             }
 
-            // Import email service
+            // Import email service & Magic Link Service
             const EmailService = (await import('../../communication/email.service.js')).default;
+            const NDRMagicLinkService = (await import('../ndr-magic-link.service.js')).default;
+            const magicLink = NDRMagicLinkService.generateMagicLink(String(ndrEvent._id));
 
             // Send NDR notification email
             const subject = `Update on your order ${context.orderId}`;
@@ -262,7 +269,10 @@ export class NDRActionExecutors {
                 <p>Dear ${customer.name},</p>
                 <p>We attempted to deliver your order but encountered an issue:</p>
                 <blockquote><strong>${ndrEvent.ndrReason || 'Delivery unsuccessful'}</strong></blockquote>
-                <p>Our team is working to resolve this. We will attempt delivery again soon.</p>
+                <p>Please click the button below to resolve this issue and reschedule delivery:</p>
+                <p style="text-align: center; margin: 20px 0;">
+                    <a href="${magicLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Resolve Delivery Issue</a>
+                </p>
                 <p>Order ID: <strong>${context.orderId}</strong></p>
                 <p>If you have any questions, please reply to this email.</p>
                 <p>Thank you for your patience.</p>
@@ -273,7 +283,7 @@ export class NDRActionExecutors {
                 customer.email,
                 subject,
                 htmlContent,
-                `Delivery update for order ${context.orderId}: ${ndrEvent.ndrReason}` // Plain text fallback
+                `Delivery update for order ${context.orderId}: ${ndrEvent.ndrReason}\nResolve here: ${magicLink}` // Plain text fallback
             );
 
             if (!sent) {
@@ -331,17 +341,21 @@ export class NDRActionExecutors {
                 };
             }
 
+            // Import Magic Link Service
+            const NDRMagicLinkService = (await import('../ndr-magic-link.service.js')).default;
+            const magicLink = NDRMagicLinkService.generateMagicLink(String(ndrEvent._id));
+
             const awb = ndrEvent.awb;
             const ndrReason = ndrEvent.ndrReason || 'Delivery attempt failed';
             const template = actionConfig.template || 'ndr_alert';
-            const frontendUrl = process.env.FRONTEND_URL || 'https://app.shipcrowd.com';
+            const frontendUrl = process.env.FRONTEND_URL || 'https://app.shipcrowd.com'; // Fallback for tracking links
 
             let message: string = actionConfig.message;
 
             if (!message) {
                 switch (template) {
                     case 'action_required':
-                        message = `Hi ${customer.name}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${frontendUrl}/track/${awb}/ndr-action`;
+                        message = `Hi ${customer.name}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${magicLink}`;
                         break;
                     case 'reattempt':
                         message = `Hi ${customer.name}, delivery for ${awb} rescheduled. Track: ${frontendUrl}/track/${awb}`;
@@ -351,7 +365,7 @@ export class NDRActionExecutors {
                         break;
                     case 'ndr_alert':
                     default:
-                        message = `Hi ${customer.name}, delivery for ${awb} failed. Reason: ${ndrReason}. Track: ${frontendUrl}/track/${awb}`;
+                        message = `Hi ${customer.name}, delivery for ${awb} failed. Reason: ${ndrReason}. Resolve: ${magicLink}`;
                         break;
                 }
             }

@@ -237,25 +237,34 @@ export class WhatsAppService {
     /**
      * Send NDR notification
      */
+    /**
+     * Send NDR notification
+     */
     async sendNDRNotification(
         toNumber: string,
         customerName: string,
         orderId: string,
-        ndrReason: string
+        ndrReason: string,
+        resolutionLink?: string
     ): Promise<SendMessageResult> {
         // Use template if configured, otherwise send text
-        const message = `Hi ${customerName},
+        let message = `Hi ${customerName},
 
 We attempted to deliver your order #${orderId} but encountered an issue:
 *Reason:* ${ndrReason}
 
-*What would you like to do?*
-Reply with:
+*What would you like to do?*`;
+
+        if (resolutionLink) {
+            message += `\n\nReschedule or Update Address here:\n${resolutionLink}`;
+        } else {
+            message += `\n\nReply with:
 1️⃣ - Reschedule delivery
 2️⃣ - Update address
-3️⃣ - Cancel order
+3️⃣ - Cancel order`;
+        }
 
-Need help? Contact our support team.
+        message += `\n\nNeed help? Contact our support team.
 
 -Shipcrowd`;
 

@@ -160,6 +160,8 @@ export class OrderService extends CachedService {
             notes?: string;
             tags?: string[];
             salesRepId?: string;
+            riskInfo?: any;
+            validationInfo?: any;
         };
     }) {
         const session = await mongoose.startSession();
@@ -189,6 +191,8 @@ export class OrderService extends CachedService {
                 totals,
                 notes: payload.notes,
                 tags: payload.tags,
+                riskInfo: payload.riskInfo,
+                validationInfo: payload.validationInfo,
                 shippingDetails: { shippingCost: 0 },
                 salesRepresentative: payload.salesRepId ? new mongoose.Types.ObjectId(payload.salesRepId) : undefined,
             });

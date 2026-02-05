@@ -38,6 +38,10 @@ interface RiskAssessment {
         codRisk?: number;
         phoneValid: boolean;
     };
+    validationResults?: {
+        address?: any;
+        cod?: any;
+    };
 }
 
 export class RiskScoringService {
@@ -68,8 +72,9 @@ export class RiskScoringService {
 
         // 3. COD Risk
         let codRisk = 0;
+        let codResult; // Store for return
         if (context.paymentMethod === 'COD') {
-            const codResult = await CODVerificationService.verify({
+            codResult = await CODVerificationService.verify({
                 orderValue: context.orderValue,
                 customerPhone: context.customer.phone,
                 customerEmail: context.customer.email,
@@ -120,6 +125,10 @@ export class RiskScoringService {
                 addressScore: addressResult.score,
                 codRisk,
                 phoneValid: !flags.includes('Invalid phone number format')
+            },
+            validationResults: {
+                address: addressResult,
+                cod: codResult
             }
         };
     }
