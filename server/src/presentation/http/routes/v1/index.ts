@@ -67,6 +67,7 @@ import financialsRoutes from './finance/financials.routes';
 import billingRoutes from './finance/billing.routes';
 import invoiceRoutes from './finance/invoice.routes';
 import codRemittanceRoutes from './finance/cod-remittance.routes';
+import reconciliationRoutes from './finance/reconciliation.routes';
 import bankAccountRoutes from './identity/bank-account.routes';
 import promoCodeRoutes from './marketing/promo-code.routes';
 
@@ -106,6 +107,7 @@ import shopifyWebhookRoutes from './webhooks/shopify.routes';
 import woocommerceWebhookRoutes from './webhooks/woocommerce.webhook.routes';
 import flipkartWebhookRoutes from './webhooks/flipkart.webhook.routes';
 import razorpayWebhookRoutes from './webhooks/razorpay.webhook.routes';
+import ekartWebhookRoutes from './webhooks/ekart.routes';
 import returnWebhooksRoutes from './logistics/return-webhooks.routes';
 
 
@@ -170,6 +172,7 @@ router.use('/finance/financials', financialsRoutes);
 router.use('/finance/billing', billingRoutes);
 router.use('/billing/invoices', invoiceRoutes);
 router.use('/finance/cod-remittance', codRemittanceRoutes);
+router.use('/finance/reconciliation', reconciliationRoutes);
 router.use('/seller/bank-accounts', bankAccountRoutes);
 router.use('/promos', promoCodeRoutes);
 
@@ -203,6 +206,7 @@ router.use('/webhooks/shopify', shopifyWebhookRoutes);
 router.use('/webhooks/woocommerce', woocommerceWebhookRoutes);
 router.use('/webhooks/flipkart', flipkartWebhookRoutes);
 router.use('/webhooks/razorpay', razorpayWebhookRoutes);
+router.use('/webhooks/ekart', ekartWebhookRoutes);
 router.use('/webhooks/returns', returnWebhooksRoutes);
 
 export default router;

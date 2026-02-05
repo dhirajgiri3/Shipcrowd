@@ -11,17 +11,17 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import mongoose from 'mongoose';
 import { EkartAuth } from '../../../src/infrastructure/external/couriers/ekart/ekart.auth';
-import { Integration } from '../../../src/infrastructure/database/mongoose/models/integration.model';
+import Integration from '../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model';
 
 // Mock dependencies
-jest.mock('../../../src/infrastructure/database/mongoose/models/integration.model');
+jest.mock('../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model');
 jest.mock('../../../src/shared/utils/distributed-lock', () => ({
-    acquireLock: jest.fn().mockResolvedValue(true),
-    releaseLock: jest.fn().mockResolvedValue(true)
+    acquireLock: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+    releaseLock: jest.fn<() => Promise<boolean>>().mockResolvedValue(true)
 }));
 
 // Mock axios
-const mockPost = jest.fn();
+const mockPost = jest.fn<any>();
 jest.mock('axios', () => ({
     create: jest.fn(() => ({
         post: mockPost,

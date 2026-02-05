@@ -3,6 +3,7 @@ import { authenticate } from '../../../middleware';
 import { requireAccess } from '../../../middleware/auth/unified-access';
 import { verifyVelocityWebhookSignature } from '../../../middleware/webhooks/velocity-webhook-auth.middleware';
 import * as codRemittanceController from '../../../controllers/finance/cod-remittance.controller';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = express.Router();
 
@@ -10,8 +11,8 @@ const router = express.Router();
 // SECURITY: Public endpoint but signature-verified
 router.post(
     '/webhook',
-    verifyVelocityWebhookSignature,
-    codRemittanceController.handleWebhook
+    verifyVelocityWebhookSignature as any,
+    asyncHandler(codRemittanceController.handleWebhook)
 );
 
 // All routes below require authentication

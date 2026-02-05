@@ -88,6 +88,19 @@ export class PricingMetricsService {
     }
 
     /**
+     * Record volumetric weight metrics
+     */
+    recordVolumetricWeight(actual: number, volumetric: number, used: 'actual' | 'volumetric'): void {
+        // For now, just log - can be extended to track histograms
+        logger.debug('[PricingMetrics] Volumetric Weight', {
+            actual,
+            volumetric,
+            used,
+            difference: Math.abs(actual - volumetric)
+        });
+    }
+
+    /**
      * Log current metrics state
      */
     logMetrics(): void {

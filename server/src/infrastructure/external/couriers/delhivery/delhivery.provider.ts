@@ -25,7 +25,8 @@ import {
     DelhiveryNdrStatusResponse,
     DelhiveryDocumentResponse
 } from './delhivery.types';
-import { handleDelhiveryError, retryWithBackoff, DelhiveryError } from './delhivery-error-handler';
+import { handleDelhiveryError, DelhiveryError } from './delhivery-error-handler';
+import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
 import { StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
 import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
 import { DELHIVERY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs';
@@ -36,6 +37,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
     private auth: DelhiveryAuth;
     private httpClient: AxiosInstance;
     private rateLimiter: RateLimiterService;
+    private circuitBreaker: CircuitBreaker;
     private companyId: mongoose.Types.ObjectId;
     private readonly NDR_NSL_CODES = ['EOD-74', 'EOD-15', 'EOD-104', 'EOD-43', 'EOD-86', 'EOD-11', 'EOD-69', 'EOD-6'];
 
@@ -47,6 +49,11 @@ export class DelhiveryProvider extends BaseCourierAdapter {
         this.companyId = companyId;
         this.auth = new DelhiveryAuth(companyId);
         this.rateLimiter = new RateLimiterService(DELHIVERY_RATE_LIMITER_CONFIG);
+        this.circuitBreaker = new CircuitBreaker({
+            name: 'DelhiveryProvider',
+            failureThreshold: 5,
+            cooldownMs: 60000
+        });
 
         this.httpClient = axios.create({
             baseURL: baseUrl,
@@ -99,21 +106,23 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
             await this.rateLimiter.acquire('/api/cmu/create.json');
 
-            const response = await retryWithBackoff(async () => {
-                logger.info('Creating Delhivery shipment', {
-                    orderId: data.orderNumber,
-                    companyId: this.companyId.toString()
-                });
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    logger.info('Creating Delhivery shipment', {
+                        orderId: data.orderNumber,
+                        companyId: this.companyId.toString()
+                    });
 
-                return await this.httpClient.post('/api/cmu/create.json', body, {
-                    headers: await this.getHeaders({
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    })
-                });
-            }, 3, 1000, 'Delhivery createShipment');
+                    return await this.httpClient.post('/api/cmu/create.json', body, {
+                        headers: await this.getHeaders({
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        })
+                    });
+                }, 3, 1000);
+            });
 
             const responseData = response.data || {};
-            
+
             // Handle Delhivery's response structure which can be nested or flat
             const pkg = responseData.packages?.[0];
             const awb = pkg?.waybill || pkg?.wbn || responseData.waybill;
@@ -138,12 +147,14 @@ export class DelhiveryProvider extends BaseCourierAdapter {
         try {
             await this.rateLimiter.acquire('/api/v1/packages/json/');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.get(`/api/v1/packages/json/`, {
-                    headers: await this.getHeaders(),
-                    params: { waybill: trackingNumber }
-                });
-            }, 3, 1000, 'Delhivery trackShipment');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.get(`/api/v1/packages/json/`, {
+                        headers: await this.getHeaders(),
+                        params: { waybill: trackingNumber }
+                    });
+                }, 3, 1000);
+            });
 
             const data = response.data as DelhiveryTrackResponse;
             const shipmentData = data?.ShipmentData?.[0];
@@ -164,13 +175,13 @@ export class DelhiveryProvider extends BaseCourierAdapter {
                 location: scan.ScanLocation || '',
                 timestamp: scan.ScanDateTime ? new Date(scan.ScanDateTime) : new Date()
             })) || [
-                {
-                    status: mapping.internalStatus,
-                    message: status?.Status || '',
-                    location: status?.StatusLocation || '',
-                    timestamp: status?.StatusDateTime ? new Date(status.StatusDateTime) : new Date()
-                }
-            ];
+                    {
+                        status: mapping.internalStatus,
+                        message: status?.Status || '',
+                        location: status?.StatusLocation || '',
+                        timestamp: status?.StatusDateTime ? new Date(status.StatusDateTime) : new Date()
+                    }
+                ];
 
             return {
                 trackingNumber: shipment.AWB || trackingNumber,
@@ -193,19 +204,21 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
             await this.rateLimiter.acquire('/api/kinko/v1/invoice/charges/');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.get('/api/kinko/v1/invoice/charges/.json', {
-                    headers: await this.getHeaders(),
-                    params: {
-                        md,
-                        ss: 'Delivered',
-                        d_pin: request.destination.pincode,
-                        o_pin: request.origin.pincode,
-                        cgm,
-                        pt: paymentType
-                    }
-                });
-            }, 3, 1000, 'Delhivery getRates');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.get('/api/kinko/v1/invoice/charges/.json', {
+                        headers: await this.getHeaders(),
+                        params: {
+                            md,
+                            ss: 'Delivered',
+                            d_pin: request.destination.pincode,
+                            o_pin: request.origin.pincode,
+                            cgm,
+                            pt: paymentType
+                        }
+                    });
+                }, 3, 1000);
+            });
 
             const data = response.data || {};
             const total = Number(data?.total_charge || data?.total_amount || data?.charges || 0);
@@ -228,12 +241,14 @@ export class DelhiveryProvider extends BaseCourierAdapter {
         try {
             await this.rateLimiter.acquire('/api/p/edit');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.post('/api/p/edit',
-                    { waybill: trackingNumber, cancellation: 'true' },
-                    { headers: await this.getHeaders() }
-                );
-            }, 2, 1000, 'Delhivery cancelShipment');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.post('/api/p/edit',
+                        { waybill: trackingNumber, cancellation: 'true' },
+                        { headers: await this.getHeaders() }
+                    );
+                }, 2, 1000);
+            });
 
             return !!response.data;
         } catch (error: any) {
@@ -245,12 +260,14 @@ export class DelhiveryProvider extends BaseCourierAdapter {
         try {
             await this.rateLimiter.acquire('/c/api/pin-codes/json/');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.get('/c/api/pin-codes/json/', {
-                    headers: await this.getHeaders(),
-                    params: { filter_codes: pincode }
-                });
-            }, 2, 1000, 'Delhivery checkServiceability');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.get('/c/api/pin-codes/json/', {
+                        headers: await this.getHeaders(),
+                        params: { filter_codes: pincode }
+                    });
+                }, 2, 1000);
+            });
 
             const data = response.data as DelhiveryServiceabilityResponse;
             const code = data?.delivery_codes?.[0]?.postal_code;
@@ -285,11 +302,13 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
             await this.rateLimiter.acquire('/api/backend/clientwarehouse/create/');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.post('/api/backend/clientwarehouse/create/', request, {
-                    headers: await this.getHeaders()
-                });
-            }, 3, 1000, 'Delhivery createWarehouse');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.post('/api/backend/clientwarehouse/create/', request, {
+                        headers: await this.getHeaders()
+                    });
+                }, 3, 1000);
+            });
 
             return response.data;
         } catch (error: any) {
@@ -300,11 +319,13 @@ export class DelhiveryProvider extends BaseCourierAdapter {
     async updateWarehouse(data: DelhiveryWarehouseUpdateRequest): Promise<any> {
         try {
             await this.rateLimiter.acquire('/api/backend/clientwarehouse/edit/');
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.post('/api/backend/clientwarehouse/edit/', data, {
-                    headers: await this.getHeaders()
-                });
-            }, 3, 1000, 'Delhivery updateWarehouse');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.post('/api/backend/clientwarehouse/edit/', data, {
+                        headers: await this.getHeaders()
+                    });
+                }, 3, 1000);
+            });
 
             return response.data;
         } catch (error: any) {
@@ -352,13 +373,15 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
             await this.rateLimiter.acquire('/api/cmu/create.json');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.post('/api/cmu/create.json', body, {
-                    headers: await this.getHeaders({
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    })
-                });
-            }, 3, 1000, 'Delhivery createReverseShipment');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.post('/api/cmu/create.json', body, {
+                        headers: await this.getHeaders({
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        })
+                    });
+                }, 3, 1000);
+            });
 
             const responseData = response.data || {};
             const pkg = responseData.packages?.[0];
@@ -395,11 +418,13 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
             await this.rateLimiter.acquire('/fm/request/new/');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.post('/fm/request/new/', request, {
-                    headers: await this.getHeaders()
-                });
-            }, 3, 1000, 'Delhivery schedulePickup');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.post('/fm/request/new/', request, {
+                        headers: await this.getHeaders()
+                    });
+                }, 3, 1000);
+            });
 
             return response.data;
         } catch (error: any) {
@@ -415,11 +440,13 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
             await this.rateLimiter.acquire('/api/p/update');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.post('/api/p/update', request, {
-                    headers: await this.getHeaders()
-                });
-            }, 3, 1000, 'Delhivery requestReattempt');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.post('/api/p/update', request, {
+                        headers: await this.getHeaders()
+                    });
+                }, 3, 1000);
+            });
 
             const data = response.data as DelhiveryNdrActionResponse;
             return {
@@ -441,18 +468,20 @@ export class DelhiveryProvider extends BaseCourierAdapter {
         try {
             await this.rateLimiter.acquire('/api/p/edit');
 
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.post('/api/p/edit', {
-                    waybill: awb,
-                    add: DelhiveryMapper.sanitize(newAddress.line1),
-                    city: DelhiveryMapper.sanitize(newAddress.city),
-                    state: DelhiveryMapper.sanitize(newAddress.state),
-                    pin: newAddress.pincode,
-                    phone: phone ? DelhiveryMapper.normalizePhone(phone) : undefined
-                }, {
-                    headers: await this.getHeaders()
-                });
-            }, 3, 1000, 'Delhivery updateDeliveryAddress');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.post('/api/p/edit', {
+                        waybill: awb,
+                        add: DelhiveryMapper.sanitize(newAddress.line1),
+                        city: DelhiveryMapper.sanitize(newAddress.city),
+                        state: DelhiveryMapper.sanitize(newAddress.state),
+                        pin: newAddress.pincode,
+                        phone: phone ? DelhiveryMapper.normalizePhone(phone) : undefined
+                    }, {
+                        headers: await this.getHeaders()
+                    });
+                }, 3, 1000);
+            });
 
             return { success: true, message: response.data?.message || 'Address updated' };
         } catch (error: any) {
@@ -462,12 +491,14 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
     async getProofOfDelivery(trackingNumber: string): Promise<CourierPODResponse> {
         try {
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.get('/api/rest/fetch/pkg/document/', {
-                    headers: await this.getHeaders(),
-                    params: { doc_type: 'EPOD', waybill: trackingNumber }
-                });
-            }, 2, 1000, 'Delhivery getProofOfDelivery');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.get('/api/rest/fetch/pkg/document/', {
+                        headers: await this.getHeaders(),
+                        params: { doc_type: 'EPOD', waybill: trackingNumber }
+                    });
+                }, 2, 1000);
+            });
 
             const data = response.data as DelhiveryDocumentResponse;
             if (!data?.url) {
@@ -482,12 +513,14 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
     async getNdrStatus(uplId: string): Promise<DelhiveryNdrStatusResponse> {
         try {
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.get(`/api/cmu/get_bulk_upl/${uplId}`, {
-                    headers: await this.getHeaders(),
-                    params: { verbose: true }
-                });
-            }, 2, 1000, 'Delhivery getNdrStatus');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.get(`/api/cmu/get_bulk_upl/${uplId}`, {
+                        headers: await this.getHeaders(),
+                        params: { verbose: true }
+                    });
+                }, 2, 1000);
+            });
 
             return response.data as DelhiveryNdrStatusResponse;
         } catch (error: any) {
@@ -512,15 +545,17 @@ export class DelhiveryProvider extends BaseCourierAdapter {
             // Execute the request server-side to get the S3 link
             // The API with pdf=true returns a JSON with the invoice/label URL(s) or the PDF stream if simplified.
             // Documentation: "If passed True: An S3 link of the pdf will be generated"
-            const response = await retryWithBackoff(async () => {
-                return await this.httpClient.get('/api/p/packing_slip', {
-                    headers: await this.getHeaders(),
-                    params: {
-                        wbns: waybillString,
-                        pdf: 'true'
-                    }
-                });
-            }, 3, 1000, 'Delhivery generateManifest');
+            const response = await this.circuitBreaker.execute(async () => {
+                return await retryWithBackoff(async () => {
+                    return await this.httpClient.get('/api/p/packing_slip', {
+                        headers: await this.getHeaders(),
+                        params: {
+                            wbns: waybillString,
+                            pdf: 'true'
+                        }
+                    });
+                }, 3, 1000);
+            });
 
             // If the response is a direct PDF stream (headers content-type application/pdf),
             // we would ideally upload to our S3. But often these APIs return a JSON with a "url" or "packages" array containing links.

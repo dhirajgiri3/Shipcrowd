@@ -52,12 +52,28 @@ export interface IRateCard extends Document {
     endDate?: Date;
   };
   status: 'draft' | 'active' | 'inactive' | 'expired';
-  version: string;
-  previousVersionId?: mongoose.Types.ObjectId;
+  version: string; // Legacy string version (keep for backward compatibility)
+  versionNumber: number; // Sequential: 1, 2, 3...
+  previousVersionId?: mongoose.Types.ObjectId; // Legacy field (keep for backward compatibility)
+  parentVersionId?: mongoose.Types.ObjectId; // Reference to previous version
+  approvedBy?: mongoose.Types.ObjectId; // Who approved this version
+  approvedAt?: Date; // When approved
+  changeReason?: string; // Why this version was created
+  deprecatedAt?: Date; // When this version was replaced
+  priority?: number; // Selection priority (higher = more important)
+  isSpecialPromotion?: boolean; // Flag for time-bound cards
   isLocked: boolean; // Prevents accidental overwrites
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
+
+  // Static method for creating new versions
+  createNewVersion?: (
+    existingCardId: string,
+    changes: Partial<IRateCard>,
+    userId: string,
+    reason: string
+  ) => Promise<IRateCard>;
 }
 
 // Create the RateCard schema
@@ -226,12 +242,33 @@ const RateCardSchema = new Schema<IRateCard>(
     },
     version: {
       type: String,
-      default: 'v1',
+      default: 'v1', // Legacy field
+    },
+    versionNumber: {
+      type: Number,
+      default: 1,
+      min: 1,
     },
     previousVersionId: {
       type: Schema.Types.ObjectId,
+      ref: 'RateCard', // Legacy field
+    },
+    parentVersionId: {
+      type: Schema.Types.ObjectId,
       ref: 'RateCard',
     },
+    approvedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    approvedAt: Date,
+    changeReason: {
+      type: String,
+      maxLength: 500,
+    },
+    deprecatedAt: Date,
+    priority: { type: Number, default: 0 },
+    isSpecialPromotion: { type: Boolean, default: false },
     isLocked: {
       type: Boolean,
       default: false,
@@ -334,6 +371,51 @@ RateCardSchema.index({ isDeleted: 1 });
 // Compound indexes for common query patterns
 RateCardSchema.index({ companyId: 1, status: 1 }); // Active rate cards
 RateCardSchema.index({ companyId: 1, isDeleted: 1 }); // Rate card listing
+RateCardSchema.index({ companyId: 1, name: 1, versionNumber: -1 }); // Versioning queries
+
+// Selection priority index
+RateCardSchema.index({ companyId: 1, status: 1, 'effectiveDates.startDate': 1, priority: -1 });
+
+// Customer-specific selection index
+RateCardSchema.index({ companyId: 1, 'customerOverrides.customerId': 1, status: 1 });
+RateCardSchema.index({ companyId: 1, 'customerOverrides.customerGroup': 1, status: 1 });
+
+// Static method: Create new version of a rate card
+RateCardSchema.statics.createNewVersion = async function (
+  existingCardId: string,
+  changes: Partial<IRateCard>,
+  userId: string,
+  reason: string
+): Promise<IRateCard> {
+  const existingCard = await this.findById(existingCardId);
+  if (!existingCard) {
+    throw new Error('Rate card not found');
+  }
+
+  // Create new version
+  const newVersion = new this({
+    ...existingCard.toObject(),
+    _id: new mongoose.Types.ObjectId(),
+    versionNumber: existingCard.versionNumber + 1,
+    parentVersionId: existingCard._id,
+    approvedBy: userId,
+    approvedAt: undefined, // Will be set upon approval
+    changeReason: reason,
+    status: 'draft', // New version starts as draft
+    deprecatedAt: undefined,
+    isLocked: false,
+    ...changes,
+  });
+
+  await newVersion.save();
+
+  // Mark old version as deprecated
+  existingCard.deprecatedAt = new Date();
+  existingCard.status = 'expired';
+  await existingCard.save();
+
+  return newVersion;
+};
 
 // Create and export the RateCard model
 const RateCard = mongoose.model<IRateCard>('RateCard', RateCardSchema);

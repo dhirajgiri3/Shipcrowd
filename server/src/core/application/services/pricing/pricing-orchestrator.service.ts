@@ -1,9 +1,11 @@
+
 import mongoose from 'mongoose';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { DynamicPricingService } from './dynamic-pricing.service';
 import PricingAudit from '../../../../infrastructure/database/mongoose/models/finance/pricing-audit.model';
 import { v4 as uuidv4 } from 'uuid';
+import { RateCardSelectorService } from './rate-card-selector.service';
 
 /**
  * Pricing Orchestrator Service
@@ -64,9 +66,16 @@ export class PricingOrchestratorService {
    */
   async calculateShipmentPricing(input: PricingInput): Promise<PricingBreakdown> {
     try {
-      // Step 1: Get company's default rate card
-      const company = await Company.findById(input.companyId).lean();
-      if (!company?.settings?.defaultRateCardId) {
+      // Step 1: Select the most appropriate rate card
+      const selection = await RateCardSelectorService.selectRateCard({
+        companyId: input.companyId,
+        customerId: input.customerId,
+      }).catch(err => {
+        logger.warn(`[PricingOrchestrator] Rate card selection failed for company ${input.companyId}: ${err.message}`);
+        return null;
+      });
+
+      if (!selection) {
         return this.getFallbackPricing(input);
       }
 
@@ -78,11 +87,12 @@ export class PricingOrchestratorService {
         fromPincode: input.fromPincode,
         toPincode: input.toPincode,
         weight: input.weight,
+        dimensions: input.dimensions,
         paymentMode: input.paymentMode,
         orderValue: input.orderValue,
         carrier: input.carrier,
         serviceType: input.serviceType,
-        rateCardId: company.settings.defaultRateCardId.toString(),
+        rateCardId: selection.rateCardId,
         customerId: input.customerId
       });
 
@@ -93,7 +103,7 @@ export class PricingOrchestratorService {
 
       return {
         rateCardId: new mongoose.Types.ObjectId(pricingResult.metadata.rateCardId),
-        rateCardName: pricingResult.metadata.rateCardId ? 'Rate Card' : 'Fallback', // Ideally fetch name if needed, or update DynamicPricingService to return it
+        rateCardName: selection.rateCardName || 'Rate Card',
         baseRate: pricingResult.metadata.breakdown?.baseCharge || 0,
         weightCharge: pricingResult.metadata.breakdown?.weightCharge || 0,
         zoneCharge: pricingResult.metadata.breakdown?.zoneCharge || 0,
@@ -104,7 +114,7 @@ export class PricingOrchestratorService {
         gstAmount: pricingResult.tax.total,
         totalPrice: pricingResult.total,
         calculatedAt: new Date(),
-        calculationMethod: pricingResult.metadata.cached ? 'ratecard' : 'ratecard' // Ideally distinct
+        calculationMethod: pricingResult.metadata.cached ? 'ratecard' : 'ratecard'
       };
     } catch (error) {
       logger.error('[PricingOrchestrator] Calculation failed:', error);
@@ -166,12 +176,11 @@ export class PricingOrchestratorService {
         pricingVersion: result.metadata.pricingVersion,
         metadata: {
           cached: result.metadata.cached,
-          platform: 'web', // Context if available
+          platform: 'web',
           pricingProvider: result.pricingProvider
         }
       });
     } catch (error) {
-      // Silent fail or just log error, don't throw
       logger.warn('[PricingOrchestrator] Failed to save audit log', error);
     }
   }

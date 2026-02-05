@@ -1,4 +1,5 @@
 import { RateCard, Zone } from '../../../../infrastructure/database/mongoose/models';
+import CarrierProfile from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/carrier-profile.model';
 import PincodeLookupService from '../logistics/pincode-lookup.service';
 import GSTService from '../finance/gst.service';
 import { getCODChargeService } from './cod-charge.service';
@@ -6,12 +7,19 @@ import { getPricingCache } from './pricing-cache.service';
 import logger from '../../../../shared/logger/winston.logger';
 import PricingMetricsService from '../metrics/pricing-metrics.service';
 import CarrierNormalizationService from '../shipping/carrier-normalization.service';
+import { VolumetricWeightCalculator } from '../../../../shared/utils/volumetric-weight.util';
 
 export interface CalculatePricingInput {
     companyId: string;
     fromPincode: string;
     toPincode: string;
-    weight: number; // in kg
+    weight: number; // in kg (actual weight)
+    dimensions?: { // Optional: for volumetric weight calculation
+        length: number;
+        width: number;
+        height: number;
+        unit?: 'cm' | 'inch'; // default: 'cm'
+    };
     paymentMode: 'cod' | 'prepaid';
     orderValue?: number; // for COD charge calculation
     carrier?: string; // default: 'velocity'
@@ -52,6 +60,13 @@ export interface PricingBreakdown {
             remoteAreaCharge?: number;
             fuelSurchargeBase?: string;
         }
+        volumetricWeight?: {
+            actualWeight: number;
+            volumetricWeight: number;
+            chargeableWeight: number;
+            usedWeight: 'actual' | 'volumetric';
+            dimFactor: number;
+        };
         pricingResolution: {
             matchedLevel: 'EXACT' | 'CARRIER_DEFAULT' | 'GENERIC';
             matchedCarrier?: string;
@@ -87,6 +102,58 @@ export class DynamicPricingService {
             const carrier = input.carrier || 'velocity';
             const serviceType = input.serviceType || 'standard';
 
+            // Step 0: Calculate chargeable weight (volumetric vs actual)
+            let chargeableWeight = input.weight;
+            let volumetricWeightData: {
+                actualWeight: number;
+                volumetricWeight: number;
+                chargeableWeight: number;
+                usedWeight: 'actual' | 'volumetric';
+                dimFactor: number;
+                carrier: string;
+            } | undefined;
+
+            if (input.dimensions) {
+                // Fetch carrier-specific DIM factor from CarrierProfile
+                let dimFactor: number | undefined;
+                try {
+                    const carrierProfile = await CarrierProfile.findOne({
+                        carrierId: carrier.toLowerCase(),
+                        status: 'active'
+                    }).lean();
+
+                    if (carrierProfile) {
+                        dimFactor = carrierProfile.dimFactors.domestic;
+                        logger.debug(`[DynamicPricing] Using DIM factor ${dimFactor} from CarrierProfile for ${carrier}`);
+                    }
+                } catch (error) {
+                    logger.warn(`[DynamicPricing] Failed to fetch CarrierProfile for ${carrier}, using fallback`, error);
+                }
+
+                // Calculate volumetric weight (with fallback to VolumetricWeightCalculator if profile not found)
+                volumetricWeightData = VolumetricWeightCalculator.getWeightBreakdown(
+                    input.weight,
+                    input.dimensions,
+                    dimFactor ? undefined : carrier // Use carrier for fallback lookup if no dimFactor from DB
+                );
+
+                // Override dimFactor if we got it from database
+                if (dimFactor) {
+                    volumetricWeightData.dimFactor = dimFactor;
+                }
+
+                chargeableWeight = volumetricWeightData.chargeableWeight;
+
+                logger.info(`[DynamicPricing] Volumetric weight calculated - Actual: ${volumetricWeightData.actualWeight}kg, Volumetric: ${volumetricWeightData.volumetricWeight}kg, Chargeable: ${chargeableWeight}kg (using ${volumetricWeightData.usedWeight})`);
+
+                // Record metrics
+                PricingMetricsService.recordVolumetricWeight?.(
+                    volumetricWeightData.actualWeight,
+                    volumetricWeightData.volumetricWeight,
+                    volumetricWeightData.usedWeight
+                );
+            }
+
             // Step 1: Get zone (with cache or external override)
             const { zone: zoneCode, isSameCity, isSameState, source } = await this.getZoneWithCache(
                 input.fromPincode,
@@ -112,12 +179,12 @@ export class DynamicPricingService {
                 throw new Error(`RateCard not found for company ${input.companyId}`);
             }
 
-            // Step 3: Calculate base shipping cost
+            // Step 3: Calculate base shipping cost (using chargeable weight)
             const costBreakdown = this.calculateShippingCost(
                 rateCard,
                 zoneCode,
                 zoneDoc?._id?.toString(), // Pass ID if found
-                input.weight,
+                chargeableWeight, // Use chargeable weight (max of actual and volumetric)
                 carrier,
                 serviceType,
                 input.strict
@@ -255,6 +322,13 @@ export class DynamicPricingService {
                         remoteAreaCharge: remoteAreaCharge,
                         fuelSurchargeBase: fuelBaseMode
                     },
+                    volumetricWeight: volumetricWeightData ? {
+                        actualWeight: volumetricWeightData.actualWeight,
+                        volumetricWeight: volumetricWeightData.volumetricWeight,
+                        chargeableWeight: volumetricWeightData.chargeableWeight,
+                        usedWeight: volumetricWeightData.usedWeight,
+                        dimFactor: volumetricWeightData.dimFactor,
+                    } : undefined,
                     pricingResolution: costBreakdown.resolution
                 },
                 pricingProvider: source === 'external_velocity' ? 'velocity' : 'internal'

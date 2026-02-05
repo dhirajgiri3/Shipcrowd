@@ -9,6 +9,7 @@ export interface CourierShipmentData {
         state: string;
         pincode: string;
         country: string;
+        email?: string;
     };
     destination: {
         name: string;
@@ -18,6 +19,7 @@ export interface CourierShipmentData {
         state: string;
         pincode: string;
         country: string;
+        email?: string;
     };
     package: {
         weight: number;
@@ -26,6 +28,9 @@ export interface CourierShipmentData {
         height: number;
         description?: string;
         declaredValue?: number;
+        invoiceNumber?: string;
+        invoiceDate?: string;
+        scannedWeight?: number;
     };
     orderNumber: string;
     paymentMode: 'prepaid' | 'cod';
@@ -72,6 +77,7 @@ export interface CourierShipmentResponse {
     estimatedDelivery?: Date;
     cost?: number;
     providerShipmentId?: string; // Generic ID for provider's internal shipment record
+    courierReference?: string;   // Reference ID from courier
 }
 
 export interface CourierTrackingResponse {

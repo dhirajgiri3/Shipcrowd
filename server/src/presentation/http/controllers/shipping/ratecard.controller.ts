@@ -17,6 +17,8 @@ import RateCardImportService from '../../../../core/application/services/pricing
 import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
 import RateCardAnalyticsService from '../../../../core/application/services/analytics/rate-card-analytics.service';
 import SmartRateCalculatorService from '../../../../core/application/services/pricing/smart-rate-calculator.service';
+import { RateCardSelectorService } from '../../../../core/application/services/pricing/rate-card-selector.service';
+import { RateCardSimulationService, SimulationInput } from '../../../../core/application/services/pricing/rate-card-simulation.service';
 
 // Validation schemas
 const weightRuleSchema = z.object({
@@ -1018,6 +1020,86 @@ export const deleteRateCard = async (req: Request, res: Response, next: NextFunc
     }
 };
 
+export const previewRateCardSelection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user || !req.user.companyId) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const input = {
+            companyId: req.user.companyId,
+            customerId: req.query.customerId as string,
+            customerGroup: req.query.customerGroup as string,
+            effectiveDate: req.query.effectiveDate ? new Date(req.query.effectiveDate as string) : new Date(),
+            carrier: req.query.carrier as string,
+            serviceType: req.query.serviceType as string
+        };
+
+        const result = await RateCardSelectorService.selectRateCard(input);
+        sendSuccess(res, { selection: result }, 'Rate card selection preview generated');
+    } catch (error) {
+        // If not found, returning null selection is also valid for preview
+        if (error instanceof NotFoundError) {
+            sendSuccess(res, { selection: null }, 'No applicable rate card found');
+            return;
+        }
+        logger.error('Error previewing rate card selection:', error);
+        next(error);
+    }
+};
+
+export const simulateRateCardChange = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user || !req.user.companyId) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const simulationService = new RateCardSimulationService();
+        const input: SimulationInput = {
+            companyId: req.user.companyId,
+            proposedRateCardId: req.body.proposedRateCardId,
+            baselineRateCardId: req.body.baselineRateCardId,
+            sampleSize: req.body.sampleSize,
+            dateRange: req.body.dateRange ? {
+                start: new Date(req.body.dateRange.start),
+                end: new Date(req.body.dateRange.end)
+            } : undefined,
+            filters: req.body.filters
+        };
+
+        const result = await simulationService.simulateRateCardChange(input);
+        sendSuccess(res, { simulation: result }, 'Rate card simulation completed');
+    } catch (error) {
+        logger.error('Error simulating rate card change:', error);
+        next(error);
+    }
+};
+
+export const getApplicableRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user || !req.user.companyId) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const effectiveDate = req.query.effectiveDate ? new Date(req.query.effectiveDate as string) : new Date();
+
+        const rateCards = await RateCard.find({
+            companyId: req.user.companyId,
+            status: 'active',
+            'effectiveDates.startDate': { $lte: effectiveDate },
+            $or: [
+                { 'effectiveDates.endDate': { $exists: false } },
+                { 'effectiveDates.endDate': { $gte: effectiveDate } }
+            ]
+        }).sort({ priority: -1 }).lean();
+
+        sendSuccess(res, { rateCards }, 'Applicable rate cards retrieved');
+    } catch (error) {
+        logger.error('Error fetching applicable rate cards:', error);
+        next(error);
+    }
+};
+
 export default {
     createRateCard,
     getRateCards,
@@ -1033,5 +1115,9 @@ export default {
     exportRateCards,
     bulkUpdateRateCards,
     importRateCards,
-    previewPrice
+    previewPrice,
+    previewRateCardSelection,
+    simulateRateCardChange,
+    getApplicableRateCards
 };
+

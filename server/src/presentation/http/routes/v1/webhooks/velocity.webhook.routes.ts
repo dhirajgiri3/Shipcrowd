@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { VelocityWebhookController } from '../../../controllers/webhooks/couriers/velocity.webhook.controller';
 import { verifyVelocityWebhookSignature } from '../../../middleware/webhooks/velocity-webhook-auth.middleware';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = Router();
 
@@ -10,8 +11,8 @@ const router = Router();
  */
 router.post(
   '/',
-  verifyVelocityWebhookSignature,
-  VelocityWebhookController.handleWebhook
+  verifyVelocityWebhookSignature as any,
+  asyncHandler(VelocityWebhookController.handleWebhook)
 );
 
 /**

@@ -41,6 +41,27 @@ router.post('/compare', authenticate, asyncHandler(ratecardController.compareCar
 router.post('/smart-calculate', authenticate, asyncHandler(ratecardController.calculateSmartRates));
 
 /**
+ * @route GET /api/v1/ratecards/select-preview
+ * @desc Preview rate card selection logic
+ * @access Private
+ */
+router.get('/select-preview', authenticate, asyncHandler(ratecardController.previewRateCardSelection));
+
+/**
+ * @route POST /api/v1/ratecards/simulate
+ * @desc Simulate rate card changes
+ * @access Private
+ */
+router.post('/simulate', authenticate, asyncHandler(ratecardController.simulateRateCardChange));
+
+/**
+ * @route GET /api/v1/ratecards/applicable
+ * @desc Get all applicable rate cards for a date
+ * @access Private
+ */
+router.get('/applicable', authenticate, asyncHandler(ratecardController.getApplicableRateCards));
+
+/**
  * @route POST /api/v1/ratecards/preview
  * @desc Preview shipping price (Admin)
  * @access Private

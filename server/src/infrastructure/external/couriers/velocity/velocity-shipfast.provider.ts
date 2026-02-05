@@ -77,10 +77,8 @@ import { VelocityAuth } from './velocity.auth';
 import { VelocityMapper } from './velocity.mapper';
 import { VELOCITY_CARRIER_IDS, isDeprecatedVelocityId } from './velocity-carrier-ids';
 import { DynamicPricingService } from '../../../../core/application/services/pricing/dynamic-pricing.service';
-import {
-  handleVelocityError,
-  retryWithBackoff
-} from './velocity-error-handler';
+import { handleVelocityError } from './velocity-error-handler';
+import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
 import { StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
 import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
 import { VELOCITY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs/index';
@@ -91,6 +89,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
   private httpClient: AxiosInstance;
   private companyId: mongoose.Types.ObjectId;
   private rateLimiter: RateLimiterService;
+  private circuitBreaker: CircuitBreaker;
 
   constructor(
     companyId: mongoose.Types.ObjectId,
@@ -100,6 +99,11 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     this.companyId = companyId;
     this.auth = new VelocityAuth(companyId, baseUrl);
     this.rateLimiter = new RateLimiterService(VELOCITY_RATE_LIMITER_CONFIG);
+    this.circuitBreaker = new CircuitBreaker({
+      name: 'VelocityProvider',
+      failureThreshold: 5,
+      cooldownMs: 60000
+    });
 
     this.httpClient = axios.create({
       baseURL: baseUrl,
@@ -250,23 +254,24 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/forward-order-orchestration');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityShipmentResponse }>(
-      async () => {
-        logger.info('Creating Velocity shipment', {
-          orderId: data.orderNumber,
-          companyId: this.companyId.toString(),
-          idempotencyKey: data.idempotencyKey
-        });
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityShipmentResponse }>(
+        async () => {
+          logger.info('Creating Velocity shipment', {
+            orderId: data.orderNumber,
+            companyId: this.companyId.toString(),
+            idempotencyKey: data.idempotencyKey
+          });
 
-        return await this.httpClient.post<VelocityShipmentResponse>(
-          '/custom/api/v1/forward-order-orchestration',
-          velocityRequest
-        );
-      },
-      3,
-      1000,
-      'Velocity createShipment'
-    );
+          return await this.httpClient.post<VelocityShipmentResponse>(
+            '/custom/api/v1/forward-order-orchestration',
+            velocityRequest
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const shipment = this.unwrapResponse<VelocityShipmentResponse>(response.data);
 
@@ -304,19 +309,20 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/order-tracking');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityTrackingResponse[] }>(
-      async () => {
-        logger.debug('Tracking Velocity shipment', { trackingNumber });
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityTrackingResponse[] }>(
+        async () => {
+          logger.debug('Tracking Velocity shipment', { trackingNumber });
 
-        return await this.httpClient.post<VelocityTrackingResponse[]>(
-          '/custom/api/v1/order-tracking',
-          request
-        );
-      },
-      3,
-      1000,
-      'Velocity trackShipment'
-    );
+          return await this.httpClient.post<VelocityTrackingResponse[]>(
+            '/custom/api/v1/order-tracking',
+            request
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     // Velocity returns a keyed object: { result: { [AWB]: { tracking_data: ... } } }
     const trackingMap = this.unwrapResponse<Record<string, {
@@ -385,22 +391,23 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/serviceability');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
-      async () => {
-        logger.debug('Checking Velocity serviceability', {
-          from: request.origin.pincode,
-          to: request.destination.pincode
-        });
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
+        async () => {
+          logger.debug('Checking Velocity serviceability', {
+            from: request.origin.pincode,
+            to: request.destination.pincode
+          });
 
-        return await this.httpClient.post<VelocityServiceabilityResponse>(
-          '/custom/api/v1/serviceability',
-          serviceabilityRequest
-        );
-      },
-      3,
-      1000,
-      'Velocity getRates'
-    );
+          return await this.httpClient.post<VelocityServiceabilityResponse>(
+            '/custom/api/v1/serviceability',
+            serviceabilityRequest
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const serviceabilityData = this.unwrapResponse<{
       serviceability_results: Array<{
@@ -552,19 +559,20 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/cancel-order');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityCancelResponse }>(
-      async () => {
-        logger.info('Cancelling Velocity shipment', { trackingNumber });
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityCancelResponse }>(
+        async () => {
+          logger.info('Cancelling Velocity shipment', { trackingNumber });
 
-        return await this.httpClient.post<VelocityCancelResponse>(
-          '/custom/api/v1/cancel-order',
-          request
-        );
-      },
-      3,
-      1000,
-      'Velocity cancelShipment'
-    );
+          return await this.httpClient.post<VelocityCancelResponse>(
+            '/custom/api/v1/cancel-order',
+            request
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const result = this.unwrapResponse<{ message: string }>(response.data);
 
@@ -597,17 +605,18 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/serviceability');
 
     try {
-      const response = await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
-        async () => {
-          return await this.httpClient.post<VelocityServiceabilityResponse>(
-            '/custom/api/v1/serviceability',
-            request
-          );
-        },
-        2, // Fewer retries for serviceability check
-        1000,
-        'Velocity checkServiceability'
-      );
+      const response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
+          async () => {
+            return await this.httpClient.post<VelocityServiceabilityResponse>(
+              '/custom/api/v1/serviceability',
+              request
+            );
+          },
+          2, // Fewer retries for serviceability check
+          1000
+        );
+      });
 
       const serviceabilityData = this.unwrapResponse<{ serviceability_results: any[] }>(response.data);
       return !!(serviceabilityData.serviceability_results && serviceabilityData.serviceability_results.length > 0);
@@ -631,22 +640,24 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/warehouse');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityWarehouseResponse }>(
-      async () => {
-        logger.info('Creating Velocity warehouse', {
-          warehouseName: warehouse.name,
-          companyId: this.companyId.toString()
-        });
+    // Make API call with retry
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityWarehouseResponse }>(
+        async () => {
+          logger.info('Creating Velocity warehouse', {
+            warehouseName: warehouse.name,
+            companyId: this.companyId.toString()
+          });
 
-        return await this.httpClient.post<VelocityWarehouseResponse>(
-          '/custom/api/v1/warehouse',
-          request
-        );
-      },
-      3,
-      1000,
-      'Velocity createWarehouse'
-    );
+          return await this.httpClient.post<VelocityWarehouseResponse>(
+            '/custom/api/v1/warehouse',
+            request
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const velocityWarehouse = this.unwrapResponse<VelocityWarehouseResponse>(response.data);
 
@@ -734,22 +745,24 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/forward-order');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityForwardOrderOnlyResponse }>(
-      async () => {
-        logger.info('Creating Velocity forward order only', {
-          orderId: data.orderNumber,
-          companyId: this.companyId.toString()
-        });
+    // Make API call with retry
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityForwardOrderOnlyResponse }>(
+        async () => {
+          logger.info('Creating Velocity forward order only', {
+            orderId: data.orderNumber,
+            companyId: this.companyId.toString()
+          });
 
-        return await this.httpClient.post<VelocityForwardOrderOnlyResponse>(
-          '/custom/api/v1/forward-order',
-          velocityRequest
-        );
-      },
-      3,
-      1000,
-      'Velocity createForwardOrderOnly'
-    );
+          return await this.httpClient.post<VelocityForwardOrderOnlyResponse>(
+            '/custom/api/v1/forward-order',
+            velocityRequest
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const result = this.unwrapResponse<VelocityForwardOrderOnlyResponse>(response.data);
 
@@ -778,19 +791,21 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/forward-order-shipment');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityShipmentResponse }>(
-      async () => {
-        logger.info('Assigning courier to Velocity shipment', { shipmentId, carrierId });
+    // Make API call with retry
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityShipmentResponse }>(
+        async () => {
+          logger.info('Assigning courier to Velocity shipment', { shipmentId, carrierId });
 
-        return await this.httpClient.post<VelocityShipmentResponse>(
-          '/custom/api/v1/forward-order-shipment',
-          request
-        );
-      },
-      3,
-      1000,
-      'Velocity assignCourier'
-    );
+          return await this.httpClient.post<VelocityShipmentResponse>(
+            '/custom/api/v1/forward-order-shipment',
+            request
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const shipment = this.unwrapResponse<VelocityShipmentResponse>(response.data);
 
@@ -896,23 +911,25 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     try {
       // Attempt real API call (with retry logic)
-      const response = await retryWithBackoff<{ data: VelocityReverseShipmentResponse }>(
-        async () => {
-          logger.info('Creating Velocity reverse shipment (RTO)', {
-            originalAwb,
-            orderId,
-            companyId: this.companyId.toString()
-          });
+      // Attempt real API call (with retry logic)
+      const response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityReverseShipmentResponse }>(
+          async () => {
+            logger.info('Creating Velocity reverse shipment (RTO)', {
+              originalAwb,
+              orderId,
+              companyId: this.companyId.toString()
+            });
 
-          return await this.httpClient.post<VelocityReverseShipmentResponse>(
-            '/custom/api/v1/reverse-order-orchestration',
-            reverseRequest
-          );
-        },
-        3,
-        1000,
-        'Velocity createReverseShipment'
-      );
+            return await this.httpClient.post<VelocityReverseShipmentResponse>(
+              '/custom/api/v1/reverse-order-orchestration',
+              reverseRequest
+            );
+          },
+          3,
+          1000
+        );
+      });
 
       const reverseShipment = this.unwrapResponse<VelocityReverseShipmentResponse>(response.data);
 
@@ -992,17 +1009,18 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     try {
       logger.info('Scheduling pickup via Forward Order Shipment', { shipmentId: data.providerShipmentId });
 
-      const response = await retryWithBackoff<{ data: any }>(
-        async () => {
-          return await this.httpClient.post(
-            '/custom/api/v1/forward-order-shipment',
-            request
-          );
-        },
-        3,
-        1000,
-        'Velocity schedulePickup'
-      );
+      const response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: any }>(
+          async () => {
+            return await this.httpClient.post(
+              '/custom/api/v1/forward-order-shipment',
+              request
+            );
+          },
+          3,
+          1000
+        );
+      });
 
       logger.info('Velocity pickup scheduled successfully', {
         shipmentId: data.providerShipmentId,
@@ -1042,22 +1060,24 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     try {
       // Attempt real API call
-      const response = await retryWithBackoff<{ data: VelocityCancelReverseShipmentResponse }>(
-        async () => {
-          logger.info('Cancelling Velocity reverse shipment', {
-            reverseAwb,
-            originalAwb
-          });
+      // Attempt real API call
+      const response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityCancelReverseShipmentResponse }>(
+          async () => {
+            logger.info('Cancelling Velocity reverse shipment', {
+              reverseAwb,
+              originalAwb
+            });
 
-          return await this.httpClient.post<VelocityCancelReverseShipmentResponse>(
-            '/custom/api/v1/cancel-reverse-order',
-            request
-          );
-        },
-        3,
-        1000,
-        'Velocity cancelReverseShipment'
-      );
+            return await this.httpClient.post<VelocityCancelReverseShipmentResponse>(
+              '/custom/api/v1/cancel-reverse-order',
+              request
+            );
+          },
+          3,
+          1000
+        );
+      });
 
       const cancellation = response.data;
 
@@ -1161,18 +1181,19 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/forward-order-orchestration');
 
     try {
-      const response = await retryWithBackoff<{ data: { status: string; message: string } }>(
-        async () => {
-          logger.info('Updating Velocity delivery address', { awb, orderId });
-          return await this.httpClient.put(
-            '/custom/api/v1/order',
-            request
-          );
-        },
-        3,
-        1000,
-        'Velocity updateDeliveryAddress'
-      );
+      const response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: { status: string; message: string } }>(
+          async () => {
+            logger.info('Updating Velocity delivery address', { awb, orderId });
+            return await this.httpClient.put(
+              '/custom/api/v1/order',
+              request
+            );
+          },
+          3,
+          1000
+        );
+      });
 
       return {
         success: true,
@@ -1215,21 +1236,22 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/order-tracking'); // Reuse tracking limiter
 
     try {
-      const response = await retryWithBackoff<{
-        data: {
-          status: string;
-          message: string;
-          reattempt_id?: string;
-        };
-      }>(
-        async () => {
-          logger.info('Requesting Velocity delivery reattempt', { awb, preferredDate });
-          return await this.httpClient.post('/custom/api/v1/reattempt-delivery', request);
-        },
-        3,
-        1000,
-        'Velocity requestReattempt'
-      );
+      const response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{
+          data: {
+            status: string;
+            message: string;
+            reattempt_id?: string;
+          };
+        }>(
+          async () => {
+            logger.info('Requesting Velocity delivery reattempt', { awb, preferredDate });
+            return await this.httpClient.post('/custom/api/v1/reattempt-delivery', request);
+          },
+          3,
+          1000
+        );
+      });
 
       return {
         success: response.data.status === 'success',
@@ -1263,18 +1285,19 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/order-tracking');
 
     try {
-      const response = await retryWithBackoff<{ data: VelocitySettlementResponse }>(
-        async () => {
-          logger.info('Fetching Velocity settlement status', { remittanceId });
-          return await this.httpClient.post<VelocitySettlementResponse>(
-            '/custom/api/v1/settlement-status',
-            request
-          );
-        },
-        3,
-        1000,
-        'Velocity getSettlementStatus'
-      );
+      const response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocitySettlementResponse }>(
+          async () => {
+            logger.info('Fetching Velocity settlement status', { remittanceId });
+            return await this.httpClient.post<VelocitySettlementResponse>(
+              '/custom/api/v1/settlement-status',
+              request
+            );
+          },
+          3,
+          1000
+        );
+      });
 
       const settlement = response.data;
 
@@ -1363,19 +1386,20 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/reverse-order');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityReverseOrderOnlyResponse }>(
-      async () => {
-        logger.info('Creating Velocity reverse order only', { orderId });
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityReverseOrderOnlyResponse }>(
+        async () => {
+          logger.info('Creating Velocity reverse order only', { orderId });
 
-        return await this.httpClient.post<VelocityReverseOrderOnlyResponse>(
-          '/custom/api/v1/reverse-order',
-          reverseRequest
-        );
-      },
-      3,
-      1000,
-      'Velocity createReverseOrderOnly'
-    );
+          return await this.httpClient.post<VelocityReverseOrderOnlyResponse>(
+            '/custom/api/v1/reverse-order',
+            reverseRequest
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const result = this.unwrapResponse<VelocityReverseOrderOnlyResponse>(response.data);
 
@@ -1416,19 +1440,20 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/assign-reverse-courier');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityReverseShipmentResponse }>(
-      async () => {
-        logger.info('Assigning courier to Velocity reverse shipment', { returnId, carrierId });
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityReverseShipmentResponse }>(
+        async () => {
+          logger.info('Assigning courier to Velocity reverse shipment', { returnId, carrierId });
 
-        return await this.httpClient.post<VelocityReverseShipmentResponse>(
-          '/custom/api/v1/reverse-order-shipment',
-          request
-        );
-      },
-      3,
-      1000,
-      'Velocity assignReverseCourier'
-    );
+          return await this.httpClient.post<VelocityReverseShipmentResponse>(
+            '/custom/api/v1/reverse-order-shipment',
+            request
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     const shipment = this.unwrapResponse<VelocityReverseShipmentResponse>(response.data);
 
@@ -1456,19 +1481,20 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/reports');
 
     // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocityReportsResponse }>(
-      async () => {
-        logger.info('Fetching Velocity summary report', { startDate, endDate, shipmentType: type });
+    const response = await this.circuitBreaker.execute(async () => {
+      return await retryWithBackoff<{ data: VelocityReportsResponse }>(
+        async () => {
+          logger.info('Fetching Velocity summary report', { startDate, endDate, shipmentType: type });
 
-        return await this.httpClient.post<VelocityReportsResponse>(
-          '/custom/api/v1/reports',
-          request
-        );
-      },
-      3,
-      1000,
-      'Velocity getSummaryReport'
-    );
+          return await this.httpClient.post<VelocityReportsResponse>(
+            '/custom/api/v1/reports',
+            request
+          );
+        },
+        3,
+        1000
+      );
+    });
 
     return this.unwrapResponse<VelocityReportsResponse>(response.data);
   }

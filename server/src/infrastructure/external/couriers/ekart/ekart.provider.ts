@@ -45,10 +45,10 @@ import {
 
 import {
     handleEkartError,
-    retryWithBackoff,
-    EkartCircuitBreaker,
     waitForRateLimit
 } from './ekart-error-handler.js';
+
+import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util.js';
 
 import CourierIdempotency from '../../../database/mongoose/models/courier-idempotency.model.js';
 import logger from '../../../../shared/logger/winston.logger.js';
@@ -57,7 +57,7 @@ import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.e
 export class EkartProvider implements ICourierAdapter {
     private auth: EkartAuth;
     private axiosInstance: AxiosInstance;
-    private circuitBreaker: EkartCircuitBreaker;
+    private circuitBreaker: CircuitBreaker;
     private baseUrl: string;
 
     constructor(
@@ -79,7 +79,11 @@ export class EkartProvider implements ICourierAdapter {
             config?.password
         );
 
-        this.circuitBreaker = new EkartCircuitBreaker();
+        this.circuitBreaker = new CircuitBreaker({
+            name: 'EkartProvider',
+            failureThreshold: 5,
+            cooldownMs: 60000
+        });
 
         this.axiosInstance = axios.create({
             baseURL: this.baseUrl,
