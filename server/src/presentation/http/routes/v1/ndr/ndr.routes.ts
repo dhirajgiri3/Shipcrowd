@@ -5,9 +5,9 @@
  */
 
 import { Router } from 'express';
-import NDRController from '../../../controllers/ndr/ndr.controller';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/auth/unified-access';
+import NDRController from '@/presentation/http/controllers/ndr/ndr.controller';
+import { authenticate } from '@/presentation/http/middleware/auth/auth';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 
 const router = Router();
 

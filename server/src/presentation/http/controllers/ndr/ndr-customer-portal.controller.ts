@@ -8,17 +8,18 @@ export class NDRCustomerPortalController {
      * GET /public/resolve-ndr/:token
      * Load NDR details for customer
      */
-    static async getNDRDetails(req: Request, res: Response, next: NextFunction) {
+    static async getNDRDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { token } = req.params;
 
             const validation = await NDRMagicLinkService.validateToken(token);
             if (!validation.valid) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     error: validation.error,
                     code: 'INVALID_TOKEN'
                 });
+                return;
             }
 
             const ndrEvent = await NDREvent.findById(validation.ndrEventId)
@@ -28,7 +29,8 @@ export class NDRCustomerPortalController {
                 });
 
             if (!ndrEvent) {
-                return res.status(404).json({ success: false, error: 'NDR not found' });
+                res.status(404).json({ success: false, error: 'NDR not found' });
+                return;
             }
 
             // Sanitize for customer view - only return safe data
@@ -74,24 +76,27 @@ export class NDRCustomerPortalController {
      * POST /public/resolve-ndr/:token/update-address
      * Customer updates delivery address
      */
-    static async updateAddress(req: Request, res: Response, next: NextFunction) {
+    static async updateAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { token } = req.params;
             const { line1, line2, landmark, alternatePhone } = req.body;
 
             // Basic validation
             if (!line1 || line1.length < 5) {
-                return res.status(400).json({ success: false, error: 'Valid address line 1 is required' });
+                res.status(400).json({ success: false, error: 'Valid address line 1 is required' });
+                return;
             }
 
             const validation = await NDRMagicLinkService.validateToken(token);
             if (!validation.valid) {
-                return res.status(400).json({ success: false, error: validation.error });
+                res.status(400).json({ success: false, error: validation.error });
+                return;
             }
 
             const ndrEvent = await NDREvent.findById(validation.ndrEventId).populate('shipment');
             if (!ndrEvent) {
-                return res.status(404).json({ success: false, error: 'NDR not found' });
+                res.status(404).json({ success: false, error: 'NDR not found' });
+                return;
             }
 
             // Validate new address
@@ -111,10 +116,11 @@ export class NDRCustomerPortalController {
             });
 
             if (!validationResult.isValid) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     error: `Invalid address: ${validationResult.issues.join(', ')}`
                 });
+                return;
             }
 
             // Update address in shipment
@@ -160,23 +166,26 @@ export class NDRCustomerPortalController {
      * POST /public/resolve-ndr/:token/reschedule
      * Customer reschedules delivery
      */
-    static async rescheduleDelivery(req: Request, res: Response, next: NextFunction) {
+    static async rescheduleDelivery(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { token } = req.params;
             const { date } = req.body;
 
             if (!date || isNaN(new Date(date).getTime())) {
-                return res.status(400).json({ success: false, error: 'Valid date is required' });
+                res.status(400).json({ success: false, error: 'Valid date is required' });
+                return;
             }
 
             const validation = await NDRMagicLinkService.validateToken(token);
             if (!validation.valid) {
-                return res.status(400).json({ success: false, error: validation.error });
+                res.status(400).json({ success: false, error: validation.error });
+                return;
             }
 
             const ndrEvent = await NDREvent.findById(validation.ndrEventId);
             if (!ndrEvent) {
-                return res.status(404).json({ success: false, error: 'NDR not found' });
+                res.status(404).json({ success: false, error: 'NDR not found' });
+                return;
             }
 
             await ndrEvent.addResolutionAction({
@@ -209,19 +218,21 @@ export class NDRCustomerPortalController {
      * POST /public/resolve-ndr/:token/cancel
      * Customer cancels order
      */
-    static async cancelOrder(req: Request, res: Response, next: NextFunction) {
+    static async cancelOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { token } = req.params;
             const { reason } = req.body;
 
             const validation = await NDRMagicLinkService.validateToken(token);
             if (!validation.valid) {
-                return res.status(400).json({ success: false, error: validation.error });
+                res.status(400).json({ success: false, error: validation.error });
+                return;
             }
 
             const ndrEvent = await NDREvent.findById(validation.ndrEventId).populate('shipment');
             if (!ndrEvent) {
-                return res.status(404).json({ success: false, error: 'NDR not found' });
+                res.status(404).json({ success: false, error: 'NDR not found' });
+                return;
             }
 
             await ndrEvent.addResolutionAction({

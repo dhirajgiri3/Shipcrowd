@@ -16,6 +16,7 @@ interface Address {
     state: string;
     pincode: string;
     country?: string;
+    phone?: string; // Optional phone for validation context
 }
 
 interface ValidationResult {

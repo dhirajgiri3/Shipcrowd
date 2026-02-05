@@ -43,7 +43,7 @@ export const useNDRCustomerPortal = (): UseNDRCustomerPortalReturn => {
     const [ndrDetails, setNdrDetails] = useState<NDRDetails | null>(null);
 
     // Helper to get base URL - assumes same host if not configured
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5005/api/v1';
 
     const fetchDetails = async (token: string) => {
         setLoading(true);
