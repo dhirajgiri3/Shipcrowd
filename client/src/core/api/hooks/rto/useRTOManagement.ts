@@ -88,13 +88,19 @@ export interface ExecuteDispositionPayload {
     notes?: string;
 }
 
-/** Response from GET /rto/analytics/stats (for dashboard cards) */
+/** Response from GET /rto/analytics/stats (for dashboard cards + enhanced analytics) */
 export interface RTOStatsResponse {
     total: number;
     byReason: Record<string, number>;
     byStatus: Record<string, number>;
     totalCharges: number;
     avgCharges: number;
+    /** Restock rate % among completed RTOs (restocked / (restocked+disposed+refurbishing+claim_filed)) */
+    restockRate?: number;
+    /** Counts by disposition action */
+    dispositionBreakdown?: Record<string, number>;
+    /** Average hours from RTO initiation to QC completion */
+    avgQcTurnaroundHours?: number;
 }
 
 /**
@@ -214,6 +220,36 @@ export function useRTOPending(options?: UseQueryOptions<RTOPendingResponse, ApiE
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+/**
+ * Upload QC photos for an RTO event
+ * POST /rto/events/:id/qc/upload (multipart/form-data, field: photos)
+ * Returns { urls: string[] }
+ */
+export function useUploadRTOQCPhotos(
+    options?: UseMutationOptions<{ urls: string[] }, ApiError, { rtoId: string; files: File[] }>
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation<{ urls: string[] }, ApiError, { rtoId: string; files: File[] }>({
+        mutationFn: async ({ rtoId, files }) => {
+            const formData = new FormData();
+            files.forEach((f) => formData.append('photos', f));
+            const response = await apiClient.post<{ success: boolean; data?: { urls: string[] } }>(
+                `/rto/events/${rtoId}/qc/upload`,
+                formData
+            );
+            const data = response.data?.data ?? (response.data as unknown as { data?: { urls: string[] } })?.data;
+            return data ?? { urls: [] };
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
+            showSuccessToast('Photos uploaded');
+        },
+        onError: (error) => handleApiError(error),
         ...options,
     });
 }

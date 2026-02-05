@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, Upload, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Label } from '@/src/components/ui/core/Label';
 import { Textarea } from '@/src/components/ui/core/Textarea';
-import { useRTODetails, usePerformRTOQC } from '@/src/core/api/hooks/rto/useRTOManagement';
+import { useRTODetails, usePerformRTOQC, useUploadRTOQCPhotos } from '@/src/core/api/hooks/rto/useRTOManagement';
 import type { RTOOrderRef, RTOShipmentRef } from '@/src/types/api/rto.types';
 
 const DAMAGE_TYPE_OPTIONS = [
@@ -53,8 +53,10 @@ export function RTOQCPage() {
     const [damageTypes, setDamageTypes] = useState<string[]>([]);
     const [photos, setPhotos] = useState<{ url: string; label?: string }[]>([]);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const { data: rto, isLoading } = useRTODetails(rtoId);
     const performQC = usePerformRTOQC();
+    const uploadPhotos = useUploadRTOQCPhotos();
 
     const handleSubmit = () => {
         if (!remarks.trim()) return;
@@ -94,6 +96,22 @@ export function RTOQCPage() {
 
     const removePhoto = (index: number) => {
         setPhotos((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files?.length) return;
+        const fileList = Array.from(files).slice(0, 20 - photos.length);
+        if (fileList.length === 0) return;
+        uploadPhotos.mutate(
+            { rtoId, files: fileList },
+            {
+                onSuccess: (data) => {
+                    setPhotos((prev) => [...prev, ...data.urls.map((url) => ({ url, label: undefined as string | undefined }))]);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                },
+            }
+        );
     };
 
     if (isLoading || !rto) {
@@ -215,29 +233,60 @@ export function RTOQCPage() {
                     <div>
                         <Label className="mb-2 block">Photos (optional, up to 20)</Label>
                         <p className="text-xs text-[var(--text-muted)] mb-2">
-                            Add URLs of uploaded QC photos. Recommended: outer packaging, product, any damage.
+                            Upload QC photos or add URLs. Recommended: outer packaging, product, any damage.
                         </p>
-                        <div className="space-y-2">
-                            {photos.map((p, i) => (
-                                <div
-                                    key={i}
-                                    className="flex items-center gap-2 rounded bg-[var(--bg-tertiary)] px-3 py-2 text-sm"
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={handleFileSelect}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={uploadPhotos.isPending || photos.length >= 20}
+                                    onClick={() => fileInputRef.current?.click()}
                                 >
-                                    <span className="flex-1 min-w-0 truncate font-mono" title={p.url}>
-                                        {p.label ? `${p.label}: ` : ''}{p.url}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => removePhoto(i)}
-                                        className="text-[var(--error)] hover:underline shrink-0"
-                                    >
-                                        Remove
-                                    </button>
+                                    {uploadPhotos.isPending ? (
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Upload className="w-4 h-4 mr-2" />
+                                    )}
+                                    Upload photos
+                                </Button>
+                                <Button type="button" variant="outline" size="sm" onClick={addPhoto}>
+                                    + Add photo URL
+                                </Button>
+                            </div>
+                            {photos.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {photos.map((p, i) => (
+                                        <div
+                                            key={i}
+                                            className="relative group rounded-lg border border-[var(--border-subtle)] overflow-hidden w-20 h-20 bg-[var(--bg-secondary)]"
+                                        >
+                                            <img
+                                                src={p.url.startsWith('http') || p.url.startsWith('/') ? p.url : `${typeof window !== 'undefined' ? window.location.origin : ''}${p.url}`}
+                                                alt={p.label ?? `Photo ${i + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePhoto(i)}
+                                                className="absolute top-0.5 right-0.5 p-1 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                aria-label="Remove"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                            <Button type="button" variant="outline" size="sm" onClick={addPhoto}>
-                                + Add photo URL
-                            </Button>
+                            )}
                         </div>
                     </div>
                 </CardContent>

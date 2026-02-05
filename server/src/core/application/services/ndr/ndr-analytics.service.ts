@@ -244,7 +244,7 @@ export default class NDRAnalyticsService {
             };
         }
 
-        const [overall, byReason, byStatus] = await Promise.all([
+        const [overall, byReason, byStatus, byDisposition, qcTurnaround] = await Promise.all([
             RTOEvent.aggregate([
                 { $match: matchFilter },
                 {
@@ -264,6 +264,30 @@ export default class NDRAnalyticsService {
                 { $match: matchFilter },
                 { $group: { _id: '$returnStatus', count: { $sum: 1 } } },
             ]),
+            RTOEvent.aggregate([
+                { $match: { ...matchFilter, disposition: { $exists: true, $ne: null } } },
+                { $group: { _id: '$disposition.action', count: { $sum: 1 } } },
+            ]),
+            RTOEvent.aggregate([
+                {
+                    $match: {
+                        ...matchFilter,
+                        'qcResult.inspectedAt': { $exists: true, $ne: null },
+                        triggeredAt: { $exists: true, $ne: null },
+                    },
+                },
+                {
+                    $project: {
+                        hours: {
+                            $divide: [
+                                { $subtract: ['$qcResult.inspectedAt', '$triggeredAt'] },
+                                3600000,
+                            ],
+                        },
+                    },
+                },
+                { $group: { _id: null, avgHours: { $avg: '$hours' } } },
+            ]),
         ]);
 
         const byReasonMap: Record<string, number> = {};
@@ -276,12 +300,35 @@ export default class NDRAnalyticsService {
             byStatusMap[r._id] = r.count;
         });
 
+        const dispositionBreakdown: Record<string, number> = { restock: 0, refurb: 0, dispose: 0, claim: 0 };
+        byDisposition.forEach((r) => {
+            if (r._id && dispositionBreakdown[r._id] !== undefined) {
+                dispositionBreakdown[r._id] = r.count;
+            }
+        });
+
+        const completedCount =
+            (byStatusMap.restocked || 0) +
+            (byStatusMap.disposed || 0) +
+            (byStatusMap.refurbishing || 0) +
+            (byStatusMap.claim_filed || 0);
+        const restockRate =
+            completedCount > 0 && byStatusMap.restocked
+                ? Math.round((byStatusMap.restocked / completedCount) * 1000) / 10
+                : 0;
+
+        const avgQcTurnaroundHours =
+            qcTurnaround[0]?.avgHours != null ? Math.round(qcTurnaround[0].avgHours * 10) / 10 : undefined;
+
         return {
             total: overall[0]?.total || 0,
             byReason: byReasonMap,
             byStatus: byStatusMap,
             totalCharges: overall[0]?.totalCharges || 0,
             avgCharges: Math.round((overall[0]?.avgCharges || 0) * 100) / 100,
+            restockRate,
+            dispositionBreakdown,
+            avgQcTurnaroundHours,
         };
     }
 

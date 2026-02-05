@@ -22,6 +22,7 @@ import { Order } from '../../../../infrastructure/database/mongoose/models';
 import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
 import WalletService from '../wallet/wallet.service';
+import { RTONotificationService } from './rto-notification.service';
 import RateCardService from './rate-card.service';
 import InventoryService from '../warehouse/inventory.service';
 import logger from '../../../../shared/logger/winston.logger';
@@ -326,6 +327,12 @@ export default class RTOService {
                 });
                 // Don't fail the RTO for notification failures
             }
+
+            // Notify customer (RTO initiated) - fire-and-forget
+            RTONotificationService.notifyRTOInitiated(String(rtoEvent[0]._id), {
+                awb: shipment.awb,
+                reverseAwb: rtoEvent[0].reverseAwb,
+            }).catch((err) => logger.warn('RTO customer notification failed', { rtoEventId: rtoEvent[0]._id, error: err?.message }));
 
             // Notify customer (async, outside transaction)
             if (shipment.customer?.phone) {
@@ -1042,6 +1049,12 @@ export default class RTOService {
 
             await rtoEvent.updateReturnStatus(status, metadata);
 
+            if (status === 'delivered_to_warehouse') {
+                RTONotificationService.notifyRTODeliveredToWarehouse(rtoEventId).catch((err) =>
+                    logger.warn('RTO delivered notification failed', { rtoEventId, error: err?.message })
+                );
+            }
+
             logger.info('RTO status updated successfully', {
                 rtoEventId,
                 previousStatus,
@@ -1091,6 +1104,10 @@ export default class RTOService {
                 ...qcResult,
                 inspectedAt: new Date(),
             });
+
+            RTONotificationService.notifyRTOQCCompleted(rtoEventId, { passed: qcResult.passed }).catch((err) =>
+                logger.warn('RTO QC completed notification failed', { rtoEventId, error: err?.message })
+            );
 
             logger.info('QC result recorded successfully', {
                 rtoEventId,

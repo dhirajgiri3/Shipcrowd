@@ -1093,6 +1093,14 @@ export default class WalletService {
                 newBalance,
             });
 
+            // If this was an RTO charge refund, notify customer (fire-and-forget)
+            if (originalTransaction.reason === 'rto_charge' && originalTransaction.reference?.type === 'rto_event' && originalTransaction.reference?.id) {
+                const { RTONotificationService } = await import('../rto/rto-notification.service');
+                RTONotificationService.notifyRTORefundProcessed(String(originalTransaction.reference.id), {
+                    amount: originalTransaction.amount,
+                }).catch((err: any) => logger.warn('RTO refund notification failed', { rtoEventId: originalTransaction.reference?.id, error: err?.message }));
+            }
+
             return {
                 success: true,
                 transactionId: String(refundTransaction[0]._id),

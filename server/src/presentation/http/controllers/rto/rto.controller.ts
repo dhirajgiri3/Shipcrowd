@@ -12,6 +12,7 @@ import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-a
 import { AppError, ValidationError, NotFoundError, AuthenticationError, RateLimitError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import StorageService from '../../../../infrastructure/external/storage/storage.service';
 import {
     listRTOEventsQuerySchema,
     triggerManualRTOSchema,
@@ -204,6 +205,44 @@ export class RTOController {
             });
 
             sendSuccess(res, null, 'RTO status updated');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Upload QC photos for an RTO event
+     * POST /rto/events/:id/qc/upload
+     * Expects multipart/form-data with field "photos" (array of image files)
+     */
+    static async uploadQCPhotos(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params;
+            const companyId = req.user?.companyId;
+
+            const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
+            if (!rtoEvent) {
+                throw new NotFoundError('RTO event', ErrorCode.RES_NOT_FOUND);
+            }
+
+            const files = req.files as Express.Multer.File[];
+            if (!files?.length) {
+                throw new ValidationError('At least one photo is required', [{ field: 'photos', message: 'No files uploaded' }]);
+            }
+
+            const urls: string[] = [];
+            for (const file of files) {
+                if (!file.mimetype?.startsWith('image/')) {
+                    throw new ValidationError('Only image files are allowed', [{ field: 'photos', message: `Invalid type: ${file.mimetype}` }]);
+                }
+                const result = await StorageService.upload(file.buffer, {
+                    folder: `rto/qc/${id}`,
+                    contentType: file.mimetype,
+                });
+                urls.push(result.url);
+            }
+
+            sendSuccess(res, { data: { urls } }, 'Photos uploaded');
         } catch (error) {
             next(error);
         }

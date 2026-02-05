@@ -5,17 +5,108 @@ import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
-import Razorpay from 'razorpay';
+import { EarlyCODService } from './early-cod.service';
 
 /**
  * COD Remittance Service
  * Handles batch creation, Razorpay payout integration, and remittance lifecycle
  */
-export default class CODRemittanceService {
-    private static razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID!,
-        key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    });
+export class CODRemittanceService {
+    /**
+     * Create Early COD Remittance Batch
+     * Triggered manually or via cron for enrolled companies
+     */
+    static async createEarlyRemittanceBatch(companyId: string): Promise<any> {
+        const enrollment = await EarlyCODService.getActiveEnrollment(companyId);
+        if (!enrollment) {
+            throw new AppError('Company is not enrolled in Early COD', ErrorCode.BIZ_RULE_VIOLATION, 400);
+        }
+
+        // Determine cutoff date based on tier
+        // T+1: Delivered <= Yesterday
+        // T+2: Delivered <= 2 days ago
+        const cutoffDate = new Date();
+        const daysToSubtract = parseInt(enrollment.tier.replace('T+', ''), 10);
+        cutoffDate.setDate(cutoffDate.getDate() - daysToSubtract);
+        cutoffDate.setHours(23, 59, 59, 999);
+
+        // Find eligible shipments
+        // Status = delivered, Type = COD, Remittance = Not Included, DeliveredAt <= Cutoff
+        const eligibleShipments = await Shipment.find({
+            companyId,
+            'paymentDetails.type': 'cod',
+            currentStatus: 'delivered',
+            'paymentDetails.collectionStatus': 'reconciled',
+            'remittance.included': false,
+            'paymentDetails.collectedAt': { $lte: cutoffDate } // Assuming collectedAt matches delivery for now
+        });
+
+        if (eligibleShipments.length === 0) {
+            return { message: 'No eligible shipments for early remittance', count: 0 };
+        }
+
+        logger.info(`Found ${eligibleShipments.length} eligible shipments for Early COD ${enrollment.tier}`, { companyId });
+
+        // Calculate totals
+        let totalCodAmount = 0;
+        const shipmentIds = [];
+
+        for (const shipment of eligibleShipments) {
+            totalCodAmount += (shipment.paymentDetails.totalCollection || shipment.paymentDetails.codAmount || 0);
+            shipmentIds.push(shipment._id);
+        }
+
+        // Calculate Early COD Fee
+        const earlyFee = EarlyCODService.calculateFee(totalCodAmount, enrollment.fee);
+        const payoutAmount = totalCodAmount - earlyFee;
+
+        // Create Batch
+        const batch = await CODRemittance.create({
+            companyId,
+            amount: {
+                totalCod: totalCodAmount,
+                totalEarlyFee: earlyFee,
+                netPayout: payoutAmount,
+                currency: 'INR'
+            },
+            status: 'processing',
+            shipments: {
+                count: eligibleShipments.length,
+                ids: shipmentIds
+            },
+            type: 'early',
+            tier: enrollment.tier,
+            bankDetails: enrollment.bankDetails ? {
+                accountNumber: enrollment.bankDetails.accountNumber,
+                ifsc: enrollment.bankDetails.ifsc,
+                beneficiaryName: enrollment.bankDetails.beneficiaryName
+            } : undefined
+        });
+
+        // Update Shipments
+        await Shipment.updateMany(
+            { _id: { $in: shipmentIds } },
+            {
+                $set: {
+                    'paymentDetails.collectionStatus': 'remitted',
+                    'remittance': {
+                        included: true,
+                        remittanceId: batch._id,
+                        status: 'processed',
+                        remittedAmount: 0, // Individual breakdown not calculated here yet
+                        remittedAt: new Date()
+                    }
+                }
+            }
+        );
+        enrollment.usage.totalBatches += 1;
+        enrollment.usage.totalAmountRemitted += payoutAmount;
+        enrollment.usage.totalFeesPaid += earlyFee;
+        enrollment.usage.lastBatchAt = new Date();
+        await enrollment.save();
+
+        return batch;
+    }
 
     /**
      * Get eligible shipments for COD remittance

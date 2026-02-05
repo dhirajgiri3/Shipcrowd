@@ -21,6 +21,15 @@ export interface VelocityWebhookPayload {
     estimated_delivery?: string;
     updated_at: string;
     description?: string;
+    // ✅ NEW: Added for COD Reconciliation
+    cod_amount?: number;
+    payment_mode?: string; // 'cash', 'upi', etc.
+    delivery_date?: string; // ISO 8601
+    pod_details?: {
+      image_url?: string;
+      signature_url?: string;
+      receiver_name?: string;
+    };
   };
   weight_data?: {
     scanned_weight: number;             // Weight in grams or kg

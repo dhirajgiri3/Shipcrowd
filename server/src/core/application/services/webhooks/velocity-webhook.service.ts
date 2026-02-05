@@ -163,6 +163,47 @@ export class VelocityWebhookService implements WebhookEventHandler {
       // **AUTO-SYNC: Push fulfillment updates to all connected e-commerce platforms**
       // This runs asynchronously after the shipment is saved and doesn't block the webhook response
       if (isStatusUpdate) {
+        // ✅ NEW: Week 12 - Real-Time COD Reconciliation (Phase 2)
+        // If delivered, trigger auto-reconciliation
+        if (internalStatus === 'delivered') {
+          try {
+            // Dynamic import to avoid circular dependencies
+            const { CODReconciliationService } = await import('../../finance/cod-reconciliation.service');
+
+            // Extract COD dat from payload if available
+            // Note: Velocity webhook might specific fields for COD collection in 'shipment_data'
+            // We use 'cod_amount' or fallback to shipment's expected amount if just confirmation
+            const collectedAmount = payload.shipment_data.cod_amount !== undefined
+              ? Number(payload.shipment_data.cod_amount)
+              : undefined;
+
+            if (collectedAmount !== undefined) {
+              await CODReconciliationService.reconcileDeliveredShipment(
+                String(shipment._id),
+                {
+                  collectedAmount,
+                  collectionMethod: payload.shipment_data.payment_mode || 'cash',
+                  deliveredAt: new Date(payload.shipment_data.delivery_date || Date.now()),
+                  source: 'webhook',
+                  // Map POD details if available
+                  pod: payload.shipment_data.pod_details ? {
+                    photo: payload.shipment_data.pod_details.image_url,
+                    signature: payload.shipment_data.pod_details.signature_url,
+                    customerName: payload.shipment_data.pod_details.receiver_name
+                  } : undefined
+                }
+              );
+              logger.info('Real-time COD reconciliation triggered', { awb });
+            }
+          } catch (reconError) {
+            logger.error('Failed to trigger real-time reconciliation', {
+              awb,
+              error: reconError instanceof Error ? reconError.message : 'Unknown error'
+            });
+            // Don't fail the webhook processing for this sidebar process
+          }
+        }
+
         try {
           // Dynamic imports to avoid circular dependencies
           const { ShopifyFulfillmentService } = await import('../shopify/index.js');

@@ -58,6 +58,58 @@ export interface IShipment extends Document {
     codAmount?: number;
     shippingCost: number;
     currency: string;
+
+    // ✅ NEW: COD Remittance Fields
+    codCharges?: number;
+    totalCollection?: number;
+    collectionStatus?: 'pending' | 'collected' | 'reconciled' | 'remitted' | 'disputed' | 'lost';
+    actualCollection?: number;
+    collectedAt?: Date;
+    collectedBy?: string;
+    collectionMethod?: 'cash' | 'card' | 'upi' | 'wallet';
+
+    pod?: {
+      photo?: string;
+      signature?: string;
+      customerName?: string;
+      timestamp?: Date;
+      gpsLocation?: {
+        latitude: number;
+        longitude: number;
+      };
+    };
+
+    fraud?: {
+      riskScore?: number;
+      riskLevel?: 'low' | 'medium' | 'high' | 'critical';
+      flags?: string[];
+      verificationMethod?: string;
+      verifiedAt?: Date;
+      blacklisted?: boolean;
+    };
+
+    reconciled?: boolean;
+    reconciledAt?: Date;
+    reconciledBy?: string;
+    variance?: number;
+    varianceReason?: string;
+    discrepancyId?: mongoose.Types.ObjectId;
+
+    timeline?: Array<{
+      status: string;
+      timestamp: Date;
+      source: string;
+      notes: string;
+      updatedBy?: string;
+    }>;
+
+    remittance?: {
+      included: boolean;
+      remittanceId?: string; // string mainly, or ObjectId ref if we change
+      status?: string;
+      remittedAt?: Date;
+      remittedAmount?: number;
+    };
   };
   pricingDetails?: {
     rateCardId: mongoose.Types.ObjectId;
@@ -321,6 +373,75 @@ const ShipmentSchema = new Schema<IShipment>(
         type: String,
         default: 'INR',
       },
+
+      // ✅ ENHANCED: Week 12 - Advanced COD Tracking (Phase 1)
+      codCharges: Number, // Courier COD handling fee
+      totalCollection: Number, // codAmount + codCharges
+
+      collectionStatus: {
+        type: String,
+        enum: ['pending', 'collected', 'reconciled', 'remitted', 'disputed', 'lost'],
+        default: 'pending',
+      },
+
+      actualCollection: Number, // What courier actually collected
+      collectedAt: Date,
+      collectedBy: String, // Courier agent ID
+      collectionMethod: {
+        type: String,
+        enum: ['cash', 'card', 'upi', 'wallet'],
+        default: 'cash',
+      },
+
+      // ✅ NEW: POD data
+      pod: {
+        photo: String, // S3 URL
+        signature: String,
+        customerName: String,
+        timestamp: Date,
+        gpsLocation: {
+          latitude: Number,
+          longitude: Number,
+        },
+      },
+
+      // ✅ NEW: Fraud & Risk Assessment (Persisted from FraudDetectionService)
+      fraud: {
+        riskScore: Number, // 0-100
+        riskLevel: {
+          type: String,
+          enum: ['low', 'medium', 'high', 'critical'],
+        },
+        flags: [String],
+        verificationMethod: String, // 'otp', 'call', etc.
+        verifiedAt: Date,
+        blacklisted: Boolean,
+      },
+
+      // ✅ NEW: Reconciliation tracking
+      reconciled: {
+        type: Boolean,
+        default: false,
+      },
+      reconciledAt: Date,
+      reconciledBy: String,
+      variance: Number, // actualCollection - totalCollection
+      varianceReason: String,
+      discrepancyId: {
+        type: Schema.Types.ObjectId,
+        ref: 'CODDiscrepancy',
+      },
+
+      // ✅ NEW: Timeline for payment lifecycle
+      timeline: [
+        {
+          status: String,
+          timestamp: Date,
+          source: String, // 'webhook', 'api', 'mis', 'manual'
+          notes: String,
+          updatedBy: String,
+        },
+      ],
     },
     pricingDetails: {
       rateCardId: {
@@ -402,34 +523,34 @@ const ShipmentSchema = new Schema<IShipment>(
       carrierServiceType: String,
       carrierAccount: String,
       manifestId: String,
-    providerShipmentId: String,
-    retryCount: {
-      type: Number,
-      default: 0,
+      providerShipmentId: String,
+      retryCount: {
+        type: Number,
+        default: 0,
+      },
+      lastRetryAttempt: Date,
+      // Velocity-specific fields
+      velocityOrderId: String,
+      velocityShipmentId: String,
+      zone: String,
+      routingCode: String,
+      rtoRoutingCode: String,
+      pickupTokenNumber: String,
+      appliedWeight: Number,
+      deadWeightBilling: Boolean,
+      manifestUrl: String,
+      // Charges breakdown from Velocity
+      charges: {
+        forwardShippingCharges: Number,
+        forwardCodCharges: Number,
+        rtoCharges: Number,
+        reverseCharges: Number,
+        qcCharges: Number,
+        platformFee: Number,
+      },
+      courierAssignedAt: Date,
+      pickupScheduledDate: Date,
     },
-    lastRetryAttempt: Date,
-    // Velocity-specific fields
-    velocityOrderId: String,
-    velocityShipmentId: String,
-    zone: String,
-    routingCode: String,
-    rtoRoutingCode: String,
-    pickupTokenNumber: String,
-    appliedWeight: Number,
-    deadWeightBilling: Boolean,
-    manifestUrl: String,
-    // Charges breakdown from Velocity
-    charges: {
-      forwardShippingCharges: Number,
-      forwardCodCharges: Number,
-      rtoCharges: Number,
-      reverseCharges: Number,
-      qcCharges: Number,
-      platformFee: Number,
-    },
-    courierAssignedAt: Date,
-    pickupScheduledDate: Date,
-  },
     ndrDetails: {
       ndrReason: String,
       ndrDate: Date,
@@ -582,6 +703,12 @@ ShipmentSchema.index({ 'weights.verified': 1, createdAt: -1 }); // Unverified we
 ShipmentSchema.index({ 'weightDispute.exists': 1, 'weightDispute.status': 1 }); // Active disputes
 ShipmentSchema.index({ 'remittance.included': 1, 'paymentDetails.type': 1, currentStatus: 1 }); // Eligible COD shipments for remittance
 ShipmentSchema.index({ companyId: 1, 'remittance.included': 1, 'remittance.remittanceId': 1 }); // Remittance batch tracking
+
+// Week 12: Advanced COD Indexes (Phase 1)
+ShipmentSchema.index({ 'paymentDetails.collectionStatus': 1, companyId: 1 }); // Track pending collections
+ShipmentSchema.index({ 'paymentDetails.reconciled': 1, 'paymentDetails.type': 1 }); // Unreconciled COD shipments
+ShipmentSchema.index({ 'paymentDetails.fraud.riskLevel': 1, createdAt: -1 }); // High risk shipment monitoring
+
 
 // Pre-save hook to ensure the first status is added to history
 ShipmentSchema.pre('save', function (next) {
