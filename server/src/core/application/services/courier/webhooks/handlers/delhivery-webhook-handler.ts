@@ -82,4 +82,28 @@ export class DelhiveryWebhookHandler extends BaseWebhookHandler {
             }
         };
     }
+    /**
+     * Get Delhivery-specific NDR patterns
+     */
+    protected getNDRPatterns() {
+        return {
+            statusCodes: ['NDR', 'UNDELIVERED', 'UD', 'FAILED', 'RT', 'RTO'],
+            keywords: [
+                'customer refused',
+                'shipment refused',
+                'customer not home',
+                'no one available',
+                'not available',
+                'incomplete address',
+                'wrong address',
+                'address not found',
+                'customer unreachable',
+                'phone switched off',
+                'reschedule requested',
+                'customer denied',
+                'cod not ready',
+                'entry restricted'
+            ]
+        };
+    }
 }

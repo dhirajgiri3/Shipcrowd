@@ -65,4 +65,24 @@ export class VelocityWebhookHandler extends BaseWebhookHandler {
             }
         };
     }
+    /**
+     * Get Velocity-specific NDR patterns
+     */
+    protected getNDRPatterns() {
+        return {
+            statusCodes: ['UNDELIVERED', 'FAILED', 'DELIVERY_FAILED', 'RTO', 'RT'],
+            keywords: [
+                'customer not available',
+                'customer refused',
+                'incomplete address',
+                'wrong address',
+                'customer unreachable',
+                'phone switched off',
+                'reschedule requested',
+                'delivery attempted',
+                'consignee not available',
+                'refused by consignee'
+            ]
+        };
+    }
 }

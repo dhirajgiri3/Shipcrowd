@@ -172,4 +172,22 @@ export class EkartWebhookHandler extends BaseWebhookHandler {
             metadata: {}
         };
     }
+    /**
+     * Get Ekart-specific NDR patterns
+     */
+    protected getNDRPatterns() {
+        return {
+            statusCodes: ['NDR', 'UNDELIVERED', 'RTO'],
+            keywords: [
+                'undelivered',
+                'customer not available',
+                'refused',
+                'rejected',
+                'address issue',
+                'wrong address',
+                'unreachable',
+                'attempt failed'
+            ]
+        };
+    }
 }

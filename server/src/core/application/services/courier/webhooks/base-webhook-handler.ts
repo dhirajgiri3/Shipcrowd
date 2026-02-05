@@ -288,8 +288,11 @@ export abstract class BaseWebhookHandler implements IWebhookHandler {
         payload: WebhookPayload,
         mapping: any
     ): Promise<void> {
-        // Default: log for now
-        // Future: Trigger NDR detection, RTO logic, COD reconciliation, etc.
+        // Trigger NDR detection if status indicates generic failure
+        if (mapping.internalStatus === 'ndr' || mapping.statusCategory === 'exception') {
+            await this.triggerNDRDetection(payload);
+        }
+
         logger.debug('Business rules triggered', {
             courier: payload.courier,
             awb: payload.awb,
@@ -297,4 +300,71 @@ export abstract class BaseWebhookHandler implements IWebhookHandler {
             category: mapping.statusCategory
         });
     }
+
+    /**
+     * Trigger NDR detection process
+     */
+    protected async triggerNDRDetection(payload: WebhookPayload): Promise<void> {
+        const patterns = this.getNDRPatterns ? this.getNDRPatterns() : null;
+
+        // If handler provides patterns, check if this is an NDR
+        if (patterns) {
+            const isNDR = this.isNDRStatus(
+                payload.status,
+                payload.metadata?.instructions || payload.metadata?.description,
+                patterns
+            );
+
+            if (!isNDR) return;
+        }
+
+        try {
+            // Lazy load service to avoid circular dependencies
+            const { default: NDRDetectionService } = await import('../../ndr/ndr-detection.service');
+
+            await NDRDetectionService.handleWebhookNDRDetection({
+                carrier: payload.courier,
+                awb: payload.awb,
+                status: payload.status,
+                remarks: payload.metadata?.instructions || payload.metadata?.description,
+                timestamp: payload.timestamp
+            });
+        } catch (error) {
+            logger.error('Failed to trigger NDR detection from webhook', {
+                courier: payload.courier,
+                awb: payload.awb,
+                error
+            });
+        }
+    }
+
+    /**
+     * Check if status/remarks match NDR patterns
+     */
+    protected isNDRStatus(
+        status: string,
+        remarks: string | undefined,
+        patterns: { statusCodes: string[]; keywords: string[] }
+    ): boolean {
+        const normalizedStatus = status.toUpperCase();
+
+        // Check status codes
+        if (patterns.statusCodes.some(code => normalizedStatus.includes(code.toUpperCase()))) {
+            return true;
+        }
+
+        // Check keywords in remarks
+        if (remarks && patterns.keywords.length > 0) {
+            const normalizedRemarks = remarks.toLowerCase();
+            return patterns.keywords.some(keyword => normalizedRemarks.includes(keyword.toLowerCase()));
+        }
+
+        return false;
+    }
+
+    /**
+     * Get generic NDR patterns - to be implemented by subclasses
+     * Returns generic patterns if not overridden
+     */
+    protected getNDRPatterns?(): { statusCodes: string[]; keywords: string[] };
 }

@@ -81,9 +81,90 @@ const NDR_KEYWORDS = [
     'unreachable',
     'no response',
     'customer denied',
+    'customer denied',
 ];
 
 export default class NDRDetectionService {
+    /**
+     * Real-time webhook-driven NDR detection (replaces cron polling)
+     */
+    static async handleWebhookNDRDetection(data: {
+        carrier: string;
+        awb: string;
+        status: string;
+        remarks?: string;
+        timestamp: Date;
+    }): Promise<{ created: boolean; ndrEvent?: INDREvent }> {
+        // Import Shipment model to avoid circular dependency issues at top level if any
+        const { Shipment } = await import('../../../../infrastructure/database/mongoose/models');
+
+        // Get shipment details
+        const shipment = await Shipment.findOne({
+            $or: [
+                { trackingNumber: data.awb },
+                { 'carrierDetails.carrierTrackingNumber': data.awb }
+            ]
+        }).populate('orderId companyId');
+
+        if (!shipment) {
+            logger.warn('Shipment not found for NDR detection', { awb: data.awb });
+            return { created: false };
+        }
+
+        // Check for duplicate NDR (within 24 hours)
+        const isDuplicate = await this.checkForDuplicateNDR(data.awb, data.timestamp);
+        if (isDuplicate) {
+            logger.info('Duplicate NDR, updating existing', { awb: data.awb });
+            return { created: false };
+        }
+
+        // Extract reason and create NDR event
+        const ndrReason = this.extractNDRReason(data.status, data.remarks);
+        const attemptNumber = await this.calculateAttemptNumber(data.awb);
+
+        // Prepare shipment info structure expected by createNDREvent
+        const shipmentInfo: ShipmentInfo = {
+            _id: (shipment._id as any).toString(),
+            awb: shipment.trackingNumber,
+            orderId: (shipment.orderId as any)._id,
+            companyId: (shipment.companyId as any)._id,
+            customer: (shipment.orderId as any).customer,
+            deliveryAttempts: attemptNumber
+        };
+
+        const ndrEvent = await this.createNDREvent(
+            shipmentInfo,
+            ndrReason,
+            attemptNumber,
+            data.remarks
+        );
+
+        // Trigger async processing (don't wait)
+        setImmediate(async () => {
+            try {
+                // AI classification
+                await NDRClassificationService.classifyAndUpdate(String(ndrEvent._id));
+
+                // Import Resolution Service dynamically
+                // const { default: NDRResolutionService } = await import('./ndr-resolution.service');
+                // await NDRResolutionService.executeResolutionWorkflow(String(ndrEvent._id));
+
+                // TODO: Send immediate notifications (Phase 4)
+
+            } catch (error) {
+                logger.error('NDR post-processing failed', { error });
+            }
+        });
+
+        logger.info('Real-time NDR detection completed', {
+            ndrEventId: ndrEvent._id,
+            awb: data.awb,
+            latency: Date.now() - data.timestamp.getTime()
+        });
+
+        return { created: true, ndrEvent };
+    }
+
     /**
      * Detect NDR from tracking update
      */

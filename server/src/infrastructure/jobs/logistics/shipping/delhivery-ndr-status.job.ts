@@ -56,6 +56,15 @@ export class DelhiveryNdrStatusJob {
                 new mongoose.Types.ObjectId(ndrEvent.company)
             );
 
+            // FALLBACK LOGIC:
+            // If the NDR event was updated by a webhook recently (e.g., < 1 hour), 
+            // skip polling to avoid unnecessary API calls and race conditions.
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            if (ndrEvent.updatedAt > oneHourAgo) {
+                logger.debug('Skipping Delhivery poll (recently updated)', { ndrEventId, awb });
+                return { success: true, status: 'skipped_recent_update' };
+            }
+
             const response = await (provider as any).getNdrStatus(uplId);
             const status = response?.status || response?.results?.status || response?.message;
 

@@ -159,7 +159,21 @@ router.use('/logistics/returns', returnsRoutes);
 router.use('/integrations', integrationsRoutes);
 
 // 5. Logistics - Exceptions
+// ============================================================================
+import ndrRoutes from './ndr/ndr.routes';
+import ndrPublicRoutes from './ndr/ndr-public.routes';
+import ndrCommunicationRoutes from './ndr/ndr-communication.routes';
+import rtoRoutes from './rto/rto.routes';
+import weightDisputesRoutes from './disputes/weight-disputes.routes';
+import packingStationRoutes from './disputes/packing-station.routes';
+import disputeRoutes from './logistics/dispute.routes';
+import fraudRoutes from './fraud/fraud.routes';
+
+// ... (other imports)
+
+// 161: // 5. Logistics - Exceptions
 router.use('/ndr', ndrRoutes);
+router.use('/public/resolve-ndr', ndrPublicRoutes); // Public access for customers
 router.use('/admin/ndr', ndrRoutes); // Alias for frontend compatibility
 router.use('/ndr/communication', ndrCommunicationRoutes);
 router.use('/rto', rtoRoutes);
