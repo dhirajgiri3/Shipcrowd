@@ -1123,7 +1123,7 @@ export class ShipmentService {
                                 statusHistory: {
                                     status: 'shipped',
                                     timestamp: new Date(),
-                                    comment: `Shipment synced with carrier via retry (AWB: ${velocityResponse.trackingNumber})`
+                                    comment: `Shipment synced with carrier via retry (AWB: ${providerResponse.trackingNumber})`
                                 }
                             }
                         },
