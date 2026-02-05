@@ -208,8 +208,8 @@ export class EkartProvider implements ICourierAdapter {
     async trackShipment(trackingNumber: string): Promise<CourierTrackingResponse> {
         return this.circuitBreaker.execute(async () => {
             try {
-                // Using the tracking API
-                const url = `${EKART_ENDPOINTS.TRACK}?tracking_ids=${trackingNumber}`;
+                // FIXED: Using correct tracking endpoint
+                const url = `${EKART_ENDPOINTS.TRACK}/${trackingNumber}`;
 
                 const response = await retryWithBackoff(async () => {
                     return await this.axiosInstance.get<EkartRawTrackingResponse>(url);
@@ -268,6 +268,7 @@ export class EkartProvider implements ICourierAdapter {
                     width: request.package.width,
                     height: request.package.height,
                     serviceType: 'SURFACE', // Defaulting to Surface
+                    shippingDirection: 'FORWARD', // REQUIRED: Default to forward shipment
                     codAmount: request.paymentMode === 'cod' ? (request.orderValue || 0) : 0,
                     invoiceAmount: request.orderValue,
                     packages: [] // Added to match doc example
@@ -341,15 +342,15 @@ export class EkartProvider implements ICourierAdapter {
     async checkServiceability(pincode: string, type: 'delivery' | 'pickup' = 'delivery'): Promise<boolean> {
         return this.circuitBreaker.execute(async () => {
             try {
-                // Endpoint: /api/v2/serviceability
-                // Query: ?pincode=xxxxxx
-                const url = `${EKART_ENDPOINTS.SERVICEABILITY}?pincode=${pincode}`;
+                // FIXED: Using correct endpoint format
+                const url = `${EKART_ENDPOINTS.SERVICEABILITY}/${pincode}`;
 
                 const response = await retryWithBackoff(async () => {
                     return await this.axiosInstance.get<EkartServiceabilityResponse>(url);
                 });
 
-                return response.data.serviceable;
+                // FIXED: Correct response property
+                return response.data.status || false;
             } catch (error) {
                 logger.error('Ekart checkServiceability failed', { error, pincode });
                 return false;

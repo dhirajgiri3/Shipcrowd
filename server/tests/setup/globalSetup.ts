@@ -23,9 +23,12 @@ export default async function globalSetup(): Promise<void> {
     }
 
     const mongod = await MongoMemoryReplSet.create({
-        replSet: { count: 1, storageEngine: 'wiredTiger' },
-        // Some restricted environments disallow binding to 0.0.0.0; force localhost.
-        instanceOpts: [{ ip: '127.0.0.1' }],
+        replSet: {
+            count: 1,
+            storageEngine: 'wiredTiger',
+            // Some restricted environments disallow binding to 0.0.0.0; force localhost.
+            ip: '127.0.0.1'
+        },
     });
 
     const uri = mongod.getUri();

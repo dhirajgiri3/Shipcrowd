@@ -356,6 +356,7 @@ export interface EkartRateRequest {
     height: number;  // cm
     width: number;   // cm
     serviceType: 'SURFACE' | 'EXPRESS';
+    shippingDirection: 'FORWARD' | 'REVERSE';  // REQUIRED: Missing in original implementation
     codAmount?: number;
     packages?: EkartPackage[];
 }
@@ -383,14 +384,22 @@ export interface EkartRateResponse {
 
 /**
  * Serviceability check response
+ * Response structure from /api/v2/serviceability/{pincode}
  */
 export interface EkartServiceabilityResponse {
-    serviceable: boolean;
+    status: boolean;  // Main serviceability flag
     pincode: number;
-    city?: string;
-    state?: string;
-    zone?: string;
-    estimatedDays?: number;
+    remark: string;
+    details: {
+        cod: boolean;
+        max_cod_amount: number;
+        forward_pickup: boolean;
+        forward_drop: boolean;
+        reverse_pickup: boolean;
+        reverse_drop: boolean;
+        city: string;
+        state: string;
+    };
 }
 
 // ==================== Manifest Types ====================
@@ -549,7 +558,7 @@ export const EKART_ENDPOINTS = {
     AUTH: '/integrations/v2/auth/token',
     CREATE_SHIPMENT: '/api/v1/package/create',
     CANCEL_SHIPMENT: '/api/v1/package/cancel',
-    TRACK: '/api/v1/track',
+    TRACK: '/data/v1/elite/track',  // FIXED: Corrected endpoint
     RAW_TRACK: '/data/v1/elite/track',
     RATE_ESTIMATE: '/data/pricing/estimate',
     MANIFEST: '/data/v2/generate/manifest',
