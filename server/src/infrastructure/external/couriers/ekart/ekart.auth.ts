@@ -29,7 +29,7 @@ import mongoose from 'mongoose';
 import { getDistributedLock } from '../../../../shared/utils/distributed-lock.js';
 import logger from '../../../../shared/logger/winston.logger.js';
 import { encrypt, decrypt } from '../../../../shared/utils/encryption.js';
-import Integration from '../../../database/mongoose/models/integration/integration.model.js';
+import { Integration } from '@/infrastructure/database/mongoose/models/index.js';
 import {
     EkartAuthRequest,
     EkartAuthResponse,
