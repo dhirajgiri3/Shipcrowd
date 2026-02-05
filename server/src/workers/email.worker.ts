@@ -4,8 +4,8 @@
  * Initializes and starts the email queue worker
  */
 
-import { registerEmailWorker } from '../infrastructure/jobs/processors/email.processor.js';
-import logger from '../shared/logger/winston.logger.js';
+import { registerEmailWorker } from '../infrastructure/jobs/processors/email.processor';
+import logger from '../shared/logger/winston.logger';
 
 /**
  * Initialize email worker

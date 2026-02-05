@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { ShipmentService } from '../shipping/shipment.service';
 import { ICourierStatusMapper } from '../../../domain/courier/courier-status-mapper.interface';
+import weightDisputeDetectionService from '../disputes/weight-dispute-detection.service';
 import logger from '../../../../shared/logger/winston.logger';
 
 export interface WebhookProcessResult {
@@ -38,7 +39,7 @@ export class WebhookProcessorService {
             });
 
             // Extract fields using courier-specific mapper
-            const { awb, status: courierStatus, location, description } = mapper.extractFields(rawPayload);
+            const { awb, status: courierStatus, location, description, weight, dimensions, timestamp } = mapper.extractFields(rawPayload);
 
             if (!awb) {
                 logger.warn(`Invalid ${courierName} webhook payload: Missing AWB`, { rawPayload });
@@ -65,6 +66,50 @@ export class WebhookProcessorService {
                     message: 'Shipment not found'
                 };
             }
+
+            // --- WEIGHT PROCESSING ---
+            if (weight && weight.value > 0) {
+                logger.info(`[${courierName}] Weight extracted from webhook`, {
+                    awb,
+                    weight,
+                    dimensions
+                });
+
+                // Update shipment weights
+                shipment.weights.actual = {
+                    value: weight.value,
+                    unit: weight.unit,
+                    scannedAt: timestamp || new Date(),
+                    scannedBy: courierName,
+                    scannedLocation: location
+                };
+
+                if (dimensions) {
+                    shipment.weights.actual.dimensions = dimensions;
+                }
+
+                await shipment.save();
+
+                // Trigger dispute detection
+                try {
+                    await weightDisputeDetectionService.detectOnCarrierScan(
+                        (shipment._id as mongoose.Types.ObjectId).toString(),
+                        weight,
+                        {
+                            scannedAt: timestamp || new Date(),
+                            location: location || `${courierName} Hub`,
+                            notes: `${courierName} scan: ${weight.value}${weight.unit}`,
+                            carrierName: courierName
+                        }
+                    );
+                } catch (disputeError) {
+                    logger.error(`[${courierName}] Error triggering weight dispute detection`, {
+                        shipmentId: shipment._id,
+                        error: disputeError instanceof Error ? disputeError.message : disputeError
+                    });
+                }
+            }
+            // -------------------------
 
             // Map courier status to internal status
             const internalStatus = mapper.mapStatus(courierStatus);

@@ -1,4 +1,4 @@
-import { CARRIERS } from '../../../../infrastructure/database/seeders/data/carrier-data.js';
+import { CARRIERS } from '../../../../infrastructure/database/seeders/data/carrier-data';
 
 /**
  * Carrier Normalization Service

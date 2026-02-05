@@ -14,11 +14,12 @@
 
 import mongoose from 'mongoose';
 import crypto from 'crypto';
-import { Shipment } from '../../../database/mongoose/models/index.js';
-import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service.js';
-import { EkartWebhookPayload, EKART_STATUS_MAP } from './ekart.types.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { NotFoundError } from '../../../../shared/errors/app.error.js';
+import { Shipment } from '../../../database/mongoose/models/index';
+import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
+import weightDisputeDetectionService from '../../../../core/application/services/disputes/weight-dispute-detection.service';
+import { EkartWebhookPayload, EKART_STATUS_MAP, EkartTrackUpdatedWebhook } from './ekart.types';
+import logger from '../../../../shared/logger/winston.logger';
+import { NotFoundError } from '../../../../shared/errors/app.error';
 
 export class EkartWebhookService {
 
@@ -58,8 +59,8 @@ export class EkartWebhookService {
     /**
      * Handle track_updated event
      */
-    private static async handleTrackUpdated(payload: any): Promise<{ success: boolean; message: string }> {
-        const { tracking_id, status, location, description, timestamp } = payload;
+    private static async handleTrackUpdated(payload: EkartTrackUpdatedWebhook): Promise<{ success: boolean; message: string }> {
+        const { tracking_id, status, location, description, timestamp, weight, dimensions } = payload;
 
         // 1. Find shipment by AWB
         const shipment = await Shipment.findOne({
@@ -75,45 +76,97 @@ export class EkartWebhookService {
         // 2. Map status
         const internalStatus = EKART_STATUS_MAP[status];
 
-        if (!internalStatus) {
-            logger.warn('Unknown Ekart status in webhook', { status, trackingId: tracking_id });
-            return { success: true, message: 'Unknown status, ignored' };
-        }
+        if (internalStatus) {
+            // 3. Check if status update is needed
+            if (shipment.currentStatus !== internalStatus) {
+                // 4. Update shipment status using service
+                // Use 'system' as userId for webhook updates
+                const result = await ShipmentService.updateShipmentStatus({
+                    shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                    currentStatus: shipment.currentStatus,
+                    newStatus: internalStatus,
+                    currentVersion: shipment.__v || 0,
+                    userId: 'system',
+                    location: location,
+                    description: description || `Status updated to ${status} by Ekart`
+                });
 
-        // 3. Check if status update is needed
-        if (shipment.currentStatus === internalStatus) {
-            return { success: true, message: 'Status already up to date' };
-        }
-
-        // 4. Update shipment status using service
-        // Use 'system' as userId for webhook updates
-        const result = await ShipmentService.updateShipmentStatus({
-            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-            currentStatus: shipment.currentStatus,
-            newStatus: internalStatus,
-            currentVersion: shipment.__v || 0,
-            userId: 'system',
-            location: location,
-            description: description || `Status updated to ${status} by Ekart`
-        });
-
-        if (result.success) {
-            logger.info('Shipment status updated via Ekart webhook', {
-                shipmentId: shipment._id,
-                oldStatus: shipment.currentStatus,
-                newStatus: internalStatus
-            });
-            return { success: true, message: 'Status updated successfully' };
+                if (result.success) {
+                    logger.info('Shipment status updated via Ekart webhook', {
+                        shipmentId: shipment._id,
+                        oldStatus: shipment.currentStatus,
+                        newStatus: internalStatus
+                    });
+                } else {
+                    logger.error('Failed to update shipment status from webhook', {
+                        shipmentId: shipment._id,
+                        error: result.error
+                    });
+                }
+            }
         } else {
-            logger.error('Failed to update shipment status from webhook', {
-                shipmentId: shipment._id,
-                error: result.error
-            });
-            // If it's a version conflict, we might want to fail so Ekart retries, 
-            // or just log it if we assume eventual consistency/polling will fix it.
-            // For webhooks, generally good to return 200 unless it's a system error.
-            return { success: false, message: result.error || 'Update failed' };
+            logger.warn('Unknown Ekart status in webhook', { status, trackingId: tracking_id });
         }
+
+        // 5. Weight extraction (Ekart sends weight in grams as string)
+        if (weight && weight !== "0.0" && weight !== "0") {
+            const weightGrams = parseFloat(weight);
+            const weightKg = weightGrams / 1000;
+
+            // Only process meaningful weights (>10g to filter errors)
+            if (weightKg > 0.01) {
+                logger.info('[Ekart] Weight extracted from webhook', {
+                    trackingId: tracking_id,
+                    weightKg,
+                    dimensions
+                });
+
+                // Update shipment weights
+                shipment.weights.actual = {
+                    value: weightKg,
+                    unit: 'kg',
+                    scannedAt: timestamp ? new Date(timestamp * 1000) : new Date(),
+                    scannedBy: 'Ekart'
+                };
+
+                // Add dimensions if available
+                if (dimensions) {
+                    shipment.weights.actual.dimensions = {
+                        length: dimensions.length || 0,
+                        width: dimensions.width || 0,
+                        height: dimensions.height || 0
+                    };
+                }
+
+                // Add scannedLocation if available
+                if (location) {
+                    shipment.weights.actual.scannedLocation = location;
+                }
+
+                await shipment.save();
+
+                // Trigger dispute detection
+                try {
+                    await weightDisputeDetectionService.detectOnCarrierScan(
+                        (shipment._id as mongoose.Types.ObjectId).toString(),
+                        { value: weightKg, unit: 'kg' },
+                        {
+                            scannedAt: timestamp ? new Date(timestamp * 1000) : new Date(),
+                            location: location || 'Ekart Hub',
+                            notes: `Ekart DWS scan: ${weightKg}kg`,
+                            carrierName: 'Ekart'
+                        }
+                    );
+                } catch (disputeError) {
+                    logger.error('[Ekart] Error triggering weight dispute detection', {
+                        shipmentId: shipment._id,
+                        error: disputeError instanceof Error ? disputeError.message : disputeError
+                    });
+                }
+            }
+        }
+
+        return { success: true, message: 'Track updated with weight extraction' };
     }
 
     /**

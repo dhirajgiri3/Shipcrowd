@@ -144,6 +144,10 @@ export interface DelhiveryWebhookPayload {
         ReferenceNo?: string;
         ExpectedDeliveryDate?: string;
         AWB: string;
+        ScannedWeight?: string;      // ✅ NEW: Weight in kg
+        ChargedWeight?: string;       // ✅ NEW: Billing weight in kg
+        Dimensions?: string;          // ✅ NEW: Format "LxWxH" in cm
+        ScanDateTime?: string;        // ✅ NEW: ISO 8601 timestamp
     };
 }
 

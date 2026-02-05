@@ -1,5 +1,7 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/access.middleware';
+import { verifyWebhookSignature } from '../../../middleware/webhooks/webhook-signature.middleware';
 import weightDisputesController from '../../../controllers/disputes/weight-disputes.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
@@ -36,7 +38,12 @@ router.get('/metrics', authenticate, asyncHandler(weightDisputesController.getMe
  * @query companyId - Filter by company (optional)
  * @query groupBy - Group trends by day/week/month
  */
-router.get('/analytics', authenticate, asyncHandler(weightDisputesController.getAnalytics));
+router.get(
+    '/analytics',
+    authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'] }),
+    asyncHandler(weightDisputesController.getAnalytics)
+);
 
 /**
  * @route GET /api/v1/disputes/weight/:disputeId
@@ -74,6 +81,7 @@ router.post(
 router.post(
     '/:disputeId/resolve',
     authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'] }),
     csrfProtection,
     asyncHandler(weightDisputesController.resolveDispute)
 );
@@ -85,7 +93,7 @@ router.post(
  */
 router.post(
     '/webhook',
-    // TODO: Add signature verification middleware here
+    (req, res, next) => verifyWebhookSignature('velocity')(req, res, next), // Default to velocity or handle multiple
     asyncHandler(weightDisputesController.handleWebhook)
 );
 

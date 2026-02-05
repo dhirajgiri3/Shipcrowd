@@ -87,6 +87,7 @@ import mongoose from 'mongoose';
 import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import WalletService from '../wallet/wallet.service';
+import { WeightDisputeNotificationService } from './weight-dispute-notification.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -274,11 +275,8 @@ export class WeightDisputeResolutionService {
                 resolvedBy: adminId,
             });
 
-            // TODO: Notify seller of resolution (Phase 5)
-            // await this.notificationService.sendDisputeResolution(dispute.companyId, dispute);
-
-            // TODO: Audit log (Phase 5)
-            // await this.auditLogService.log({...});
+            // Trigger notification
+            await WeightDisputeNotificationService.notifyDisputeResolved(dispute, resolution);
 
             return dispute;
         } catch (error) {

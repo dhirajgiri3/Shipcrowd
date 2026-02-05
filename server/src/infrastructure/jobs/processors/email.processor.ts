@@ -1,9 +1,9 @@
 import { Job, Worker } from 'bullmq';
-import { EmailJob, EmailJobResult, EmailJobType } from '../../../core/domain/types/email-job.types.js';
-import logger from '../../../shared/logger/winston.logger.js';
-import { AuditLog } from '../../database/mongoose/models/index.js';
-import QueueManager from '../../utilities/queue-manager.js';
-import { RedisManager } from '../../redis/redis.manager.js';
+import { EmailJob, EmailJobResult, EmailJobType } from '../../../core/domain/types/email-job.types';
+import logger from '../../../shared/logger/winston.logger';
+import { AuditLog } from '../../database/mongoose/models/index';
+import QueueManager from '../../utilities/queue-manager';
+import { RedisManager } from '../../redis/redis.manager';
 import nodemailer from 'nodemailer';
 import { renderEmailTemplate } from '../../../core/application/templates/emails/renderEmail';
 

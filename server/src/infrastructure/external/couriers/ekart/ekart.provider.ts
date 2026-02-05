@@ -26,10 +26,10 @@ import {
     CourierReverseShipmentData,
     CourierReverseShipmentResponse,
     CourierPODResponse
-} from '../base/courier.adapter.js';
+} from '../base/courier.adapter';
 
-import { EkartAuth } from './ekart.auth.js';
-import { EkartMapper } from './ekart.mapper.js';
+import { EkartAuth } from './ekart.auth';
+import { EkartMapper } from './ekart.mapper';
 import {
     EkartError,
     EKART_ENDPOINTS,
@@ -41,18 +41,18 @@ import {
     EkartServiceabilityResponse,
     EkartRateRequest,
     EkartRateResponse
-} from './ekart.types.js';
+} from './ekart.types';
 
 import {
     handleEkartError,
     waitForRateLimit
-} from './ekart-error-handler.js';
+} from './ekart-error-handler';
 
-import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util.js';
+import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
 
-import CourierIdempotency from '../../../database/mongoose/models/courier-idempotency.model.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error.js';
+import CourierIdempotency from '../../../database/mongoose/models/courier-idempotency.model';
+import logger from '../../../../shared/logger/winston.logger';
+import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error';
 
 export class EkartProvider implements ICourierAdapter {
     private auth: EkartAuth;

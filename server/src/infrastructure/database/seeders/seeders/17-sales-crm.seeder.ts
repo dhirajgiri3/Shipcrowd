@@ -18,8 +18,8 @@ import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.mod
 import { randomInt, selectRandom, selectWeightedFromObject, generateAlphanumeric } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
 import { subDays, addDays } from '../utils/date.utils';
-import { generateIndianName, generateIndianPhone, generateEmail } from '../data/customer-names.js';
-import { selectBank, generateIFSC, generateAccountNumber, generatePAN } from '../data/indian-banks.js';
+import { generateIndianName, generateIndianPhone, generateEmail } from '../data/customer-names';
+import { selectBank, generateIFSC, generateAccountNumber, generatePAN } from '../data/indian-banks';
 
 
 // Sales role distribution

@@ -73,6 +73,7 @@ import mongoose from 'mongoose';
 import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import { Shipment, Order, Company } from '../../../../infrastructure/database/mongoose/models';
 import { IShipment } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
+import { WeightDisputeNotificationService } from './weight-dispute-notification.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -182,8 +183,8 @@ class WeightDisputeDetectionService {
                 // Update shipment with dispute info
                 await this.updateShipmentWithDispute(shipment, dispute, actualWeight, carrierScanData, session);
 
-                // TODO: Trigger notification (will be implemented in Phase 5)
-                // await this.notificationService.sendWeightDisputeAlert(shipment.companyId, dispute);
+                // Trigger notification
+                await WeightDisputeNotificationService.notifyDisputeCreated(dispute);
 
                 await session.commitTransaction();
 
@@ -272,19 +273,12 @@ class WeightDisputeDetectionService {
     /**
      * Calculate financial impact of weight discrepancy
      * 
-     * BUSINESS RULE: Uses simplified linear calculation for MVP
-     * Production should integrate with RateCardService for zone-based pricing
+     * Integrates with DynamicPricingService for accurate zone-based pricing
      * 
      * @param shipment - Shipment document with payment details
      * @param declaredKg - Original declared weight
      * @param actualKg - Carrier-scanned actual weight
      * @returns Financial impact with original/revised charges and direction
-     * 
-     * @example
-     * ```typescript
-     * const impact = await this.calculateFinancialImpact(shipment, 1.0, 1.5);
-     * // Returns: { originalCharge: 100, revisedCharge: 150, difference: 50, chargeDirection: 'debit' }
-     * ```
      */
     private async calculateFinancialImpact(
         shipment: IShipment,
@@ -292,36 +286,102 @@ class WeightDisputeDetectionService {
         actualKg: number
     ): Promise<FinancialImpact> {
         try {
-            const originalCharge = shipment.paymentDetails.shippingCost;
+            // Lazy load DynamicPricingService to avoid circular dependencies
+            const { DynamicPricingService } = require('../../pricing/dynamic-pricing.service');
+            const pricingService = new DynamicPricingService();
 
-            // For MVP, use simple linear calculation based on existing cost
-            // In production, this should use RateCardService for accurate calculation
-            const costPerKg = originalCharge / declaredKg;
-            const revisedCharge = costPerKg * actualKg;
+            const order = await Order.findById(shipment.orderId);
+            if (!order) {
+                logger.warn(`[WeightDispute] Order not found for shipment ${shipment._id}, using fallback`);
+                return this.calculateFallbackImpact(shipment, declaredKg, actualKg);
+            }
 
-            const difference = revisedCharge - originalCharge;
+            // Get origin pincode from warehouse or fallback
+            let fromPincode = '110001'; // Default fallback
+            if (shipment.pickupDetails?.warehouseId) {
+                try {
+                    const { Warehouse } = require('../../../../infrastructure/database/mongoose/models');
+                    const warehouse = await Warehouse.findById(shipment.pickupDetails.warehouseId).select('address.postalCode');
+                    fromPincode = warehouse?.address?.postalCode || '110001';
+                } catch (err) {
+                    logger.warn('[WeightDispute] Failed to fetch warehouse pincode, using fallback', { error: err });
+                }
+            }
+
+            const baseParams = {
+                companyId: shipment.companyId.toString(),
+                fromPincode, // ✅ FIX: Use warehouse pincode
+                toPincode: shipment.deliveryDetails.address.postalCode, // ✅ FIX: Use deliveryDetails
+                paymentMode: order.paymentMethod, // ✅ FIX: paymentMethod not paymentMode
+                orderValue: order.totals?.total || 0, // ✅ FIX: Use totals.total
+                carrier: shipment.carrier, // ✅ FIX: Use carrier field directly
+                serviceType: shipment.serviceType
+            };
+
+            // Calculate cost for declared weight
+            const declaredQuote = await pricingService.calculatePricing({
+                ...baseParams,
+                weight: declaredKg,
+                dimensions: shipment.packageDetails.dimensions // ✅ FIX: Pass dimensions
+            });
+
+            // Calculate cost for actual weight
+            const actualQuote = await pricingService.calculatePricing({
+                ...baseParams,
+                weight: actualKg,
+                dimensions: shipment.weights.actual?.dimensions || shipment.packageDetails.dimensions // ✅ FIX: Use actual dimensions
+            });
+
+            const difference = actualQuote.total - declaredQuote.total;
             const chargeDirection = difference > 0 ? 'debit' : 'credit';
 
+            logger.info('[WeightDispute] Financial impact calculated via DynamicPricingService', {
+                shipmentId: shipment._id,
+                declaredKg,
+                actualKg,
+                declaredCost: declaredQuote.total,
+                actualCost: actualQuote.total,
+                difference,
+                zone: declaredQuote.metadata?.zone
+            });
+
             return {
-                originalCharge,
-                revisedCharge,
+                originalCharge: declaredQuote.total,
+                revisedCharge: actualQuote.total,
                 difference: Math.abs(difference),
                 chargeDirection,
             };
-        } catch (error) {
-            logger.error('Error calculating financial impact', {
-                shipmentId: shipment._id,
-                error: error instanceof Error ? error.message : error,
+        } catch (error: any) {
+            logger.error('[WeightDispute] DynamicPricingService failed, using fallback', {
+                error: error.message,
+                shipmentId: shipment._id
             });
-
-            // Fallback to zero impact if calculation fails
-            return {
-                originalCharge: shipment.paymentDetails.shippingCost,
-                revisedCharge: shipment.paymentDetails.shippingCost,
-                difference: 0,
-                chargeDirection: 'debit',
-            };
+            return this.calculateFallbackImpact(shipment, declaredKg, actualKg);
         }
+    }
+
+    /**
+     * Fallback linear calculation if DynamicPricingService fails
+     */
+    private calculateFallbackImpact(shipment: IShipment, declaredKg: number, actualKg: number): FinancialImpact {
+        const originalCharge = shipment.paymentDetails.shippingCost;
+        const costPerKg = originalCharge / declaredKg;
+        const revisedCharge = costPerKg * actualKg;
+        const difference = revisedCharge - originalCharge;
+
+        logger.warn('[WeightDispute] Using fallback linear calculation', {
+            shipmentId: shipment._id,
+            originalCharge,
+            revisedCharge,
+            costPerKg
+        });
+
+        return {
+            originalCharge,
+            revisedCharge,
+            difference: Math.abs(difference),
+            chargeDirection: difference > 0 ? 'debit' : 'credit'
+        };
     }
 
     /**

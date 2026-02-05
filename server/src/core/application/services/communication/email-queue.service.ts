@@ -5,9 +5,9 @@
  * This provides retry logic, failure tracking, and better reliability.
  */
 
-import QueueManager from '../../../../infrastructure/utilities/queue-manager.js';
-import { EmailJob, EmailJobType } from '../../../domain/types/email-job.types.js';
-import logger from '../../../../shared/logger/winston.logger.js';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
+import { EmailJob, EmailJobType } from '../../../domain/types/email-job.types';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Queue a verification email

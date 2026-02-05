@@ -26,8 +26,8 @@
  * ```
  */
 
-import logger from '../../../../shared/logger/winston.logger.js';
-import { EkartError } from './ekart.types.js';
+import logger from '../../../../shared/logger/winston.logger';
+import { EkartError } from './ekart.types';
 
 // ==================== Circuit Breaker ====================
 

@@ -16,12 +16,12 @@
  * ```
  */
 
-import { CourierShipmentData, CourierReverseShipmentData } from '../base/courier.adapter.js';
+import { CourierShipmentData, CourierReverseShipmentData } from '../base/courier.adapter';
 import {
     EkartShipmentRequest,
     EkartLocation,
     EKART_CONSTRAINTS,
-} from './ekart.types.js';
+} from './ekart.types';
 
 export class EkartMapper {
     /**

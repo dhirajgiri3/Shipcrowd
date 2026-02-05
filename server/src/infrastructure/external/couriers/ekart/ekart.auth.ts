@@ -26,17 +26,17 @@
 
 import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
-import { getDistributedLock } from '../../../../shared/utils/distributed-lock.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { encryptData, decryptData } from '../../../../shared/utils/encryption.js';
-import { Integration } from '@/infrastructure/database/mongoose/models/index.js';
+import { getDistributedLock } from '../../../../shared/utils/distributed-lock';
+import logger from '../../../../shared/logger/winston.logger';
+import { encryptData, decryptData } from '../../../../shared/utils/encryption';
+import { Integration } from '@/infrastructure/database/mongoose/models/index';
 import {
     EkartAuthRequest,
     EkartAuthResponse,
     EkartError,
     EKART_ENDPOINTS,
     EKART_CONSTRAINTS,
-} from './ekart.types.js';
+} from './ekart.types';
 
 interface CachedToken {
     token: string;

@@ -16,6 +16,16 @@ export interface ICourierStatusMapper {
         status: string;
         location?: string;
         description?: string;
+        weight?: {
+            value: number;
+            unit: 'kg' | 'g';
+        };
+        dimensions?: {
+            length: number;
+            width: number;
+            height: number;
+        };
+        timestamp?: Date;
     };
 
     /**

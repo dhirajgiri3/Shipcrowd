@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import QueueManager from '../../../../infrastructure/utilities/queue-manager.js';
-import logger from '../../../../shared/logger/winston.logger.js';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
+import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
 import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';

@@ -479,6 +479,14 @@ export interface EkartTrackUpdatedWebhook {
     status: string;
     timestamp: number;
     location?: string;
+    description?: string; // ✅ Added description
+    weight?: string;      // ✅ NEW: Weight in grams as string
+    dimensions?: {        // ✅ NEW: Optional dimensions
+        length: number;
+        width: number;
+        height: number;
+        unit?: 'cm';
+    };
     ndrStatus?: EkartNDRStatus;
     ndrActions?: EkartNDRAction[];
 }

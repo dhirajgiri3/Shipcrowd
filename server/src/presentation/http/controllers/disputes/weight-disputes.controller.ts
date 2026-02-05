@@ -29,7 +29,7 @@ import {
     sendPaginated,
     calculatePagination,
 } from '../../../../shared/utils/responseHelper';
-import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { NotFoundError, ValidationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
@@ -214,12 +214,10 @@ export const resolveDispute = async (
     try {
         const auth = guardChecks(req);
 
-        // Admin check (assuming role is in auth object)
-        // TODO: Implement proper role-based authorization
-        // if (!auth.roles?.includes('admin')) {
-        //(res, 'Admin access required', 403, 'FORBIDDEN');
-        //   return;
-        // }
+        // Admin check
+        if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
+            throw new AppError('Only admins can resolve weight disputes', 'FORBIDDEN', 403);
+        }
 
         const { disputeId } = req.params;
         validateObjectId(disputeId, 'dispute');
@@ -290,11 +288,9 @@ export const getAnalytics = async (
         const auth = guardChecks(req);
 
         // Admin check
-        // TODO: Implement proper role-based authorization
-        // if (!auth.roles?.includes('admin')) {
-        //(res, 'Admin access required', 403, 'FORBIDDEN');
-        //   return;
-        // }
+        if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
+            throw new AppError('Only admins can view dispute analytics', 'FORBIDDEN', 403);
+        }
 
         const dateRange = req.query.startDate && req.query.endDate
             ? {

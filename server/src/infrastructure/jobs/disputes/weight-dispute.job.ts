@@ -17,7 +17,7 @@ import {
 } from '../../../core/application/services/disputes';
 
 interface WeightDisputeJobData {
-    type: 'auto_resolve' | 'fraud_check' | 'scan_updates';
+    type: 'auto_resolve' | 'fraud_check' | 'scan_updates' | 'send_reminders';
 }
 
 export class WeightDisputeJob {
@@ -59,6 +59,10 @@ export class WeightDisputeJob {
 
                 case 'scan_updates':
                     await this.runScanUpdates();
+                    break;
+
+                case 'send_reminders':
+                    await this.runSendReminders();
                     break;
 
                 default:
@@ -124,6 +128,35 @@ export class WeightDisputeJob {
     }
 
     /**
+     * Run send reminders logic
+     */
+    private static async runSendReminders(): Promise<void> {
+        const { WeightDisputeNotificationService } = await import('../../../core/application/services/disputes/weight-dispute-notification.service');
+        const WeightDispute = (await import('../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model')).default;
+
+        // Find disputes created exactly 4 days ago (7 - 3 = 4 days)
+        const fourDaysAgoStart = new Date();
+        fourDaysAgoStart.setDate(fourDaysAgoStart.getDate() - 4);
+        fourDaysAgoStart.setHours(0, 0, 0, 0);
+
+        const fourDaysAgoEnd = new Date();
+        fourDaysAgoEnd.setDate(fourDaysAgoEnd.getDate() - 4);
+        fourDaysAgoEnd.setHours(23, 59, 59, 999);
+
+        const disputesToRemind = await WeightDispute.find({
+            status: 'pending',
+            createdAt: { $gte: fourDaysAgoStart, $lte: fourDaysAgoEnd },
+            isDeleted: false
+        });
+
+        logger.info(`Sending auto-resolve reminders for ${disputesToRemind.length} disputes`);
+
+        for (const dispute of disputesToRemind) {
+            await WeightDisputeNotificationService.sendAutoResolveReminder(dispute);
+        }
+    }
+
+    /**
      * Queue Auto-Resolve Job
      */
     static async queueAutoResolve(): Promise<void> {
@@ -133,6 +166,21 @@ export class WeightDisputeJob {
             { type: 'auto_resolve' },
             {
                 jobId: `auto-resolve-${new Date().toISOString().slice(0, 10)}`, // Unique per day
+                removeOnComplete: true
+            }
+        );
+    }
+
+    /**
+     * Queue Send Reminders Job
+     */
+    static async queueSendReminders(): Promise<void> {
+        await QueueManager.addJob(
+            this.QUEUE_NAME,
+            'send-reminders-daily',
+            { type: 'send_reminders' },
+            {
+                jobId: `reminders-${new Date().toISOString().slice(0, 10)}`, // Unique per day
                 removeOnComplete: true
             }
         );

@@ -143,12 +143,19 @@ export interface IShipment extends Document {
     declared: {
       value: number; // Matches packageDetails.weight
       unit: 'kg' | 'g';
+      source?: 'manual' | 'sku_master' | 'api' | 'packing_station'; // ✅ NEW: Track weight source
     };
     actual?: {
       value: number; // Updated from carrier webhook
       unit: 'kg' | 'g';
       scannedAt?: Date;
       scannedBy?: string; // 'Bluedart', 'Delhivery', etc.
+      scannedLocation?: string; // ✅ NEW: Hub location where weight was scanned
+      dimensions?: { // ✅ NEW: Actual dimensions from carrier DWS scan
+        length: number;
+        width: number;
+        height: number;
+      };
     };
     verified: boolean; // True when actual weight is recorded
   };
@@ -447,6 +454,11 @@ const ShipmentSchema = new Schema<IShipment>(
           enum: ['kg', 'g'],
           default: 'kg',
         },
+        source: { // ✅ NEW FIELD 1
+          type: String,
+          enum: ['manual', 'sku_master', 'api', 'packing_station'],
+          default: 'manual',
+        },
       },
       actual: {
         value: Number,
@@ -456,6 +468,12 @@ const ShipmentSchema = new Schema<IShipment>(
         },
         scannedAt: Date,
         scannedBy: String,
+        scannedLocation: String, // ✅ NEW FIELD 2
+        dimensions: { // ✅ NEW FIELD 3
+          length: Number,
+          width: Number,
+          height: Number,
+        },
       },
       verified: {
         type: Boolean,
