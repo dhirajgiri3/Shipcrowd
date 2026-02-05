@@ -17,6 +17,7 @@ import { useWeightDisputes } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
+import { useAdminBatchDisputes } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
 
 const STATUS_TABS = [
     { value: 'all', label: 'All' },
@@ -32,6 +33,7 @@ export function AdminDisputesTable() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const { data, isLoading, isError } = useWeightDisputes(filters);
+    const batchMutation = useAdminBatchDisputes();
 
     const getDaysPending = (createdAt: string) => {
         const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
@@ -111,13 +113,34 @@ export function AdminDisputesTable() {
                 {selectedIds.size > 0 && (
                     <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                         <span className="text-sm text-blue-700 dark:text-blue-300">{selectedIds.size} selected</span>
-                        <button className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+                        <button
+                            onClick={() =>
+                                batchMutation.mutate({
+                                    disputeIds: Array.from(selectedIds),
+                                    action: 'approve_seller',
+                                    notes: 'Bulk approved in seller favor from admin table',
+                                })
+                            }
+                            className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                        >
                             Bulk Resolve: Seller Favor
                         </button>
-                        <button className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                        <button
+                            onClick={() =>
+                                batchMutation.mutate({
+                                    disputeIds: Array.from(selectedIds),
+                                    action: 'approve_carrier',
+                                    notes: 'Bulk approved in Shipcrowd favor from admin table',
+                                })
+                            }
+                            className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                        >
                             Bulk Resolve: Shipcrowd Favor
                         </button>
-                        <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                        <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        >
                             Clear
                         </button>
                     </div>

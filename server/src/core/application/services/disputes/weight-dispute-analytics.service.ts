@@ -283,8 +283,45 @@ class WeightDisputeAnalyticsService {
                 },
             ]);
 
-            // TODO: By carrier (requires join with Shipment)
-            const byCarrier: any[] = [];
+            // By carrier (join with Shipment - Week 3)
+            const byCarrier = await WeightDispute.aggregate([
+                { $match: matchStage },
+                {
+                    $lookup: {
+                        from: 'shipments',
+                        localField: 'shipmentId',
+                        foreignField: '_id',
+                        as: 'shipment',
+                    },
+                },
+                { $unwind: { path: '$shipment', preserveNullAndEmptyArrays: true } },
+                {
+                    $group: {
+                        _id: { $ifNull: ['$shipment.carrier', 'unknown'] },
+                        count: { $sum: 1 },
+                        totalImpact: { $sum: '$financialImpact.difference' },
+                        avgDiscrepancy: { $avg: '$discrepancy.percentage' },
+                        sellerFavorCount: {
+                            $sum: { $cond: [{ $eq: ['$resolution.outcome', 'seller_favor'] }, 1, 0] },
+                        },
+                        carrierFavorCount: {
+                            $sum: { $cond: [{ $eq: ['$resolution.outcome', 'Shipcrowd_favor'] }, 1, 0] },
+                        },
+                    },
+                },
+                {
+                    $project: {
+                        carrier: '$_id',
+                        count: 1,
+                        totalImpact: { $round: ['$totalImpact', 2] },
+                        avgDiscrepancy: { $round: ['$avgDiscrepancy', 2] },
+                        sellerFavorCount: 1,
+                        carrierFavorCount: 1,
+                        _id: 0,
+                    },
+                },
+                { $sort: { count: -1 } },
+            ]);
 
             // Resolution time stats
             const resolved = await WeightDispute.find({
@@ -318,6 +355,231 @@ class WeightDisputeAnalyticsService {
             };
         } catch (error) {
             logger.error('Error getting comprehensive stats', {
+                error: error instanceof Error ? error.message : error,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Get carrier-level performance metrics (Week 3)
+     * Dispute count, avg discrepancy, win rate by carrier
+     */
+    async getCarrierPerformanceMetrics(
+        dateRange?: { start: Date; end: Date }
+    ): Promise<
+        Array<{
+            carrier: string;
+            disputeCount: number;
+            totalFinancialImpact: number;
+            avgDiscrepancyPct: number;
+            sellerFavorRate: number;
+            carrierFavorRate: number;
+        }>
+    > {
+        try {
+            const matchStage: any = { isDeleted: false };
+            if (dateRange) {
+                matchStage.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+            }
+
+            const result = await WeightDispute.aggregate([
+                { $match: matchStage },
+                {
+                    $lookup: {
+                        from: 'shipments',
+                        localField: 'shipmentId',
+                        foreignField: '_id',
+                        as: 'shipment',
+                    },
+                },
+                { $unwind: { path: '$shipment', preserveNullAndEmptyArrays: true } },
+                {
+                    $group: {
+                        _id: { $ifNull: ['$shipment.carrier', 'unknown'] },
+                        disputeCount: { $sum: 1 },
+                        totalFinancialImpact: { $sum: '$financialImpact.difference' },
+                        avgDiscrepancyPct: { $avg: '$discrepancy.percentage' },
+                        sellerFavor: {
+                            $sum: { $cond: [{ $eq: ['$resolution.outcome', 'seller_favor'] }, 1, 0] },
+                        },
+                        carrierFavor: {
+                            $sum: { $cond: [{ $eq: ['$resolution.outcome', 'Shipcrowd_favor'] }, 1, 0] },
+                        },
+                    },
+                },
+                {
+                    $project: {
+                        carrier: '$_id',
+                        disputeCount: 1,
+                        totalFinancialImpact: { $round: ['$totalFinancialImpact', 2] },
+                        avgDiscrepancyPct: { $round: ['$avgDiscrepancyPct', 2] },
+                        sellerFavorRate: {
+                            $round: [{ $divide: ['$sellerFavor', '$disputeCount'] }, 4],
+                        },
+                        carrierFavorRate: {
+                            $round: [{ $divide: ['$carrierFavor', '$disputeCount'] }, 4],
+                        },
+                        _id: 0,
+                    },
+                },
+                { $sort: { disputeCount: -1 } },
+            ]);
+
+            return result;
+        } catch (error) {
+            logger.error('Error getting carrier performance metrics', {
+                error: error instanceof Error ? error.message : error,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Fraud detection signals (Week 3)
+     * Basic rules: high dispute rate, under-declaration pattern, spike detection
+     */
+    async getFraudDetectionSignals(
+        dateRange: { start: Date; end: Date },
+        options?: { companyId?: string; topN?: number }
+    ): Promise<{
+        highRiskSellers: SellerRiskProfile[];
+        underDeclarationPattern: Array<{ companyId: string; avgDeclaredVsActual: number; disputeCount: number }>;
+        recentSpike: Array<{ companyId: string; currentWeek: number; previousWeek: number; changePct: number }>;
+    }> {
+        try {
+            const topN = options?.topN ?? 10;
+
+            const highRiskSellers = await this.identifyHighRiskSellers(dateRange, topN);
+
+            const matchStage: any = {
+                isDeleted: false,
+                createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+            };
+            if (options?.companyId) {
+                matchStage.companyId = new mongoose.Types.ObjectId(options.companyId);
+            }
+
+            // Under-declaration: declared consistently lower than actual
+            const underDeclarationPattern = await WeightDispute.aggregate([
+                { $match: matchStage },
+                {
+                    $group: {
+                        _id: '$companyId',
+                        disputeCount: { $sum: 1 },
+                        avgDeclared: { $avg: '$declaredWeight.value' },
+                        avgActual: { $avg: '$actualWeight.value' },
+                    },
+                },
+                {
+                    $addFields: {
+                        avgDeclaredVsActual: {
+                            $round: [
+                                {
+                                    $multiply: [
+                                        { $divide: ['$avgDeclared', '$avgActual'] },
+                                        100,
+                                    ],
+                                },
+                                2,
+                            ],
+                        },
+                    },
+                },
+                {
+                    $match: { avgDeclaredVsActual: { $lt: 95 } }, // Declared < 95% of actual on average
+                },
+                {
+                    $project: {
+                        companyId: { $toString: '$_id' },
+                        disputeCount: 1,
+                        avgDeclaredVsActual: 1,
+                        _id: 0,
+                    },
+                },
+                { $sort: { disputeCount: -1 } },
+                { $limit: topN },
+            ]);
+
+            // Week-over-week spike
+            const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+            const currentWeekStart = new Date(dateRange.end.getTime() - oneWeekMs);
+            const previousWeekStart = new Date(currentWeekStart.getTime() - oneWeekMs);
+
+            const spikeAgg = await WeightDispute.aggregate([
+                { $match: { isDeleted: false } },
+                {
+                    $facet: {
+                        current: [
+                            {
+                                $match: {
+                                    createdAt: { $gte: currentWeekStart, $lte: dateRange.end },
+                                },
+                            },
+                            { $group: { _id: '$companyId', count: { $sum: 1 } } },
+                        ],
+                        previous: [
+                            {
+                                $match: {
+                                    createdAt: {
+                                        $gte: previousWeekStart,
+                                        $lt: currentWeekStart,
+                                    },
+                                },
+                            },
+                            { $group: { _id: '$companyId', count: { $sum: 1 } } },
+                        ],
+                    },
+                },
+                {
+                    $project: {
+                        merged: {
+                            $concatArrays: [
+                                { $map: { input: '$current', as: 'c', in: { companyId: '$$c._id', current: '$$c.count' } } },
+                                { $map: { input: '$previous', as: 'p', in: { companyId: '$$p._id', previous: '$$p.count' } } },
+                            ],
+                        },
+                    },
+                },
+            ]);
+
+            const recentSpike: Array<{ companyId: string; currentWeek: number; previousWeek: number; changePct: number }> = [];
+            const currentMap = new Map<string, number>();
+            const previousMap = new Map<string, number>();
+            const disputesCurrent = await WeightDispute.aggregate([
+                { $match: { createdAt: { $gte: currentWeekStart, $lte: dateRange.end }, isDeleted: false } },
+                { $group: { _id: '$companyId', count: { $sum: 1 } } },
+            ]);
+            const disputesPrevious = await WeightDispute.aggregate([
+                {
+                    $match: {
+                        createdAt: { $gte: previousWeekStart, $lt: currentWeekStart },
+                        isDeleted: false,
+                    },
+                },
+                { $group: { _id: '$companyId', count: { $sum: 1 } } },
+            ]);
+            disputesCurrent.forEach((r: any) => currentMap.set(r._id.toString(), r.count));
+            disputesPrevious.forEach((r: any) => previousMap.set(r._id.toString(), r.count));
+            const companyIds = new Set([...currentMap.keys(), ...previousMap.keys()]);
+            companyIds.forEach((companyId) => {
+                const current = currentMap.get(companyId) || 0;
+                const previous = previousMap.get(companyId) || 0;
+                if (previous > 0 && current > previous) {
+                    const changePct = Math.round(((current - previous) / previous) * 100);
+                    recentSpike.push({ companyId, currentWeek: current, previousWeek: previous, changePct });
+                }
+            });
+            recentSpike.sort((a, b) => b.changePct - a.changePct);
+            const recentSpikeTop = recentSpike.slice(0, topN);
+
+            return {
+                highRiskSellers,
+                underDeclarationPattern,
+                recentSpike: recentSpikeTop,
+            };
+        } catch (error) {
+            logger.error('Error getting fraud detection signals', {
                 error: error instanceof Error ? error.message : error,
             });
             throw error;

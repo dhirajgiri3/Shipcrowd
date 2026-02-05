@@ -20,7 +20,7 @@ interface AuditableDocument extends Document {
 export const createAuditLog = async (
   userId: mongoose.Types.ObjectId | string,
   companyId: mongoose.Types.ObjectId | string | undefined,
-  action: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'verify' | 'generate' | 'other' |
+  action: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'verify' | 'generate' | 'other' | 'batch_update' |
     'security' | 'password_change' | 'email_change' | 'account_lock' | 'account_unlock' | 'session_revoke' | 'profile_update' | 'invite',
   resource: string,
   resourceId: mongoose.Types.ObjectId | string | undefined,

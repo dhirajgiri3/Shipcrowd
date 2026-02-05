@@ -169,6 +169,20 @@ export interface IShipment extends Document {
     financialImpact?: number; // Quick reference to dispute amount
   };
 
+  // Packing Station Evidence (Week 2 Feature)
+  packingEvidence?: {
+    photos: string[]; // S3/local URLs of weight scale photos
+    weightKg: number; // Weight captured at packing station
+    dimensions?: {
+      length: number;
+      width: number;
+      height: number;
+    };
+    capturedAt: Date;
+    capturedBy: string; // User ID or station ID
+    location?: string; // Warehouse/station identifier
+    notes?: string;
+  };
 
   // COD Remittance Tracking
   remittance?: {
@@ -495,6 +509,21 @@ const ShipmentSchema = new Schema<IShipment>(
       },
       detectedAt: Date,
       financialImpact: Number,
+    },
+
+    // Packing Station Evidence (Week 2 Feature)
+    packingEvidence: {
+      photos: [{ type: String }],
+      weightKg: Number,
+      dimensions: {
+        length: Number,
+        width: Number,
+        height: Number,
+      },
+      capturedAt: Date,
+      capturedBy: String,
+      location: String,
+      notes: String,
     },
     remittance: {
       included: {

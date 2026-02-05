@@ -80,33 +80,40 @@ export function DisputeAnalytics() {
         );
     }
 
-    // Calculate derived metrics
-    const totalOutcomes = Object.values(analytics.stats.resolutionOutcomes).reduce((sum, val) => sum + val, 0);
-    const resolutionRate = analytics.stats.totalDisputes > 0 ? totalOutcomes / analytics.stats.totalDisputes : 0;
+    // Calculate derived metrics from new stats shape
+    const totalDisputes = analytics.stats.overview.totalDisputes || 0;
+    const resolvedCount = analytics.stats.overview.resolved || 0;
+    const resolutionRate = totalDisputes > 0 ? resolvedCount / totalDisputes : 0;
 
-    // Prepare outcome distribution data for pie chart
-    const outcomeDistribution = [
-        { name: 'Seller Favor', count: analytics.stats.resolutionOutcomes.seller_favor },
-        { name: 'Shipcrowd Favor', count: analytics.stats.resolutionOutcomes.Shipcrowd_favor },
-        { name: 'Split', count: analytics.stats.resolutionOutcomes.split },
-        { name: 'Waived', count: analytics.stats.resolutionOutcomes.waived },
-    ].filter(item => item.count > 0);
+    // Prepare outcome distribution data for pie chart from byOutcome
+    const outcomeDistribution = analytics.stats.byOutcome
+        .map((o) => ({
+            name:
+                o.outcome === 'seller_favor'
+                    ? 'Seller Favor'
+                    : o.outcome === 'Shipcrowd_favor'
+                    ? 'Shipcrowd Favor'
+                    : o.outcome === 'split'
+                    ? 'Split'
+                    : 'Waived',
+            count: o.count,
+        }))
+        .filter((item) => item.count > 0);
 
     // Prepare trends data
-    const trendsData = analytics.trends.map(trend => ({
+    const trendsData = analytics.trends.map((trend) => ({
         date: trend.date,
         disputes: trend.count,
         impact: trend.totalImpact,
     }));
 
     // Prepare high-risk sellers data
-    const highRiskSellers = analytics.highRiskSellers.map(seller => ({
+    const highRiskSellers = analytics.highRiskSellers.map((seller) => ({
         sellerId: seller.companyId,
-        sellerName: seller.companyName,
         totalDisputes: seller.disputeCount,
-        disputeRate: seller.disputeCount / analytics.stats.totalDisputes,
+        disputeRate: totalDisputes > 0 ? seller.disputeCount / totalDisputes : 0,
         averageDiscrepancy: seller.averageDiscrepancy,
-        totalFinancialImpact: seller.totalDiscrepancy,
+        totalFinancialImpact: seller.totalFinancialImpact,
         riskLevel: seller.disputeCount >= 10 ? 'critical' : seller.disputeCount >= 5 ? 'high' : 'medium',
     }));
 
@@ -141,7 +148,7 @@ export function DisputeAnalytics() {
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Total Disputes</p>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                                {analytics.stats.totalDisputes}
+                                {totalDisputes}
                             </p>
                         </div>
                         <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
@@ -171,25 +178,9 @@ export function DisputeAnalytics() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Seller Response Rate</p>
-                            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                                {(analytics.stats.sellerResponseRate * 100).toFixed(1)}%
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
-                            <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Avg Discrepancy</p>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                                {analytics.stats.averageDiscrepancy.toFixed(1)}%
+                                {analytics.stats.overview.averageDiscrepancy.toFixed(1)}%
                             </p>
                         </div>
                         <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
@@ -197,6 +188,89 @@ export function DisputeAnalytics() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                             </svg>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Carrier Performance & Fraud Signals */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Carrier performance table */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Carrier Performance</h3>
+                    {analytics.carrierPerformance.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available for this range.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                        <th className="py-2 pr-4">Carrier</th>
+                                        <th className="py-2 pr-4">Disputes</th>
+                                        <th className="py-2 pr-4">Avg Discrepancy</th>
+                                        <th className="py-2 pr-4">Seller Favor %</th>
+                                        <th className="py-2 pr-0">Shipcrowd Favor %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {analytics.carrierPerformance.map((c) => (
+                                        <tr key={c.carrier} className="border-b border-gray-50 dark:border-gray-800">
+                                            <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{c.carrier || 'Unknown'}</td>
+                                            <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{c.disputeCount}</td>
+                                            <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">
+                                                {c.avgDiscrepancyPct.toFixed(1)}%
+                                            </td>
+                                            <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">
+                                                {(c.sellerFavorRate * 100).toFixed(1)}%
+                                            </td>
+                                            <td className="py-2 pr-0 text-gray-900 dark:text-gray-100">
+                                                {(c.carrierFavorRate * 100).toFixed(1)}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* Fraud signals */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Fraud Signals</h3>
+
+                    <div>
+                        <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Under‑Declaration Pattern</h4>
+                        {analytics.fraudSignals.underDeclarationPattern.length === 0 ? (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">No suspicious under‑declaration patterns detected.</p>
+                        ) : (
+                            <ul className="space-y-1 text-sm">
+                                {analytics.fraudSignals.underDeclarationPattern.map((entry) => (
+                                    <li key={entry.companyId} className="flex items-center justify-between">
+                                        <span className="text-gray-900 dark:text-gray-100">{entry.companyId}</span>
+                                        <span className="text-gray-600 dark:text-gray-300">
+                                            {entry.avgDeclaredVsActual.toFixed(1)}% declared vs actual
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    <div>
+                        <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Recent Dispute Spikes</h4>
+                        {analytics.fraudSignals.recentSpike.length === 0 ? (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">No recent spikes detected.</p>
+                        ) : (
+                            <ul className="space-y-1 text-sm">
+                                {analytics.fraudSignals.recentSpike.map((entry) => (
+                                    <li key={entry.companyId} className="flex items-center justify-between">
+                                        <span className="text-gray-900 dark:text-gray-100">{entry.companyId}</span>
+                                        <span className="text-gray-600 dark:text-gray-300">
+                                            +{entry.changePct}% ( {entry.previousWeek} → {entry.currentWeek} )
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                 </div>
             </div>

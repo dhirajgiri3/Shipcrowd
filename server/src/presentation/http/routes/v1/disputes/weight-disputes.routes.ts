@@ -46,6 +46,31 @@ router.get(
 );
 
 /**
+ * @route POST /api/v1/disputes/weight/batch
+ * @desc Batch operations on multiple disputes (admin only)
+ * @access Private (Admin)
+ * @body disputeIds: string[], action: string, notes?: string
+ */
+router.post(
+    '/batch',
+    authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'] }),
+    csrfProtection,
+    asyncHandler(weightDisputesController.batchOperation)
+);
+
+/**
+ * @route POST /api/v1/disputes/weight/webhook
+ * @desc Handle carrier weight discrepancy webhook
+ * @access Public (Signature verified)
+ */
+router.post(
+    '/webhook',
+    (req, res, next) => verifyWebhookSignature('velocity')(req, res, next),
+    asyncHandler(weightDisputesController.handleWebhook)
+);
+
+/**
  * @route GET /api/v1/disputes/weight/:disputeId
  * @desc Get dispute details by ID
  * @access Private
@@ -84,17 +109,6 @@ router.post(
     requireAccess({ roles: ['admin', 'super_admin'] }),
     csrfProtection,
     asyncHandler(weightDisputesController.resolveDispute)
-);
-
-/**
- * @route POST /api/v1/disputes/weight/webhook
- * @desc Handle carrier weight discrepancy webhook
- * @access Public (Signature verified)
- */
-router.post(
-    '/webhook',
-    (req, res, next) => verifyWebhookSignature('velocity')(req, res, next), // Default to velocity or handle multiple
-    asyncHandler(weightDisputesController.handleWebhook)
 );
 
 export default router;

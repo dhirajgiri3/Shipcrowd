@@ -104,3 +104,30 @@ export const useAdminResolveDispute = () => {
         onError: (error) => handleApiError(error, 'Failed to resolve dispute'),
     });
 };
+
+/**
+ * Batch operations on multiple disputes (admin-only)
+ */
+export const useAdminBatchDisputes = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<
+        { success: number; failed: number },
+        ApiError,
+        { disputeIds: string[]; action: 'approve_seller' | 'approve_carrier' | 'request_evidence' | 'escalate' | 'waive'; notes?: string }
+    >({
+        mutationFn: async ({ disputeIds, action, notes }) => {
+            const response = await apiClient.post('/disputes/weight/batch', {
+                disputeIds,
+                action,
+                notes,
+            });
+            return response.data.data;
+        },
+        onSuccess: (data) => {
+            showSuccessToast(`Batch operation completed: ${data.success} succeeded, ${data.failed} failed`);
+            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all() });
+        },
+        onError: (error) => handleApiError(error, 'Failed to perform batch dispute operation'),
+    });
+};

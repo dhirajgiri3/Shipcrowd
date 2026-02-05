@@ -321,12 +321,25 @@ export const getAnalytics = async (
             20
         );
 
+        // Week 3: Carrier performance and fraud signals
+        const carrierPerformance = dateRange
+            ? await WeightDisputeAnalyticsService.getCarrierPerformanceMetrics(dateRange)
+            : [];
+        const fraudSignals = dateRange
+            ? await WeightDisputeAnalyticsService.getFraudDetectionSignals(dateRange, {
+                companyId,
+                topN: 10,
+            })
+            : { highRiskSellers: [], underDeclarationPattern: [], recentSpike: [] };
+
         sendSuccess(
             res,
             {
                 stats,
                 trends,
                 highRiskSellers,
+                carrierPerformance,
+                fraudSignals,
             },
             'Analytics retrieved successfully'
         );
@@ -430,6 +443,82 @@ export const handleWebhook = async (
     }
 };
 
+/**
+ * POST /api/v1/disputes/weight/batch
+ * Batch operations on multiple disputes (Admin only)
+ * 
+ * Body:
+ * - disputeIds: string[]
+ * - action: 'approve_seller' | 'approve_carrier' | 'request_evidence' | 'escalate' | 'waive'
+ * - notes?: string
+ */
+export const batchOperation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        // Admin check
+        if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
+            throw new AppError('Only admins can perform batch operations', 'FORBIDDEN', 403);
+        }
+
+        const { disputeIds, action, notes } = req.body;
+
+        // Validation
+        if (!disputeIds || !Array.isArray(disputeIds) || disputeIds.length === 0) {
+            throw new ValidationError('disputeIds array is required and must not be empty');
+        }
+
+        if (!action) {
+            throw new ValidationError('action is required');
+        }
+
+        const validActions = ['approve_seller', 'approve_carrier', 'request_evidence', 'escalate', 'waive'];
+        if (!validActions.includes(action)) {
+            throw new ValidationError(`action must be one of: ${validActions.join(', ')}`);
+        }
+
+        // Validate all dispute IDs
+        for (const id of disputeIds) {
+            validateObjectId(id, 'dispute');
+        }
+
+        // Perform batch operation
+        const results = await WeightDisputeResolutionService.batchOperation(
+            disputeIds,
+            action,
+            auth.userId,
+            notes
+        );
+
+        await createAuditLog(
+            auth.userId,
+            auth.companyId,
+            'batch_update',
+            'weight_dispute',
+            null,
+            {
+                action: 'batch_operation',
+                operation: action,
+                count: disputeIds.length,
+                ...results,
+            },
+            req
+        );
+
+        sendSuccess(
+            res,
+            results,
+            `Batch operation completed: ${results.success} succeeded, ${results.failed} failed`
+        );
+    } catch (error: any) {
+        next(error);
+    }
+};
+
 export default {
     listDisputes,
     getDisputeDetails,
@@ -438,4 +527,5 @@ export default {
     handleWebhook,
     getAnalytics,
     getMetrics,
+    batchOperation,
 };

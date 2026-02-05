@@ -2,8 +2,8 @@
  * Delhivery Webhook Handler
  * 
  * Handles Delhivery-specific webhook processing with:
- * - IP whitelist verification (Delhivery has NO signature support)
- * - Custom payload parsing
+ * - Authorization Token verification (Custom Header)
+ * - Standard JSON payload parsing
  * - Integration with StatusMapperService
  */
 
@@ -22,8 +22,10 @@ export class DelhiveryWebhookHandler extends BaseWebhookHandler {
     constructor() {
         const config: WebhookConfig = {
             courier: 'delhivery',
-            verificationStrategy: VerificationStrategy.IP_WHITELIST,
-            allowedIPs: process.env.DELHIVERY_WEBHOOK_ALLOWED_IPS?.split(',') || []
+            // Delhivery uses Authorization token in header for webhook verification
+            verificationStrategy: VerificationStrategy.API_KEY,
+            apiKeyHeader: 'Authorization',
+            secretKey: process.env.DELHIVERY_WEBHOOK_SECRET
         };
 
         super(config);
@@ -32,37 +34,51 @@ export class DelhiveryWebhookHandler extends BaseWebhookHandler {
     /**
      * Parse Delhivery-specific webhook payload
      * 
-     * Based on Delhivery API documentation:
-     * https://developers.delhivery.com/docs/webhooks
+     * Payload structure:
+     * {
+     *   "Shipment": {
+     *     "AWB": "1234567890",
+     *     "Status": {
+     *       "Status": "In Transit",
+     *       "StatusType": "UD",
+     *       ...
+     *     }
+     *   }
+     * }
      */
     parseWebhook(req: Request): WebhookPayload {
         const body = req.body;
-        const shipment = body.Shipment || body;
-        const status = shipment.Status || {};
+        // Handle both casing structure if needed, usually it's "Shipment"
+        const shipment = body.Shipment || body.shipment || body;
 
-        const awb = shipment.AWB || shipment.waybill || '';
-        const statusCode = status.Status || status.StatusCode || 'UNKNOWN';
-        const timestamp = status.StatusDateTime
-            ? new Date(status.StatusDateTime)
-            : new Date();
+        if (!shipment) {
+            throw new Error('Invalid payload: Missing Shipment object');
+        }
+
+        const statusObj = shipment.Status || {};
+        // AWB might be nested or direct depending on payload version
+        const awb = shipment.AWB || shipment.waybill || body.awb;
+
+        if (!awb) {
+            throw new Error('Invalid payload: Missing AWB');
+        }
 
         return {
             courier: 'delhivery',
-            awb,
-            event: status.StatusType || 'status_update',
-            status: statusCode,
-            timestamp,
+            awb: String(awb),
+            event: statusObj.StatusType || 'status_update',
+            status: statusObj.Status || 'UNKNOWN',
+            timestamp: statusObj.StatusDateTime
+                ? new Date(statusObj.StatusDateTime)
+                : new Date(),
             rawPayload: body,
             metadata: {
-                location: status.StatusLocation || '',
-                description: status.Instructions || status.Remarks || '',
-                nslCode: shipment.NSLCode || '',
-                pickupDate: shipment.PickUpDate || '',
-                // Additional Delhivery-specific fields
-                orderNumber: shipment.ReferenceNo || '',
-                clientName: shipment.ClientName || '',
-                destination: shipment.Destination || '',
-                origin: shipment.Origin || ''
+                statusType: statusObj.StatusType,
+                location: statusObj.StatusLocation,
+                instructions: statusObj.Instructions || statusObj.Remarks,
+                scanTime: statusObj.StatusDateTime,
+                nslCode: shipment.NSLCode,
+                refId: shipment.ReferenceNo
             }
         };
     }

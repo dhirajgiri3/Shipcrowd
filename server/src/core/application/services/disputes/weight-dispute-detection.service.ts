@@ -74,6 +74,7 @@ import WeightDispute from '../../../../infrastructure/database/mongoose/models/l
 import { Shipment, Order, Company } from '../../../../infrastructure/database/mongoose/models';
 import { IShipment } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import { WeightDisputeNotificationService } from './weight-dispute-notification.service';
+import skuWeightProfileService from '../sku/sku-weight-profile.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -231,6 +232,23 @@ class WeightDisputeDetectionService {
                 });
 
                 await session.commitTransaction();
+
+                // Week 3: Learn from verified weight for SKU profile (single-SKU orders only)
+                const actualKg = this.convertToKg(actualWeight);
+                try {
+                    const order = await Order.findById(shipment.orderId).select('products').lean();
+                    if (order?.products?.length === 1 && order.products[0].quantity === 1 && order.products[0].sku) {
+                        await skuWeightProfileService.learnFromShipment(
+                            shipment.companyId.toString(),
+                            order.products[0].sku,
+                            actualKg,
+                            order.products[0].name
+                        );
+                    }
+                } catch (learnErr: any) {
+                    logger.warn('[WeightDispute] SKU learn from shipment failed', { shipmentId, error: learnErr.message });
+                }
+
                 return null;
             }
         } catch (error) {

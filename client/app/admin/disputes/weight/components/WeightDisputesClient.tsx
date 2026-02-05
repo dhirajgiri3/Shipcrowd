@@ -6,7 +6,7 @@ import { AdminDisputesTable } from '@/src/features/disputes/components/AdminDisp
 import { useAdminDisputeMetrics, useAdminDisputeAnalytics } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
 import { formatCompactCurrency } from '@/src/lib/utils';
 import { Loader } from '@/src/components/ui/feedback/Loader';
-import { AlertCircle, CheckCircle, Clock, FileText, TrendingUp } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 
 export function WeightDisputesClient() {
     const { data: metrics, isLoading: metricsLoading } = useAdminDisputeMetrics();
@@ -90,28 +90,14 @@ export function WeightDisputesClient() {
             </div>
 
             {/* Resolution Stats */}
-            {analytics?.stats && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardContent className="p-4 flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Seller Response Rate</p>
-                                <p className="text-xl font-bold text-[var(--text-primary)]">
-                                    {(analytics.stats.sellerResponseRate * 100).toFixed(1)}%
-                                </p>
-                            </div>
-                            <div className="p-3 bg-[var(--info-bg)] rounded-full">
-                                <TrendingUp className="h-5 w-5 text-[var(--info)]" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
+            {analytics?.stats?.overview && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card>
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-secondary)]">Avg Resolution Time</p>
                                 <p className="text-xl font-bold text-[var(--text-primary)]">
-                                    {(metrics?.averageResolutionTime || 0).toFixed(1)}h
+                                    {(analytics.stats.resolutionTimeStats.averageHours || 0).toFixed(1)}h
                                 </p>
                             </div>
                             <div className="p-3 bg-[var(--success-bg)] rounded-full">
@@ -123,13 +109,13 @@ export function WeightDisputesClient() {
                     <Card>
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Auto-Resolve Rate</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Avg Discrepancy</p>
                                 <p className="text-xl font-bold text-[var(--text-primary)]">
-                                    {(analytics.stats.autoResolveRate * 100).toFixed(1)}%
+                                    {(analytics.stats.overview.averageDiscrepancy || 0).toFixed(1)}%
                                 </p>
                             </div>
-                            <div className="p-3 bg-[var(--primary-blue-soft)] rounded-full">
-                                <CheckCircle className="h-5 w-5 text-[var(--primary-blue)]" />
+                            <div className="p-3 bg-[var(--warning-bg)] rounded-full">
+                                <AlertCircle className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </CardContent>
                     </Card>
@@ -137,13 +123,10 @@ export function WeightDisputesClient() {
                     <Card>
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Avg Discrepancy</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Resolved Disputes</p>
                                 <p className="text-xl font-bold text-[var(--text-primary)]">
-                                    {(analytics.stats.averageDiscrepancy || 0).toFixed(1)}%
+                                    {analytics.stats.overview.resolved || 0}
                                 </p>
-                            </div>
-                            <div className="p-3 bg-[var(--warning-bg)] rounded-full">
-                                <AlertCircle className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </CardContent>
                     </Card>

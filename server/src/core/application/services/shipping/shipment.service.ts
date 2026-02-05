@@ -13,6 +13,7 @@ import { AuthenticationError, ValidationError, DatabaseError, AppError, NotFound
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import WalletService from '../wallet/wallet.service';
 import WebhookDispatcherService from '../webhooks/webhook-dispatcher.service';
+import skuWeightProfileService from '../sku/sku-weight-profile.service';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -200,6 +201,40 @@ export class ShipmentService {
     }
 
     /**
+     * Calculate total weight with SKU Weight Profile suggestions (Week 3)
+     * When product weight is missing or zero and product has SKU, uses learned weight from profile.
+     * @returns totalWeight in kg and whether any suggestion was used
+     */
+    static async calculateTotalWeightWithSuggestions(
+        companyId: string,
+        products: Array<{ sku?: string; weight?: number; quantity: number }>
+    ): Promise<{ totalWeight: number; usedSuggestion: boolean }> {
+        let usedSuggestion = false;
+        let totalWeight = 0;
+
+        for (const p of products) {
+            let weightKg = p.weight && p.weight > 0 ? p.weight : 0.5; // default 0.5 kg
+
+            if ((!p.weight || p.weight <= 0) && p.sku) {
+                try {
+                    const suggestion = await skuWeightProfileService.suggestWeight(companyId, p.sku);
+                    if (suggestion && suggestion.confidenceScore >= 50) {
+                        weightKg = suggestion.value;
+                        usedSuggestion = true;
+                    }
+                } catch (_) {
+                    // Keep default 0.5 on error
+                }
+            }
+
+            totalWeight += weightKg * p.quantity;
+        }
+
+        totalWeight = Math.round(totalWeight * 1000) / 1000; // 3 decimal places
+        return { totalWeight, usedSuggestion };
+    }
+
+    /**
      * Select carrier for shipment
      * @param args Carrier selection parameters
      * @returns Selected carrier information
@@ -316,8 +351,11 @@ export class ShipmentService {
 
             const originPincode = await this.getWarehouseOriginPincode(warehouseId, companyId);
 
-            // Calculate weight and select carrier
-            const totalWeight = this.calculateTotalWeight(order.products);
+            // Calculate weight (use SKU Weight Profile suggestions when product weight missing - Week 3)
+            const { totalWeight, usedSuggestion } = await ShipmentService.calculateTotalWeightWithSuggestions(
+                companyId.toString(),
+                order.products
+            );
             const serviceType = payload.serviceType as 'express' | 'standard';
 
             let selectedOption: any;
@@ -458,7 +496,8 @@ export class ShipmentService {
                 weights: {
                     declared: {
                         value: totalWeight,
-                        unit: 'kg'
+                        unit: 'kg',
+                        ...(usedSuggestion ? { source: 'sku_master' as const } : {})
                     },
                     verified: false
                 },

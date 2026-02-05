@@ -567,6 +567,120 @@ export class WeightDisputeResolutionService {
 
         return totalHours / resolvedDisputes.length;
     }
+
+    /**
+     * Batch operations on multiple disputes (Admin only)
+     * 
+     * Supports actions:
+     * - approve_seller: Resolve all in seller's favor
+     * - approve_carrier: Resolve all in carrier's favor
+     * - request_evidence: Request evidence from sellers
+     * - escalate: Mark for manual escalation
+     * - waive: Waive all disputes
+     * 
+     * @param disputeIds Array of dispute IDs
+     * @param action Batch action to perform
+     * @param userId Admin user ID
+     * @param notes Optional notes
+     * @returns Summary of batch operation results
+     */
+    async batchOperation(
+        disputeIds: string[],
+        action: 'approve_seller' | 'approve_carrier' | 'request_evidence' | 'escalate' | 'waive',
+        userId: string,
+        notes?: string
+    ): Promise<{ success: number; failed: number; errors: any[] }> {
+        logger.info('[WeightDispute] Starting batch operation', {
+            count: disputeIds.length,
+            action,
+            userId,
+        });
+
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: [] as any[],
+        };
+
+        for (const disputeId of disputeIds) {
+            try {
+                switch (action) {
+                    case 'approve_seller':
+                        await this.resolveDispute(disputeId, userId, {
+                            outcome: 'seller_favor',
+                            reasonCode: 'BATCH_APPROVAL_SELLER',
+                            notes: notes || 'Batch approved in seller favor',
+                        });
+                        break;
+
+                    case 'approve_carrier':
+                        await this.resolveDispute(disputeId, userId, {
+                            outcome: 'Shipcrowd_favor',
+                            reasonCode: 'BATCH_APPROVAL_CARRIER',
+                            notes: notes || 'Batch approved in carrier favor',
+                        });
+                        break;
+
+                    case 'waive':
+                        await this.resolveDispute(disputeId, userId, {
+                            outcome: 'waived',
+                            reasonCode: 'BATCH_WAIVER',
+                            notes: notes || 'Batch waived',
+                        });
+                        break;
+
+                    case 'request_evidence':
+                        await WeightDispute.findByIdAndUpdate(disputeId, {
+                            status: 'pending',
+                            $push: {
+                                timeline: {
+                                    status: 'pending',
+                                    timestamp: new Date(),
+                                    actor: userId,
+                                    action: notes || 'Evidence requested via batch operation',
+                                },
+                            },
+                        });
+                        break;
+
+                    case 'escalate':
+                        await WeightDispute.findByIdAndUpdate(disputeId, {
+                            $push: {
+                                timeline: {
+                                    status: 'escalated',
+                                    timestamp: new Date(),
+                                    actor: userId,
+                                    action: notes || 'Escalated via batch operation',
+                                },
+                            },
+                        });
+                        break;
+                }
+
+                results.success++;
+
+            } catch (error: any) {
+                results.failed++;
+                results.errors.push({
+                    disputeId,
+                    error: error.message || 'Unknown error',
+                });
+
+                logger.error('[WeightDispute] Batch operation failed for dispute', {
+                    disputeId,
+                    action,
+                    error: error.message,
+                });
+            }
+        }
+
+        logger.info('[WeightDispute] Batch operation completed', {
+            ...results,
+            action,
+        });
+
+        return results;
+    }
 }
 
 export default new WeightDisputeResolutionService();

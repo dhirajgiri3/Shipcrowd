@@ -4,7 +4,4 @@
 
 export { VelocityWebhookHandler } from './velocity-webhook-handler';
 export { DelhiveryWebhookHandler } from './delhivery-webhook-handler';
-
-// Future exports:
-// export { EkartWebhookHandler } from './ekart-webhook-handler';
-// export { DTDCWebhookHandler } from './dtdc-webhook-handler';
+export { EkartWebhookHandler } from './ekart-webhook-handler';

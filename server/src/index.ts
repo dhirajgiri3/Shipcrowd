@@ -54,10 +54,11 @@ const startServer = async (): Promise<void> => {
 
         // Initialize Courier Status Mapper (register all courier status mappings)
         const { StatusMapperService } = await import('./core/application/services/courier/status-mappings/status-mapper.service');
-        const { VELOCITY_STATUS_MAPPINGS, DELHIVERY_STATUS_MAPPINGS } = await import('./core/application/services/courier/status-mappings/index');
+        const { VELOCITY_STATUS_MAPPINGS, DELHIVERY_STATUS_MAPPINGS, EKART_STATUS_MAPPINGS } = await import('./core/application/services/courier/status-mappings/index');
 
         StatusMapperService.register(VELOCITY_STATUS_MAPPINGS);
         StatusMapperService.register(DELHIVERY_STATUS_MAPPINGS);
+        StatusMapperService.register(EKART_STATUS_MAPPINGS);
         logger.info('Courier status mappings registered', {
             couriers: StatusMapperService.getRegisteredCouriers()
         });

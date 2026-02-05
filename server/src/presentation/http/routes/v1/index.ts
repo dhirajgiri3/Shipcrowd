@@ -56,6 +56,7 @@ import ndrRoutes from './ndr/ndr.routes';
 import ndrCommunicationRoutes from './ndr/ndr-communication.routes';
 import rtoRoutes from './rto/rto.routes';
 import weightDisputesRoutes from './disputes/weight-disputes.routes';
+import packingStationRoutes from './disputes/packing-station.routes';
 import disputeRoutes from './logistics/dispute.routes';
 import fraudRoutes from './fraud/fraud.routes';
 
@@ -97,6 +98,7 @@ import sellerHealthRoutes from './system/seller-health.routes';
 import userManagementRoutes from './admin/user-management.routes';
 import impersonationRoutes from './admin/impersonation.routes';
 import featureFlagRoutes from './admin/feature-flag.routes';
+import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
 
 // ============================================================================
 // 10. WEBHOOKS
@@ -162,6 +164,7 @@ router.use('/admin/ndr', ndrRoutes); // Alias for frontend compatibility
 router.use('/ndr/communication', ndrCommunicationRoutes);
 router.use('/rto', rtoRoutes);
 router.use('/disputes/weight', weightDisputesRoutes);
+router.use('/packing-station', packingStationRoutes); // Week 2: Packing station evidence capture
 router.use('/weight-discrepancies', weightDisputesRoutes); // Alias for frontend compatibility
 router.use('/disputes', disputeRoutes); // General Disputes
 router.use('/fraud', fraudRoutes);
@@ -198,6 +201,7 @@ router.use('/admin/seller-health', sellerHealthRoutes);
 router.use('/admin/users', userManagementRoutes);
 router.use('/admin/impersonation', impersonationRoutes);
 router.use('/admin/feature-flags', featureFlagRoutes);
+router.use('/admin/sku-weight-profiles', skuWeightProfileRoutes);
 
 // 10. Webhooks
 router.use('/webhooks/velocity', velocityWebhookRoutes);

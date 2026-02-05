@@ -168,28 +168,77 @@ export interface DisputeMetrics {
 
 export interface DisputeAnalytics {
     stats: {
-        totalDisputes: number;
-        totalFinancialImpact: number;
-        averageDiscrepancy: number;
-        sellerResponseRate: number;
-        autoResolveRate: number;
-        resolutionOutcomes: {
-            seller_favor: number;
-            Shipcrowd_favor: number;
-            split: number;
-            waived: number;
+        overview: {
+            totalDisputes: number;
+            totalFinancialImpact: number;
+            averageFinancialImpact: number;
+            averageDiscrepancy: number;
+            pending: number;
+            underReview: number;
+            resolved: number;
+            autoResolved?: number; // optional for backwards-compat if added later
+        };
+        byOutcome: Array<{
+            outcome: ResolutionOutcome;
+            count: number;
+            totalImpact: number;
+        }>;
+        byCarrier: Array<{
+            carrier: string;
+            count: number;
+            totalImpact: number;
+            avgDiscrepancy: number;
+            sellerFavorCount: number;
+            carrierFavorCount: number;
+        }>;
+        resolutionTimeStats: {
+            averageHours: number;
+            minHours: number;
+            maxHours: number;
+            within24Hours: number;
+            within48Hours: number;
+            beyond7Days: number;
         };
     };
     trends: Array<{
         date: string;
         count: number;
         totalImpact: number;
+        averageImpact?: number;
     }>;
     highRiskSellers: Array<{
         companyId: string;
-        companyName: string;
         disputeCount: number;
-        totalDiscrepancy: number;
         averageDiscrepancy: number;
+        totalFinancialImpact: number;
+        riskScore: number;
     }>;
+    carrierPerformance: Array<{
+        carrier: string;
+        disputeCount: number;
+        totalFinancialImpact: number;
+        avgDiscrepancyPct: number;
+        sellerFavorRate: number;
+        carrierFavorRate: number;
+    }>;
+    fraudSignals: {
+        highRiskSellers: Array<{
+            companyId: string;
+            disputeCount: number;
+            totalFinancialImpact: number;
+            averageDiscrepancy: number;
+            riskScore: number;
+        }>;
+        underDeclarationPattern: Array<{
+            companyId: string;
+            disputeCount: number;
+            avgDeclaredVsActual: number;
+        }>;
+        recentSpike: Array<{
+            companyId: string;
+            currentWeek: number;
+            previousWeek: number;
+            changePct: number;
+        }>;
+    };
 }

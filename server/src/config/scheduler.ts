@@ -55,6 +55,16 @@ export const initializeScheduler = (): void => {
     });
     wdScanUpdatesJob.start();
 
+    // 4. Send auto-resolve reminders (Daily at 10 AM)
+    const wdRemindersJob = new CronJob('0 10 * * *', async () => {
+      try {
+        await WeightDisputeJob.queueSendReminders();
+      } catch (error) {
+        logger.error('Error queuing WD reminders job:', error);
+      }
+    });
+    wdRemindersJob.start();
+
     // COD Remittance Automation
     // 1. Daily Batch Creation (Daily at 4 AM)
     const codBatchJob = new CronJob('0 4 * * *', async () => {
