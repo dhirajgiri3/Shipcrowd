@@ -494,7 +494,7 @@ Need help? Reply to this message.
                         {
                             uplId: (result as any).uplId,
                             awb: ndrEvent.awb,
-                            ndrEventId: ndrEvent._id.toString()
+                            ndrEventId: String(ndrEvent._id)
                         },
                         {
                             attempts: 10,

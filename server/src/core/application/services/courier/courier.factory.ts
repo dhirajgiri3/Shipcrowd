@@ -15,6 +15,7 @@ import mongoose from 'mongoose';
 import { ICourierAdapter } from '../../../../infrastructure/external/couriers/base/courier.adapter';
 import { VelocityShipfastProvider } from '../../../../infrastructure/external/couriers/velocity';
 import { DelhiveryProvider } from '../../../../infrastructure/external/couriers/delhivery';
+import { EkartProvider } from '../../../../infrastructure/external/couriers/ekart/ekart.provider';
 import { Integration } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
@@ -70,6 +71,10 @@ export class CourierFactory {
 
       case 'delhivery':
         provider = new DelhiveryProvider(companyId);
+        break;
+
+      case 'ekart':
+        provider = new EkartProvider(companyId);
         break;
       //
       // case 'dtdc':
