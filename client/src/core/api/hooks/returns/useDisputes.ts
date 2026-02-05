@@ -59,7 +59,19 @@ export function useWeightDisputes(
             if (filters?.limit) params.append('limit', filters.limit.toString());
 
             const response = await apiClient.get(`/disputes/weight?${params.toString()}`);
-            return response.data.data;
+            const raw = response.data;
+            const pagination = raw.pagination
+                ? {
+                    page: raw.pagination.page,
+                    limit: raw.pagination.limit,
+                    total: raw.pagination.total,
+                    totalPages: (raw.pagination as { totalPages?: number }).totalPages ?? (raw.pagination as { pages?: number }).pages ?? 0,
+                }
+                : { page: 1, limit: 25, total: 0, totalPages: 0 };
+            return {
+                disputes: Array.isArray(raw.data) ? raw.data : [],
+                pagination,
+            };
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,

@@ -58,13 +58,13 @@ export class PackingStationEvidenceService {
      */
     async submitPackingEvidence(data: PackingEvidenceData): Promise<any> {
         const session = await mongoose.startSession();
-        
+
         try {
             session.startTransaction();
 
             // 1. Validate shipment exists and is in correct state
             const shipment = await Shipment.findById(data.shipmentId).session(session);
-            
+
             if (!shipment) {
                 throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
             }
@@ -117,7 +117,7 @@ export class PackingStationEvidenceService {
                 shipment.statusHistory.push({
                     status: 'ready_for_pickup',
                     timestamp: new Date(),
-                    comment: 'Package weighed and photographed at packing station',
+                    description: 'Package weighed and photographed at packing station',
                     updatedBy: new mongoose.Types.ObjectId(data.packedBy),
                 });
             }

@@ -42,7 +42,7 @@ export function usePackingStation(
         queryKey: queryKeys.warehouseOps.packingStation(id),
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: PackingStation }>(
-                '/warehouses/packing/stations/${id}'
+                `/warehouses/packing/stations/${id}`
             );
             return data.data;
         },

@@ -17,7 +17,7 @@ import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 export async function listProfiles(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
-        const { page, limit, skip } = parsePagination(req);
+        const { page, limit, skip } = parsePagination(req.query as any);
         const companyId = (req.query.companyId as string) || auth.companyId?.toString();
         const minConfidence = req.query.minConfidence ? Number(req.query.minConfidence) : undefined;
         const onlyFrozen = req.query.onlyFrozen === 'true';

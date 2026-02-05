@@ -499,7 +499,7 @@ export const batchOperation = async (
             auth.companyId,
             'batch_update',
             'weight_dispute',
-            null,
+            undefined,
             {
                 action: 'batch_operation',
                 operation: action,

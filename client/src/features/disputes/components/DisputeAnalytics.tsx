@@ -80,13 +80,16 @@ export function DisputeAnalytics() {
         );
     }
 
-    // Calculate derived metrics from new stats shape
-    const totalDisputes = analytics.stats.overview.totalDisputes || 0;
-    const resolvedCount = analytics.stats.overview.resolved || 0;
+    // Calculate derived metrics from new stats shape (safe for empty/partial overview)
+    const overview = analytics.stats?.overview ?? {};
+    const totalDisputes = overview.totalDisputes ?? 0;
+    const resolvedCount = overview.resolved ?? 0;
     const resolutionRate = totalDisputes > 0 ? resolvedCount / totalDisputes : 0;
+    const autoResolvedCount = overview.autoResolved ?? 0;
+    const autoResolveRate = totalDisputes > 0 ? (autoResolvedCount / totalDisputes) * 100 : 0;
 
     // Prepare outcome distribution data for pie chart from byOutcome
-    const outcomeDistribution = analytics.stats.byOutcome
+    const outcomeDistribution = (analytics.stats?.byOutcome ?? [])
         .map((o) => ({
             name:
                 o.outcome === 'seller_favor'
@@ -101,14 +104,14 @@ export function DisputeAnalytics() {
         .filter((item) => item.count > 0);
 
     // Prepare trends data
-    const trendsData = analytics.trends.map((trend) => ({
+    const trendsData = (analytics.trends ?? []).map((trend) => ({
         date: trend.date,
         disputes: trend.count,
         impact: trend.totalImpact,
     }));
 
     // Prepare high-risk sellers data
-    const highRiskSellers = analytics.highRiskSellers.map((seller) => ({
+    const highRiskSellers = (analytics.highRiskSellers ?? []).map((seller) => ({
         sellerId: seller.companyId,
         totalDisputes: seller.disputeCount,
         disputeRate: totalDisputes > 0 ? seller.disputeCount / totalDisputes : 0,
@@ -180,7 +183,7 @@ export function DisputeAnalytics() {
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Avg Discrepancy</p>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                                {analytics.stats.overview.averageDiscrepancy.toFixed(1)}%
+                                {(overview.averageDiscrepancy ?? 0).toFixed(1)}%
                             </p>
                         </div>
                         <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
@@ -197,7 +200,7 @@ export function DisputeAnalytics() {
                 {/* Carrier performance table */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Carrier Performance</h3>
-                    {analytics.carrierPerformance.length === 0 ? (
+                    {(analytics.carrierPerformance ?? []).length === 0 ? (
                         <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available for this range.</p>
                     ) : (
                         <div className="overflow-x-auto">
@@ -212,7 +215,7 @@ export function DisputeAnalytics() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {analytics.carrierPerformance.map((c) => (
+                                    {(analytics.carrierPerformance ?? []).map((c) => (
                                         <tr key={c.carrier} className="border-b border-gray-50 dark:border-gray-800">
                                             <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{c.carrier || 'Unknown'}</td>
                                             <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{c.disputeCount}</td>
@@ -239,11 +242,11 @@ export function DisputeAnalytics() {
 
                     <div>
                         <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Under‑Declaration Pattern</h4>
-                        {analytics.fraudSignals.underDeclarationPattern.length === 0 ? (
+                        {(analytics.fraudSignals?.underDeclarationPattern ?? []).length === 0 ? (
                             <p className="text-sm text-gray-500 dark:text-gray-400">No suspicious under‑declaration patterns detected.</p>
                         ) : (
                             <ul className="space-y-1 text-sm">
-                                {analytics.fraudSignals.underDeclarationPattern.map((entry) => (
+                                {(analytics.fraudSignals?.underDeclarationPattern ?? []).map((entry) => (
                                     <li key={entry.companyId} className="flex items-center justify-between">
                                         <span className="text-gray-900 dark:text-gray-100">{entry.companyId}</span>
                                         <span className="text-gray-600 dark:text-gray-300">
@@ -257,11 +260,11 @@ export function DisputeAnalytics() {
 
                     <div>
                         <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Recent Dispute Spikes</h4>
-                        {analytics.fraudSignals.recentSpike.length === 0 ? (
+                        {(analytics.fraudSignals?.recentSpike ?? []).length === 0 ? (
                             <p className="text-sm text-gray-500 dark:text-gray-400">No recent spikes detected.</p>
                         ) : (
                             <ul className="space-y-1 text-sm">
-                                {analytics.fraudSignals.recentSpike.map((entry) => (
+                                {(analytics.fraudSignals?.recentSpike ?? []).map((entry) => (
                                     <li key={entry.companyId} className="flex items-center justify-between">
                                         <span className="text-gray-900 dark:text-gray-100">{entry.companyId}</span>
                                         <span className="text-gray-600 dark:text-gray-300">
@@ -338,7 +341,7 @@ export function DisputeAnalytics() {
                             <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Auto-Resolve Rate</p>
                                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
-                                    {(analytics.stats.autoResolveRate * 100).toFixed(1)}%
+                                    {autoResolveRate.toFixed(1)}%
                                 </p>
                             </div>
                             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
@@ -352,7 +355,7 @@ export function DisputeAnalytics() {
                             <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Financial Impact</p>
                                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-                                    {formatCurrency(analytics.stats.totalFinancialImpact)}
+                                    {formatCurrency(overview.totalFinancialImpact ?? 0)}
                                 </p>
                             </div>
                             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
@@ -412,7 +415,7 @@ export function DisputeAnalytics() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                                            {seller.averageDiscrepancy.toFixed(1)}%
+                                            {(seller.averageDiscrepancy ?? 0).toFixed(1)}%
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="text-sm font-semibold text-red-600 dark:text-red-400">
