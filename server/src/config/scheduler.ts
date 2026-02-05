@@ -5,6 +5,7 @@ import WeightDisputeJob from '../infrastructure/jobs/disputes/weight-dispute.job
 import CODRemittanceJob from '../infrastructure/jobs/finance/cod-remittance.job';
 import InvoiceGenerationJob from '../infrastructure/jobs/finance/invoice-generation.job';
 import LostShipmentDetectionJob from '../infrastructure/jobs/logistics/shipping/lost-shipment-detection.job';
+import NDRWeeklyReportJob from '../infrastructure/jobs/ndr/ndr-weekly-report.job';
 import { startAutoRechargeScheduler } from '../infrastructure/schedulers/auto-recharge.scheduler';
 
 /**
@@ -108,6 +109,16 @@ export const initializeScheduler = (): void => {
       }
     });
     invoiceJob.start();
+
+    // Weekly NDR Report Generation (Monday at 9:00 AM)
+    const ndrReportJob = new CronJob('0 9 * * 1', async () => {
+      try {
+        await NDRWeeklyReportJob.queueWeeklyReports();
+      } catch (error) {
+        logger.error('Error queuing weekly NDR report job:', error);
+      }
+    });
+    ndrReportJob.start();
 
     logger.info('Scheduler initialized successfully');
   } catch (error) {

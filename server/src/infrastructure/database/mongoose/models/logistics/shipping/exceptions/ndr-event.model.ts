@@ -44,6 +44,8 @@ export interface INDREvent extends Document {
     order: mongoose.Types.ObjectId;
     classificationConfidence?: number;
     classificationSource: 'openai' | 'keyword' | 'manual';
+    magicLinkClicked?: boolean;
+    magicLinkClickedAt?: Date;
     idempotencyKey?: string; // For RTO trigger idempotency
     createdAt: Date;
     updatedAt: Date;
@@ -180,6 +182,14 @@ const NDREventSchema = new Schema<INDREvent>(
             type: String,
             enum: ['openai', 'keyword', 'manual'],
             default: 'keyword',
+        },
+        // Phase 6: Magic Link Tracking
+        magicLinkClicked: {
+            type: Boolean,
+            default: false,
+        },
+        magicLinkClickedAt: {
+            type: Date,
         },
         // IDEMPOTENCY KEY for RTO triggering (Issue #5)
         // Prevents duplicate RTO triggers from same NDR event

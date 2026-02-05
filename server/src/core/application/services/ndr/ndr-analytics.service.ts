@@ -14,7 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
+import { NDREvent, PreventionEvent } from '../../../../infrastructure/database/mongoose/models';
 import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -441,4 +441,232 @@ export default class NDRAnalyticsService {
             recentRTOs,
         };
     }
+    /**
+     * Get Customer Self-Service Metrics
+     */
+    static async getCustomerSelfServiceMetrics(
+        companyId: string,
+        dateRange?: DateRange
+    ): Promise<{
+        magicLinksSent: number;
+        magicLinksClicked: number;
+        ctr: number;
+        customerResponses: number;
+        responseRate: number;
+        actionBreakdown: Record<string, number>;
+    }> {
+        const matchFilter: any = { company: companyId };
+        if (dateRange) {
+            matchFilter.detectedAt = { $gte: dateRange.start, $lte: dateRange.end };
+        }
+
+        const [events, clickedEvents] = await Promise.all([
+            NDREvent.find(matchFilter).select('magicLinkClicked magicLinkClickedAt customerContacted customerResponse resolutionActions'),
+            NDREvent.countDocuments({ ...matchFilter, magicLinkClicked: true })
+        ]);
+
+        const magicLinksSent = events.length; // Assuming every NDR sends a link (Phase 4 Logic)
+        const customerResponses = events.filter(e => e.customerResponse || e.resolutionActions.some(a => ['update_address', 'request_reattempt', 'trigger_rto'].includes(a.actionType))).length;
+
+        const actionBreakdown: Record<string, number> = {
+            update_address: 0,
+            request_reattempt: 0,
+            cancel: 0
+        };
+
+        events.forEach(e => {
+            e.resolutionActions.forEach(a => {
+                if (a.actionType === 'update_address') actionBreakdown.update_address++;
+                if (a.actionType === 'request_reattempt') actionBreakdown.request_reattempt++;
+                if (a.actionType === 'trigger_rto') actionBreakdown.cancel++; // 'trigger_rto' via portal is cancellation
+            });
+        });
+
+        return {
+            magicLinksSent,
+            magicLinksClicked: clickedEvents,
+            ctr: magicLinksSent > 0 ? Math.round((clickedEvents / magicLinksSent) * 100) : 0,
+            customerResponses,
+            responseRate: magicLinksSent > 0 ? Math.round((customerResponses / magicLinksSent) * 100) : 0,
+            actionBreakdown
+        };
+    }
+
+    /**
+     * Get Prevention Layer Metrics
+     */
+    static async getPreventionLayerMetrics(
+        companyId: string,
+        dateRange?: DateRange
+    ): Promise<{
+        addressValidationBlocks: number;
+        phoneVerificationFailures: number;
+        highRiskOrders: number;
+        codVerificationBlocks: number;
+        totalPrevented: number;
+    }> {
+        const matchFilter: any = { companyId }; // PreventionEvent uses companyId
+        if (dateRange) {
+            matchFilter.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+        }
+
+        const stats = await PreventionEvent.aggregate([
+            { $match: matchFilter },
+            {
+                $group: {
+                    _id: '$eventType',
+                    blocked: {
+                        $sum: { $cond: [{ $eq: ['$action', 'blocked'] }, 1, 0] }
+                    },
+                    flagged: {
+                        $sum: { $cond: [{ $eq: ['$action', 'flagged'] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        const metrics = {
+            addressValidationBlocks: 0,
+            phoneVerificationFailures: 0,
+            highRiskOrders: 0,
+            codVerificationBlocks: 0,
+            totalPrevented: 0
+        };
+
+        stats.forEach(s => {
+            if (s._id === 'address_validation') metrics.addressValidationBlocks = s.blocked;
+            if (s._id === 'phone_verification') metrics.phoneVerificationFailures = s.blocked;
+            if (s._id === 'risk_scoring') metrics.highRiskOrders = s.flagged + s.blocked;
+            if (s._id === 'cod_verification') metrics.codVerificationBlocks = s.blocked;
+        });
+
+        metrics.totalPrevented = metrics.addressValidationBlocks + metrics.phoneVerificationFailures + metrics.codVerificationBlocks;
+
+        return metrics;
+    }
+
+    /**
+     * Get ROI Metrics
+     */
+    static async getROIMetrics(
+        companyId: string,
+        dateRange?: DateRange
+    ): Promise<{
+        baselineRTOCost: number;
+        currentRTOCost: number;
+        savings: number;
+        operationalCosts: number;
+        netSavings: number;
+        roi: number;
+    }> {
+        // Configuration Constants (Should be dynamic in future)
+        const BASELINE_RTO_RATE = 0.26; // 26%
+        const AVG_SHIPPING_COST = 80;
+        const AVG_RTO_PENALTY = 50; // Forward + Reverse usually higher, simplified
+        const SMS_COST = 0.20;
+        const WHATSAPP_COST = 0.80;
+        const EMAIL_COST = 0.00;
+
+        // Get Current Stats
+        const ndrStats = await this.getNDRStats(companyId, dateRange);
+
+        // Calculate Estimated Total Shipments (Back-calculate from NDR count / Typical NDR Rate of 15% - just an estimate if not passed)
+        // Better: Get total shipments count like in getNDRByCourier
+
+        let totalShipments = 0;
+
+        // Dynamic Import to avoid circular dep
+        try {
+            const ShipmentModule = await import('../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model.js') as any;
+            const Shipment = ShipmentModule.default;
+
+            const shipQuery: any = { companyId };
+            if (dateRange) shipQuery.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+            totalShipments = await Shipment.countDocuments(shipQuery);
+        } catch (e) {
+            logger.warn('Could not fetch total shipments for ROI', e);
+            totalShipments = ndrStats.total * 5; // Fallback estimate
+        }
+
+        if (totalShipments === 0) return { baselineRTOCost: 0, currentRTOCost: 0, savings: 0, operationalCosts: 0, netSavings: 0, roi: 0 };
+
+        // Calculations
+        const baselineRTOs = Math.round(totalShipments * BASELINE_RTO_RATE);
+        const baselineCost = baselineRTOs * (AVG_SHIPPING_COST + AVG_RTO_PENALTY);
+
+        const currentRTOs = ndrStats.rtoTriggered; // From actual data
+        const currentCost = currentRTOs * (AVG_SHIPPING_COST + AVG_RTO_PENALTY);
+
+        const savings = Math.max(0, baselineCost - currentCost);
+
+        // Operational Costs (Estimate based on NDR count)
+        const ndrCount = ndrStats.total;
+        const operationalCosts = Math.round(
+            (ndrCount * SMS_COST * 2) + // 2 SMS per NDR
+            (ndrCount * WHATSAPP_COST * 1.5) // 1.5 WA per NDR
+        );
+
+        const netSavings = savings - operationalCosts;
+        const roi = operationalCosts > 0 ? Math.round((netSavings / operationalCosts) * 100) : 0;
+
+        return {
+            baselineRTOCost: baselineCost,
+            currentRTOCost: currentCost,
+            savings,
+            operationalCosts,
+            netSavings,
+            roi
+        };
+    }
+
+    /**
+     * Get Weekly Trends Analysis
+     */
+    static async getWeeklyTrendAnalysis(
+        companyId: string,
+        weeks: number = 4
+    ): Promise<{
+        currentWeek: any;
+        trends: any[];
+        insights: string[];
+    }> {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - (weeks * 7));
+
+        const trends = await this.getNDRTrends(companyId, { start: startDate, end: endDate }, 'week');
+
+        const insights: string[] = [];
+
+        if (trends.length >= 2) {
+            const current = trends[trends.length - 1];
+            const previous = trends[trends.length - 2];
+
+            // NDR Volume Trend
+            if (current.count < previous.count) {
+                const diff = Math.round(((previous.count - current.count) / previous.count) * 100);
+                insights.push(`NDR volume decreased by ${diff}% compared to last week.`);
+            } else if (current.count > previous.count) {
+                const diff = Math.round(((current.count - previous.count) / previous.count) * 100);
+                insights.push(`NDR volume increased by ${diff}% compared to last week.`);
+            }
+
+            // Resolution Rate Trend
+            const currRate = current.count > 0 ? (current.resolved / current.count) : 0;
+            const prevRate = previous.count > 0 ? (previous.resolved / previous.count) : 0;
+
+            if (currRate > prevRate) {
+                insights.push('Resolution rate is improving.');
+            } else if (currRate < prevRate) {
+                insights.push('Resolution rate dropped slightly.');
+            }
+        }
+
+        return {
+            currentWeek: trends[trends.length - 1] || {},
+            trends,
+            insights
+        };
+    }
 }
+

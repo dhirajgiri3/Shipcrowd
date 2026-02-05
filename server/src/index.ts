@@ -102,6 +102,11 @@ const startServer = async (): Promise<void> => {
         await LostShipmentDetectionJob.initialize();
         logger.info('Lost shipment detection job initialized');
 
+        // Initialize Weekly NDR Report Job
+        const { default: NDRWeeklyReportJob } = await import('./infrastructure/jobs/ndr/ndr-weekly-report.job');
+        await NDRWeeklyReportJob.initialize();
+        logger.info('Weekly NDR report job initialized');
+
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();
 

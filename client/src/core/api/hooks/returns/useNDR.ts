@@ -24,6 +24,10 @@ import type {
     NDRMetrics,
     NDRAnalytics,
     NDRSettings,
+    NDRSelfServiceMetrics,
+    NDRPreventionMetrics,
+    NDRROIMetrics,
+    NDRWeeklyTrends,
 } from '@/src/types/api/orders';
 
 // ==================== Queries ====================
@@ -100,6 +104,68 @@ export function useNDRSettings() {
         queryFn: async () => {
             // Settings are not yet implemented in backend, using default
             return { autoEscalation: true, notificationChannels: ['sms', 'email'] } as any;
+        },
+    });
+}
+
+// Phase 6: Enhanced Analytics Hooks
+
+/**
+ * Fetch Customer Self-Service Metrics
+ */
+export function useNDRSelfServiceMetrics(filters?: { startDate?: string; endDate?: string }) {
+    return useQuery({
+        queryKey: queryKeys.ndr.selfService(filters),
+        queryFn: async () => {
+            const { data } = await apiClient.get<NDRSelfServiceMetrics>('/ndr/analytics/self-service', {
+                params: filters,
+            });
+            return data;
+        },
+    });
+}
+
+/**
+ * Fetch Prevention Metrics
+ */
+export function useNDRPreventionMetrics(filters?: { startDate?: string; endDate?: string }) {
+    return useQuery({
+        queryKey: queryKeys.ndr.prevention(filters),
+        queryFn: async () => {
+            const { data } = await apiClient.get<NDRPreventionMetrics>('/ndr/analytics/prevention', {
+                params: filters,
+            });
+            return data;
+        },
+    });
+}
+
+/**
+ * Fetch ROI Metrics
+ */
+export function useNDRROIMetrics(filters?: { startDate?: string; endDate?: string }) {
+    return useQuery({
+        queryKey: queryKeys.ndr.roi(filters),
+        queryFn: async () => {
+            const { data } = await apiClient.get<NDRROIMetrics>('/ndr/analytics/roi', {
+                params: filters,
+            });
+            return data;
+        },
+    });
+}
+
+/**
+ * Fetch Weekly Trends
+ */
+export function useNDRWeeklyTrends(weeks: number = 4) {
+    return useQuery({
+        queryKey: queryKeys.ndr.weeklyTrends(weeks),
+        queryFn: async () => {
+            const { data } = await apiClient.get<NDRWeeklyTrends>('/ndr/analytics/weekly-trends', {
+                params: { weeks },
+            });
+            return data;
         },
     });
 }

@@ -791,6 +791,83 @@ export const sendEmailChangeVerification = async (
 };
 
 /**
+ * Send NDR Weekly Report Email
+ */
+export const sendNDRWeeklyReportEmail = async (
+  to: string,
+  companyName: string,
+  reportHtml: string,
+  weekStartDate: string,
+  weekEndDate: string
+): Promise<boolean> => {
+  const subject = `Weekly NDR Report for ${companyName} (${weekStartDate} - ${weekEndDate})`;
+
+  // Check if we have a template ID (optional, future enhancement)
+  const templateId = process.env.SENDGRID_NDR_REPORT_TEMPLATE_ID;
+
+  if (templateId && EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+    return sendEmail(
+      to,
+      subject,
+      '',
+      '',
+      undefined,
+      templateId,
+      {
+        company_name: companyName,
+        week_start: weekStartDate,
+        week_end: weekEndDate,
+        report_content: reportHtml // Assuming template has a {{{report_content}}} placeholder
+      }
+    );
+  } else {
+    // Wrap the report HTML in a standard email layout
+    const finalHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f9fafb; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background-color: #1a56db; color: #ffffff; padding: 20px; text-align: center; }
+          .content { padding: 30px 20px; }
+          .footer { background-color: #f3f4f6; color: #6b7280; padding: 20px; text-align: center; font-size: 12px; }
+          h1 { margin: 0; font-size: 24px; }
+          .date-range { font-size: 14px; opacity: 0.9; margin-top: 5px; }
+          .btn { display: inline-block; background-color: #1a56db; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 20px; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Weekly NDR Insights</h1>
+            <div class="date-range">${weekStartDate} - ${weekEndDate}</div>
+          </div>
+          <div class="content">
+            <p>Hello ${companyName} Team,</p>
+            <p>Here is your weekly summary of Non-Delivery Reports (NDR) and RTO prevention performance.</p>
+            
+            ${reportHtml}
+            
+            <div style="text-align: center;">
+              <a href="${process.env.SELLER_DASHBOARD_URL || 'http://localhost:3000'}/dashboard/ndr" class="btn">View Full Dashboard</a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Shipcrowd. All rights reserved.</p>
+            <p>This is an automated report.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return sendEmail(to, subject, finalHtml);
+  }
+};
+
+
+/**
  * Send a notification about email change to the old email address
  */
 export const sendEmailChangeNotification = async (
@@ -829,6 +906,7 @@ export const sendEmailChangeNotification = async (
     return sendEmail(to, 'Your Email Address Is Being Changed', html);
   }
 };
+
 
 /**
  * Send a recovery email with backup options
@@ -1527,5 +1605,6 @@ export default {
   sendDisputeResolvedEmail,
   sendSLAWarningEmail,
   sendOperationalAlert,
+  sendNDRWeeklyReportEmail,
 };
 

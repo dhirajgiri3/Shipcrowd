@@ -100,6 +100,8 @@ export { default as RTOEvent } from './logistics/shipping/exceptions/rto-event.m
 export * from './logistics/shipping/exceptions/rto-event.model';
 export { default as NDREvent } from './logistics/shipping/exceptions/ndr-event.model';
 export * from './logistics/shipping/exceptions/ndr-event.model';
+export { default as PreventionEvent } from './logistics/shipping/exceptions/prevention-event.model';
+export * from './logistics/shipping/exceptions/prevention-event.model';
 export { default as NDRWorkflow } from './logistics/shipping/exceptions/ndr-workflow.model';
 export * from './logistics/shipping/exceptions/ndr-workflow.model';
 

@@ -11,7 +11,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useNDRAnalytics } from '@/src/core/api/hooks';
+import { useNDRAnalytics, useNDRSelfServiceMetrics, useNDRPreventionMetrics, useNDRROIMetrics } from '@/src/core/api/hooks';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
@@ -50,6 +50,9 @@ export function NDRAnalytics() {
     };
 
     const { data: analytics, isLoading } = useNDRAnalytics(getDateRange(timeRange));
+    const { data: selfService } = useNDRSelfServiceMetrics(getDateRange(timeRange));
+    const { data: prevention } = useNDRPreventionMetrics(getDateRange(timeRange));
+    const { data: roi } = useNDRROIMetrics(getDateRange(timeRange));
 
     if (isLoading) {
         return (
@@ -304,6 +307,110 @@ export function NDRAnalytics() {
                     </LineChart>
                 </ResponsiveContainer>
             </div>
-        </div>
+
+
+            {/* Phase 6: New Analytics Sections */}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Customer Self-Service Performance */}
+                {selfService && (
+                    <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-6">
+                            Customer Self-Service (Magic Link)
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="text-center p-3 bg-[var(--bg-primary)] rounded-lg">
+                                <p className="text-xs text-[var(--text-secondary)]">CTR</p>
+                                <p className="text-2xl font-bold text-[var(--primary-blue)]">{selfService.ctr}%</p>
+                                <p className="text-xs text-[var(--text-tertiary)]">{selfService.magicLinksClicked}/{selfService.magicLinksSent} clicked</p>
+                            </div>
+                            <div className="text-center p-3 bg-[var(--bg-primary)] rounded-lg">
+                                <p className="text-xs text-[var(--text-secondary)]">Response Rate</p>
+                                <p className="text-2xl font-bold text-[var(--success)]">{selfService.responseRate}%</p>
+                                <p className="text-xs text-[var(--text-tertiary)]">{selfService.customerResponses} responses</p>
+                            </div>
+                        </div>
+                        <h4 className="text-sm font-medium text-[var(--text-secondary)] mb-3">Action Breakdown</h4>
+                        <div className="space-y-3">
+                            {Object.entries(selfService.actionBreakdown).map(([action, count]) => (
+                                <div key={action} className="flex items-center justify-between">
+                                    <span className="text-sm text-[var(--text-primary)] capitalize">{action.replace(/_/g, ' ')}</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-24 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-[var(--primary-blue)]"
+                                                style={{ width: `${selfService.customerResponses > 0 ? (count / selfService.customerResponses) * 100 : 0}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-sm font-bold text-[var(--text-primary)]">{count}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Prevention Layer Impact */}
+                {prevention && (
+                    <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-6">
+                            Prevention Layer Impact
+                        </h3>
+                        <div className="flex items-center justify-center mb-6">
+                            <div className="text-center">
+                                <p className="text-sm text-[var(--text-secondary)]">Total Shipments Prevented</p>
+                                <p className="text-4xl font-bold text-[var(--error)]">{prevention.totalPrevented}</p>
+                                <p className="text-xs text-[var(--text-tertiary)]">Potential Bad Deliveries Stopped</p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center p-3 bg-[var(--bg-primary)] rounded-lg">
+                                <span className="text-sm text-[var(--text-secondary)]">Address Validation Blocks</span>
+                                <span className="text-base font-bold text-[var(--text-primary)]">{prevention.addressValidationBlocks}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-[var(--bg-primary)] rounded-lg">
+                                <span className="text-sm text-[var(--text-secondary)]">Fake/Invalid Phone</span>
+                                <span className="text-base font-bold text-[var(--text-primary)]">{prevention.phoneVerificationFailures}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-[var(--bg-primary)] rounded-lg">
+                                <span className="text-sm text-[var(--text-secondary)]">COD Verification Rejected</span>
+                                <span className="text-base font-bold text-[var(--text-primary)]">{prevention.codVerificationBlocks}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ROI & Cost Savings */}
+            {
+                roi && (
+                    <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-6">
+                            NDR Management ROI
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                                <p className="text-sm text-[var(--text-secondary)]">Net Savings</p>
+                                <p className="text-3xl font-bold text-green-500 mt-1">₹{roi.netSavings.toLocaleString('en-IN')}</p>
+                                <p className="text-xs text-[var(--text-tertiary)] mt-1">vs Baseline RTO Rate (26%)</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                                <p className="text-sm text-[var(--text-secondary)]">ROI</p>
+                                <p className="text-3xl font-bold text-blue-500 mt-1">{roi.roi}%</p>
+                                <p className="text-xs text-[var(--text-tertiary)] mt-1">Return on Investment</p>
+                            </div>
+                            <div className="p-4">
+                                <p className="text-sm text-[var(--text-secondary)]">Baseline RTO Cost</p>
+                                <p className="text-xl font-semibold text-[var(--text-primary)] mt-1">₹{roi.baselineRTOCost.toLocaleString('en-IN')}</p>
+                            </div>
+                            <div className="p-4">
+                                <p className="text-sm text-[var(--text-secondary)]">Current RTO Cost</p>
+                                <p className="text-xl font-semibold text-[var(--text-primary)] mt-1">₹{roi.currentRTOCost.toLocaleString('en-IN')}</p>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }

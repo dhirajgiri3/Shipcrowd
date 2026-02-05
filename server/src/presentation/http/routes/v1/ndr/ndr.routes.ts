@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import NDRController from '@/presentation/http/controllers/ndr/ndr.controller';
+import NDRAnalyticsController from '@/presentation/http/controllers/ndr/ndr-analytics.controller';
 import { authenticate } from '@/presentation/http/middleware/auth/auth';
 import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 
@@ -49,6 +50,12 @@ router.get('/analytics/resolution-rates', NDRController.getResolutionRates);
 
 // Get top NDR reasons
 router.get('/analytics/top-reasons', NDRController.getTopReasons);
+
+// Phase 6: Enhanced Analytics
+router.get('/analytics/self-service', NDRAnalyticsController.getSelfServiceMetrics);
+router.get('/analytics/prevention', NDRAnalyticsController.getPreventionMetrics);
+router.get('/analytics/roi', NDRAnalyticsController.getROIMetrics);
+router.get('/analytics/weekly-trends', NDRAnalyticsController.getWeeklyTrends);
 
 /**
  * Dashboard

@@ -247,3 +247,40 @@ export interface NDRSettings {
     autoEscalateAfterDays: number;
     enableCustomerPortal: boolean;
 }
+
+export interface NDRSelfServiceMetrics {
+    magicLinksSent: number;
+    magicLinksClicked: number;
+    ctr: number;
+    customerResponses: number;
+    responseRate: number;
+    actionBreakdown: Record<string, number>;
+}
+
+export interface NDRPreventionMetrics {
+    addressValidationBlocks: number;
+    phoneVerificationFailures: number;
+    highRiskOrders: number;
+    codVerificationBlocks: number;
+    totalPrevented: number;
+}
+
+export interface NDRROIMetrics {
+    baselineRTOCost: number;
+    currentRTOCost: number;
+    savings: number;
+    operationalCosts: number;
+    netSavings: number;
+    roi: number;
+}
+
+export interface NDRWeeklyTrends {
+    currentWeek: any;
+    trends: Array<{
+        date: string;
+        count: number;
+        resolved: number;
+        rtoTriggered: number;
+    }>;
+    insights: string[];
+}

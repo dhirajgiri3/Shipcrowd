@@ -2,7 +2,7 @@ import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { DelhiveryProvider } from '../../../../infrastructure/external/couriers/delhivery/delhivery.provider';
 import { EkartProvider } from '../../../../infrastructure/external/couriers/ekart/ekart.provider';
 import logger from '../../../../shared/logger/winston.logger';
-import { AppError } from '../../../../shared/errors/app.error';
+import { AppError, NotFoundError, ValidationError, ExternalServiceError } from '../../../../shared/errors/app.error';
 
 /**
  * Service to handle courier reattempt requests and address updates
@@ -19,6 +19,7 @@ export class CourierReattemptService {
             preferredDate?: Date;
             updatedAddress?: {
                 line1: string;
+                line2?: string;
                 city: string;
                 state: string;
                 pincode: string;
@@ -31,14 +32,14 @@ export class CourierReattemptService {
         try {
             const shipment = await Shipment.findById(shipmentId);
             if (!shipment) {
-                throw new AppError(404, 'Shipment not found');
+                throw new NotFoundError('Shipment');
             }
 
-            const carrier = shipment.courierProvider; // 'delhivery', 'ekart', 'velocity' etc.
+            const carrier = shipment.carrier;
             const companyId = shipment.companyId;
 
             if (!carrier) {
-                throw new AppError(400, 'Shipment has no carrier provider assigned');
+                throw new ValidationError('Shipment has no carrier provider assigned');
             }
 
             logger.info(`Initiating reattempt request for ${carrier} shipment ${shipment.trackingNumber}`, { options });
@@ -48,24 +49,24 @@ export class CourierReattemptService {
 
                 // If address Update is requested
                 if (options.updatedAddress) {
+                    const fullAddress = options.updatedAddress.line2
+                        ? `${options.updatedAddress.line1}, ${options.updatedAddress.line2}`
+                        : options.updatedAddress.line1;
+
                     await provider.updateDeliveryAddress(
                         shipment.trackingNumber,
                         {
-                            line1: options.updatedAddress.line1,
+                            line1: fullAddress,
                             city: options.updatedAddress.city,
                             state: options.updatedAddress.state,
-                            pincode: options.updatedAddress.pincode,
+                            pincode: String(options.updatedAddress.pincode),
                             country: options.updatedAddress.country || 'India'
                         },
-                        shipment.orderId?.toString(),
+                        String(shipment.orderId),
                         options.phone
                     );
                 }
 
-                // Request Reattempt
-                // Delhivery doesn't explicitly support "preferred date" in the same API call often, 
-                // but let's pass it if the provider supports it or as instructions.
-                // The provider method: requestReattempt(trackingNumber, preferredDate, instructions)
                 return await provider.requestReattempt(
                     shipment.trackingNumber,
                     options.preferredDate,
@@ -75,11 +76,10 @@ export class CourierReattemptService {
             } else if (carrier === 'ekart') {
                 const provider = new EkartProvider(companyId);
 
-                // Ekart Address Update is tricky, often part of reattempt instructions.
-                // We'll append address to instructions if present for now.
                 let instructions = options.instructions || '';
                 if (options.updatedAddress) {
-                    instructions += ` Updated Address: ${options.updatedAddress.line1}, ${options.updatedAddress.pincode}`;
+                    const addressStr = `${options.updatedAddress.line1} ${options.updatedAddress.line2 || ''}, ${options.updatedAddress.city} - ${options.updatedAddress.pincode}`;
+                    instructions += ` Updated Address: ${addressStr}`;
                 }
 
                 return await provider.requestReattempt(
@@ -88,20 +88,17 @@ export class CourierReattemptService {
                     instructions
                 );
             } else if (carrier === 'velocity') {
-                // Placeholder for Velocity
-                // const provider = new VelocityProvider(companyId);
-                // return await provider.requestReattempt(...)
                 logger.warn('Velocity reattempt not fully implemented yet');
                 return { success: true, message: 'Reattempt recorded internally (Velocity support pending)' };
             }
 
-            throw new AppError(400, `Unsupported carrier for reattempt: ${carrier}`);
+            throw new ValidationError(`Unsupported carrier for reattempt: ${carrier}`);
 
         } catch (error: any) {
             logger.error(`Failed to request reattempt for shipment ${shipmentId}`, error);
-            // We return success: false instead of throwing to avoid crashing the user flow completely?
-            // Or throw to alert the controller? Controller handles errors.
-            throw new AppError(500, `Courier API Error: ${error.message}`);
+            // If it's already an AppError, rethrow it
+            if (error instanceof AppError) throw error;
+            throw new ExternalServiceError('Courier API', error.message);
         }
     }
 
@@ -112,17 +109,17 @@ export class CourierReattemptService {
         try {
             const shipment = await Shipment.findById(shipmentId);
             if (!shipment) {
-                throw new AppError(404, 'Shipment not found');
+                throw new NotFoundError('Shipment');
             }
 
-            const carrier = shipment.courierProvider;
+            const carrier = shipment.carrier;
             const companyId = shipment.companyId;
 
             logger.info(`Initiating cancellation/RTO request for ${carrier} shipment ${shipment.trackingNumber}`);
 
             if (carrier === 'delhivery') {
                 const provider = new DelhiveryProvider(companyId);
-                const success = await provider.cancelShipment(shipment.trackingNumber); // Uses /api/p/edit cancellation=true
+                const success = await provider.cancelShipment(shipment.trackingNumber);
                 return { success, message: success ? 'Cancellation requested' : 'Failed' };
             } else if (carrier === 'ekart') {
                 const provider = new EkartProvider(companyId);
@@ -134,7 +131,8 @@ export class CourierReattemptService {
 
         } catch (error: any) {
             logger.error(`Failed to cancel shipment ${shipmentId}`, error);
-            throw new AppError(500, `Courier API Error: ${error.message}`);
+            if (error instanceof AppError) throw error;
+            throw new ExternalServiceError('Courier API', error.message);
         }
     }
 }
