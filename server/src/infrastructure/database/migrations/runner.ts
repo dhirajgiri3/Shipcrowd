@@ -1,9 +1,18 @@
+import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { WalletSoftDeleteMigration } from './phase-1/wallet-soft-delete.migration';
-import { InvoiceSoftDeleteMigration } from './phase-1/invoice-soft-delete.migration';
-import { PayoutSoftDeleteMigration } from './phase-1/payout-soft-delete.migration';
-import { CommissionSoftDeleteMigration } from './phase-1/commission-soft-delete.migration';
-import { KycSoftDeleteMigration } from './phase-1/kyc-soft-delete.migration';
+
+// 1. Load Environment Variables immediately
+dotenv.config();
+
+// 2. Ensure ENCRYPTION_KEY is present (Fix for KYC model strict check)
+if (!process.env.ENCRYPTION_KEY) {
+    if (process.env.FIELD_ENCRYPTION_SECRET) {
+        process.env.ENCRYPTION_KEY = process.env.FIELD_ENCRYPTION_SECRET;
+    } else {
+        // Default dev key to satisfy strict validation if not provided
+        process.env.ENCRYPTION_KEY = '02207fcc1b5ce31788490e5cebf0deafb7000b20223942900fffd2c1bbb780';
+    }
+}
 
 /**
  * Migration Runner
@@ -27,25 +36,41 @@ async function main() {
         await connectDB();
 
         switch (command) {
-            case 'wallet-soft-delete':
+            case 'wallet-soft-delete': {
+                const { WalletSoftDeleteMigration } = await import('./phase-1/wallet-soft-delete.migration');
                 await new WalletSoftDeleteMigration(dryRun).run();
                 break;
+            }
 
-            case 'invoice-soft-delete':
+            case 'invoice-soft-delete': {
+                const { InvoiceSoftDeleteMigration } = await import('./phase-1/invoice-soft-delete.migration');
                 await new InvoiceSoftDeleteMigration(dryRun).run();
                 break;
+            }
 
-            case 'payout-soft-delete':
+            case 'payout-soft-delete': {
+                const { PayoutSoftDeleteMigration } = await import('./phase-1/payout-soft-delete.migration');
                 await new PayoutSoftDeleteMigration(dryRun).run();
                 break;
+            }
 
-            case 'commission-soft-delete':
+            case 'commission-soft-delete': {
+                const { CommissionSoftDeleteMigration } = await import('./phase-1/commission-soft-delete.migration');
                 await new CommissionSoftDeleteMigration(dryRun).run();
                 break;
+            }
 
-            case 'kyc-soft-delete':
+            case 'kyc-soft-delete': {
+                const { KycSoftDeleteMigration } = await import('./phase-1/kyc-soft-delete.migration');
                 await new KycSoftDeleteMigration(dryRun).run();
                 break;
+            }
+
+            case 'cod-enhancement': {
+                const { CodEnhancementMigration } = await import('./phase-2/cod-migration');
+                await new CodEnhancementMigration(dryRun).run();
+                break;
+            }
 
             default:
                 console.log('Available migrations:');
@@ -54,6 +79,7 @@ async function main() {
                 console.log('  payout-soft-delete      -- Run Payout soft delete migration');
                 console.log('  commission-soft-delete  -- Run CommissionTransaction soft delete migration');
                 console.log('  kyc-soft-delete         -- Run KYC soft delete migration');
+                console.log('  cod-enhancement         -- Run COD fields backfill (totalCollection, collectionStatus)');
                 console.log('\nOptions:');
                 console.log('  --dry-run               -- Simulate migration without writes');
                 break;

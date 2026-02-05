@@ -26,6 +26,9 @@ import {
     ChevronDown,
     MapPin,
     RotateCcw,
+    Activity,
+    AlertTriangle,
+    Zap,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
@@ -78,7 +81,10 @@ const navSections: NavSection[] = [
         defaultOpen: false,
         items: [
             { label: 'Wallet & Billing', href: '/seller/wallet', icon: Wallet },
-            { label: 'COD Remittance', href: '/seller/cod', icon: Banknote },
+            { label: 'COD Overview', href: '/seller/cod', icon: Banknote },
+            { label: 'COD Health', href: '/seller/cod/health', icon: Activity },
+            { label: 'Discrepancies', href: '/seller/cod/discrepancies', icon: AlertTriangle },
+            { label: 'Early COD', href: '/seller/cod/early-program', icon: Zap },
         ],
     },
 ];

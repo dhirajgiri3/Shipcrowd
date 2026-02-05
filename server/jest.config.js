@@ -12,7 +12,8 @@ module.exports = {
         '(.+)/courier\\.factory\\.js$': '$1/courier.factory',
         '(.+)/ndr-magic-link\\.service\\.js$': '$1/ndr-magic-link.service',
         '(.+)/email\\.service\\.js$': '$1/email.service',
-        '(.+)/rto\\.service\\.js$': '$1/rto.service'
+        '(.+)/rto\\.service\\.js$': '$1/rto.service',
+        '(.+)/infrastructure/database/mongoose/models/index\\.js$': '$1/infrastructure/database/mongoose/models/index'
     },
     collectCoverageFrom: [
         'src/**/*.ts',

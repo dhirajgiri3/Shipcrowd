@@ -28,27 +28,29 @@ jest.mock('../../../../src/infrastructure/external/ai/openai/openai.service', ()
 }));
 jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
     const actual = jest.requireActual('../../../../src/infrastructure/database/mongoose/models');
+    const { mockShipment: ship } = require('../../../mocks/ndr-shipment-mock');
     return {
         ...actual,
         CallLog: { create: jest.fn().mockResolvedValue({}) },
-        Shipment: { findById: jest.fn().mockResolvedValue({ carrier: 'velocity-shipfast' }) },
+        Shipment: ship,
     };
 });
-jest.mock('../../../../src/core/application/services/courier/courier.factory', () => ({
-    CourierFactory: {
-        getProvider: jest.fn().mockResolvedValue({
-            requestReattempt: jest.fn().mockResolvedValue({ success: true, message: 'Reattempt scheduled' }),
-        }),
-    },
-}));
-jest.mock('../../../../src/core/application/services/rto/rto.service', () => ({
-    default: {
-        triggerRTO: jest.fn().mockResolvedValue({
-            rtoEventId: 'rto-123',
-            reverseAwb: 'REV-AWB-456',
-        }),
-    },
-}));
+// Executor dynamically imports models/index.js - use same Shipment ref so dynamic import gets our mock
+jest.mock('../../../../src/infrastructure/database/mongoose/models/index', () => {
+    const actual = jest.requireActual('../../../../src/infrastructure/database/mongoose/models');
+    const { mockShipment: ship } = require('../../../mocks/ndr-shipment-mock');
+    return {
+        ...actual,
+        CallLog: { create: jest.fn().mockResolvedValue({}) },
+        Shipment: ship,
+    };
+});
+// Use manual __mocks__ so dynamic import() in executor gets the mock
+jest.mock('../../../../src/core/application/services/courier/courier.factory');
+jest.mock('../../../../src/core/application/services/rto/rto.service');
+
+import RTOService from '../../../../src/core/application/services/rto/rto.service';
+import { CourierFactory } from '../../../../src/core/application/services/courier/courier.factory';
 
 
 
@@ -80,6 +82,15 @@ describe('NDRActionExecutors', () => {
             (_to: string, _callbackUrl?: string, _customField?: string) =>
                 Promise.resolve({ success: true, callSid: 'CALL123', status: 'queued' })
         );
+        // Re-apply Shipment mock after clearAllMocks (shared ref used by both models and models/index)
+        const { mockShipmentFindById } = require('../../../mocks/ndr-shipment-mock');
+        mockShipmentFindById.mockReturnValue({
+            select: jest.fn().mockResolvedValue({ carrier: 'velocity-shipfast' }),
+        });
+        // Re-apply CourierFactory.getProvider so requestReattempt tests get a valid provider
+        (CourierFactory.getProvider as jest.Mock).mockResolvedValue({
+            requestReattempt: jest.fn().mockResolvedValue({ success: true, message: 'Reattempt scheduled' }),
+        });
     });
 
     describe('executeCallCustomer', () => {
@@ -241,12 +252,17 @@ describe('NDRActionExecutors', () => {
         it('should include AWB in metadata', async () => {
             const result = await NDRActionExecutors['executeRequestReattempt'](mockContext as any, {});
 
+            expect(result.success).toBe(true);
             expect(result.metadata?.awb).toBe(mockContext.ndrEvent.awb);
         });
     });
 
     describe('executeTriggerRTO', () => {
         it('should trigger RTO successfully', async () => {
+            (RTOService as any).triggerRTO.mockResolvedValue({
+                rtoEventId: 'rto-123',
+                reverseAwb: 'REV-AWB-456',
+            });
             (WhatsAppService.prototype.sendRTONotification as jest.Mock).mockResolvedValue({
                 success: true,
             });
@@ -261,12 +277,17 @@ describe('NDRActionExecutors', () => {
         });
 
         it('should include RTO event and reverse AWB in metadata', async () => {
+            (RTOService as any).triggerRTO.mockResolvedValue({
+                rtoEventId: 'rto-123',
+                reverseAwb: 'REV-AWB-456',
+            });
             (WhatsAppService.prototype.sendRTONotification as jest.Mock).mockResolvedValue({
                 success: true,
             });
 
             const result = await NDRActionExecutors['executeTriggerRTO'](mockContext as any, {});
 
+            expect(result.success).toBe(true);
             expect(result.metadata?.rtoEventId).toBeDefined();
             expect(result.metadata?.reverseAwb).toBeDefined();
         });

@@ -17,12 +17,12 @@ jest.mock('../../../src/core/application/services/communication/sms.service', ()
         sendSMS: jest.fn().mockResolvedValue(true)
     }
 }));
-jest.mock('../../../src/infrastructure/external/whatsapp/whatsapp.service', () => ({
+jest.mock('../../../src/core/application/services/communication/whatsapp.service', () => ({
     default: {
-        sendWhatsAppMessage: jest.fn().mockResolvedValue(true)
+        sendWhatsAppMessage: jest.fn().mockResolvedValue(true),
     }
 }));
-jest.mock('../../../src/shared/helpers/email', () => ({
+jest.mock('../../../src/core/application/services/communication/email.service', () => ({
     sendEmail: jest.fn().mockResolvedValue(true)
 }));
 
@@ -87,8 +87,8 @@ describe('NDR Communication Service', () => {
             (Shipment.findById as jest.Mock).mockResolvedValue(mockShipment);
 
             const SMSService = require('../../../src/core/application/services/communication/sms.service').default;
-            const WhatsAppService = require('../../../src/infrastructure/external/whatsapp/whatsapp.service').default;
-            const { sendEmail } = require('../../../src/shared/helpers/email');
+            const WhatsAppService = require('../../../src/core/application/services/communication/whatsapp.service').default;
+            const { sendEmail } = require('../../../src/core/application/services/communication/email.service');
 
             const result = await NDRCommunicationService.sendNDRNotification({
                 shipmentId: mockShipment._id.toString(),
@@ -151,7 +151,7 @@ describe('NDR Communication Service', () => {
             (Shipment.findById as jest.Mock).mockResolvedValue(mockShipment);
 
             const SMSService = require('../../../src/core/application/services/communication/sms.service').default;
-            const { sendEmail } = require('../../../src/shared/helpers/email');
+            const { sendEmail } = require('../../../src/core/application/services/communication/email.service');
 
             // Mock SMS failure
             SMSService.sendSMS.mockRejectedValueOnce(new Error('SMS service down'));

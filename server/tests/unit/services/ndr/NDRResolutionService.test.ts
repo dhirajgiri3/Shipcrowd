@@ -1,7 +1,6 @@
 import NDRResolutionService from '../../../../src/core/application/services/ndr/ndr-resolution.service';
 import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/ndr-action-executors';
 
-// Mock must be defined inline in factory to avoid hoisting issues
 jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
     return {
         NDREvent: {
@@ -13,6 +12,7 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
         },
         NDRWorkflow: {
             getWorkflowForNDR: jest.fn(),
+            find: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
         },
     };
 });
@@ -20,10 +20,13 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
 jest.mock('../../../../src/core/application/services/ndr/actions/ndr-action-executors');
 
 const { NDREvent, NDRWorkflow } = require('../../../../src/infrastructure/database/mongoose/models');
+const QueueManager = require('../../../../src/infrastructure/utilities/queue-manager').default;
 
 describe('NDRResolutionService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.spyOn(QueueManager, 'addJob').mockResolvedValue(undefined as any);
+        (NDRWorkflow.find as jest.Mock).mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
     });
 
     describe('executeResolutionWorkflow', () => {
@@ -32,8 +35,11 @@ describe('NDRResolutionService', () => {
             ndrType: 'address_issue',
             status: 'detected',
             company: 'company123',
-            shipment: 'shipment123',
-            order: 'order123',
+            shipment: { recipientName: 'John', recipientPhone: '+919876543210', recipientEmail: 'j@test.com' },
+            order: {
+                recipientDetails: { name: 'John', phone: '+919876543210', email: 'j@test.com' },
+                toString: () => 'order123',
+            },
             resolutionActions: [],
             save: jest.fn().mockResolvedValue(true),
         };
@@ -124,38 +130,55 @@ describe('NDRResolutionService', () => {
         });
 
         it('should escalate NDR when deadline expires', async () => {
-            const expiredNDR = {
-                ...mockNDREvent,
-                resolutionDeadline: new Date(Date.now() - 1000), // 1 second ago
+            const expiredAggregateRow = {
+                _id: 'ndr123',
+                company: 'company123',
+                ndrType: 'address_issue',
+                status: 'detected',
+                shipment: {},
+                order: { toString: () => 'order123' },
+                customerName: 'John',
+                customerPhone: '+919876543210',
+                customerEmail: 'j@test.com',
+                awb: 'AWB1',
             };
-
-            (NDREvent.findById as jest.Mock).mockReturnValue({
-                populate: jest.fn().mockResolvedValue(expiredNDR),
+            (NDREvent.aggregate as jest.Mock).mockResolvedValue([expiredAggregateRow]);
+            (NDRWorkflow.find as jest.Mock).mockReturnValue({
+                lean: jest.fn().mockResolvedValue([
+                    { company: 'company123', ndrType: 'address_issue', rtoTriggerConditions: null },
+                ]),
             });
 
             const escalateSpy = jest.spyOn(NDRResolutionService, 'escalateNDR');
 
             await NDRResolutionService.checkResolutionDeadlines();
 
-            expect(escalateSpy).toHaveBeenCalled();
+            expect(escalateSpy).toHaveBeenCalledWith('ndr123', 'Resolution deadline passed');
         });
 
         it('should auto-trigger RTO after deadline with auto-trigger enabled', async () => {
-            const workflowWithRTO = {
-                ...mockWorkflow,
-                rtoTriggerConditions: {
-                    autoTrigger: true,
-                    maxHours: 48,
-                },
+            const expiredAggregateRow = {
+                _id: 'ndr123',
+                company: 'company123',
+                ndrType: 'address_issue',
+                status: 'detected',
+                shipment: {},
+                order: { toString: () => 'order123' },
+                customerName: 'John',
+                customerPhone: '+919876543210',
+                customerEmail: 'j@test.com',
+                awb: 'AWB1',
             };
-
-            const expiredNDR = {
-                ...mockNDREvent,
-                resolutionDeadline: new Date(Date.now() - 1000),
-            };
-
-            (NDREvent.find as jest.Mock).mockResolvedValue([expiredNDR]);
-            (NDRWorkflow.getWorkflowForNDR as jest.Mock).mockResolvedValue(workflowWithRTO);
+            (NDREvent.aggregate as jest.Mock).mockResolvedValue([expiredAggregateRow]);
+            (NDRWorkflow.find as jest.Mock).mockReturnValue({
+                lean: jest.fn().mockResolvedValue([
+                    {
+                        company: 'company123',
+                        ndrType: 'address_issue',
+                        rtoTriggerConditions: { autoTrigger: true, maxHours: 48 },
+                    },
+                ]),
+            });
 
             await NDRResolutionService.checkResolutionDeadlines();
 
