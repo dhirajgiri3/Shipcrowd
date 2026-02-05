@@ -5,7 +5,7 @@
  */
 
 import { Router } from 'express';
-import { NDRCustomerPortalController } from '../../../../controllers/ndr/ndr-customer-portal.controller';
+import { NDRCustomerPortalController } from '@/presentation/http/controllers/ndr/ndr-customer-portal.controller';
 
 const router = Router();
 

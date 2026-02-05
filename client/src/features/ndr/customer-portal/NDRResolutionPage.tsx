@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useNDRCustomerPortal } from '../../../../core/api/hooks/ndr/useNDRCustomerPortal';
+import { useNDRCustomerPortal } from '../../../core/api/hooks/ndr/useNDRCustomerPortal';
 import AddressUpdateForm from './AddressUpdateForm';
 import RescheduleForm from './RescheduleForm';
 import CancelForm from './CancelForm';

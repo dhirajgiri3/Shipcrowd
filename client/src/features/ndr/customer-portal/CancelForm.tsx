@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNDRCustomerPortal } from '../../../../core/api/hooks/ndr/useNDRCustomerPortal';
+import { useNDRCustomerPortal } from '@/src/core/api/hooks/ndr/useNDRCustomerPortal';
 
 interface Props {
     token: string;

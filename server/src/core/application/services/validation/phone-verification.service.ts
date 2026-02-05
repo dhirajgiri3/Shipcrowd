@@ -59,7 +59,7 @@ export class PhoneVerificationService {
         const storedOtp = await CacheService.get(cacheKey);
 
         if (storedOtp && storedOtp === otp) {
-            await CacheService.del(cacheKey); // Invalidate after use
+            await CacheService.delete(cacheKey); // Invalidate after use
             return true;
         }
 

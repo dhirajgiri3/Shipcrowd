@@ -94,15 +94,38 @@ export class NDRCustomerPortalController {
                 return res.status(404).json({ success: false, error: 'NDR not found' });
             }
 
-            // Update address in shipment (for reattempt)
-            // Note: In a real system, we might want to validate this address first
+            // Validate new address
+            const { default: AddressValidationService } = await import('../../../../core/application/services/validation/address-validation.service'); // Dynamic import
+
             const shipment = ndrEvent.shipment as any;
+
+            const validationResult = await AddressValidationService.validate({
+                line1,
+                line2,
+                city: shipment.destination.city, // Assuming city/state/pincode shouldn't change for reattempt re-routing unless specified? 
+                // Actually, if they update address, they might implicitly change city/state via pincode?
+                // The current form only allows line1/line2 updates. Pincode/city/state usually remain same for "correction".
+                state: shipment.destination.state,
+                pincode: shipment.destination.pincode,
+                phone: alternatePhone || shipment.destination.phone
+            });
+
+            if (!validationResult.isValid) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Invalid address: ${validationResult.issues.join(', ')}`
+                });
+            }
+
+            // Update address in shipment
             shipment.destination.line1 = line1;
             shipment.destination.line2 = line2;
             shipment.destination.landmark = landmark;
             if (alternatePhone) {
                 shipment.destination.phone = alternatePhone;
             }
+            // If validation normalized it, we could use that, but keep it simple for now
+
             await shipment.save();
 
             // Record customer action
