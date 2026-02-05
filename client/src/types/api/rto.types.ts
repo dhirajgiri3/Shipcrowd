@@ -19,7 +19,21 @@ export type RTOReturnStatus =
     | 'qc_pending'
     | 'qc_completed'
     | 'restocked'
-    | 'disposed';
+    | 'disposed'
+    | 'refurbishing'
+    | 'claim_filed';
+
+/** Disposition action: restock | refurb | dispose | claim */
+export type RTODispositionAction = 'restock' | 'refurb' | 'dispose' | 'claim';
+
+export interface RTODisposition {
+    action: RTODispositionAction;
+    decidedAt: string;
+    decidedBy?: string;
+    automated?: boolean;
+    reason?: string;
+    notes?: string;
+}
 
 export interface RTOQCPhoto {
     url: string;
@@ -77,6 +91,7 @@ export interface RTOEventDetail {
     actualReturnDate?: string;
     returnStatus: RTOReturnStatus;
     qcResult?: RTOQCResult;
+    disposition?: RTODisposition;
     company: string;
     customerNotified?: boolean;
     warehouseNotified?: boolean;
@@ -110,4 +125,13 @@ export const RTO_STATUS_LABELS: Record<RTOReturnStatus, string> = {
     qc_completed: 'QC Completed',
     restocked: 'Restocked',
     disposed: 'Disposed',
+    refurbishing: 'Refurbishing',
+    claim_filed: 'Claim Filed',
+};
+
+export const RTO_DISPOSITION_LABELS: Record<RTODispositionAction, string> = {
+    restock: 'Restock',
+    refurb: 'Send for Refurb',
+    dispose: 'Dispose',
+    claim: 'File Claim',
 };

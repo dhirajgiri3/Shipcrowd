@@ -22,6 +22,7 @@ import type {
     RTOListPagination,
     RTOReturnStatus,
     RTOQCResult,
+    RTODispositionAction,
 } from '@/src/types/api/rto.types';
 
 // Backend list response: { data: events[], pagination }
@@ -72,6 +73,52 @@ export interface UpdateRTOStatusPayload {
     notes?: string;
     actualReturnDate?: string;
     reverseAwb?: string;
+}
+
+/** Response from GET /rto/events/:id/disposition/suggest */
+export interface DispositionSuggestion {
+    action: RTODispositionAction;
+    reason: string;
+    automated: boolean;
+}
+
+export interface ExecuteDispositionPayload {
+    rtoId: string;
+    action: RTODispositionAction;
+    notes?: string;
+}
+
+/** Response from GET /rto/analytics/stats (for dashboard cards) */
+export interface RTOStatsResponse {
+    total: number;
+    byReason: Record<string, number>;
+    byStatus: Record<string, number>;
+    totalCharges: number;
+    avgCharges: number;
+}
+
+/**
+ * Get RTO stats for dashboard (counts by status, total charges).
+ * GET /rto/analytics/stats
+ */
+export function useRTOStats(params?: { startDate?: string; endDate?: string }, options?: UseQueryOptions<RTOStatsResponse, ApiError>) {
+    const queryParams: Record<string, string> = {};
+    if (params?.startDate) queryParams.startDate = params.startDate;
+    if (params?.endDate) queryParams.endDate = params.endDate;
+
+    return useQuery<RTOStatsResponse, ApiError>({
+        queryKey: [...queryKeys.rto.all(), 'stats', params],
+        queryFn: async () => {
+            const response = await apiClient.get<{ success: boolean; data: RTOStatsResponse }>(
+                '/rto/analytics/stats',
+                { params: Object.keys(queryParams).length ? queryParams : undefined }
+            );
+            return response.data?.data ?? response.data;
+        },
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
 }
 
 /**
@@ -224,6 +271,58 @@ export function useUpdateRTOStatus(
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('RTO status updated');
+        },
+        onError: (error) => handleApiError(error),
+        ...options,
+    });
+}
+
+/**
+ * Suggest disposition for an RTO (after QC completed)
+ * GET /rto/events/:id/disposition/suggest
+ */
+export function useSuggestDisposition(
+    rtoId: string | null | undefined,
+    options?: UseQueryOptions<DispositionSuggestion, ApiError>
+) {
+    return useQuery<DispositionSuggestion, ApiError>({
+        queryKey: [...queryKeys.rto.detail(rtoId ?? ''), 'disposition', 'suggest'],
+        queryFn: async () => {
+            const response = await apiClient.get<{ success: boolean; data: DispositionSuggestion }>(
+                `/rto/events/${rtoId}/disposition/suggest`
+            );
+            return response.data?.data ?? response.data;
+        },
+        enabled: !!rtoId,
+        ...CACHE_TIMES.SHORT,
+        retry: false,
+        ...options,
+    });
+}
+
+/**
+ * Execute disposition (restock / refurb / dispose / claim)
+ * POST /rto/events/:id/disposition/execute
+ */
+export function useExecuteDisposition(
+    options?: UseMutationOptions<RTOEventDetail, ApiError, ExecuteDispositionPayload>
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation<RTOEventDetail, ApiError, ExecuteDispositionPayload>({
+        mutationFn: async (payload: ExecuteDispositionPayload) => {
+            const response = await apiClient.post<{ success: boolean; data?: RTOEventDetail }>(
+                `/rto/events/${payload.rtoId}/disposition/execute`,
+                { action: payload.action, notes: payload.notes }
+            );
+            const data = response.data?.data;
+            return data as RTOEventDetail;
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            showSuccessToast('Disposition applied');
         },
         onError: (error) => handleApiError(error),
         ...options,

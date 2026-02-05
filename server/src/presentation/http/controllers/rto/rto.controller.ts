@@ -7,6 +7,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import RTOService from '../../../../core/application/services/rto/rto.service';
+import { RTODispositionService } from '../../../../core/application/services/rto/rto-disposition.service';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
 import { AppError, ValidationError, NotFoundError, AuthenticationError, RateLimitError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -18,6 +19,7 @@ import {
     recordQCResultSchema,
     getRTOStatsQuerySchema,
     getPendingRTOsQuerySchema,
+    executeDispositionSchema,
 } from '../../../../shared/validation/rto-schemas';
 
 export class RTOController {
@@ -280,6 +282,60 @@ export class RTOController {
             const stats = await NDRAnalyticsService.getRTOStats(companyId, dateRange);
 
             sendSuccess(res, { data: stats });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Suggest disposition for an RTO (after QC completed)
+     * GET /rto/events/:id/disposition/suggest
+     */
+    static async suggestDisposition(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params;
+            const companyId = req.user?.companyId;
+
+            const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
+            if (!rtoEvent) {
+                throw new NotFoundError('RTO event', ErrorCode.RES_NOT_FOUND);
+            }
+
+            const suggestion = await RTODispositionService.suggestDisposition(id);
+            sendSuccess(res, { data: suggestion });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Execute disposition for an RTO
+     * POST /rto/events/:id/disposition/execute
+     */
+    static async executeDisposition(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params;
+            const companyId = req.user?.companyId;
+            const performedBy = req.user?._id?.toString() ?? 'system';
+
+            const validation = executeDispositionSchema.safeParse(req.body);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message,
+                }));
+                throw new ValidationError('Validation failed', errors);
+            }
+
+            const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
+            if (!rtoEvent) {
+                throw new NotFoundError('RTO event', ErrorCode.RES_NOT_FOUND);
+            }
+
+            const { action, notes } = validation.data;
+            const updated = await RTODispositionService.executeDisposition(id, action, performedBy, { notes });
+
+            sendSuccess(res, { data: updated }, 'Disposition applied');
         } catch (error) {
             next(error);
         }

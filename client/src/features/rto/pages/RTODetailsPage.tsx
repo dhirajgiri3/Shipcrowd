@@ -1,13 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { RotateCcw, Package, Loader2, Truck } from 'lucide-react';
+import { RotateCcw, Package, Loader2, Truck, ClipboardList, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { RTOStatusBadge } from '../components/RTOStatusBadge';
 import { RTOTimeline } from '../components/RTOTimeline';
-import { useRTODetails, useUpdateRTOStatus } from '@/src/core/api/hooks/rto/useRTOManagement';
+import { RTODispositionModal } from '../components/RTODispositionModal';
+import { useRTODetails } from '@/src/core/api/hooks/rto/useRTOManagement';
 import type {
     RTOEventDetail,
     RTOShipmentRef,
@@ -15,7 +17,7 @@ import type {
     RTOWarehouseRef,
     RTOQCResult,
 } from '@/src/types/api/rto.types';
-import { RTO_REASON_LABELS } from '@/src/types/api/rto.types';
+import { RTO_REASON_LABELS, RTO_DISPOSITION_LABELS } from '@/src/types/api/rto.types';
 
 function getAwb(rto: RTOEventDetail): string {
     const s = rto.shipment;
@@ -70,9 +72,9 @@ export function RTODetailsPage() {
     const params = useParams();
     const router = useRouter();
     const rtoId = params?.id as string;
+    const [dispositionModalOpen, setDispositionModalOpen] = useState(false);
 
     const { data: rto, isLoading, error } = useRTODetails(rtoId);
-    const updateStatus = useUpdateRTOStatus();
 
     if (isLoading) {
         return (
@@ -97,18 +99,8 @@ export function RTODetailsPage() {
     const awb = getAwb(rto);
     const orderNumber = getOrderNumber(rto);
     const products = getProductSummary(rto);
-    const canRestock =
-        rto.returnStatus === 'qc_completed' && rto.qcResult?.passed === true;
-
-    const handleRestock = () => {
-        updateStatus.mutate(
-            { rtoId, returnStatus: 'restocked' },
-            {
-                onSuccess: () => router.push('/seller/rto'),
-                onError: (e) => console.error(e),
-            }
-        );
-    };
+    const canSetDisposition = rto.returnStatus === 'qc_completed' && !rto.disposition;
+    const hasDisposition = !!rto.disposition;
 
     return (
         <div className="space-y-6">
@@ -127,18 +119,13 @@ export function RTODetailsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <RTOStatusBadge status={rto.returnStatus} size="large" />
-                    {canRestock && (
+                    {canSetDisposition && (
                         <Button
-                            onClick={handleRestock}
-                            disabled={updateStatus.isPending}
-                            className="bg-[var(--success)] hover:opacity-90"
+                            onClick={() => setDispositionModalOpen(true)}
+                            className="bg-[var(--primary-blue)] hover:opacity-90"
                         >
-                            {updateStatus.isPending ? (
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            ) : (
-                                <Package className="w-4 h-4 mr-2" />
-                            )}
-                            Restock Item
+                            <ClipboardList className="w-4 h-4 mr-2" />
+                            Set disposition
                         </Button>
                     )}
                     {rto.returnStatus === 'qc_pending' && (
@@ -224,6 +211,41 @@ export function RTODetailsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {hasDisposition && rto.disposition && (
+                <Card className="border-[var(--border-subtle)]">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <ClipboardList className="w-5 h-5" />
+                            Disposition
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                        <div>
+                            <span className="text-[var(--text-muted)]">Action: </span>
+                            <span className="font-medium">
+                                {RTO_DISPOSITION_LABELS[rto.disposition.action]}
+                            </span>
+                        </div>
+                        {rto.disposition.reason && (
+                            <div>
+                                <span className="text-[var(--text-muted)]">Reason: </span>
+                                <p className="text-[var(--text-secondary)] mt-0.5">{rto.disposition.reason}</p>
+                            </div>
+                        )}
+                        {rto.disposition.notes && (
+                            <div>
+                                <span className="text-[var(--text-muted)]">Notes: </span>
+                                <p className="text-[var(--text-secondary)] mt-0.5">{rto.disposition.notes}</p>
+                            </div>
+                        )}
+                        <div>
+                            <span className="text-[var(--text-muted)]">Decided at: </span>
+                            <span>{formatDate(rto.disposition.decidedAt)}</span>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card className="border-[var(--border-subtle)]">
                 <CardHeader>
@@ -330,16 +352,34 @@ export function RTODetailsPage() {
                         Reverse Shipment
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                     {rto.reverseAwb ? (
-                        <p className="text-sm text-[var(--text-secondary)]">
-                            Reverse AWB: <span className="font-mono font-medium">{rto.reverseAwb}</span>
-                        </p>
+                        <>
+                            <p className="text-sm text-[var(--text-secondary)]">
+                                Reverse AWB: <span className="font-mono font-medium">{rto.reverseAwb}</span>
+                            </p>
+                            <a
+                                href={`/track/rto?awb=${encodeURIComponent(rto.reverseAwb)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary-blue)] text-white hover:opacity-90 transition-opacity"
+                            >
+                                <ExternalLink className="w-4 h-4" />
+                                Track reverse shipment
+                            </a>
+                        </>
                     ) : (
                         <p className="text-sm text-[var(--text-muted)]">Tracking information not available yet.</p>
                     )}
                 </CardContent>
             </Card>
+
+            <RTODispositionModal
+                open={dispositionModalOpen}
+                onOpenChange={setDispositionModalOpen}
+                rtoId={rtoId}
+                onSuccess={() => {}}
+            />
         </div>
     );
 }

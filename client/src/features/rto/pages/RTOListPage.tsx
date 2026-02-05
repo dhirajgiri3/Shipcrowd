@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { RotateCcw, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics';
@@ -23,6 +23,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 
 export function RTOListPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [filters, setFilters] = useState<RTOFilters>({
         page: 1,
         limit: 20,
@@ -31,6 +32,14 @@ export function RTOListPage() {
     });
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [analyticsOpen, setAnalyticsOpen] = useState(false);
+
+    // Deep link from dashboard: /seller/rto?returnStatus=qc_pending
+    useEffect(() => {
+        const status = searchParams.get('returnStatus');
+        if (status && STATUS_OPTIONS.some((o) => o.value === status)) {
+            setStatusFilter(status);
+        }
+    }, [searchParams]);
 
     const { data: listData, isLoading } = useRTOEvents({
         ...filters,

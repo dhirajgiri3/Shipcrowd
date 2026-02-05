@@ -28,9 +28,20 @@ export const rtoStatusSchema = z.enum([
     'qc_completed',
     'restocked',
     'disposed',
+    'refurbishing',
+    'claim_filed',
 ]);
 
 export type RTOStatus = z.infer<typeof rtoStatusSchema>;
+
+export const dispositionActionSchema = z.enum(['restock', 'refurb', 'dispose', 'claim']);
+export type DispositionAction = z.infer<typeof dispositionActionSchema>;
+
+export const executeDispositionSchema = z.object({
+    action: dispositionActionSchema,
+    notes: z.string().max(500).optional(),
+});
+export type ExecuteDispositionInput = z.infer<typeof executeDispositionSchema>;
 
 export const rtoTriggeredBySchema = z.enum([
     'auto',

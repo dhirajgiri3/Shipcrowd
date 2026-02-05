@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { RotateCcw, Search, Loader2, Truck } from 'lucide-react';
 import { apiClient } from '@/src/core/api/http';
 
@@ -26,13 +27,24 @@ interface RTOTrackResult {
 }
 
 export function RTOTrackClient() {
+    const searchParams = useSearchParams();
+    const urlAwb = searchParams.get('awb') ?? '';
+
     const [mode, setMode] = useState<'awb' | 'order'>('awb');
-    const [awb, setAwb] = useState('');
+    const [awb, setAwb] = useState(urlAwb);
     const [orderNumber, setOrderNumber] = useState('');
     const [phone, setPhone] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<RTOTrackResult | null>(null);
+
+    // Pre-fill from URL ?awb= (e.g. from seller RTO details "Track reverse shipment")
+    useEffect(() => {
+        if (urlAwb.trim()) {
+            setAwb(urlAwb.trim());
+            setMode('awb');
+        }
+    }, [urlAwb]);
 
     const handleSearch = async () => {
         setError(null);

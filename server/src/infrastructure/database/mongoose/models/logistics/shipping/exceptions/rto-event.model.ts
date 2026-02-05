@@ -22,6 +22,17 @@ export interface IQCResult {
     photos?: IQCPhoto[];
 }
 
+export type RTODispositionAction = 'restock' | 'refurb' | 'dispose' | 'claim';
+
+export interface IRTODisposition {
+    action: RTODispositionAction;
+    decidedAt: Date;
+    decidedBy: string;
+    automated: boolean;
+    reason?: string;
+    notes?: string;
+}
+
 export interface IRTOEvent extends Document {
     shipment: mongoose.Types.ObjectId;
     order: mongoose.Types.ObjectId;
@@ -38,8 +49,9 @@ export interface IRTOEvent extends Document {
     warehouse: mongoose.Types.ObjectId;
     expectedReturnDate?: Date;
     actualReturnDate?: Date;
-    returnStatus: 'initiated' | 'in_transit' | 'delivered_to_warehouse' | 'qc_pending' | 'qc_completed' | 'restocked' | 'disposed';
+    returnStatus: 'initiated' | 'in_transit' | 'delivered_to_warehouse' | 'qc_pending' | 'qc_completed' | 'restocked' | 'disposed' | 'refurbishing' | 'claim_filed';
     qcResult?: IQCResult;
+    disposition?: IRTODisposition;
     company: mongoose.Types.ObjectId;
     customerNotified: boolean;
     warehouseNotified: boolean;
@@ -170,12 +182,25 @@ const RTOEventSchema = new Schema<IRTOEvent>(
         },
         returnStatus: {
             type: String,
-            enum: ['initiated', 'in_transit', 'delivered_to_warehouse', 'qc_pending', 'qc_completed', 'restocked', 'disposed'],
+            enum: ['initiated', 'in_transit', 'delivered_to_warehouse', 'qc_pending', 'qc_completed', 'restocked', 'disposed', 'refurbishing', 'claim_filed'],
             default: 'initiated',
             index: true,
         },
         qcResult: {
             type: QCResultSchema,
+        },
+        disposition: {
+            type: new Schema<IRTODisposition>(
+                {
+                    action: { type: String, enum: ['restock', 'refurb', 'dispose', 'claim'], required: true },
+                    decidedAt: { type: Date, required: true },
+                    decidedBy: { type: String, required: true },
+                    automated: { type: Boolean, default: false },
+                    reason: { type: String },
+                    notes: { type: String, maxlength: 500 },
+                },
+                { _id: false }
+            ),
         },
         company: {
             type: Schema.Types.ObjectId,
@@ -216,9 +241,11 @@ const RTO_STATUS_TRANSITIONS: Record<string, string[]> = {
     in_transit: ['delivered_to_warehouse'],
     delivered_to_warehouse: ['qc_pending'],
     qc_pending: ['qc_completed'],
-    qc_completed: ['restocked', 'disposed'],
+    qc_completed: ['restocked', 'disposed', 'refurbishing', 'claim_filed'],
     restocked: [],
     disposed: [],
+    refurbishing: ['restocked', 'disposed'],
+    claim_filed: ['restocked', 'disposed'],
 };
 
 // Helper method to validate state transitions
@@ -241,7 +268,7 @@ RTOEventSchema.index(
         unique: true,
         partialFilterExpression: {
             returnStatus: {
-                $in: ['initiated', 'in_transit', 'delivered_to_warehouse', 'qc_pending', 'qc_completed']
+                $in: ['initiated', 'in_transit', 'delivered_to_warehouse', 'qc_pending', 'qc_completed', 'refurbishing', 'claim_filed']
             }
         },
         name: 'unique_active_rto_per_shipment'

@@ -56,9 +56,9 @@ export function RTOTimeline({ rto }: RTOTimelineProps) {
         },
         {
             status: 'restocked',
-            label: 'Restocked / Disposed',
-            timestamp: rto.returnStatus === 'restocked' || rto.returnStatus === 'disposed' ? rto.updatedAt : undefined,
-            done: ['restocked', 'disposed'].includes(rto.returnStatus),
+            label: 'Disposition (Restock / Refurb / Dispose / Claim)',
+            timestamp: ['restocked', 'disposed', 'refurbishing', 'claim_filed'].includes(rto.returnStatus) ? rto.updatedAt : undefined,
+            done: ['restocked', 'disposed', 'refurbishing', 'claim_filed'].includes(rto.returnStatus),
         },
     ];
 

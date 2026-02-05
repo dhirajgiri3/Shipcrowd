@@ -25,6 +25,7 @@ import {
     CODSettlementTimeline,
     CashFlowForecast,
     RTOAnalytics,
+    RTODashboardCards,
     ProfitabilityCard,
     // Phase 2: Dashboard Optimization
     CriticalAlertsBanner,
@@ -569,13 +570,15 @@ export function DashboardClient() {
 
                 {/* ========== TIER 2: OPERATIONAL CLARITY ========== */}
 
-                {/* TIER 2: RTO ANALYTICS (Loss prevention FIRST - High RTO = revenue loss, actionable insights) */}
+                {/* TIER 2: RTO OVERVIEW CARDS + ANALYTICS (Loss prevention - at-a-glance + deep dive) */}
                 {isDataReady && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6"
                     >
-                        <RTOAnalytics />
+                        <RTODashboardCards />
+                        <RTOAnalytics onViewDetails={() => router.push('/seller/rto')} />
                     </motion.section>
                 )}
 

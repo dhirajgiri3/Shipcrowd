@@ -28,6 +28,12 @@ jest.mock('@/core/application/services/ndr/ndr-classification.service', () => ({
     classifyAndUpdate: jest.fn(),
 }));
 
+jest.mock('../../../src/core/application/services/shipping/shipment.service', () => ({
+    ShipmentService: {
+        updateShipmentStatus: jest.fn().mockResolvedValue({ success: true })
+    }
+}));
+
 jest.mock('@/core/application/services/communication/ndr-communication.service', () => ({
     default: {
         sendNDRNotification: jest.fn(),
@@ -35,15 +41,26 @@ jest.mock('@/core/application/services/communication/ndr-communication.service',
     },
 }), { virtual: true });
 
-jest.mock('@/core/application/services/courier/status-mappings/status-mapper.service', () => ({
+jest.mock('../../../src/core/application/services/courier/status-mappings/status-mapper.service', () => ({
     __esModule: true,
     StatusMapperService: {
-        map: jest.fn().mockReturnValue({ internalStatus: 'mock-status' })
+        map: jest.fn(() => ({
+            internalStatus: 'mock-status',
+            statusCategory: 'pending',
+            isTerminal: false,
+            allowsReattempt: true,
+            allowsCancellation: true
+        })),
+        canCancel: jest.fn().mockReturnValue(true),
+        canReattempt: jest.fn().mockReturnValue(true),
+        isTerminal: jest.fn().mockReturnValue(false),
+        getCategory: jest.fn().mockReturnValue('pending')
     }
 }));
 
-import { VelocityWebhookHandler } from '@/core/application/services/courier/webhooks/handlers/velocity-webhook-handler';
-import NDRDetectionService from '@/core/application/services/ndr/ndr-detection.service';
+import { VelocityWebhookHandler } from '../../../src/core/application/services/courier/webhooks/handlers/velocity-webhook-handler';
+import NDRDetectionService from '../../../src/core/application/services/ndr/ndr-detection.service';
+import { StatusMapperService } from '../../../src/core/application/services/courier/status-mappings/status-mapper.service';
 import { Request } from 'express';
 
 describe('NDR Webhook Integration Flow', () => {
@@ -52,6 +69,15 @@ describe('NDR Webhook Integration Flow', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         velocityHandler = new VelocityWebhookHandler();
+
+        // Setup common mocks that are reset by Jest config
+        (StatusMapperService.map as jest.Mock).mockReturnValue({
+            internalStatus: 'mock-status',
+            statusCategory: 'pending',
+            isTerminal: false,
+            allowsReattempt: true,
+            allowsCancellation: true
+        });
     });
 
     it('should trigger NDR detection and notification from Velocity webhook', async () => {
@@ -78,9 +104,12 @@ describe('NDR Webhook Integration Flow', () => {
         };
 
         // 2. Setup Mocks
-        mockShipment.findOne.mockReturnValue({
+        const mockResult = {
+            _id: 'ship_123',
+            currentStatus: 'shipped',
             populate: jest.fn().mockResolvedValue(mockShipmentDoc)
-        });
+        };
+        mockShipment.findOne.mockReturnValue(mockResult);
         mockShipment.findOneAndUpdate.mockResolvedValue(true);
 
         mockNDREvent.findOne.mockResolvedValue(null); // No duplicate
@@ -137,7 +166,8 @@ describe('NDR Webhook Integration Flow', () => {
             body: webhookPayload
         } as unknown as Request;
 
-        mockShipment.findOne.mockReturnValue({ populate: jest.fn().mockResolvedValue({}) });
+        const mockResult = { _id: 'ship_123', currentStatus: 'shipped', populate: jest.fn().mockResolvedValue({ _id: 'ship_123', currentStatus: 'shipped' }) };
+        mockShipment.findOne.mockReturnValue(mockResult);
         mockShipment.findOneAndUpdate.mockResolvedValue(true);
 
         const detectionSpy = jest.spyOn(NDRDetectionService, 'handleWebhookNDRDetection');

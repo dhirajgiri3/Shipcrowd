@@ -34,6 +34,10 @@ router.patch('/events/:id/status', RTOController.updateStatus);
 // Record QC result
 router.post('/events/:id/qc', RTOController.recordQC);
 
+// Disposition (suggest + execute)
+router.get('/events/:id/disposition/suggest', RTOController.suggestDisposition);
+router.post('/events/:id/disposition/execute', RTOController.executeDisposition);
+
 /**
  * RTO Analytics
  */
