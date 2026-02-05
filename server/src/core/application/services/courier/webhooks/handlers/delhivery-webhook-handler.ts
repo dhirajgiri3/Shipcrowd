@@ -82,6 +82,42 @@ export class DelhiveryWebhookHandler extends BaseWebhookHandler {
             }
         };
     }
+
+    /**
+     * Process webhook with real-time NDR detection
+     * Overrides base handler to check for NDR before status mapping
+     */
+    async handleWebhook(payload: WebhookPayload): Promise<void> {
+        // Check for NDR using Delhivery-specific patterns
+        if (this.isNDREvent(payload)) {
+            await this.triggerNDRDetection(payload);
+        }
+
+        // Continue with standard webhook processing
+        await super.handleWebhook(payload);
+    }
+
+    /**
+     * Check if webhook payload indicates an NDR event
+     * Delhivery uses StatusType field (UD, NDR, RT) for categorization
+     */
+    private isNDREvent(payload: WebhookPayload): boolean {
+        const patterns = this.getNDRPatterns();
+        const status = payload.status.toUpperCase();
+        const statusType = (payload.metadata?.statusType || '').toUpperCase();
+        const remarks = (payload.metadata?.instructions || '').toLowerCase();
+
+        // Delhivery's StatusType is the most reliable indicator
+        if (patterns.statusCodes.some(code =>
+            statusType.includes(code) || status.includes(code)
+        )) {
+            return true;
+        }
+
+        // Check keywords in instructions/remarks
+        return patterns.keywords.some(keyword => remarks.includes(keyword));
+    }
+
     /**
      * Get Delhivery-specific NDR patterns
      */

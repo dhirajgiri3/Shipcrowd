@@ -6,13 +6,16 @@
  */
 
 export type NDRStatus =
-    | 'open'              // New NDR case
+    | 'open'              // New NDR case (Frontend legacy)
+    | 'detected'          // New NDR case (Backend aligned)
     | 'in_progress'       // Action taken, awaiting response
+    | 'in_resolution'     // Action taken (Backend aligned)
     | 'customer_action'   // Awaiting customer response
     | 'reattempt_scheduled' // Delivery reattempt scheduled
     | 'resolved'          // Successfully resolved
     | 'escalated'         // Escalated to admin
-    | 'converted_to_rto'; // Failed, converting to RTO
+    | 'converted_to_rto'  // Failed, converting to RTO (Frontend legacy)
+    | 'rto_triggered';    // Failed, RTO triggered (Backend aligned)
 
 export type NDRReason =
     | 'address_incomplete'
@@ -64,6 +67,15 @@ export interface AutomatedAction {
     completedAt?: string;
     failureReason?: string;
     notes?: string;
+}
+
+export interface ResolutionAction {
+    action: string;
+    actionType: 'call_customer' | 'send_whatsapp' | 'send_email' | 'send_sms' | 'update_address' | 'request_reattempt' | 'trigger_rto' | 'manual';
+    takenAt: string;
+    takenBy: string;
+    result: 'success' | 'failed' | 'pending' | 'skipped';
+    metadata?: Record<string, any>;
 }
 
 export interface AddressCorrection {
@@ -136,9 +148,16 @@ export interface NDRCase {
     lastCommunicationAt?: string;
 
     // Actions & Resolution
-    automatedActions: AutomatedAction[];
+    automatedActions: AutomatedAction[]; // @deprecated - use resolutionActions
+    resolutionActions?: ResolutionAction[];
     addressCorrection?: AddressCorrection;
     resolution?: NDRResolution;
+
+    // Customer Portal & Prevention
+    magicLinkClicked?: boolean;
+    magicLinkClickedAt?: string;
+    preventionScore?: number;
+    customerSelfService?: boolean;
 
     // SLA & Timing
     reportedAt: string;

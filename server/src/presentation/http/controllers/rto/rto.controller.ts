@@ -186,6 +186,7 @@ export class RTOController {
             }
 
             const { returnStatus, notes, actualReturnDate, reverseAwb } = validation.data;
+            const performedBy = req.user?._id?.toString() ?? 'system';
 
             // Verify ownership
             const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
@@ -197,6 +198,7 @@ export class RTOController {
                 notes,
                 actualReturnDate,
                 reverseAwb,
+                performedBy,
             });
 
             sendSuccess(res, null, 'RTO status updated');

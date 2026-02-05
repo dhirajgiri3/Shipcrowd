@@ -172,6 +172,45 @@ export class EkartWebhookHandler extends BaseWebhookHandler {
             metadata: {}
         };
     }
+
+    /**
+     * Process webhook with real-time NDR detection
+     * Overrides base handler to check for NDR before status mapping
+     */
+    async handleWebhook(payload: WebhookPayload): Promise<void> {
+        // Check for NDR using Ekart-specific patterns
+        // Ekart provides explicit ndrStatus field which is most reliable
+        if (this.isNDREvent(payload)) {
+            await this.triggerNDRDetection(payload);
+        }
+
+        // Continue with standard webhook processing
+        await super.handleWebhook(payload);
+    }
+
+    /**
+     * Check if webhook payload indicates an NDR event
+     * Ekart provides explicit ndrStatus field for NDR events
+     */
+    private isNDREvent(payload: WebhookPayload): boolean {
+        // Ekart provides explicit ndrStatus field - most reliable
+        if (payload.metadata?.ndrStatus) {
+            return true;
+        }
+
+        const patterns = this.getNDRPatterns();
+        const status = payload.status.toUpperCase();
+        const description = (payload.metadata?.description || '').toLowerCase();
+
+        // Check status codes
+        if (patterns.statusCodes.some(code => status.includes(code))) {
+            return true;
+        }
+
+        // Check keywords in description
+        return patterns.keywords.some(keyword => description.includes(keyword));
+    }
+
     /**
      * Get Ekart-specific NDR patterns
      */

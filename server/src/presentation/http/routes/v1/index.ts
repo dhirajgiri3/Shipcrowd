@@ -112,7 +112,7 @@ import razorpayWebhookRoutes from './webhooks/razorpay.webhook.routes';
 import ekartWebhookRoutes from './webhooks/ekart.routes';
 import returnWebhooksRoutes from './logistics/return-webhooks.routes';
 import ndrPublicRoutes from './ndr/ndr-public.routes';
-
+import rtoPublicRoutes from './rto/rto-public.routes';
 
 const router = express.Router();
 
@@ -165,6 +165,7 @@ router.use('/public/resolve-ndr', ndrPublicRoutes); // Public access for custome
 router.use('/admin/ndr', ndrRoutes); // Alias for frontend compatibility
 router.use('/ndr/communication', ndrCommunicationRoutes);
 router.use('/rto', rtoRoutes);
+router.use('/public/rto', rtoPublicRoutes); // Public RTO tracking for customers
 router.use('/disputes/weight', weightDisputesRoutes);
 router.use('/packing-station', packingStationRoutes); // Week 2: Packing station evidence capture
 router.use('/weight-discrepancies', weightDisputesRoutes); // Alias for frontend compatibility

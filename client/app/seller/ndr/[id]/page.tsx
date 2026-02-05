@@ -25,12 +25,15 @@ import type { NDRAction } from '@/src/types/api/orders';
 
 const STATUS_COLORS = {
     open: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+    detected: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
     in_progress: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+    in_resolution: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
     customer_action: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
     reattempt_scheduled: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400',
     resolved: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
     escalated: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
     converted_to_rto: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+    rto_triggered: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
 };
 
 const QUICK_ACTIONS: { action: NDRAction; label: string; icon: string; color: string }[] = [
@@ -308,7 +311,10 @@ export default function NDRDetailPage() {
                             </h3>
                             <NDRTimeline
                                 attempts={ndrCase.allAttempts}
-                                actions={ndrCase.automatedActions}
+                                actions={ndrCase.resolutionActions || ndrCase.automatedActions}
+                                communications={ndrCase.communications}
+                                magicLinkClicked={ndrCase.magicLinkClicked}
+                                magicLinkClickedAt={ndrCase.magicLinkClickedAt}
                                 createdAt={ndrCase.createdAt}
                             />
                         </div>

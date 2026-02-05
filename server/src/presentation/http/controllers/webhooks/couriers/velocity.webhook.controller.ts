@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendSuccess } from '../../../../../shared/utils/responseHelper';
 import { ValidationError } from '../../../../../shared/errors/app.error';
-import { VelocityWebhookService } from '../../../../../infrastructure/external/couriers/velocity/velocity-webhook.service';
+import { VelocityWebhookHandler } from '../../../../../core/application/services/courier/webhooks/handlers/index';
+import logger from '../../../../../shared/logger/winston.logger';
 
 /**
  * VelocityWebhookController
@@ -9,34 +10,41 @@ import { VelocityWebhookService } from '../../../../../infrastructure/external/c
  * Handles incoming webhooks from Velocity Courier.
  * Endpoint: POST /webhooks/couriers/velocity
  * 
- * Uses specialized VelocityWebhookService for processing to handle
- * all event types including status updates and creation events.
+ * Uses the unified BaseWebhookHandler architecture for:
+ * - API key verification
+ * - Idempotency handling
+ * - Real-time NDR detection
+ * - Status mapping via StatusMapperService
+ * - Automatic shipment updates
  */
 export class VelocityWebhookController {
+    private static handler = new VelocityWebhookHandler();
+
     /**
      * Handle incoming webhook event
      */
     static async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const payload = req.body;
-
-            // Basic payload validation
-            if (!payload) {
-                throw new ValidationError('Invalid payload: Missing body');
+            // 1. Verify API key
+            const isValid = this.handler.verifySignature(req);
+            if (!isValid) {
+                throw new ValidationError('Invalid webhook API key');
             }
 
-            // Process webhook using specialized Velocity service
-            const result = await VelocityWebhookService.processWebhook(payload);
+            // 2. Parse webhook payload
+            const payload = this.handler.parseWebhook(req);
 
-            // Send appropriate response based on result
-            // We generally return success to the webhook provider to prevent retries
-            // unless it's a transient system error (handled by middleware/global handler)
+            // 3. Process webhook (includes real-time NDR detection, DB updates, triggers events)
+            await this.handler.handleWebhook(payload);
+
+            // 4. Send success response
             sendSuccess(res, {
-                status: result.success ? 'success' : 'processed_with_warnings',
-                message: result.message
+                status: 'success',
+                message: 'Webhook processed successfully'
             });
 
         } catch (error) {
+            logger.error('Velocity webhook error', { error });
             next(error);
         }
     }

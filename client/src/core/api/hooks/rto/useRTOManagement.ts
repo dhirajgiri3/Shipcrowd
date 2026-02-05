@@ -1,229 +1,260 @@
 /**
  * RTO Management API Hooks
  *
- * React Query hooks for Return-To-Origin (RTO) event management
- * Backend: GET/POST /api/v1/rto/*
+ * React Query hooks for Return-To-Origin (RTO) event management.
+ * Backend: GET/POST/PATCH /api/v1/rto/*
+ * Types aligned with server RTOEvent and controller responses.
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import {
+    useQuery,
+    useMutation,
+    useQueryClient,
+    UseQueryOptions,
+    UseMutationOptions,
+} from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import type {
+    RTOEventDetail,
+    RTOListPagination,
+    RTOReturnStatus,
+    RTOQCResult,
+} from '@/src/types/api/rto.types';
 
-export interface RTOEvent {
-    _id: string;
-    rtoId: string;
-    shipmentId: string;
-    trackingNumber: string;
-    orderId: string;
-    orderNumber: string;
-
-    // Customer info
-    customerName: string;
-    customerPhone: string;
-    customerEmail?: string;
-
-    // RTO details
-    status: 'initiated' | 'in_transit' | 'received' | 'qc_pending' | 'qc_passed' | 'qc_failed' | 'resolved' | 'closed';
-    reason: string;
-    initiatedAt: string;
-    estimatedDelivery?: string;
-
-    // QC Details
-    qualityCheck?: {
-        performedBy: string;
-        performedAt: string;
-        status: 'pass' | 'fail' | 'partial';
-        notes: string;
-        images?: string[];
-    };
-
-    // Metadata
-    courier: string;
-    weight: number;
-    value: number;
-    createdAt: string;
-    updatedAt: string;
+// Backend list response: { data: events[], pagination }
+export interface RTOListResponse {
+    data: RTOEventDetail[];
+    pagination: RTOListPagination;
 }
 
 export interface RTOEventResponse {
-    rtoEvents: RTOEvent[];
-    pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        pages: number;
-    };
+    rtoEvents: RTOEventDetail[];
+    pagination: RTOListPagination;
 }
 
 export interface RTOPendingResponse {
-    pending: RTOEvent[];
+    pending: RTOEventDetail[];
     count: number;
     totalValue: number;
 }
 
-export interface RTOAnalyticsStats {
-    totalRTO: number;
-    inTransit: number;
-    received: number;
-    resolved: number;
-    pendingQC: number;
-    avgResolutionTime: number;
-    estimatedValue: number;
-}
-
 export interface RTOFilters {
-    status?: string;
-    search?: string;
+    returnStatus?: string;
+    rtoReason?: string;
+    warehouseId?: string;
     startDate?: string;
     endDate?: string;
     page?: number;
     limit?: number;
+    sortBy?: 'triggeredAt' | 'expectedReturnDate' | 'actualReturnDate';
+    sortOrder?: 'asc' | 'desc';
 }
 
 export interface PerformQCPayload {
     rtoId: string;
-    status: 'pass' | 'fail' | 'partial';
-    notes: string;
-    images?: string[];
+    qcResult: {
+        passed: boolean;
+        remarks: string;
+        images?: string[];
+        inspectedBy?: string;
+        condition?: string;
+        damageTypes?: string[];
+        photos?: { url: string; label?: string }[];
+    };
 }
 
-export interface ResolveRTOPayload {
+export interface UpdateRTOStatusPayload {
     rtoId: string;
-    resolution: string;
-    refundAmount?: number;
+    returnStatus: RTOReturnStatus;
+    notes?: string;
+    actualReturnDate?: string;
+    reverseAwb?: string;
 }
 
 /**
  * Get list of RTO events with filters
  * GET /rto/events
+ * Backend returns { data: events, pagination }; normalized to { rtoEvents, pagination } for UI.
  */
-export const useRTOEvents = (filters?: RTOFilters, options?: UseQueryOptions<RTOEventResponse, ApiError>) => {
+export function useRTOEvents(filters?: RTOFilters, options?: UseQueryOptions<RTOEventResponse, ApiError>) {
+    const params: Record<string, string | number | undefined> = {};
+    if (filters?.page != null) params.page = String(filters.page);
+    if (filters?.limit != null) params.limit = String(filters.limit);
+    if (filters?.returnStatus) params.returnStatus = filters.returnStatus;
+    if (filters?.rtoReason) params.rtoReason = filters.rtoReason;
+    if (filters?.warehouseId) params.warehouseId = filters.warehouseId;
+    if (filters?.startDate) params.startDate = filters.startDate;
+    if (filters?.endDate) params.endDate = filters.endDate;
+    if (filters?.sortBy) params.sortBy = filters.sortBy;
+    if (filters?.sortOrder) params.sortOrder = filters.sortOrder;
+
     return useQuery<RTOEventResponse, ApiError>({
         queryKey: queryKeys.rto.events(filters),
         queryFn: async () => {
-            const response = await apiClient.get<{ data: RTOEventResponse }>(
+            const response = await apiClient.get<{ success: boolean; data: RTOListResponse }>(
                 '/rto/events',
-                { params: filters }
+                { params }
             );
-            return response.data.data;
+            const payload = response.data?.data ?? response.data;
+            const list = (payload as RTOListResponse)?.data;
+            const pagination = (payload as RTOListResponse)?.pagination;
+            return {
+                rtoEvents: Array.isArray(list) ? list : [],
+                pagination: pagination ?? {
+                    page: 1,
+                    limit: 20,
+                    total: 0,
+                    pages: 0,
+                },
+            };
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
-};
+}
+
+/**
+ * Get single RTO event by ID
+ * GET /rto/events/:id
+ */
+export function useRTODetails(
+    rtoId: string | null | undefined,
+    options?: UseQueryOptions<RTOEventDetail, ApiError>
+) {
+    return useQuery<RTOEventDetail, ApiError>({
+        queryKey: queryKeys.rto.detail(rtoId ?? ''),
+        queryFn: async () => {
+            const response = await apiClient.get<{ success: boolean; data: { data: RTOEventDetail } }>(
+                `/rto/events/${rtoId}`
+            );
+            const inner = response.data?.data;
+            return (inner as { data?: RTOEventDetail })?.data ?? (inner as RTOEventDetail);
+        },
+        enabled: !!rtoId,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
 
 /**
  * Get pending RTOs
  * GET /rto/pending
+ * Backend returns { data: array }; normalized to { pending, count, totalValue }.
  */
-export const useRTOPending = (options?: UseQueryOptions<RTOPendingResponse, ApiError>) => {
+export function useRTOPending(options?: UseQueryOptions<RTOPendingResponse, ApiError>) {
     return useQuery<RTOPendingResponse, ApiError>({
         queryKey: queryKeys.rto.pending(),
         queryFn: async () => {
-            const response = await apiClient.get<{ data: RTOPendingResponse }>(
+            const response = await apiClient.get<{ success: boolean; data: RTOEventDetail[] }>(
                 '/rto/pending'
             );
-            return response.data.data;
+            const payload = response.data?.data ?? response.data;
+            const pending = Array.isArray(payload) ? payload : [];
+            const totalValue = pending.reduce(
+                (sum, r) => sum + (typeof (r as RTOEventDetail).rtoCharges === 'number' ? (r as RTOEventDetail).rtoCharges : 0),
+                0
+            );
+            return {
+                pending,
+                count: pending.length,
+                totalValue,
+            };
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
-};
-
-/**
- * Get RTO analytics statistics
- * GET /rto/analytics/stats
- */
-export const useRTOAnalytics = (options?: UseQueryOptions<RTOAnalyticsStats, ApiError>) => {
-    return useQuery<RTOAnalyticsStats, ApiError>({
-        queryKey: queryKeys.rto.analytics(),
-        queryFn: async () => {
-            const response = await apiClient.get<{ data: RTOAnalyticsStats }>(
-                '/rto/analytics/stats'
-            );
-            return response.data.data;
-        },
-        ...CACHE_TIMES.MEDIUM,
-        retry: RETRY_CONFIG.DEFAULT,
-        ...options,
-    });
-};
+}
 
 /**
  * Perform QC on RTO
  * POST /rto/events/:id/qc
+ * Backend expects body: { qcResult: { passed, remarks, images?, inspectedBy? } }
  */
-export const usePerformRTOQC = (options?: UseMutationOptions<RTOEvent, ApiError, PerformQCPayload>) => {
+export function usePerformRTOQC(
+    options?: UseMutationOptions<RTOEventDetail, ApiError, PerformQCPayload>
+) {
     const queryClient = useQueryClient();
 
-    return useMutation<RTOEvent, ApiError, PerformQCPayload>({
+    return useMutation<RTOEventDetail, ApiError, PerformQCPayload>({
         mutationFn: async (payload: PerformQCPayload) => {
-            const response = await apiClient.post<{ data: RTOEvent }>(
+            const response = await apiClient.post<{ success: boolean; data?: RTOEventDetail }>(
                 `/rto/events/${payload.rtoId}/qc`,
-                {
-                    status: payload.status,
-                    notes: payload.notes,
-                    images: payload.images,
-                }
+                { qcResult: payload.qcResult }
             );
-            return response.data.data;
+            const data = response.data?.data ?? (response.data as unknown as { data?: RTOEventDetail })?.data;
+            return data as RTOEventDetail;
         },
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast('RTO quality check completed successfully');
+            showSuccessToast('RTO quality check recorded successfully');
         },
         onError: (error) => handleApiError(error),
         ...options,
     });
-};
+}
 
 /**
- * Resolve RTO
- * POST /rto/events/:id/resolve
+ * Update RTO status (e.g. mark restocked, in_transit, etc.)
+ * PATCH /rto/events/:id/status
  */
-export const useResolveRTO = (options?: UseMutationOptions<RTOEvent, ApiError, ResolveRTOPayload>) => {
+export function useUpdateRTOStatus(
+    options?: UseMutationOptions<unknown, ApiError, UpdateRTOStatusPayload>
+) {
     const queryClient = useQueryClient();
 
-    return useMutation<RTOEvent, ApiError, ResolveRTOPayload>({
-        mutationFn: async (payload: ResolveRTOPayload) => {
-            const response = await apiClient.post<{ data: RTOEvent }>(
-                `/rto/events/${payload.rtoId}/resolve`,
-                {
-                    resolution: payload.resolution,
-                    refundAmount: payload.refundAmount,
-                }
-            );
-            return response.data.data;
+    return useMutation<unknown, ApiError, UpdateRTOStatusPayload>({
+        mutationFn: async (payload: UpdateRTOStatusPayload) => {
+            await apiClient.patch(`/rto/events/${payload.rtoId}/status`, {
+                returnStatus: payload.returnStatus,
+                notes: payload.notes,
+                actualReturnDate: payload.actualReturnDate,
+                reverseAwb: payload.reverseAwb,
+            });
         },
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast('RTO resolved successfully');
+            showSuccessToast('RTO status updated');
         },
         onError: (error) => handleApiError(error),
         ...options,
     });
-};
+}
 
 /**
- * Trigger RTO for shipment
+ * Trigger RTO for a shipment
  * POST /rto/trigger
  */
-export const useTriggerRTO = (options?: UseMutationOptions<RTOEvent, ApiError, { shipmentId: string; reason: string }>) => {
+export function useTriggerRTO(
+    options?: UseMutationOptions<
+        { rtoEventId: string; reverseAwb: string },
+        ApiError,
+        { shipmentId: string; reason: string }
+    >
+) {
     const queryClient = useQueryClient();
 
-    return useMutation<RTOEvent, ApiError, { shipmentId: string; reason: string }>({
-        mutationFn: async (payload: { shipmentId: string; reason: string }) => {
-            const response = await apiClient.post<{ data: RTOEvent }>(
-                '/rto/trigger',
-                payload
-            );
-            return response.data.data;
+    return useMutation<
+        { rtoEventId: string; reverseAwb: string },
+        ApiError,
+        { shipmentId: string; reason: string }
+    >({
+        mutationFn: async (payload) => {
+            const response = await apiClient.post<{
+                success: boolean;
+                data?: { rtoEventId: string; reverseAwb: string };
+            }>('/rto/trigger', payload);
+            const data = response.data?.data ?? (response.data as unknown as { data?: { rtoEventId: string; reverseAwb: string } })?.data;
+            return data ?? { rtoEventId: '', reverseAwb: '' };
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
@@ -234,4 +265,4 @@ export const useTriggerRTO = (options?: UseMutationOptions<RTOEvent, ApiError, {
         onError: (error) => handleApiError(error),
         ...options,
     });
-};
+}

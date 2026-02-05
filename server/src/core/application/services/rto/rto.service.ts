@@ -23,6 +23,7 @@ import WhatsAppService from '../../../../infrastructure/external/communication/w
 import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
 import WalletService from '../wallet/wallet.service';
 import RateCardService from './rate-card.service';
+import InventoryService from '../warehouse/inventory.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
@@ -716,10 +717,7 @@ export default class RTOService {
             logger.info('Tracking reverse shipment', { reverseAwb });
 
             // Find RTO event by reverse AWB
-            const rtoEvent = await RTOEvent.findOne({
-                reverseAwb,
-                isDeleted: false
-            }).populate('shipment');
+            const rtoEvent = await RTOEvent.findOne({ reverseAwb }).populate('shipment');
 
             if (!rtoEvent) {
                 throw new AppError('RTO event not found', 'RTO_NOT_FOUND', 404);
@@ -948,6 +946,79 @@ export default class RTOService {
     /**
      * Update RTO status
      */
+    /**
+     * Perform restock: update inventory for RTO items and then set status to restocked.
+     * Called when status is updated to 'restocked'. Uses Order.products (sku, quantity).
+     */
+    static async performRestock(
+        rtoEventId: string,
+        performedBy: string = 'system'
+    ): Promise<void> {
+        const rtoEvent = await RTOEvent.findById(rtoEventId).populate('order');
+        if (!rtoEvent) {
+            throw new AppError('RTO event not found', 'RTO_NOT_FOUND', 404);
+        }
+        if (rtoEvent.returnStatus !== 'qc_completed') {
+            throw new AppError(
+                'RTO must be QC completed before restock',
+                'INVALID_RTO_STATUS',
+                400
+            );
+        }
+        if (!rtoEvent.qcResult?.passed) {
+            throw new AppError(
+                'QC must be passed to restock',
+                'QC_NOT_PASSED',
+                400
+            );
+        }
+
+        const order = await Order.findById(rtoEvent.order);
+        if (!order || !order.products?.length) {
+            logger.warn('RTO restock: order or products missing', { rtoEventId, orderId: rtoEvent.order });
+            return;
+        }
+
+        const warehouseId = String(rtoEvent.warehouse);
+
+        for (const item of order.products) {
+            const sku = item.sku;
+            const qty = item.quantity || 1;
+            if (!sku) continue;
+
+            try {
+                const inventory = await InventoryService.getInventoryBySKU(warehouseId, sku);
+                if (!inventory) {
+                    logger.warn('RTO restock: no inventory record for SKU', {
+                        rtoEventId,
+                        sku,
+                        warehouseId,
+                    });
+                    continue;
+                }
+                await InventoryService.adjustStock({
+                    inventoryId: String(inventory._id),
+                    quantity: qty,
+                    reason: `RTO restocked: ${rtoEventId}`,
+                    notes: `RTO ${rtoEventId} restocked after QC pass`,
+                    performedBy,
+                });
+                logger.info('RTO restock: inventory updated', {
+                    rtoEventId,
+                    sku,
+                    quantity: qty,
+                });
+            } catch (err: any) {
+                logger.error('RTO restock: failed to adjust stock', {
+                    rtoEventId,
+                    sku,
+                    error: err.message,
+                });
+                throw err;
+            }
+        }
+    }
+
     static async updateRTOStatus(
         rtoEventId: string,
         status: string,
@@ -963,6 +1034,11 @@ export default class RTOService {
             }
 
             const previousStatus = rtoEvent.returnStatus;
+
+            if (status === 'restocked') {
+                const performedBy = metadata?.performedBy ?? 'system';
+                await this.performRestock(rtoEventId, performedBy);
+            }
 
             await rtoEvent.updateReturnStatus(status, metadata);
 

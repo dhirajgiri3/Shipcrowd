@@ -6,12 +6,20 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
  * Tracks Return To Origin events.
  */
 
+export interface IQCPhoto {
+    url: string;
+    label?: string;
+}
+
 export interface IQCResult {
     passed: boolean;
     remarks?: string;
     images?: string[];
     inspectedBy?: string;
     inspectedAt?: Date;
+    condition?: string;
+    damageTypes?: string[];
+    photos?: IQCPhoto[];
 }
 
 export interface IRTOEvent extends Document {
@@ -48,6 +56,11 @@ interface IRTOEventModel extends Model<IRTOEvent> {
     getByShipment(shipmentId: string): Promise<IRTOEvent | null>;
 }
 
+const QCPhotoSchema = new Schema<IQCPhoto>(
+    { url: { type: String, required: true }, label: { type: String } },
+    { _id: false }
+);
+
 const QCResultSchema = new Schema<IQCResult>(
     {
         passed: { type: Boolean, required: true },
@@ -64,6 +77,27 @@ const QCResultSchema = new Schema<IQCResult>(
         },
         inspectedBy: { type: String },
         inspectedAt: { type: Date },
+        condition: { type: String, maxlength: 1000 },
+        damageTypes: {
+            type: [String],
+            default: [],
+            validate: {
+                validator: function (v: string[]) {
+                    return v.length <= 20;
+                },
+                message: 'damageTypes cannot exceed 20 items'
+            }
+        },
+        photos: {
+            type: [QCPhotoSchema],
+            default: [],
+            validate: {
+                validator: function (v: IQCPhoto[]) {
+                    return v.length <= 20;
+                },
+                message: 'QC photos array cannot exceed 20 items'
+            }
+        },
     },
     { _id: false }
 );

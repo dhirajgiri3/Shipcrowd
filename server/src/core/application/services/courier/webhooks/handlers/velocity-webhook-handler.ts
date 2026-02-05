@@ -65,6 +65,38 @@ export class VelocityWebhookHandler extends BaseWebhookHandler {
             }
         };
     }
+
+    /**
+     * Process webhook with real-time NDR detection
+     * Overrides base handler to check for NDR before status mapping
+     */
+    async handleWebhook(payload: WebhookPayload): Promise<void> {
+        // Check for NDR using Velocity-specific patterns
+        if (this.isNDREvent(payload)) {
+            await this.triggerNDRDetection(payload);
+        }
+
+        // Continue with standard webhook processing (status mapping, DB update)
+        await super.handleWebhook(payload);
+    }
+
+    /**
+     * Check if webhook payload indicates an NDR event
+     */
+    private isNDREvent(payload: WebhookPayload): boolean {
+        const patterns = this.getNDRPatterns();
+        const status = payload.status.toUpperCase();
+        const description = (payload.metadata?.description || '').toLowerCase();
+
+        // Check status codes
+        if (patterns.statusCodes.some(code => status.includes(code))) {
+            return true;
+        }
+
+        // Check keywords in description/activity
+        return patterns.keywords.some(keyword => description.includes(keyword));
+    }
+
     /**
      * Get Velocity-specific NDR patterns
      */

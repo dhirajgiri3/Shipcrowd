@@ -24,7 +24,8 @@ import {
     Banknote,
     ChevronRight,
     ChevronDown,
-    MapPin
+    MapPin,
+    RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
@@ -65,6 +66,7 @@ const navSections: NavSection[] = [
         defaultOpen: false,
         items: [
             { label: 'NDR Management', href: '/seller/ndr', icon: PackageX, badgeKey: 'ndr_pending' },
+            { label: 'RTO Management', href: '/seller/rto', icon: RotateCcw },
             { label: 'Warehouses', href: '/seller/warehouses', icon: Building2 },
             { label: 'Weight Discrepancy', href: '/seller/weight', icon: ScaleIcon },
             { label: 'Rate Calculator', href: '/seller/rates', icon: Calculator },

@@ -10,16 +10,19 @@
 
 'use client';
 
-import type { NDRAttempt, AutomatedAction } from '@/src/types/api/orders';
+import type { NDRAttempt, AutomatedAction, ResolutionAction, CustomerCommunication } from '@/src/types/api/orders';
 import { formatDate } from '@/src/lib/utils';
 
 interface NDRTimelineProps {
     attempts: NDRAttempt[];
-    actions: AutomatedAction[];
+    actions: (AutomatedAction | ResolutionAction)[];
+    communications?: CustomerCommunication[];
+    magicLinkClicked?: boolean;
+    magicLinkClickedAt?: string;
     createdAt: string;
 }
 
-export function NDRTimeline({ attempts, actions, createdAt }: NDRTimelineProps) {
+export function NDRTimeline({ attempts, actions, communications = [], magicLinkClicked, magicLinkClickedAt, createdAt }: NDRTimelineProps) {
     // Combine all events into a single timeline
     const timelineEvents = [
         {
@@ -40,16 +43,43 @@ export function NDRTimeline({ attempts, actions, createdAt }: NDRTimelineProps) 
             details: attempt.courierRemarks,
             location: attempt.location,
         })),
-        ...actions.map((action) => ({
-            type: 'action',
-            timestamp: action.triggeredAt,
-            title: action.actionType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            description: `Action ${action.status}`,
-            icon: action.status === 'completed' ? '✅' : action.status === 'failed' ? '❌' : '⏳',
-            color: action.status === 'completed' ? 'bg-green-500' : action.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500',
-            details: action.notes || action.failureReason,
-            triggeredBy: action.triggeredBy,
+        ...actions.map((action) => {
+            // Handle both AutomatedAction and ResolutionAction types
+            const isResolution = 'result' in action;
+            const status = isResolution ? (action as ResolutionAction).result : (action as AutomatedAction).status;
+            const timestamp = isResolution ? (action as ResolutionAction).takenAt : (action as AutomatedAction).triggeredAt;
+            const details = isResolution
+                ? JSON.stringify((action as ResolutionAction).metadata)
+                : ((action as AutomatedAction).notes || (action as AutomatedAction).failureReason);
+
+            return {
+                type: 'action',
+                timestamp: timestamp,
+                title: action.actionType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                description: `Action ${status}`,
+                icon: status === 'completed' || status === 'success' ? '✅' : status === 'failed' ? '❌' : '⏳',
+                color: status === 'completed' || status === 'success' ? 'bg-green-500' : status === 'failed' ? 'bg-red-500' : 'bg-yellow-500',
+                details: details,
+                triggeredBy: isResolution ? (action as ResolutionAction).takenBy : (action as AutomatedAction).triggeredBy,
+            };
+        }),
+        ...(communications || []).map((comm) => ({
+            type: 'communication',
+            timestamp: comm.sentAt,
+            title: `Communication Sent (${comm.channel})`,
+            description: `Sent via ${comm.channel}`,
+            icon: comm.channel === 'whatsapp' ? '💬' : comm.channel === 'email' ? '📧' : comm.channel === 'sms' ? '📱' : '📞',
+            color: 'bg-purple-500',
+            details: `Template: ${comm.template}`,
         })),
+        ...(magicLinkClicked && magicLinkClickedAt ? [{
+            type: 'magic_link',
+            timestamp: magicLinkClickedAt,
+            title: 'Customer Viewed Portal',
+            description: 'Customer clicked the magic link',
+            icon: '👀',
+            color: 'bg-teal-500',
+        }] : []),
     ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return (

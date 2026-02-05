@@ -113,6 +113,11 @@ export const updateRTOStatusSchema = z.object({
 
 export type UpdateRTOStatusInput = z.infer<typeof updateRTOStatusSchema>;
 
+export const qcPhotoSchema = z.object({
+    url: z.string().url('Invalid image URL'),
+    label: z.string().max(100).optional(),
+});
+
 export const qcResultSchema = z.object({
     passed: z.boolean(),
     remarks: z.string()
@@ -127,6 +132,9 @@ export const qcResultSchema = z.object({
         .optional(),
     damageSeverity: z.enum(['none', 'minor', 'moderate', 'severe', 'total_loss']).optional(),
     restockable: z.boolean().optional(),
+    condition: z.string().max(1000).optional(),
+    damageTypes: z.array(z.string().max(80)).max(20).optional(),
+    photos: z.array(qcPhotoSchema).max(20).optional(),
 });
 
 export type QCResultInput = z.infer<typeof qcResultSchema>;
