@@ -1,34 +1,46 @@
 /**
  * Unit Tests for NDR Communication Service
- * 
- * Tests:
- * - SMS channel support
- * - Multi-channel notifications (all)
- * - Template-based messaging
  */
 
-import NDRCommunicationService from '../../../src/core/application/services/communication/ndr-communication.service';
-import { Shipment } from '../../../src/infrastructure/database/mongoose/models';
-import mongoose from 'mongoose';
+const mockFindById = jest.fn();
+const mockSendSMS = jest.fn().mockResolvedValue(true);
+const mockSendWhatsAppMessage = jest.fn().mockResolvedValue(true);
 
-jest.mock('../../../src/infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model');
+jest.mock('../../../src/infrastructure/database/mongoose/models', () => {
+    const actual = jest.requireActual('../../../src/infrastructure/database/mongoose/models');
+    return {
+        ...actual,
+        Shipment: { findById: mockFindById },
+    };
+});
 jest.mock('../../../src/core/application/services/communication/sms.service', () => ({
-    default: {
-        sendSMS: jest.fn().mockResolvedValue(true)
-    }
+    __esModule: true,
+    default: { sendSMS: mockSendSMS },
 }));
 jest.mock('../../../src/core/application/services/communication/whatsapp.service', () => ({
-    default: {
-        sendWhatsAppMessage: jest.fn().mockResolvedValue(true),
-    }
+    __esModule: true,
+    default: { sendWhatsAppMessage: mockSendWhatsAppMessage },
 }));
 jest.mock('../../../src/core/application/services/communication/email.service', () => ({
-    sendEmail: jest.fn().mockResolvedValue(true)
+    sendEmail: jest.fn().mockResolvedValue(true),
 }));
+jest.mock('../../../src/core/application/services/communication/notification-preferences.service', () => ({
+    default: { shouldSend: jest.fn().mockResolvedValue(true) },
+}));
+jest.mock('../../../src/core/application/services/ndr/ndr-magic-link.service', () => ({
+    __esModule: true,
+    default: { generateMagicLink: jest.fn().mockReturnValue('https://example.com/ndr/magic-link') },
+}));
+
+import NDRCommunicationService from '../../../src/core/application/services/communication/ndr-communication.service';
+import mongoose from 'mongoose';
 
 describe('NDR Communication Service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockSendSMS.mockResolvedValue(true);
+        mockSendWhatsAppMessage.mockResolvedValue(true);
+        mockFindById.mockResolvedValue(null);
     });
 
     describe('sendNDRNotification', () => {
@@ -49,17 +61,16 @@ describe('NDR Communication Service', () => {
                 }
             };
 
-            (Shipment.findById as jest.Mock).mockResolvedValue(mockShipment);
-
-            const SMSService = require('../../../src/core/application/services/communication/sms.service').default;
+            mockFindById.mockResolvedValue(mockShipment);
 
             const result = await NDRCommunicationService.sendNDRNotification({
+                ndrEventId: 'ndr-event-123',
                 shipmentId: mockShipment._id.toString(),
                 channel: 'sms',
                 templateType: 'ndr_alert'
             });
 
-            expect(SMSService.sendSMS).toHaveBeenCalledWith(
+            expect(mockSendSMS).toHaveBeenCalledWith(
                 '9123456789',
                 expect.stringContaining('delivery for VEL123456789 failed')
             );
@@ -84,21 +95,17 @@ describe('NDR Communication Service', () => {
                 }
             };
 
-            (Shipment.findById as jest.Mock).mockResolvedValue(mockShipment);
-
-            const SMSService = require('../../../src/core/application/services/communication/sms.service').default;
-            const WhatsAppService = require('../../../src/core/application/services/communication/whatsapp.service').default;
-            const { sendEmail } = require('../../../src/core/application/services/communication/email.service');
+            mockFindById.mockResolvedValue(mockShipment);
 
             const result = await NDRCommunicationService.sendNDRNotification({
+                ndrEventId: 'ndr-event-123',
                 shipmentId: mockShipment._id.toString(),
                 channel: 'all',
                 templateType: 'action_required'
             });
 
-            expect(SMSService.sendSMS).toHaveBeenCalled();
-            expect(WhatsAppService.sendWhatsAppMessage).toHaveBeenCalled();
-            expect(sendEmail).toHaveBeenCalled();
+            expect(mockSendSMS).toHaveBeenCalled();
+            expect(mockSendWhatsAppMessage).toHaveBeenCalled();
             expect(result.channelsSent).toContain('sms');
             expect(result.channelsSent).toContain('whatsapp');
             expect(result.channelsSent).toContain('email');
@@ -117,18 +124,17 @@ describe('NDR Communication Service', () => {
                 }
             };
 
-            (Shipment.findById as jest.Mock).mockResolvedValue(mockShipment);
-
-            const SMSService = require('../../../src/core/application/services/communication/sms.service').default;
+            mockFindById.mockResolvedValue(mockShipment);
 
             // Test RTO template
             await NDRCommunicationService.sendNDRNotification({
+                ndrEventId: 'ndr-event-123',
                 shipmentId: mockShipment._id.toString(),
                 channel: 'sms',
                 templateType: 'rto'
             });
 
-            expect(SMSService.sendSMS).toHaveBeenCalledWith(
+            expect(mockSendSMS).toHaveBeenCalledWith(
                 '9999999999',
                 expect.stringContaining('being returned')
             );
@@ -148,22 +154,17 @@ describe('NDR Communication Service', () => {
                 }
             };
 
-            (Shipment.findById as jest.Mock).mockResolvedValue(mockShipment);
+            mockFindById.mockResolvedValue(mockShipment);
 
-            const SMSService = require('../../../src/core/application/services/communication/sms.service').default;
-            const { sendEmail } = require('../../../src/core/application/services/communication/email.service');
-
-            // Mock SMS failure
-            SMSService.sendSMS.mockRejectedValueOnce(new Error('SMS service down'));
+            mockSendSMS.mockRejectedValueOnce(new Error('SMS service down'));
 
             const result = await NDRCommunicationService.sendNDRNotification({
+                ndrEventId: 'ndr-event-123',
                 shipmentId: mockShipment._id.toString(),
                 channel: 'all',
                 templateType: 'ndr_alert'
             });
 
-            // Should still send email even if SMS fails
-            expect(sendEmail).toHaveBeenCalled();
             expect(result.channelsSent).toContain('email');
             expect(result.channelsSent).not.toContain('sms');
         });

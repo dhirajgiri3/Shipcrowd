@@ -122,11 +122,11 @@ describe('NDR Webhook Integration Flow', () => {
             body: webhookPayload
         } as unknown as Request;
 
-        // Spy on Detection Service logic (optional, but good verification)
+        // Spy on Detection Service and handler's updateShipmentStatus
         const detectionSpy = jest.spyOn(NDRDetectionService, 'handleWebhookNDRDetection');
+        const updateStatusSpy = jest.spyOn(velocityHandler, 'updateShipmentStatus').mockResolvedValue(undefined);
 
         // 3. Execute Handler
-        // We override verifySignature to skip auth check for this test
         jest.spyOn(velocityHandler, 'verifySignature').mockReturnValue(true);
 
         await velocityHandler.handleWebhook(velocityHandler.parseWebhook(req));
@@ -143,8 +143,8 @@ describe('NDR Webhook Integration Flow', () => {
         // Ensure NDR Event was created
         expect(mockNDREvent.createNDREvent).toHaveBeenCalled();
 
-        // Ensure Shipment Tracking was updated (standard webhook behavior)
-        expect(mockShipment.findOneAndUpdate).toHaveBeenCalled();
+        // Ensure handler invoked status update path (updateShipmentStatus is mocked so DB is not hit)
+        expect(updateStatusSpy).toHaveBeenCalled();
 
         // Note: Notification call happens in setImmediate/async background
         // To verify it, we'd need to wait or mock timers. 
@@ -171,11 +171,12 @@ describe('NDR Webhook Integration Flow', () => {
         mockShipment.findOneAndUpdate.mockResolvedValue(true);
 
         const detectionSpy = jest.spyOn(NDRDetectionService, 'handleWebhookNDRDetection');
+        const updateStatusSpy = jest.spyOn(velocityHandler, 'updateShipmentStatus').mockResolvedValue(undefined);
         jest.spyOn(velocityHandler, 'verifySignature').mockReturnValue(true);
 
         await velocityHandler.handleWebhook(velocityHandler.parseWebhook(req));
 
         expect(detectionSpy).not.toHaveBeenCalled();
-        expect(mockShipment.findOneAndUpdate).toHaveBeenCalled();
+        expect(updateStatusSpy).toHaveBeenCalled();
     });
 });

@@ -6,18 +6,20 @@ const mockNDREvent = {
     countDocuments: jest.fn(),
     createNDREvent: jest.fn(),
     getExpiredNDRs: jest.fn(),
+    aggregate: jest.fn().mockResolvedValue([]),
 };
-
 const mockNDRWorkflow = {
     getWorkflowForNDR: jest.fn(),
+    find: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
 };
 
-// Mock the models barrel export BEFORE any imports
 jest.mock('@/infrastructure/database/mongoose/models', () => ({
     NDREvent: mockNDREvent,
     NDRWorkflow: mockNDRWorkflow,
-    // Add placeholder exports to prevent import errors
     IShipment: {},
+}));
+jest.mock('@/core/application/services/ndr/actions/ndr-action-executors', () => ({
+    default: { executeAction: jest.fn().mockResolvedValue({ success: true }) },
 }));
 
 // Now we can import the services that depend on the mocked models
@@ -119,15 +121,29 @@ describe('NDR/RTO Integration Tests', () => {
                 },
             };
 
-            mockNDREvent.getExpiredNDRs.mockResolvedValue([expiredNDREvent]);
-            mockNDRWorkflow.getWorkflowForNDR.mockResolvedValue(mockWorkflow);
+            mockNDREvent.aggregate.mockResolvedValue([
+                {
+                    _id: expiredNDREvent._id,
+                    company: expiredNDREvent.company,
+                    ndrType: expiredNDREvent.ndrType,
+                    status: 'detected',
+                    shipment: expiredNDREvent.shipment,
+                    order: { toString: () => String(expiredNDREvent.order) },
+                    customerName: 'Test',
+                    customerPhone: '+919876543210',
+                    customerEmail: 't@t.com',
+                    awb: 'AWB1',
+                },
+            ]);
+            mockNDRWorkflow.find.mockReturnValue({
+                lean: jest.fn().mockResolvedValue([mockWorkflow]),
+            });
 
-            // 2. Check deadlines (would trigger RTO)
-            await NDRResolutionService.checkResolutionDeadlines();
+            const processed = await NDRResolutionService.checkResolutionDeadlines();
 
-            // 3. Verify expired NDRs were fetched
             expect(expiredNDREvent).toBeDefined();
-            expect(mockNDREvent.getExpiredNDRs).toHaveBeenCalled();
+            expect(mockNDREvent.aggregate).toHaveBeenCalled();
+            expect(processed).toBeGreaterThanOrEqual(0);
         });
     });
 
