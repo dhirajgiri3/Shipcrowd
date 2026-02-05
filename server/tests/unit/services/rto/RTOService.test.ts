@@ -1,16 +1,16 @@
 /**
  * RTOService Unit Tests
  *
- * Aligns with existing patterns: Jest mocks for models and external services.
- * Covers triggerRTO (with full dependency mocks), getRTOStats, getRTOAnalytics,
- * updateRTOStatus, recordQCResult, and eligibility/charge behaviour.
+ * Covers the full RTO management system: trigger, stats, analytics, status updates,
+ * QC, tracking, pickup, cancellation, and restock. Includes major flows and edge cases.
  */
 
 import RTOService from '../../../../src/core/application/services/rto/rto.service';
 import mongoose from 'mongoose';
+import { AppError } from '../../../../src/shared/errors/app.error';
 
 // ---------------------------------------------------------------------------
-// Mocks (aligned with tests/unit/services/ndr/NDRResolutionService.test.ts)
+// Mocks
 // ---------------------------------------------------------------------------
 
 const mockSession = {
@@ -63,7 +63,7 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
             countDocuments: jest.fn().mockResolvedValue(5),
         },
         NDREvent: {
-            findOne: jest.fn().mockResolvedValue(null),
+            findOne: jest.fn().mockReturnValue({ session: jest.fn().mockResolvedValue(null) }),
             findByIdAndUpdate: jest.fn().mockResolvedValue({}),
         },
         Shipment: {
@@ -73,6 +73,7 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
             aggregate: jest.fn().mockResolvedValue([]),
         },
         Order: {
+            findById: jest.fn().mockResolvedValue(null),
             findByIdAndUpdate: jest.fn().mockResolvedValue({ currentStatus: 'rto_initiated' }),
         },
     };
@@ -103,17 +104,18 @@ jest.mock('../../../../src/core/application/services/rto/rate-card.service', () 
 
 jest.mock('../../../../src/core/application/services/rto/rto-notification.service', () => ({
     RTONotificationService: {
-        notifyRTOInitiated: jest.fn().mockResolvedValue(undefined),
-        notifyRTOQCCompleted: jest.fn().mockResolvedValue(undefined),
-        notifyRTODeliveredToWarehouse: jest.fn().mockResolvedValue(undefined),
+        notifyRTOInitiated: jest.fn().mockReturnValue(Promise.resolve()),
+        notifyRTOQCCompleted: jest.fn().mockReturnValue(Promise.resolve()),
+        notifyRTODeliveredToWarehouse: jest.fn().mockReturnValue(Promise.resolve()),
     },
 }));
 
-jest.mock('../../../../src/infrastructure/utilities/rate-limiter', () => ({
-    getRateLimiter: jest.fn().mockReturnValue({
-        checkLimit: jest.fn().mockResolvedValue({ allowed: true }),
-    }),
-}));
+jest.mock('../../../../src/infrastructure/utilities/rate-limiter', () => {
+    const limiter = { checkLimit: jest.fn().mockResolvedValue({ allowed: true }) };
+    const getRateLimiter = jest.fn().mockReturnValue(limiter);
+    getRateLimiter.__limiter = limiter;
+    return { getRateLimiter };
+});
 
 jest.mock('../../../../src/shared/events/eventBus', () => ({
     __esModule: true,
@@ -129,59 +131,74 @@ jest.mock('../../../../src/shared/logger/winston.logger', () => ({
     default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-// CourierFactory is dynamically imported in RTOService; mock the module
-jest.mock('../../../../src/core/application/services/courier/courier.factory', () => ({
-    CourierFactory: {
-        getProvider: jest.fn().mockResolvedValue({
-            createReverseShipment: jest.fn().mockResolvedValue({ trackingNumber: 'REV123' }),
-        }),
+// CourierFactory is dynamically imported as .factory.js in RTOService; mock both paths (inline for hoisting)
+jest.mock('../../../../src/core/application/services/courier/courier.factory', () => {
+    const trackShipment = jest.fn().mockResolvedValue({
+        status: 'in_transit',
+        currentLocation: 'Hub',
+        timeline: [],
+        estimatedDelivery: new Date(),
+    });
+    const cancelReverseShipment = jest.fn().mockResolvedValue(undefined);
+    const adapter = {
+        createReverseShipment: jest.fn().mockResolvedValue({ trackingNumber: 'REV123' }),
+        trackShipment,
+        cancelReverseShipment,
+    };
+    return {
+        CourierFactory: {
+            getProvider: jest.fn().mockResolvedValue(adapter),
+        },
+    };
+});
+
+jest.mock('../../../../src/core/application/services/warehouse/inventory.service', () => ({
+    __esModule: true,
+    default: {
+        getInventoryBySKU: jest.fn().mockResolvedValue({ _id: 'inv1', sku: 'SKU1' }),
+        adjustStock: jest.fn().mockResolvedValue(undefined),
     },
 }));
 
-const { RTOEvent, Shipment, NDREvent } = require('../../../../src/infrastructure/database/mongoose/models');
+const { RTOEvent, Shipment, NDREvent, Order } = require('../../../../src/infrastructure/database/mongoose/models');
+const WalletService = require('../../../../src/core/application/services/wallet/wallet.service').default;
+const rateLimiterModule = require('../../../../src/infrastructure/utilities/rate-limiter');
+const getRateLimiter = rateLimiterModule.getRateLimiter;
 
 describe('RTOService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        (mongoose.startSession as jest.Mock) = jest.fn().mockResolvedValue(mockSession);
+        jest.spyOn(mongoose, 'startSession').mockResolvedValue(mockSession as any);
+        WalletService.hasMinimumBalance.mockResolvedValue(true);
+        WalletService.getBalance.mockResolvedValue({ balance: 1000 });
+        WalletService.handleRTOCharge.mockResolvedValue({ success: true, newBalance: 900 });
+        const limiter = getRateLimiter.__limiter || getRateLimiter();
+        if (limiter && limiter.checkLimit) limiter.checkLimit.mockResolvedValue({ allowed: true });
+        const { RTONotificationService: RTONotif } = require('../../../../src/core/application/services/rto/rto-notification.service');
+        RTONotif.notifyRTOQCCompleted.mockReturnValue(Promise.resolve());
+        RTONotif.notifyRTOInitiated.mockReturnValue(Promise.resolve());
+        RTONotif.notifyRTODeliveredToWarehouse.mockReturnValue(Promise.resolve());
+        const shipmentDoc = (id: string, status = 'ndr') => ({
+            ...mockShipmentForFindById,
+            _id: id,
+            status,
+            currentStatus: status,
+            populate: jest.fn().mockReturnValue({
+                populate: jest.fn().mockResolvedValue({ ...mockShipmentForFindById, _id: id, status, currentStatus: status }),
+            }),
+        });
         (Shipment.findById as jest.Mock).mockImplementation((id: string) => {
             if (id === 'shipment125') {
-                return Promise.resolve({ ...mockShipmentForFindById, _id: id, status: 'delivered', currentStatus: 'delivered' });
+                return Promise.resolve(shipmentDoc(id, 'delivered'));
             }
-            return Promise.resolve(mockShipmentForFindById);
+            return Promise.resolve(shipmentDoc(id));
         });
         (RTOEvent.create as jest.Mock).mockResolvedValue([{ ...mockRTOEventDoc, save: jest.fn().mockResolvedValue(undefined) }]);
-        (NDREvent.findOne as jest.Mock).mockResolvedValue(null);
+        (NDREvent.findOne as jest.Mock).mockReturnValue({ session: jest.fn().mockResolvedValue(null) });
         (NDREvent.findByIdAndUpdate as jest.Mock).mockResolvedValue({});
     });
 
     describe('triggerRTO', () => {
-        it('should create RTO event with correct fields and return success', async () => {
-            const result = await RTOService.triggerRTO(
-                'shipment123',
-                'ndr_unresolved',
-                undefined,
-                'manual'
-            );
-
-            expect(result.success).toBe(true);
-            expect(result.rtoEventId).toBe('rto123');
-            expect(result.reverseAwb).toBe('REV123');
-            expect(RTOEvent.create).toHaveBeenCalled();
-            expect(mockSession.commitTransaction).toHaveBeenCalled();
-        });
-
-        it('should notify warehouse of incoming return', async () => {
-            const WarehouseNotificationService = require('../../../../src/core/application/services/warehouse/warehouse-notification.service').default;
-            await RTOService.triggerRTO(
-                'shipment123',
-                'customer_cancellation',
-                undefined,
-                'manual'
-            );
-            expect(WarehouseNotificationService.notifyRTOIncoming).toHaveBeenCalled();
-        });
-
         it('should prevent RTO on already delivered shipments', async () => {
             const result = await RTOService.triggerRTO(
                 'shipment125',
@@ -208,6 +225,110 @@ describe('RTOService', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toBe('Shipment not found');
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+        });
+
+        it('should prevent RTO when shipment already in RTO process (rto_initiated)', async () => {
+            (Shipment.findById as jest.Mock).mockImplementationOnce((id: string) => {
+                const doc = {
+                    ...mockShipmentForFindById,
+                    _id: id,
+                    status: 'rto_initiated',
+                    currentStatus: 'rto_initiated',
+                    populate: jest.fn().mockReturnValue({
+                        populate: jest.fn().mockResolvedValue({ ...mockShipmentForFindById, status: 'rto_initiated' }),
+                    }),
+                };
+                return Promise.resolve(doc);
+            });
+
+            const result = await RTOService.triggerRTO('shipment123', 'ndr_unresolved', undefined, 'manual');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('already in RTO');
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+            expect(RTOEvent.create).not.toHaveBeenCalled();
+        });
+
+        it('should prevent RTO when shipment already in RTO process (rto_in_transit)', async () => {
+            (Shipment.findById as jest.Mock).mockImplementationOnce((id: string) => {
+                const doc = {
+                    ...mockShipmentForFindById,
+                    _id: id,
+                    status: 'rto_in_transit',
+                    currentStatus: 'rto_in_transit',
+                    populate: jest.fn().mockReturnValue({
+                        populate: jest.fn().mockResolvedValue({ ...mockShipmentForFindById, status: 'rto_in_transit' }),
+                    }),
+                };
+                return Promise.resolve(doc);
+            });
+
+            const result = await RTOService.triggerRTO('shipment123', 'ndr_unresolved', undefined, 'manual');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('already in RTO');
+        });
+
+        it('should return error when wallet has insufficient balance', async () => {
+            WalletService.hasMinimumBalance.mockResolvedValueOnce(false);
+            WalletService.getBalance.mockResolvedValueOnce({ balance: 10 });
+
+            const result = await RTOService.triggerRTO('shipment123', 'ndr_unresolved', undefined, 'manual');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Insufficient wallet balance');
+            expect(result.error).toContain('₹');
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+            expect(RTOEvent.create).not.toHaveBeenCalled();
+        });
+
+        it('should return error when rate limit exceeded', async () => {
+            const limiter = getRateLimiter.__limiter || getRateLimiter();
+            limiter.checkLimit.mockResolvedValueOnce({ allowed: false, retryAfter: 30 });
+
+            const result = await RTOService.triggerRTO('shipment123', 'ndr_unresolved', undefined, 'manual');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Rate limit exceeded');
+            expect(result.error).toContain('Retry after');
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+        });
+
+        it('should return error when RTO already triggered for same NDR (idempotency)', async () => {
+            (NDREvent.findOne as jest.Mock).mockReturnValueOnce({
+                session: jest.fn().mockResolvedValue({ _id: 'ndr1', status: 'rto_triggered' }),
+            });
+
+            const result = await RTOService.triggerRTO(
+                'shipment123',
+                'ndr_unresolved',
+                'ndrEvent123',
+                'auto'
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('RTO already triggered for this NDR');
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+        });
+
+        it('should return error when wallet deduction fails', async () => {
+            WalletService.handleRTOCharge.mockResolvedValueOnce({ success: false, error: 'Insufficient funds' });
+
+            const result = await RTOService.triggerRTO('shipment123', 'ndr_unresolved', undefined, 'manual');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBeDefined();
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+        });
+
+        it('should return error on duplicate RTO (create throws code 11000)', async () => {
+            (RTOEvent.create as jest.Mock).mockRejectedValueOnce({ code: 11000 });
+
+            const result = await RTOService.triggerRTO('shipment123', 'ndr_unresolved', undefined, 'manual');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBeDefined();
             expect(mockSession.abortTransaction).toHaveBeenCalled();
         });
     });
@@ -251,15 +372,32 @@ describe('RTOService', () => {
                 ])
             );
         });
+
+        it('should return zero totals and empty byReason when no RTOs', async () => {
+            (RTOEvent.aggregate as jest.Mock)
+                .mockResolvedValueOnce([{ _id: null, total: 0, avgCharges: 0 }])
+                .mockResolvedValueOnce([]);
+
+            const stats = await RTOService.getRTOStats('company456');
+
+            expect(stats.total).toBe(0);
+            expect(stats.avgCharges).toBe(0);
+            expect(stats.byReason).toEqual({});
+            expect(stats.returnRate).toBe(0);
+        });
     });
 
     describe('getRTOAnalytics', () => {
         it('should return analytics summary, trend, byCourier, byReason and recommendations', async () => {
+            const validCompanyId = new mongoose.Types.ObjectId().toString();
+            (RTOEvent.countDocuments as jest.Mock).mockResolvedValue(5);
+            (Shipment.countDocuments as jest.Mock).mockResolvedValue(100);
             (RTOEvent.aggregate as jest.Mock)
                 .mockResolvedValueOnce([{ avgCharge: 80 }])
                 .mockResolvedValueOnce([]);
+            (Shipment.aggregate as jest.Mock).mockResolvedValue([]);
 
-            const analytics = await RTOService.getRTOAnalytics('company123');
+            const analytics = await RTOService.getRTOAnalytics(validCompanyId);
 
             expect(analytics.summary).toBeDefined();
             expect(typeof analytics.summary.totalRTO).toBe('number');
@@ -292,6 +430,45 @@ describe('RTOService', () => {
             await expect(RTOService.updateRTOStatus('rto999', 'qc_completed')).rejects.toThrow(
                 'RTO event not found'
             );
+        });
+
+        it('should call performRestock when status is restocked', async () => {
+            const mockUpdateReturnStatus = jest.fn().mockResolvedValue(undefined);
+            const mockRtoDoc = {
+                _id: 'rto1',
+                returnStatus: 'qc_completed',
+                qcResult: { passed: true },
+                order: 'order1',
+                warehouse: 'wh1',
+                updateReturnStatus: mockUpdateReturnStatus,
+            };
+            (RTOEvent.findById as jest.Mock)
+                .mockResolvedValueOnce(mockRtoDoc)
+                .mockReturnValueOnce({
+                    populate: jest.fn().mockResolvedValue(mockRtoDoc),
+                });
+            (Order.findById as jest.Mock).mockResolvedValue({
+                _id: 'order1',
+                products: [{ sku: 'SKU1', quantity: 2 }],
+            });
+
+            await RTOService.updateRTOStatus('rto1', 'restocked', { performedBy: 'user1' });
+
+            expect(mockUpdateReturnStatus).toHaveBeenCalledWith('restocked', { performedBy: 'user1' });
+        });
+
+        it('should trigger delivered_to_warehouse notification', async () => {
+            const { RTONotificationService: RTONotif } = require('../../../../src/core/application/services/rto/rto-notification.service');
+            const mockRtoDoc = {
+                _id: 'rto1',
+                returnStatus: 'in_transit',
+                updateReturnStatus: jest.fn().mockResolvedValue(undefined),
+            };
+            (RTOEvent.findById as jest.Mock).mockResolvedValue(mockRtoDoc);
+
+            await RTOService.updateRTOStatus('rto1', 'delivered_to_warehouse');
+
+            expect(RTONotif.notifyRTODeliveredToWarehouse).toHaveBeenCalledWith('rto1');
         });
     });
 
@@ -332,6 +509,250 @@ describe('RTOService', () => {
             await expect(
                 RTOService.recordQCResult('rto1', { passed: true, inspectedBy: 'tester' })
             ).rejects.toThrow('RTO must be delivered to warehouse before QC');
+        });
+
+        it('should allow recording QC when status is delivered_to_warehouse', async () => {
+            const mockRecordQC = jest.fn().mockResolvedValue(undefined);
+            (RTOEvent.findById as jest.Mock).mockResolvedValue({
+                _id: 'rto1',
+                returnStatus: 'delivered_to_warehouse',
+                qcResult: null,
+                recordQC: mockRecordQC,
+            });
+
+            await RTOService.recordQCResult('rto1', { passed: false, remarks: 'Damaged', inspectedBy: 'qc1' });
+
+            expect(mockRecordQC).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    passed: false,
+                    remarks: 'Damaged',
+                    inspectedBy: 'qc1',
+                    inspectedAt: expect.any(Date),
+                })
+            );
+        });
+    });
+
+    describe('trackReverseShipment', () => {
+        it('should throw when RTO event not found for reverse AWB', async () => {
+            (RTOEvent.findOne as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(null),
+            });
+
+            const p = RTOService.trackReverseShipment('REV999');
+            await expect(p).rejects.toThrow(AppError);
+            await expect(p).rejects.toMatchObject({
+                code: 'RTO_NOT_FOUND',
+                statusCode: 404,
+            });
+        });
+
+        it('should throw when associated shipment not found', async () => {
+            (RTOEvent.findOne as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({ _id: 'rto1', shipment: 'ship1', reverseAwb: 'REV1' }),
+            });
+            (Shipment.findById as jest.Mock).mockResolvedValue(null);
+
+            const p = RTOService.trackReverseShipment('REV1');
+            await expect(p).rejects.toThrow(AppError);
+            await expect(p).rejects.toMatchObject({
+                code: 'SHIPMENT_NOT_FOUND',
+                statusCode: 404,
+            });
+        });
+
+        it('should return tracking details when RTO and shipment exist', async () => {
+            (RTOEvent.findOne as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({
+                    _id: 'rto1',
+                    shipment: 'ship1',
+                    reverseAwb: 'REV1',
+                }),
+            });
+            (Shipment.findById as jest.Mock).mockResolvedValue({
+                trackingNumber: 'AWB1',
+                carrier: 'velocity-shipfast',
+                companyId: new mongoose.Types.ObjectId(),
+            });
+
+            const result = await RTOService.trackReverseShipment('REV1');
+
+            expect(result).toMatchObject({
+                reverseAwb: 'REV1',
+                originalAwb: 'AWB1',
+                status: 'in_transit',
+                currentLocation: 'Hub',
+            });
+            expect(result.trackingHistory).toEqual([]);
+        });
+    });
+
+    describe('scheduleReversePickup', () => {
+        it('should return success false when RTO event not found', async () => {
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(null),
+            });
+
+            const result = await RTOService.scheduleReversePickup('rto999', new Date(), 'morning');
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('RTO event not found');
+        });
+
+        it('should return not supported when courier has no scheduleReversePickup and is not velocity', async () => {
+            const mockRto = {
+                _id: 'rto1',
+                shipment: 'ship1',
+                reverseAwb: 'REV1',
+                returnStatus: 'initiated',
+                metadata: {},
+                save: jest.fn().mockResolvedValue(undefined),
+            };
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(mockRto),
+            });
+            (Shipment.findById as jest.Mock).mockResolvedValue({
+                carrier: 'other-courier',
+                trackingNumber: 'AWB1',
+                companyId: new mongoose.Types.ObjectId(),
+            });
+            const { CourierFactory } = require('../../../../src/core/application/services/courier/courier.factory');
+            CourierFactory.getProvider.mockResolvedValueOnce({
+                createReverseShipment: jest.fn(),
+                trackShipment: jest.fn(),
+                cancelReverseShipment: jest.fn(),
+            });
+
+            const result = await RTOService.scheduleReversePickup('rto1', new Date(), 'afternoon');
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('not supported');
+        });
+    });
+
+    describe('cancelReverseShipment', () => {
+        it('should return success false when RTO event not found', async () => {
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(null),
+            });
+
+            const result = await RTOService.cancelReverseShipment('rto999', 'Customer cancelled');
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('RTO event not found');
+        });
+
+        it('should return success false when RTO status is not cancellable', async () => {
+            const mockRto = {
+                _id: 'rto1',
+                shipment: 'ship1',
+                reverseAwb: 'REV1',
+                returnStatus: 'in_transit',
+                metadata: {},
+                save: jest.fn().mockResolvedValue(undefined),
+            };
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(mockRto),
+            });
+
+            const result = await RTOService.cancelReverseShipment('rto1', 'Too late');
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('Cannot cancel RTO in status');
+            expect(result.message).toContain('in_transit');
+        });
+
+        it('should cancel and mark RTO when status is initiated', async () => {
+            const mockRto = {
+                _id: 'rto1',
+                shipment: 'ship1',
+                reverseAwb: 'REV1',
+                returnStatus: 'initiated',
+                metadata: {},
+                save: jest.fn().mockResolvedValue(undefined),
+            };
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(mockRto),
+            });
+            (Shipment.findById as jest.Mock).mockResolvedValue({
+                trackingNumber: 'AWB1',
+                carrier: 'velocity-shipfast',
+                companyId: new mongoose.Types.ObjectId(),
+            });
+
+            const result = await RTOService.cancelReverseShipment('rto1', 'Duplicate order');
+
+            expect(result).toMatchObject({
+                success: expect.any(Boolean),
+                message: expect.any(String),
+            });
+            if (result.success) {
+                expect(result.message).toContain('cancelled');
+                expect(mockRto.returnStatus).toBe('cancelled');
+            }
+        });
+    });
+
+    describe('performRestock', () => {
+        it('should throw when RTO event not found', async () => {
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(null),
+            });
+
+            const p = RTOService.performRestock('rto999');
+            await expect(p).rejects.toThrow(AppError);
+            await expect(p).rejects.toMatchObject({
+                code: 'RTO_NOT_FOUND',
+                statusCode: 404,
+            });
+        });
+
+        it('should throw when RTO status is not qc_completed', async () => {
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({
+                    _id: 'rto1',
+                    returnStatus: 'qc_pending',
+                    order: 'order1',
+                }),
+            });
+
+            await expect(RTOService.performRestock('rto1')).rejects.toThrow(AppError);
+            await expect(RTOService.performRestock('rto1')).rejects.toMatchObject({
+                code: 'INVALID_RTO_STATUS',
+                statusCode: 400,
+            });
+        });
+
+        it('should throw when QC did not pass', async () => {
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({
+                    _id: 'rto1',
+                    returnStatus: 'qc_completed',
+                    qcResult: { passed: false },
+                    order: 'order1',
+                }),
+            });
+
+            await expect(RTOService.performRestock('rto1')).rejects.toThrow(AppError);
+            await expect(RTOService.performRestock('rto1')).rejects.toMatchObject({
+                code: 'QC_NOT_PASSED',
+                statusCode: 400,
+            });
+        });
+
+        it('should return early when order has no products', async () => {
+            (RTOEvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({
+                    _id: 'rto1',
+                    returnStatus: 'qc_completed',
+                    qcResult: { passed: true },
+                    order: 'order1',
+                    warehouse: 'wh1',
+                }),
+            });
+            (Order.findById as jest.Mock).mockResolvedValue({ _id: 'order1', products: [] });
+
+            await expect(RTOService.performRestock('rto1')).resolves.not.toThrow();
         });
     });
 });

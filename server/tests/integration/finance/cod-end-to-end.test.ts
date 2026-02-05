@@ -18,10 +18,6 @@ describe('COD Remittance End-to-End Flow', () => {
         // Connect to test DB provided by global setup or strictly local
         companyId = new mongoose.Types.ObjectId();
         orderId = new mongoose.Types.ObjectId();
-
-        // DEBUG: Check Schema
-        const schemaType = Shipment.schema.path('paymentDetails.collectionStatus') as mongoose.SchemaType & { options: { enum: string[] } };
-        console.log('DEBUG: CollectionStatus Enum:', schemaType.options.enum);
     });
 
     afterEach(async () => {
@@ -133,13 +129,12 @@ describe('COD Remittance End-to-End Flow', () => {
 
         expect(batch).toHaveProperty('remittanceId');
         // Check using toBeCloseTo for float comparison safety or just direct number if exact
-        expect(batch.amount.totalCod).toBe(1000);
-        expect(batch.type).toBe('early');
-        expect(batch.tier).toBe('T+1');
+        expect(batch.financial.totalCODCollected).toBe(1000);
+        expect(batch.schedule.type).toBe('on_demand'); // Early COD is on_demand in schema
 
         // Fee check: 3% of 1000 = 30
-        expect(batch.amount.totalEarlyFee).toBe(30);
-        expect(batch.amount.netPayout).toBe(970);
+        expect(batch.financial.deductionsSummary.totalOtherFees).toBe(30);
+        expect(batch.financial.netPayable).toBe(970);
 
         // Verify Shipment Marked as Included
         const remittedShipment = await Shipment.findById(shipment._id);
@@ -211,5 +206,171 @@ describe('COD Remittance End-to-End Flow', () => {
         const updatedShipment2 = await Shipment.findById(shipment._id);
         expect(updatedShipment2!.paymentDetails.collectionStatus).toBe('disputed');
         expect(updatedShipment2!.paymentDetails.discrepancyId!.toString()).toBe(discrepancy!._id.toString());
+    });
+
+    it('Scenario 3: Discrepancy Resolution -> Remittance', async () => {
+        // 1. Setup: Create a Disputed Shipment
+        const shipment = await Shipment.create({
+            trackingNumber: 'AWB-DISC-RES',
+            companyId,
+            orderId: new mongoose.Types.ObjectId(),
+            carrier: 'Velocity',
+            serviceType: 'express',
+            currentStatus: 'delivered',
+            paymentDetails: {
+                type: 'cod',
+                codAmount: 1000,
+                shippingCost: 100,
+                currency: 'INR',
+                collectionStatus: 'disputed', // Start as disputed
+                collectedAt: new Date(Date.now() - 86400000 * 5) // 5 days ago
+            },
+            packageDetails: { weight: 1, dimensions: { length: 10, width: 10, height: 10 }, packageCount: 1, packageType: 'box', declaredValue: 1000 },
+            weights: { declared: { value: 1, unit: 'kg' }, charged: { value: 1, unit: 'kg' } },
+            deliveryDetails: { recipientName: 'Test', recipientPhone: '999', address: { line1: 'x', city: 'y', state: 'z', country: 'in', postalCode: '000' } }
+        });
+
+        const discrepancy = await CODDiscrepancy.create({
+            discrepancyNumber: 'DISC-001',
+            shipmentId: shipment._id,
+            awb: shipment.trackingNumber,
+            companyId,
+            carrier: 'Velocity',
+            amounts: { expected: { cod: 1000, total: 1000 }, actual: { collected: 800, reported: 800, source: 'webhook' }, difference: -200, percentage: 20 },
+            type: 'amount_mismatch',
+            severity: 'medium',
+            status: 'detected'
+        });
+
+        await Shipment.updateOne({ _id: shipment._id }, { $set: { 'paymentDetails.discrepancyId': discrepancy._id } });
+
+        // 2. Resolve Discrepancy (Accept Courier Amount)
+        await CODDiscrepancyService.resolveDiscrepancy(discrepancy._id.toString(), {
+            method: 'courier_adjustment',
+            adjustedAmount: 800, // We accept 800
+            resolvedBy: 'test_admin',
+            remarks: 'Accepted mismatch'
+        });
+
+        // Verify Shipment is Reconciled
+        const reconciledShipment = await Shipment.findById(shipment._id);
+        expect(reconciledShipment!.paymentDetails.collectionStatus).toBe('reconciled');
+        expect(reconciledShipment!.paymentDetails.actualCollection).toBe(800);
+
+        // 3. Enroll & Create Remittance
+        jest.spyOn(EarlyCODService, 'checkEligibility').mockResolvedValue({ qualified: true, eligibleTiers: ['T+1'], score: 100, metrics: {} });
+        await EarlyCODService.enroll(companyId.toString(), 'T+1');
+
+        const batch = await CODRemittanceService.createEarlyRemittanceBatch(companyId.toString());
+
+        // Verify Batch
+        expect(batch).toHaveProperty('remittanceId');
+        expect(batch.financial.totalCODCollected).toBe(800); // Should be the adjusted amount
+        // expect(batch.shipments[0].shipmentId.toString()).toBe(shipment._id.toString()); // Schema changed structure
+    });
+
+    it('Scenario 4: Cutoff Date Logic & Idempotency (T+2)', async () => {
+        // 1. Enroll in T+2
+        jest.spyOn(EarlyCODService, 'checkEligibility').mockResolvedValue({ qualified: true, eligibleTiers: ['T+2'], score: 100, metrics: {} });
+        await EarlyCODService.enroll(companyId.toString(), 'T+2');
+
+        const now = new Date();
+        const threeDaysAgo = new Date(now); threeDaysAgo.setDate(now.getDate() - 3);
+        const today = new Date(now);
+
+        // 2. Create Eligible Shipment (Delivered 3 days ago)
+        const eligibleShipment = await Shipment.create({
+            trackingNumber: 'AWB-ELIGIBLE',
+            companyId,
+            orderId: new mongoose.Types.ObjectId(),
+            carrier: 'Velocity',
+            serviceType: 'express',
+            currentStatus: 'delivered',
+            paymentDetails: {
+                type: 'cod',
+                codAmount: 1000,
+                shippingCost: 100,
+                collectionStatus: 'reconciled',
+                collectedAt: threeDaysAgo,
+                totalCollection: 1000
+            },
+            packageDetails: { weight: 1, dimensions: { length: 1, width: 1, height: 1 }, packageCount: 1, packageType: 'box', declaredValue: 1000 },
+            weights: { declared: { value: 1, unit: 'kg' }, verified: false },
+            deliveryDetails: { recipientName: 'T', recipientPhone: '9', address: { line1: 'x', city: 'c', state: 's', country: 'i', postalCode: '1' } }
+        });
+
+        // 3. Create Ineligible Shipment (Delivered Today)
+        const ineligibleShipment = await Shipment.create({
+            trackingNumber: 'AWB-INELIGIBLE',
+            companyId,
+            orderId: new mongoose.Types.ObjectId(),
+            carrier: 'Velocity',
+            serviceType: 'express',
+            currentStatus: 'delivered',
+            paymentDetails: {
+                type: 'cod',
+                codAmount: 2000,
+                shippingCost: 100,
+                collectionStatus: 'reconciled',
+                collectedAt: today,
+                totalCollection: 2000
+            },
+            packageDetails: { weight: 1, dimensions: { length: 1, width: 1, height: 1 }, packageCount: 1, packageType: 'box', declaredValue: 2000 },
+            weights: { declared: { value: 1, unit: 'kg' }, verified: false },
+            deliveryDetails: { recipientName: 'T', recipientPhone: '9', address: { line1: 'x', city: 'c', state: 's', country: 'i', postalCode: '1' } }
+        });
+
+        // 4. Create Batch
+        const batch = await CODRemittanceService.createEarlyRemittanceBatch(companyId.toString());
+
+        expect(batch).toHaveProperty('remittanceId');
+        expect(batch.financial.totalShipments).toBe(1);
+        expect(batch.financial.totalCODCollected).toBe(1000); // Only eligible shipment
+
+        // 5. Verify Idempotency (Run again)
+        const secondRun = await CODRemittanceService.createEarlyRemittanceBatch(companyId.toString());
+        expect(secondRun.count).toBe(0);
+        expect(secondRun.message).toContain('No eligible shipments');
+    });
+
+    it('Scenario 5: Multiple Eligible Shipments in Batch', async () => {
+        // 1. Enroll T+1
+        jest.spyOn(EarlyCODService, 'checkEligibility').mockResolvedValue({ qualified: true, eligibleTiers: ['T+1'], score: 100, metrics: {} });
+        await EarlyCODService.enroll(companyId.toString(), 'T+1');
+
+        const now = new Date();
+        const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+
+        // 2. Create 3 Eligible Shipments
+        const shipmentsData = [1000, 2000, 3000];
+        for (const amount of shipmentsData) {
+            await Shipment.create({
+                trackingNumber: `AWB-MULTI-${amount}`,
+                companyId,
+                orderId: new mongoose.Types.ObjectId(),
+                carrier: 'Velocity',
+                serviceType: 'express',
+                currentStatus: 'delivered',
+                paymentDetails: {
+                    type: 'cod',
+                    codAmount: amount,
+                    shippingCost: 100,
+                    collectionStatus: 'reconciled',
+                    collectedAt: yesterday,
+                    actualCollection: amount
+                },
+                packageDetails: { weight: 1, dimensions: { length: 1, width: 1, height: 1 }, packageCount: 1, packageType: 'box', declaredValue: amount },
+                weights: { declared: { value: 1, unit: 'kg' }, verified: false },
+                deliveryDetails: { recipientName: 'T', recipientPhone: '9', address: { line1: 'x', city: 'c', state: 's', country: 'i', postalCode: '1' } }
+            });
+        }
+
+        // 3. Create Batch
+        const batch = await CODRemittanceService.createEarlyRemittanceBatch(companyId.toString());
+
+        expect(batch).toHaveProperty('remittanceId');
+        expect(batch.financial.totalShipments).toBe(3);
+        expect(batch.financial.totalCODCollected).toBe(6000); // 1000+2000+3000
+        expect(batch.shipments).toHaveLength(3);
     });
 });

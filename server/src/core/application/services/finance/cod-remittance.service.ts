@@ -47,43 +47,118 @@ export class CODRemittanceService {
 
         logger.info(`Found ${eligibleShipments.length} eligible shipments for Early COD ${enrollment.tier}`, { companyId });
 
-        // Calculate totals
+        // Calculate totals and map shipments
         let totalCodAmount = 0;
-        const shipmentIds = [];
+        let totalPlatformFees = 0;
+        let totalEarlyFees = 0; // Will be mapped to otherFees or similar
+        const remittanceShipments = [];
 
         for (const shipment of eligibleShipments) {
-            totalCodAmount += (shipment.paymentDetails.totalCollection || shipment.paymentDetails.codAmount || 0);
-            shipmentIds.push(shipment._id);
+            const codAmount = shipment.paymentDetails.actualCollection || shipment.paymentDetails.totalCollection || shipment.paymentDetails.codAmount || 0;
+            totalCodAmount += codAmount;
+
+            // Calculate fees per shipment (pro-rated or simple calculation)
+            // For simplicity in Early COD, we might apply a flat % to the total, but schema requires per-shipment deductions
+            // Let's calculate per shipment
+            const shipmentEarlyFee = EarlyCODService.calculateFee(codAmount, enrollment.fee);
+            totalEarlyFees += shipmentEarlyFee;
+
+            const deductions = {
+                shippingCharge: 0, // Assuming deductions handled elsewhere or 0 for now
+                weightDispute: 0,
+                rtoCharge: 0,
+                insuranceCharge: 0,
+                platformFee: 0,
+                otherFees: shipmentEarlyFee, // Capture early fee here
+                total: shipmentEarlyFee
+            };
+
+            const netAmount = codAmount - deductions.total;
+
+            remittanceShipments.push({
+                shipmentId: shipment._id,
+                awb: shipment.trackingNumber,
+                codAmount: codAmount,
+                deliveredAt: shipment.actualDelivery || shipment.paymentDetails.collectedAt || new Date(),
+                status: 'delivered',
+                deductions: deductions,
+                netAmount: netAmount,
+                reconciliation: {
+                    status: 'pending',
+                    courierAmount: 0,
+                    diffAmount: 0,
+                    remarks: 'Early COD Auto-generated'
+                }
+            });
         }
 
-        // Calculate Early COD Fee
-        const earlyFee = EarlyCODService.calculateFee(totalCodAmount, enrollment.fee);
-        const payoutAmount = totalCodAmount - earlyFee;
+        const payoutAmount = totalCodAmount - totalEarlyFees; // Net payable
+
+        // Get next batch number
+        const lastBatch = await CODRemittance.findOne({ companyId }).sort({ 'batch.batchNumber': -1 });
+        const batchNumber = (lastBatch?.batch?.batchNumber || 0) + 1;
+
+        // Generate Remittance ID
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const remittanceId = `REM-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
 
         // Create Batch
         const batch = await CODRemittance.create({
+            remittanceId,
             companyId,
-            amount: {
-                totalCod: totalCodAmount,
-                totalEarlyFee: earlyFee,
-                netPayout: payoutAmount,
-                currency: 'INR'
+            status: 'pending_approval', // Valid enum value
+            scheduleId: undefined, // Optional
+            batch: {
+                batchNumber,
+                createdDate: new Date(),
+                cutoffDate: cutoffDate,
+                shippingPeriod: {
+                    start: new Date(0), // All historic
+                    end: cutoffDate
+                }
             },
-            status: 'processing',
-            shipments: {
-                count: eligibleShipments.length,
-                ids: shipmentIds
+            schedule: {
+                type: 'on_demand', // Early COD is effectively on-demand
+                scheduledDate: new Date(),
+                requestedBy: undefined // System triggered
             },
-            type: 'early',
-            tier: enrollment.tier,
-            bankDetails: enrollment.bankDetails ? {
-                accountNumber: enrollment.bankDetails.accountNumber,
-                ifsc: enrollment.bankDetails.ifsc,
-                beneficiaryName: enrollment.bankDetails.beneficiaryName
-            } : undefined
+            shipments: remittanceShipments,
+            financial: {
+                totalCODCollected: totalCodAmount,
+                totalShipments: eligibleShipments.length,
+                successfulDeliveries: eligibleShipments.length,
+                rtoCount: 0,
+                disputedCount: 0,
+                deductionsSummary: {
+                    totalShippingCharges: 0,
+                    totalWeightDisputes: 0,
+                    totalRTOCharges: 0,
+                    totalInsuranceCharges: 0,
+                    totalPlatformFees: 0,
+                    totalOtherFees: totalEarlyFees,
+                    grandTotal: totalEarlyFees
+                },
+                netPayable: payoutAmount
+            },
+            payout: {
+                status: 'pending',
+                method: 'razorpay_payout',
+                accountDetails: enrollment.bankDetails ? {
+                    accountNumber: enrollment.bankDetails.accountNumber,
+                    ifscCode: enrollment.bankDetails.ifsc,
+                    accountHolderName: enrollment.bankDetails.beneficiaryName,
+                    bankName: '', // Optional
+                    upiId: '' // Optional
+                } : undefined,
+                requiresManualIntervention: false
+            },
+            // Metadata for tracking which isn't in schema but good to know context? 
+            // Schema doesn't have 'type' or 'tier' at root, usually handled via schedule or separate logic.
+            // We'll rely on the nature of the batch creation.
         });
 
         // Update Shipments
+        const shipmentIds = eligibleShipments.map(s => s._id);
         await Shipment.updateMany(
             { _id: { $in: shipmentIds } },
             {
@@ -91,17 +166,19 @@ export class CODRemittanceService {
                     'paymentDetails.collectionStatus': 'remitted',
                     'remittance': {
                         included: true,
-                        remittanceId: batch._id,
-                        status: 'processed',
-                        remittedAmount: 0, // Individual breakdown not calculated here yet
-                        remittedAt: new Date()
+                        remittanceId: (batch as any)._id.toString(), // Store ObjectId as string ref
+                        status: 'processed', // Shipment level status
+                        remittedAmount: 0, // Individual breakdown could be updated later if needed
+                        remittedAt: new Date(),
+                        platformFee: 0 // If we want to track it
                     }
                 }
-            }
+            },
+            { runValidators: false }
         );
         enrollment.usage.totalBatches += 1;
         enrollment.usage.totalAmountRemitted += payoutAmount;
-        enrollment.usage.totalFeesPaid += earlyFee;
+        enrollment.usage.totalFeesPaid += totalEarlyFees;
         enrollment.usage.lastBatchAt = new Date();
         await enrollment.save();
 

@@ -6,10 +6,9 @@ import NDRActionExecutors from '../../../../src/core/application/services/ndr/ac
 import ExotelClient from '../../../../src/infrastructure/external/communication/exotel/exotel.client';
 import WhatsAppService from '../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service';
 import TokenService from '../../../../src/shared/services/token.service';
-import { createTestNDREvent } from '../../../fixtures/ndrFactory';
+import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
 
-// Mock external services with manual mocks
 jest.mock('../../../../src/infrastructure/external/communication/exotel/exotel.client', () => {
     return require('../../../mocks/exotel.mock');
 });
@@ -20,6 +19,36 @@ jest.mock('../../../../src/core/application/services/communication/email.service
     return require('../../../mocks/email.mock');
 });
 jest.mock('../../../../src/shared/services/token.service');
+jest.mock('../../../../src/core/application/services/communication/notification-preferences.service', () => ({
+    default: { shouldSend: jest.fn().mockResolvedValue(true) },
+}));
+jest.mock('../../../../src/infrastructure/external/ai/openai/openai.service', () => ({
+    isConfigured: jest.fn().mockReturnValue(false),
+    generateCustomerMessage: jest.fn().mockResolvedValue({ message: 'Test message' }),
+}));
+jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
+    const actual = jest.requireActual('../../../../src/infrastructure/database/mongoose/models');
+    return {
+        ...actual,
+        CallLog: { create: jest.fn().mockResolvedValue({}) },
+        Shipment: { findById: jest.fn().mockResolvedValue({ carrier: 'velocity-shipfast' }) },
+    };
+});
+jest.mock('../../../../src/core/application/services/courier/courier.factory', () => ({
+    CourierFactory: {
+        getProvider: jest.fn().mockResolvedValue({
+            requestReattempt: jest.fn().mockResolvedValue({ success: true, message: 'Reattempt scheduled' }),
+        }),
+    },
+}));
+jest.mock('../../../../src/core/application/services/rto/rto.service', () => ({
+    default: {
+        triggerRTO: jest.fn().mockResolvedValue({
+            rtoEventId: 'rto-123',
+            reverseAwb: 'REV-AWB-456',
+        }),
+    },
+}));
 
 
 
@@ -29,6 +58,10 @@ describe('NDRActionExecutors', () => {
             _id: new mongoose.Types.ObjectId(),
             shipment: new mongoose.Types.ObjectId(),
             awb: 'TEST123',
+            ndrReason: 'Address not found',
+            customerContacted: false,
+            save: jest.fn().mockResolvedValue(undefined),
+            triggerRTO: jest.fn().mockResolvedValue(undefined),
         },
         customer: {
             name: 'John Doe',
@@ -41,6 +74,12 @@ describe('NDRActionExecutors', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        (mockContext.ndrEvent as any).save.mockResolvedValue(undefined);
+        // Exotel real API: initiateCall(toNumber, callbackUrl?, customField?)
+        (ExotelClient.prototype.initiateCall as jest.Mock).mockImplementation(
+            (_to: string, _callbackUrl?: string, _customField?: string) =>
+                Promise.resolve({ success: true, callSid: 'CALL123', status: 'queued' })
+        );
     });
 
     describe('executeCallCustomer', () => {
@@ -58,6 +97,11 @@ describe('NDRActionExecutors', () => {
             expect(result.actionType).toBe('call_customer');
             expect(result.result).toBe('success');
             expect(result.metadata?.callSid).toBe(mockCallSid);
+            expect(ExotelClient.prototype.initiateCall).toHaveBeenCalledWith(
+                mockContext.customer.phone,
+                undefined,
+                expect.any(String)
+            );
         });
 
         it('should handle failed call attempt', async () => {
@@ -72,25 +116,25 @@ describe('NDRActionExecutors', () => {
             expect(result.error).toContain('Call failed');
         });
 
-        it('should use custom agent number from config', async () => {
-            const customAgentNumber = '+919999999999';
+        it('should pass callbackUrl and customField to Exotel when provided', async () => {
+            const callbackUrl = 'https://api.example.com/exotel-callback';
             await NDRActionExecutors['executeCallCustomer'](mockContext as any, {
-                agentNumber: customAgentNumber,
+                callbackUrl,
             });
 
             expect(ExotelClient.prototype.initiateCall).toHaveBeenCalledWith(
                 mockContext.customer.phone,
-                customAgentNumber
+                callbackUrl,
+                expect.stringContaining(mockContext.ndrEvent._id.toString())
             );
         });
     });
 
     describe('executeSendWhatsApp', () => {
-        it('should send WhatsApp message successfully', async () => {
-            (WhatsAppService.prototype.sendMessage as jest.Mock).mockResolvedValue({
+        it('should send WhatsApp NDR notification successfully', async () => {
+            (WhatsAppService.prototype.sendNDRNotification as jest.Mock).mockResolvedValue({
                 success: true,
                 messageId: 'MSG123',
-                status: 'sent',
             });
 
             const result = await NDRActionExecutors['executeSendWhatsApp'](mockContext as any, {});
@@ -98,36 +142,33 @@ describe('NDRActionExecutors', () => {
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('send_whatsapp');
             expect(result.metadata?.messageId).toBe('MSG123');
+            expect(WhatsAppService.prototype.sendNDRNotification).toHaveBeenCalledWith(
+                mockContext.customer.phone,
+                mockContext.customer.name,
+                mockContext.orderId,
+                (mockContext.ndrEvent as any).ndrReason,
+                expect.any(String)
+            );
         });
 
-        it('should handle failed message send', async () => {
-            (WhatsAppService.prototype.sendMessage as jest.Mock).mockRejectedValue(
-                new Error('Message failed')
-            );
+        it('should handle failed NDR notification send', async () => {
+            (WhatsAppService.prototype.sendNDRNotification as jest.Mock).mockResolvedValue({
+                success: false,
+                error: 'Message failed',
+            });
 
             const result = await NDRActionExecutors['executeSendWhatsApp'](mockContext as any, {});
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Message failed');
-        });
-
-        it('should use custom message template', async () => {
-            const customTemplate = 'custom_template';
-            await NDRActionExecutors['executeSendWhatsApp'](mockContext as any, {
-                templateName: customTemplate,
-            });
-
-            expect(WhatsAppService.prototype.sendMessage).toHaveBeenCalledWith(
-                mockContext.customer.phone,
-                expect.objectContaining({
-                    templateName: customTemplate,
-                })
-            );
+            expect(result.error).toBe('Message failed');
         });
     });
 
     describe('executeSendEmail', () => {
         it('should send email successfully', async () => {
+            const EmailService = require('../../../../src/core/application/services/communication/email.service').default;
+            EmailService.sendEmail = jest.fn().mockResolvedValue(true);
+
             const result = await NDRActionExecutors['executeSendEmail'](mockContext as any, {});
 
             expect(result.success).toBe(true);
@@ -147,7 +188,8 @@ describe('NDRActionExecutors', () => {
             const result = await NDRActionExecutors['executeSendEmail'](contextNoEmail as any, {});
 
             expect(result.result).toBe('skipped');
-            expect(result.metadata?.reason).toBe('No email provided');
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('No email address available');
         });
     });
 
@@ -171,7 +213,8 @@ describe('NDRActionExecutors', () => {
                 mockContext.companyId,
                 String(mockContext.ndrEvent._id)
             );
-            expect(result.metadata?.magicLink).toContain(mockToken);
+            expect(result.metadata?.token).toBe(mockToken);
+            expect(result.metadata?.updateUrl).toContain(mockToken);
         });
 
         it('should handle token generation failure', async () => {
@@ -204,19 +247,28 @@ describe('NDRActionExecutors', () => {
 
     describe('executeTriggerRTO', () => {
         it('should trigger RTO successfully', async () => {
+            (WhatsAppService.prototype.sendRTONotification as jest.Mock).mockResolvedValue({
+                success: true,
+            });
+
             const result = await NDRActionExecutors['executeTriggerRTO'](mockContext as any, {});
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('trigger_rto');
             expect(result.result).toBe('success');
+            expect(result.metadata?.rtoEventId).toBe('rto-123');
+            expect(result.metadata?.reverseAwb).toBe('REV-AWB-456');
         });
 
-        it('should include RTO reason in metadata', async () => {
-            const result = await NDRActionExecutors['executeTriggerRTO'](mockContext as any, {
-                rtoReason: 'ndr_unresolved',
+        it('should include RTO event and reverse AWB in metadata', async () => {
+            (WhatsAppService.prototype.sendRTONotification as jest.Mock).mockResolvedValue({
+                success: true,
             });
 
-            expect(result.metadata?.rtoReason).toBe('ndr_unresolved');
+            const result = await NDRActionExecutors['executeTriggerRTO'](mockContext as any, {});
+
+            expect(result.metadata?.rtoEventId).toBeDefined();
+            expect(result.metadata?.reverseAwb).toBeDefined();
         });
     });
 
@@ -238,7 +290,7 @@ describe('NDRActionExecutors', () => {
         });
 
         it('should route to correct executor for send_whatsapp', async () => {
-            (WhatsAppService.prototype.sendMessage as jest.Mock).mockResolvedValue({
+            (WhatsAppService.prototype.sendNDRNotification as jest.Mock).mockResolvedValue({
                 success: true,
                 messageId: 'MSG123',
             });
@@ -250,6 +302,7 @@ describe('NDRActionExecutors', () => {
             );
 
             expect(result.actionType).toBe('send_whatsapp');
+            expect(WhatsAppService.prototype.sendNDRNotification).toHaveBeenCalled();
         });
 
         it('should handle unknown action type', async () => {
@@ -265,18 +318,9 @@ describe('NDRActionExecutors', () => {
     });
 
     describe('recordActionResult', () => {
-        it('should record successful action result', async () => {
-            const mockNDREvent = {
-                _id: new mongoose.Types.ObjectId(),
-                resolutionActions: [],
-                save: jest.fn().mockResolvedValue(true),
-            };
-
-            // Mock NDREvent.findById
-            const mockFindById = jest.fn().mockResolvedValue(mockNDREvent);
-            (mongoose.model as jest.Mock) = jest.fn(() => ({
-                findById: mockFindById,
-            }));
+        it('should record successful action result via findByIdAndUpdate', async () => {
+            const mockFindByIdAndUpdate = jest.fn().mockResolvedValue({});
+            jest.spyOn(NDREvent, 'findByIdAndUpdate').mockImplementation(mockFindByIdAndUpdate as any);
 
             const actionResult = {
                 success: true,
@@ -285,14 +329,16 @@ describe('NDRActionExecutors', () => {
                 metadata: { callSid: 'CALL123' },
             };
 
-            await NDRActionExecutors.recordActionResult(
-                mockNDREvent._id.toString(),
-                actionResult,
-                'system'
-            );
+            const ndrEventId = new mongoose.Types.ObjectId().toString();
+            await NDRActionExecutors.recordActionResult(ndrEventId, actionResult, 'system');
 
-            expect(mockNDREvent.resolutionActions).toHaveLength(1);
-            expect(mockNDREvent.save).toHaveBeenCalled();
+            expect(NDREvent.findByIdAndUpdate).toHaveBeenCalledWith(
+                ndrEventId,
+                expect.objectContaining({
+                    $push: { resolutionActions: expect.objectContaining({ action: 'call_customer', result: 'success' }) },
+                    $set: { status: 'in_resolution' },
+                })
+            );
         });
     });
 });

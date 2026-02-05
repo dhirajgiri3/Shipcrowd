@@ -8,7 +8,11 @@ module.exports = {
     roots: ['<rootDir>/tests'],
     testMatch: ['**/*.test.ts'],
     moduleNameMapper: {
-        '^@/(.*)$': '<rootDir>/src/$1'
+        '^@/(.*)$': '<rootDir>/src/$1',
+        '(.+)/courier\\.factory\\.js$': '$1/courier.factory',
+        '(.+)/ndr-magic-link\\.service\\.js$': '$1/ndr-magic-link.service',
+        '(.+)/email\\.service\\.js$': '$1/email.service',
+        '(.+)/rto\\.service\\.js$': '$1/rto.service'
     },
     collectCoverageFrom: [
         'src/**/*.ts',
