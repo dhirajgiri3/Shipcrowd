@@ -120,7 +120,7 @@ describe('DistributedLock', () => {
             mockRedis.set.mockResolvedValue('OK');
             mockRedis.eval.mockResolvedValue(1);
 
-            const fn = jest.fn().mockResolvedValue('result');
+            const fn = jest.fn<() => Promise<string>>().mockResolvedValue('result');
 
             const result = await lock.withLock('test-key', fn, 30000, 0);
 
@@ -134,7 +134,7 @@ describe('DistributedLock', () => {
             mockRedis.set.mockResolvedValue('OK');
             mockRedis.eval.mockResolvedValue(1);
 
-            const fn = jest.fn().mockRejectedValue(new Error('test error'));
+            const fn = jest.fn<() => Promise<void>>().mockRejectedValue(new Error('test error'));
 
             await expect(lock.withLock('test-key', fn, 30000, 0)).rejects.toThrow('test error');
 
@@ -144,7 +144,7 @@ describe('DistributedLock', () => {
         it('should throw if lock cannot be acquired', async () => {
             mockRedis.set.mockResolvedValue(null);
 
-            const fn = jest.fn();
+            const fn = jest.fn<() => Promise<void>>();
 
             await expect(lock.withLock('test-key', fn, 30000, 0)).rejects.toThrow(
                 /Failed to acquire distributed lock/
@@ -160,7 +160,7 @@ describe('DistributedLock', () => {
                 .mockResolvedValueOnce('OK');
             mockRedis.eval.mockResolvedValue(1);
 
-            const fn = jest.fn().mockResolvedValue('result');
+            const fn = jest.fn<() => Promise<string>>().mockResolvedValue('result');
 
             const result = await lock.withLock('test-key', fn, 30000, 5000);
 
