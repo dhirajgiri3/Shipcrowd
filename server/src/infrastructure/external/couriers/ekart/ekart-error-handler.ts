@@ -121,7 +121,8 @@ export class EkartCircuitBreaker {
             });
 
             if (this.failureCount >= this.config.failureThreshold) {
-                if (this.state !== CircuitState.OPEN) {
+                // Only transition to OPEN if not already OPEN
+                if (this.state === CircuitState.CLOSED || this.state === CircuitState.HALF_OPEN) {
                     logger.error('Circuit breaker opening due to failures', {
                         failureCount: this.failureCount,
                         threshold: this.config.failureThreshold,

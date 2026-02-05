@@ -28,7 +28,7 @@ import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
 import { getDistributedLock } from '../../../../shared/utils/distributed-lock.js';
 import logger from '../../../../shared/logger/winston.logger.js';
-import { encrypt, decrypt } from '../../../../shared/utils/encryption.js';
+import { encryptData, decryptData } from '../../../../shared/utils/encryption.js';
 import { Integration } from '@/infrastructure/database/mongoose/models/index.js';
 import {
     EkartAuthRequest,
@@ -296,7 +296,7 @@ export class EkartAuth {
             }
 
             // Decrypt token
-            const token = decrypt(encryptedToken);
+            const token = decryptData(encryptedToken);
 
             return {
                 token,
@@ -322,7 +322,7 @@ export class EkartAuth {
     private async storeToken(token: string, expiresAt: Date): Promise<void> {
         try {
             // Encrypt token before storing
-            const encryptedToken = encrypt(token);
+            const encryptedToken = encryptData(token);
 
             await Integration.findOneAndUpdate(
                 {
