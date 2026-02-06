@@ -12,6 +12,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { Consent, ConsentHistory, ConsentType } from '../../../../infrastructure/database/mongoose/models/iam/consent.model';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
@@ -37,11 +38,10 @@ const withdrawConsentSchema = z.object({
  */
 export const getConsents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
-        const consents = await Consent.find({ userId: req.user._id });
+        const consents = await Consent.find({ userId: auth.userId });
 
         // Transform to a more usable format
         const consentMap: Record<string, { accepted: boolean; version: string; acceptedAt?: Date; withdrawnAt?: Date }> = {};
@@ -67,16 +67,15 @@ export const getConsents = async (req: Request, res: Response, next: NextFunctio
  */
 export const acceptConsent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validatedData = acceptConsentSchema.parse(req.body);
         const ip = req.ip || 'unknown';
         const userAgent = req.headers['user-agent'] || 'unknown';
 
         // Find or create consent
-        let consent = await Consent.findOne({ userId: req.user._id, type: validatedData.type });
+        let consent = await Consent.findOne({ userId: auth.userId, type: validatedData.type });
         const previousVersion = consent?.version;
 
         if (consent) {
@@ -92,7 +91,7 @@ export const acceptConsent = async (req: Request, res: Response, next: NextFunct
         } else {
             // Create new consent
             consent = await Consent.create({
-                userId: req.user._id,
+                userId: auth.userId,
                 type: validatedData.type,
                 version: validatedData.version,
                 accepted: true,
@@ -105,7 +104,7 @@ export const acceptConsent = async (req: Request, res: Response, next: NextFunct
 
         // Record in history
         await ConsentHistory.create({
-            userId: req.user._id,
+            userId: auth.userId,
             consentId: consent._id,
             action: previousVersion && previousVersion !== validatedData.version ? 'updated' : 'accepted',
             type: validatedData.type,
@@ -116,8 +115,8 @@ export const acceptConsent = async (req: Request, res: Response, next: NextFunct
         });
 
         await createAuditLog(
-            req.user._id,
-            req.user.companyId,
+            auth.userId,
+            auth.companyId,
             'update',
             'consent',
             consent._id?.toString(),
@@ -126,7 +125,7 @@ export const acceptConsent = async (req: Request, res: Response, next: NextFunct
         );
 
         logger.info('Consent accepted', {
-            userId: req.user._id,
+            userId: auth.userId,
             type: validatedData.type,
             version: validatedData.version,
         });
@@ -154,9 +153,8 @@ export const acceptConsent = async (req: Request, res: Response, next: NextFunct
  */
 export const withdrawConsent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const type = req.params.type as ConsentType;
 
@@ -170,7 +168,7 @@ export const withdrawConsent = async (req: Request, res: Response, next: NextFun
             throw new ValidationError('Cannot withdraw terms or privacy consent. Please delete your account instead.', ErrorCode.VAL_INVALID_INPUT);
         }
 
-        const consent = await Consent.findOne({ userId: req.user._id, type });
+        const consent = await Consent.findOne({ userId: auth.userId, type });
 
         if (!consent) {
             throw new NotFoundError('Consent not found', ErrorCode.RES_NOT_FOUND);
@@ -188,7 +186,7 @@ export const withdrawConsent = async (req: Request, res: Response, next: NextFun
 
         // Record in history
         await ConsentHistory.create({
-            userId: req.user._id,
+            userId: auth.userId,
             consentId: consent._id,
             action: 'withdrawn',
             type,
@@ -198,8 +196,8 @@ export const withdrawConsent = async (req: Request, res: Response, next: NextFun
         });
 
         await createAuditLog(
-            req.user._id,
-            req.user.companyId,
+            auth.userId,
+            auth.companyId,
             'update',
             'consent',
             consent._id?.toString(),
@@ -208,7 +206,7 @@ export const withdrawConsent = async (req: Request, res: Response, next: NextFun
         );
 
         logger.info('Consent withdrawn', {
-            userId: req.user._id,
+            userId: auth.userId,
             type,
         });
 
@@ -225,15 +223,14 @@ export const withdrawConsent = async (req: Request, res: Response, next: NextFun
  */
 export const exportUserData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         // Collect all user data
         const [user, consents, consentHistory] = await Promise.all([
-            User.findById(req.user._id).select('-password -security.verificationToken -security.resetToken'),
-            Consent.find({ userId: req.user._id }),
-            ConsentHistory.find({ userId: req.user._id }),
+            User.findById(auth.userId).select('-password -security.verificationToken -security.resetToken'),
+            Consent.find({ userId: auth.userId }),
+            ConsentHistory.find({ userId: auth.userId }),
         ]);
 
         if (!user) {
@@ -271,16 +268,16 @@ export const exportUserData = async (req: Request, res: Response, next: NextFunc
         };
 
         await createAuditLog(
-            req.user._id,
-            req.user.companyId,
+            auth.userId,
+            auth.companyId,
             'read',
             'user',
-            req.user._id.toString(),
+            auth.userId,
             { message: 'User data exported (GDPR)' },
             req
         );
 
-        logger.info('User data exported', { userId: req.user._id });
+        logger.info('User data exported', { userId: auth.userId });
 
         // Set headers for file download
         res.setHeader('Content-Type', 'application/json');
@@ -299,11 +296,10 @@ export const exportUserData = async (req: Request, res: Response, next: NextFunc
  */
 export const getConsentHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
-        const history = await ConsentHistory.find({ userId: req.user._id })
+        const history = await ConsentHistory.find({ userId: auth.userId })
             .sort({ createdAt: -1 })
             .limit(50);
 

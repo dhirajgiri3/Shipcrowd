@@ -53,6 +53,16 @@ This document records the systematic audit for **requireCompanyContext** (backen
 | **payout.controller** | initiatePayout, processBatch, listPayouts, getPayout, retryPayout, cancelPayout |
 | **commission-transaction.controller** | listTransactions, getTransaction, approveTransaction, rejectTransaction, bulkApprove, bulkReject, addAdjustment, getPending, bulkCalculate |
 | **commission-rule.controller** | createRule, listRules, getRule, updateRule, deleteRule, testRule, findApplicableRules, cloneRule |
+| **logistics/dispute.controller** | createDispute, getDisputes, getDisputeById, getTimeline, getStats, getTrends, getTopReasons, addEvidence, updateStatus, escalateDispute, resolveDispute, assignDispute, deleteDispute, queryCourier *(list/stats/trends/topReasons: requireCompany: false)* |
+| **notification.controller** | sendShipmentStatus |
+| **notification-template.controller** | createTemplate, listTemplates, getTemplateByCode, updateTemplate, deleteTemplate, getDefaultTemplate, renderTemplateByCode, getTemplateStats *(requireCompany: false; global templates for admin)* |
+| **seller-health.controller** | getSellerHealth *(requireCompany: false)* |
+| **promo-code.controller** | createPromo, validatePromo, listPromos, updatePromo, deletePromo |
+| **crm/sales-rep.controller** | createSalesRep, getSalesReps, getSalesRepById, updateSalesRep, getPerformanceMetrics |
+| **crm/leads/lead.controller** | create, findAll |
+| **crm/dispute.controller** | create, findAll, findById, startInvestigation, completeInvestigation, resolve, addEvidence, getOpenDisputes, getMetrics, getResolutionSummary |
+| **profile.controller** (identity) | getProfileCompletion, updateBasicProfile, updateAddressProfile, updatePersonalProfile, updateSocialProfile, updatePreferencesProfile, getProfilePrompts, dismissProfilePrompt |
+| **consent.controller** (identity) | getConsents, acceptConsent, withdrawConsent, exportUserData, getConsentHistory |
 
 ### Controllers not requiring company (by design)
 
@@ -61,18 +71,13 @@ This document records the systematic audit for **requireCompanyContext** (backen
 - **weight-disputes**: resolveDispute, getDisputeAnalytics, batchOperation are admin-only and may operate across companies; no requireCompanyContext.
 - **audit-log.middleware**: Logs with `req.user.companyId` when present; does not throw when missing (audit can be null company).
 
-### Controllers still using req.user.companyId (optional / same pattern)
+### Controllers / code still using req.user (by design or equivalent)
 
-All **company-scoped** controllers that could cause 500 for admin-without-company are migrated. The following still read `req.user.companyId` or `req.user?._id`; they are either (a) behind middleware that already enforces company, (b) optional-company, or (c) lower traffic. Optional future migration: apply `guardChecks(req)` + `requireCompanyContext(auth)` and use `auth.companyId` / `auth.userId`.
+All **company-scoped** controllers that could cause 500 for admin-without-company are migrated. The following are intentional or equivalent:
 
-- **logistics/dispute.controller** – returns/logistics disputes (company-scoped).
-- **notification.controller**, **notification-template.controller** – company filter when present.
-- **seller-health.controller** – single handler.
-- **promo-code.controller** – CRUD by company.
-- **crm/sales-rep.controller**, **crm/leads/lead.controller**, **crm/dispute.controller** – CRM flows (company-scoped).
-- **profile.controller**, **consent.controller** – identity; company used for scope.
 - **kyc.controller** – uses `validateUserAndCompany` helper (equivalent contract).
-- **company.controller** – filter by company if present (intentional); **require-permission.middleware**, **require-complete-company.middleware**, **feature-flag.middleware**, **audit-log.middleware** – middleware; **controller.helpers** – defines the pattern.
+- **company.controller** – filter by company if present (intentional).
+- **require-permission.middleware**, **require-complete-company.middleware**, **feature-flag.middleware**, **audit-log.middleware** – middleware; **controller.helpers** – defines the pattern.
 
 ## Frontend: Redirect utility
 
@@ -121,4 +126,4 @@ All **company-scoped** controllers that could cause 500 for admin-without-compan
 2. **Frontend redirects:** `rg "router\.(push|replace)\s*\(\s*['\"]\/" client` and ensure no hardcoded `/seller` or `/admin` for post-login flows; use redirect utility.
 3. **Frontend hooks:** For any hook calling `/finance/`, `/analytics/` (company-scoped), or orders/shipments, ensure `enabled` includes `hasCompanyContext`.
 
-Last audit: 2026-02-06. Full coverage: zone, onboarding, return (logistics), woocommerce, flipkart, amazon, shopify, product-mapping (all three), commission (sales-representative, payout, commission-transaction, commission-rule, commission-analytics). No remaining req.user.companyId company-scoped handlers.
+Last audit: 2026-02-06. Full coverage: zone, onboarding, return (logistics), woocommerce, flipkart, amazon, shopify, product-mapping (all three), commission (sales-representative, payout, commission-transaction, commission-rule, commission-analytics), logistics/dispute, notification, notification-template, seller-health, promo-code, crm (sales-rep, leads, dispute), identity (profile, consent). No remaining req.user.companyId company-scoped handlers.

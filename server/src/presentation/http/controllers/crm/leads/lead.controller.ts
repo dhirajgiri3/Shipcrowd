@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import { LeadService } from '@/core/application/services/crm/leads/lead.service';
 import { sendSuccess, sendCreated, calculatePagination } from '@/shared/utils/responseHelper';
 import { AuthenticationError, ValidationError } from '@/shared/errors';
@@ -21,9 +22,8 @@ const createLeadSchema = z.object({
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = createLeadSchema.safeParse(req.body);
         if (!validation.success) {
@@ -31,7 +31,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
         }
 
         const leadData: any = {
-            company: new mongoose.Types.ObjectId(req.user.companyId),
+            company: new mongoose.Types.ObjectId(auth.companyId),
             ...validation.data
         };
 
@@ -50,15 +50,14 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
 
 export const findAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
 
         const result = await leadService.getLeads(
-            { ...req.query, company: req.user.companyId },
+            { ...req.query, company: auth.companyId },
             page,
             limit
         );

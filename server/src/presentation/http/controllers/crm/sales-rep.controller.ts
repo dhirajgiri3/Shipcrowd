@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import SalesRepService from '@/core/application/services/crm/sales/SalesRepService';
 import logger from '@/shared/logger/winston.logger';
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
@@ -43,9 +44,8 @@ const service = SalesRepService.getInstance();
 
 export const createSalesRep = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = createSalesRepSchema.safeParse(req.body);
         if (!validation.success) {
@@ -53,11 +53,11 @@ export const createSalesRep = async (req: Request, res: Response, next: NextFunc
         }
 
         const rep = await service.createSalesRep({
-            companyId: req.user.companyId.toString(),
+            companyId: auth.companyId,
             ...validation.data
         });
 
-        await createAuditLog(req.user._id, req.user.companyId, 'create', 'sales_rep', rep.id, { message: 'Sales Representative created', name: rep.name }, req);
+        await createAuditLog(auth.userId, auth.companyId, 'create', 'sales_rep', rep.id, { message: 'Sales Representative created', name: rep.name }, req);
 
         sendCreated(res, rep, 'Sales Representative created successfully');
     } catch (error) {
@@ -68,14 +68,13 @@ export const createSalesRep = async (req: Request, res: Response, next: NextFunc
 
 export const getSalesReps = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
 
-        const result = await service.getSalesReps(req.user.companyId.toString(), {
+        const result = await service.getSalesReps(auth.companyId, {
             page,
             limit,
             territory: req.query.territory as string,
@@ -100,9 +99,8 @@ export const getSalesReps = async (req: Request, res: Response, next: NextFuncti
 
 export const getSalesRepById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         // Check if user has permission to view bank details (e.g. admin or finance role)
@@ -110,7 +108,7 @@ export const getSalesRepById = async (req: Request, res: Response, next: NextFun
         // In a real scenario, check req.user.roles or permissions
         const canViewBankDetails = true; // Placeholder for permission check
 
-        const rep = await service.getSalesRepById(id, req.user.companyId.toString(), canViewBankDetails);
+        const rep = await service.getSalesRepById(id, auth.companyId, canViewBankDetails);
 
         sendSuccess(res, rep, 'Sales Representative details retrieved successfully');
     } catch (error) {
@@ -121,9 +119,8 @@ export const getSalesRepById = async (req: Request, res: Response, next: NextFun
 
 export const updateSalesRep = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         const validation = updateSalesRepSchema.safeParse(req.body);
@@ -133,11 +130,11 @@ export const updateSalesRep = async (req: Request, res: Response, next: NextFunc
 
         const rep = await service.updateSalesRep(
             id,
-            req.user.companyId.toString(),
+            auth.companyId,
             validation.data
         );
 
-        await createAuditLog(req.user._id, req.user.companyId, 'update', 'sales_rep', rep.id, { message: 'Sales Representative updated', updates: validation.data }, req);
+        await createAuditLog(auth.userId, auth.companyId, 'update', 'sales_rep', rep.id, { message: 'Sales Representative updated', updates: validation.data }, req);
 
         sendSuccess(res, rep, 'Sales Representative updated successfully');
     } catch (error) {
@@ -148,12 +145,11 @@ export const updateSalesRep = async (req: Request, res: Response, next: NextFunc
 
 export const getPerformanceMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
-        const metrics = await service.getPerformanceMetrics(id, req.user.companyId.toString());
+        const metrics = await service.getPerformanceMetrics(id, auth.companyId);
 
         sendSuccess(res, metrics, 'Performance metrics retrieved successfully');
     } catch (error) {

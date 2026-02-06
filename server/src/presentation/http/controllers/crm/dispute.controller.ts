@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import { DisputeResolutionService } from '@/core/application/services/crm/disputes/dispute-resolution.service';
 import { sendSuccess, sendCreated, calculatePagination } from '@/shared/utils/responseHelper';
 import { AuthenticationError, ValidationError } from '@/shared/errors';
@@ -50,9 +51,8 @@ const addEvidenceSchema = z.object({
  */
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user || !req.user.companyId) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const validation = createDisputeSchema.safeParse(req.body);
     if (!validation.success) {
@@ -60,7 +60,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     }
 
     const disputeData: any = {
-      company: new mongoose.Types.ObjectId(req.user.companyId),
+      company: new mongoose.Types.ObjectId(auth.companyId),
       ...validation.data,
     };
 
@@ -90,9 +90,8 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
  */
 export const findAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user || !req.user.companyId) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
@@ -104,7 +103,7 @@ export const findAll = async (req: Request, res: Response, next: NextFunction): 
       assignedTo: req.query.assignedTo,
     };
 
-    const result = await disputeService.getDisputes(req.user.companyId, filters, page, limit);
+    const result = await disputeService.getDisputes(auth.companyId, filters, page, limit);
 
     const pagination = calculatePagination(result.total, page, limit);
 
@@ -127,9 +126,8 @@ export const findAll = async (req: Request, res: Response, next: NextFunction): 
  */
 export const findById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user || !req.user.companyId) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const { id } = req.params;
     if (!id) {
@@ -139,7 +137,7 @@ export const findById = async (req: Request, res: Response, next: NextFunction):
     const dispute = await disputeService.getDisputeById(id);
 
     // Verify company access
-    if (dispute.company.toString() !== req.user.companyId) {
+    if (dispute.company.toString() !== auth.companyId) {
       throw new AuthenticationError('Access denied');
     }
 
@@ -159,9 +157,8 @@ export const startInvestigation = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!req.user || !req.user.companyId) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const { id } = req.params;
     if (!id) {
@@ -195,9 +192,7 @@ export const completeInvestigation = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
 
     const { id } = req.params;
     if (!id) {
@@ -212,7 +207,7 @@ export const completeInvestigation = async (
     const dispute = await disputeService.completeInvestigation(
       id,
       validation.data.completionNotes,
-      req.user._id
+      auth.userId
     );
 
     sendSuccess(res, dispute, 'Investigation completed successfully');
@@ -227,9 +222,7 @@ export const completeInvestigation = async (
  */
 export const resolve = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
 
     const { id } = req.params;
     if (!id) {
@@ -246,7 +239,7 @@ export const resolve = async (req: Request, res: Response, next: NextFunction): 
       validation.data.resolution,
       validation.data.refundAmount || 0,
       validation.data.notes,
-      req.user._id
+      auth.userId
     );
 
     sendSuccess(res, dispute, 'Dispute resolved successfully');
@@ -261,9 +254,7 @@ export const resolve = async (req: Request, res: Response, next: NextFunction): 
  */
 export const addEvidence = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
 
     const { id } = req.params;
     if (!id) {
@@ -279,7 +270,7 @@ export const addEvidence = async (req: Request, res: Response, next: NextFunctio
       id,
       validation.data.type,
       validation.data.url,
-      req.user._id
+      auth.userId
     );
 
     sendSuccess(res, dispute, 'Evidence added successfully');
@@ -298,11 +289,10 @@ export const getOpenDisputes = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!req.user || !req.user.companyId) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
-    const disputes = await disputeService.getOpenDisputes(req.user.companyId);
+    const disputes = await disputeService.getOpenDisputes(auth.companyId);
 
     sendSuccess(res, { disputes, count: disputes.length }, 'Open disputes retrieved successfully');
   } catch (error) {
@@ -316,11 +306,10 @@ export const getOpenDisputes = async (
  */
 export const getMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user || !req.user.companyId) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
-    const metrics = await disputeService.getMetricsByType(req.user.companyId);
+    const metrics = await disputeService.getMetricsByType(auth.companyId);
 
     sendSuccess(res, { metrics }, 'Dispute metrics retrieved successfully');
   } catch (error) {
@@ -338,16 +327,15 @@ export const getResolutionSummary = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!req.user || !req.user.companyId) {
-      throw new AuthenticationError('Authentication required');
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const { from, to } = req.query;
     const dateFrom = from ? new Date(from as string) : undefined;
     const dateTo = to ? new Date(to as string) : undefined;
 
     const summary = await disputeService.getResolutionSummary(
-      req.user.companyId,
+      auth.companyId,
       dateFrom,
       dateTo
     );

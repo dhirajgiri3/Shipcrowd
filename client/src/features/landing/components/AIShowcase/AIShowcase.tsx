@@ -1,84 +1,99 @@
 "use client"
 
-import { motion, useInView, useScroll, useTransform } from "framer-motion"
-import { useRef } from "react"
-import { Brain, Zap, BarChart3, CheckCircle2, AlertCircle, ShieldCheck, Sparkles, TrendingUp } from "lucide-react"
+import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from "framer-motion"
+import React, { useRef, useEffect, useState, memo } from "react"
+import { Brain, Zap, BarChart3, CheckCircle2, AlertCircle, ShieldCheck, Sparkles, TrendingUp, Package, RefreshCw } from "lucide-react"
 
 export default function AIShowcase() {
-    const containerRef = useRef(null)
+    const containerRef = useRef<HTMLElement>(null)
     const { scrollYProgress } = useScroll({
         target: containerRef,
         offset: ["start end", "end start"]
     })
 
-    const y = useTransform(scrollYProgress, [0, 1], [100, -100])
-    const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
+    const mouseX = useMotionValue(0)
+    const mouseY = useMotionValue(0)
+
+    function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent) {
+        const { left, top } = currentTarget.getBoundingClientRect()
+        mouseX.set(clientX - left)
+        mouseY.set(clientY - top)
+    }
 
     return (
-        <section ref={containerRef} className="bg-white text-gray-950 py-32 md:py-40 overflow-hidden relative">
+        <section
+            ref={containerRef}
+            onMouseMove={handleMouseMove}
+            className="bg-white text-gray-950 py-16 md:py-24 overflow-hidden relative"
+            aria-label="AI Features Showcase"
+        >
 
-            {/* Ethereal Background Gradient */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-radial from-primaryBlue/5 via-transparent to-transparent opacity-50 blur-3xl animate-pulse-slow" />
-                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-purple-100/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
-                <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-100/30 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4" />
+            {/* Ethereal Background Gradient - Static, optimized */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-radial from-primaryBlue/5 via-transparent to-transparent opacity-50 blur-3xl animate-pulse-slow will-change-transform" />
+                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-purple-100/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 will-change-transform" />
+                <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-100/30 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4 will-change-transform" />
             </div>
 
-            <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
+            <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10 flex flex-col items-center justify-center gap-12">
                 {/* Part 1: Section Header */}
-                <div className="text-center mb-20 md:mb-32">
+                <header className="text-center max-w-4xl mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primaryBlue/5 border border-primaryBlue/10 mb-8 backdrop-blur-sm"
+                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primaryBlue/5 border border-primaryBlue/10 mb-6 backdrop-blur-sm"
                     >
-                        <Sparkles size={12} className="text-primaryBlue fill-current" />
+                        <Sparkles size={12} className="text-primaryBlue fill-current" aria-hidden="true" />
                         <span className="text-xs font-bold text-primaryBlue tracking-widest uppercase">
                             Neural Engine V2.0
                         </span>
                     </motion.div>
 
-                    <h2 className="text-5xl md:text-7xl font-bold leading-[1.1] mb-8 tracking-tight text-charcoal-900">
+                    <h2 className="text-5xl md:text-7xl font-bold leading-[1.05] mb-6 tracking-tighter text-charcoal-900">
                         Logistics Intelligence. <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-primaryBlue via-indigo-500 to-primaryBlue bg-300% animate-gradient">
                             Reimagined.
                         </span>
                     </h2>
 
-                    <p className="text-xl text-charcoal-500 max-w-2xl mx-auto leading-relaxed font-medium">
+                    <p className="text-xl text-charcoal-500 max-w-2xl mx-auto leading-relaxed font-medium text-balance">
                         Shipcrowd analyzes millions of shipments in real-time to predict delays, optimize costs, and automate resolutions.
                     </p>
-                </div>
+                </header>
 
                 {/* Part 2: The Ethereal Core */}
-                <div className="relative h-[400px] md:h-[500px] mb-32 flex items-center justify-center perspective-[2000px] [perspective:2000px]">
+                <div
+                    className="relative h-[300px] md:h-[400px] w-full mb-12 flex items-center justify-center perspective-[2000px] [perspective:2000px]"
+                    role="img"
+                    aria-label="Interactive 3D visualization of Shipcrowd's neural network processing data"
+                >
 
                     {/* Floating Data Particles (Background) */}
-                    <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
                         {[...Array(15)].map((_, i) => (
                             <FloatingParticle key={i} index={i} />
                         ))}
                     </div>
 
                     {/* Central Orb System */}
-                    <div className="relative w-[500px] h-[500px] flex items-center justify-center transform-style-3d [transform-style:preserve-3d]">
+                    <div className="relative w-[400px] h-[400px] flex items-center justify-center transform-style-3d [transform-style:preserve-3d]">
 
                         {/* 1. Core Energy Ball (Breathing Gradient) */}
                         <motion.div
-                            className="absolute w-64 h-64 rounded-full bg-gradient-to-br from-primaryBlue via-indigo-500 to-cyan-400 blur-[60px] opacity-40 mix-blend-screen"
+                            className="absolute w-56 h-56 rounded-full bg-gradient-to-br from-primaryBlue via-indigo-500 to-cyan-400 blur-[50px] opacity-40 mix-blend-screen will-change-transform"
                             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                         />
 
                         {/* 2. Glass Sphere (The Physical Core) */}
-                        <div className="relative w-48 h-48 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-[inset_0_0_40px_rgba(255,255,255,0.2)] flex items-center justify-center z-20 overflow-hidden">
+                        <div className="relative w-40 h-40 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-[inset_0_0_40px_rgba(255,255,255,0.2)] flex items-center justify-center z-20 overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-50" />
-                            <Brain size={80} className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] relative z-10" strokeWidth={1} />
+                            <Brain size={64} className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] relative z-10" strokeWidth={1} />
 
                             {/* Inner Scanning Effect */}
                             <motion.div
-                                className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-white/30 to-transparent"
+                                className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-white/30 to-transparent will-change-transform"
                                 animate={{ y: ['-100%', '100%'] }}
                                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                             />
@@ -89,16 +104,21 @@ export default function AIShowcase() {
                             <OrbitalSpline key={i} index={i} />
                         ))}
 
-                        {/* Floating Interaction Nodes */}
-                        <FloatingNode x={-200} y={-50} icon={Zap} label="Speed" value="0.2ms" delay={0} />
-                        <FloatingNode x={200} y={80} icon={TrendingUp} label="Optimized" value="+24%" delay={1} />
-                        <FloatingNode x={0} y={180} icon={ShieldCheck} label="Security" value="100%" delay={2} />
+                        {/* Neural Synapses (Connection Lines) */}
+                        <NeuralSynapse startX={-160} startY={-40} endX={0} endY={0} delay={0} />
+                        <NeuralSynapse startX={160} startY={60} endX={0} endY={0} delay={1.5} />
+                        <NeuralSynapse startX={0} startY={140} endX={0} endY={0} delay={3} />
+
+                        {/* Interactive Floating Interaction Nodes */}
+                        <FloatingNode mouseX={mouseX} mouseY={mouseY} initialX={-160} initialY={-40} icon={Zap} label="Speed" value="0.2ms" delay={0} />
+                        <FloatingNode mouseX={mouseX} mouseY={mouseY} initialX={160} initialY={60} icon={TrendingUp} label="Optimized" value="+24%" delay={1} />
+                        <FloatingNode mouseX={mouseX} mouseY={mouseY} initialX={0} initialY={140} icon={ShieldCheck} label="Security" value="100%" delay={2} />
 
                     </div>
                 </div>
 
                 {/* Part 3: Features - Glassmorphism Panels */}
-                <div className="space-y-32">
+                <div className="space-y-16 w-full max-w-5xl">
                     <FeaturesSection />
                 </div>
             </div>
@@ -110,79 +130,119 @@ export default function AIShowcase() {
 // Sub-Components
 // ----------------------------------------------------------------------------------
 
-function OrbitalSpline({ index }: { index: number }) {
+const OrbitalSpline = memo(function OrbitalSpline({ index }: { index: number }) {
     const rotateX = index === 0 ? 60 : index === 1 ? -60 : 75
     const rotateY = index === 0 ? 45 : index === 1 ? -45 : 0
     const rotateZ = index === 2 ? 45 : 0
 
     return (
         <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            className="absolute inset-0 flex items-center justify-center pointer-events-none will-change-transform"
             style={{
                 transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`,
-                transformStyle: "preserve-3d" // Fallback
+                transformStyle: "preserve-3d"
             }}
+            aria-hidden="true"
         >
-            <div className="w-[450px] h-[450px] rounded-full border border-primaryBlue/20 shadow-[0_0_30px_rgba(37,37,255,0.1)] opacity-60 animate-spin-slower" style={{ animationDuration: `${20 + index * 5}s` }}>
+            <div className="w-[320px] h-[320px] rounded-full border border-primaryBlue/20 shadow-[0_0_30px_rgba(37,37,255,0.1)] opacity-60 animate-spin-slower" style={{ animationDuration: `${20 + index * 5}s` }}>
                 {/* Particle moving along the path */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-[0_0_10px_#2525FF]" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_#2525FF]" />
             </div>
         </div>
     )
-}
+})
 
-function FloatingParticle({ index }: { index: number }) {
-    const randomX = Math.random() * 100 - 50
-    const randomY = Math.random() * 100 - 50
-    const duration = 10 + Math.random() * 10
+const FloatingParticle = memo(function FloatingParticle({ index }: { index: number }) {
+    const [mounted, setMounted] = useState(false)
+    const [randomVals, setRandomVals] = useState({ x: 0, y: 0, duration: 15 })
+
+    useEffect(() => {
+        setRandomVals({
+            x: Math.random() * 100 - 50,
+            y: Math.random() * 100 - 50,
+            duration: 10 + Math.random() * 10
+        })
+        setMounted(true)
+    }, [])
+
+    if (!mounted) return null
 
     return (
         <motion.div
-            className="absolute w-1 h-1 bg-primaryBlue rounded-full opacity-20"
+            className="absolute w-1 h-1 bg-primaryBlue rounded-full opacity-20 will-change-transform"
             style={{
-                left: `${50 + randomX}%`,
-                top: `${50 + randomY}%`
+                left: "50%",
+                top: "50%",
+                x: `${randomVals.x}vw`,
+                y: `${randomVals.y}vh`
             }}
             animate={{
-                y: [0, -100, 0],
+                y: [`${randomVals.y}vh`, `calc(${randomVals.y}vh - 100px)`, `${randomVals.y}vh`],
                 opacity: [0, 0.4, 0]
             }}
             transition={{
-                duration: duration,
+                duration: randomVals.duration,
                 repeat: Infinity,
                 delay: index * 0.5,
                 ease: "easeInOut"
             }}
+            aria-hidden="true"
         />
     )
-}
+})
 
-function FloatingNode({ x, y, icon: Icon, label, value, delay }: any) {
+const FloatingNode = memo(function FloatingNode({ mouseX, mouseY, initialX, initialY, icon: Icon, label, value, delay }: any) {
+    const x = useSpring(useTransform(mouseX, [0, window.innerWidth || 1400], [initialX - 15, initialX + 15]), { stiffness: 40, damping: 25 })
+    const y = useSpring(useTransform(mouseY, [0, window.innerHeight || 800], [initialY - 15, initialY + 15]), { stiffness: 40, damping: 25 })
+
     return (
         <motion.div
-            className="absolute z-30 flex flex-col items-center gap-2"
+            className="absolute z-30 flex flex-col items-center gap-2 will-change-transform"
             style={{ x, y }}
-            animate={{ y: [y, y - 15, y] }}
-            transition={{ duration: 4, repeat: Infinity, delay, ease: "easeInOut" }}
+            role="group"
+            aria-label={`${label}: ${value}`}
         >
-            <div className="bg-white/80 backdrop-blur-xl p-3 rounded-2xl border border-white/50 shadow-lg flex items-center gap-3">
+            <div className="bg-white/80 backdrop-blur-xl p-3 rounded-2xl border border-white/50 shadow-lg flex items-center gap-3 relative overflow-hidden group hover:scale-105 transition-transform duration-300">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:animate-shimmer" />
                 <div className="w-8 h-8 rounded-full bg-primaryBlue/10 flex items-center justify-center">
-                    <Icon size={16} className="text-primaryBlue" />
+                    <Icon size={16} className="text-primaryBlue" aria-hidden="true" />
                 </div>
                 <div>
                     <div className="text-[10px] text-charcoal-500 uppercase tracking-wide font-semibold">{label}</div>
                     <div className="text-sm font-bold text-gray-900">{value}</div>
                 </div>
             </div>
-            {/* Connecting line to center (visual only, dashed) */}
-            <div className="absolute top-0 left-1/2 w-px h-[200px] -translate-x-1/2 -translate-y-full bg-gradient-to-t from-primaryBlue/20 to-transparent -z-10" style={{ transformOrigin: "bottom" }} />
         </motion.div>
     )
-}
+})
+
+const NeuralSynapse = memo(function NeuralSynapse({ startX, startY, endX, endY, delay }: any) {
+    const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+    const angle = Math.atan2(endY - startY, endX - startX) * (180 / Math.PI)
+
+    return (
+        <div
+            className="absolute top-1/2 left-1/2 h-0.5 bg-gradient-to-r from-primaryBlue/0 via-primaryBlue/30 to-primaryBlue/0 origin-left pointer-events-none"
+            style={{
+                width: length,
+                transform: `translate(${startX}px, ${startY}px) rotate(${angle}deg)`,
+                zIndex: 0
+            }}
+            aria-hidden="true"
+        >
+            <motion.div
+                className="w-10 h-full bg-primaryBlue/80 blur-[2px] will-change-transform"
+                initial={{ x: 0, opacity: 0 }}
+                animate={{ x: length, opacity: [0, 1, 0] }}
+                transition={{ duration: 2, repeat: Infinity, delay: delay, ease: "linear", repeatDelay: 3 }}
+            />
+        </div>
+    )
+})
 
 function FeaturesSection() {
     return (
-        <>
+        <div role="list" className="space-y-16">
             <GlassFeature
                 index="01"
                 title="Smart Carrier Selection"
@@ -208,133 +268,234 @@ function FeaturesSection() {
                 color="emerald"
                 demo={<ResolutionFlowDemo />}
             />
-        </>
-    )
-}
-
-function GlassFeature({ index, title, description, icon: Icon, color, align = "left", demo }: any) {
-    return (
-        <div className={`flex flex-col lg:flex-row items-center gap-16 ${align === "right" ? "lg:flex-row-reverse" : ""}`}>
-            {/* Text Content */}
-            <div className="flex-1 space-y-8">
-                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-white to-gray-50 border border-white shadow-sm flex items-center justify-center">
-                    <Icon size={32} className={`text-${color}-600`} strokeWidth={1.5} />
-                </div>
-                <div>
-                    <div className={`text-${color}-600 font-mono text-sm font-bold mb-3`}>0{index} / INTELLIGENCE</div>
-                    <h3 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight">{title}</h3>
-                    <p className="text-lg text-gray-500 leading-relaxed">{description}</p>
-                </div>
-                <div className="h-px w-full bg-gradient-to-r from-gray-200 to-transparent" />
-            </div>
-
-            {/* Visual Glass Card */}
-            <div className="flex-1 w-full">
-                <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-primaryBlue/10 to-purple-100/10 rounded-[40px] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="relative bg-white/60 backdrop-blur-2xl border border-white/60 p-2 rounded-[40px] shadow-2xl shadow-gray-200/50 overflow-hidden">
-                        <div className="bg-white/50 rounded-[32px] p-8 h-[400px] flex items-center justify-center relative overflow-hidden">
-                            {/* Inner content */}
-                            {demo}
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     )
 }
 
+function GlassFeature({ index, title, description, icon: Icon, color, align = "left", demo }: any) {
+    const isRight = align === "right"
+
+    return (
+        <article className={`flex flex-col lg:flex-row items-center gap-8 lg:gap-16 ${isRight ? "lg:flex-row-reverse" : ""}`} role="listitem">
+            {/* Text Content */}
+            <div className="flex-1 space-y-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-gray-50 border border-white shadow-sm flex items-center justify-center">
+                    <Icon size={28} className={`text-${color}-600`} strokeWidth={1.5} aria-hidden="true" />
+                </div>
+                <div>
+                    <div className={`text-${color}-600 font-mono text-xs font-bold mb-2`} aria-hidden="true">0{index} / INTELLIGENCE</div>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">{title}</h3>
+                    <p className="text-base text-gray-500 leading-relaxed text-balance">{description}</p>
+                </div>
+                <div className="h-px w-full bg-gradient-to-r from-gray-200 to-transparent" aria-hidden="true" />
+            </div>
+
+            {/* Visual Glass Card */}
+            <div className="flex-1 w-full perspective-[1000px]">
+                <div className="relative group perspective-[1000px]">
+                    {/* Background Glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-primaryBlue/10 to-purple-100/10 rounded-[30px] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 will-change-opacity" />
+
+                    {/* Interactive Card */}
+                    <motion.div
+                        whileHover={{ rotateX: 1, rotateY: 1, scale: 1.01 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="relative bg-white/60 backdrop-blur-2xl border border-white/60 p-2 rounded-[30px] shadow-xl shadow-gray-200/50 overflow-hidden will-change-transform"
+                    >
+                        {/* Holographic Sheen Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none mix-blend-overlay" aria-hidden="true" />
+
+                        <div className="bg-white/50 rounded-[24px] p-6 h-[280px] flex items-center justify-center relative overflow-hidden">
+                            {/* Inner content */}
+                            {demo}
+                        </div>
+                    </motion.div>
+                </div>
+            </div>
+        </article>
+    )
+}
+
 // ----------------------------------------------------------------------------------
-// Demo Visuals (Clean & Abstract)
+// Demo Visuals (Enhanced with Storytelling Animation)
 // ----------------------------------------------------------------------------------
 
-function CarrierListDemo() {
+const CarrierListDemo = memo(function CarrierListDemo() {
     return (
-        <div className="w-full max-w-sm flex flex-col gap-3">
+        <div className="w-full max-w-sm flex flex-col gap-3 relative" aria-hidden="true">
             {[1, 2, 3].map((_, i) => (
                 <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -20 }}
                     whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className={`flex items-center justify-between p-4 rounded-2xl border ${i === 0 ? 'bg-white border-primaryBlue/30 shadow-lg shadow-primaryBlue/10' : 'bg-white/50 border-transparent blur-[0.5px]'}`}
+                    className={`relative overflow-hidden flex items-center justify-between p-3 rounded-xl border transition-colors duration-500 ${i === 0 ? 'bg-white border-primaryBlue/30 shadow-lg shadow-primaryBlue/10' : 'bg-white/40 border-transparent'}`}
                 >
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full ${i === 0 ? 'bg-primaryBlue' : 'bg-gray-200'} flex items-center justify-center text-white font-bold`}>
+                    <div className="flex items-center gap-3 relative z-10">
+                        <div className={`w-8 h-8 rounded-full ${i === 0 ? 'bg-primaryBlue' : 'bg-gray-200'} flex items-center justify-center text-white font-bold text-xs`}>
                             {i === 0 ? 'AI' : ''}
                         </div>
-                        <div className="space-y-1">
-                            <div className={`h-2.5 rounded-full ${i === 0 ? 'w-24 bg-gray-900' : 'w-20 bg-gray-300'}`} />
-                            <div className="h-2 w-12 bg-gray-200 rounded-full" />
+                        <div className="space-y-1.5">
+                            {/* Animated Stats Bars */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-semibold text-gray-400 w-8">Cost</span>
+                                <div className={`h-1.5 rounded-full ${i === 0 ? 'w-24 bg-primaryBlue' : 'w-16 bg-gray-300'}`} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-semibold text-gray-400 w-8">Speed</span>
+                                <div className={`h-1.5 rounded-full ${i === 0 ? 'w-20 bg-emerald-400' : 'w-12 bg-gray-300'}`} />
+                            </div>
                         </div>
                     </div>
-                    {i === 0 && <span className="text-primaryBlue font-bold text-sm">Best Match</span>}
+
+                    {i === 0 && (
+                        <motion.div
+                            initial={{ scale: 0, opacity: 0 }}
+                            whileInView={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 1.5, type: "spring" }}
+                            className="bg-primaryBlue/10 text-primaryBlue px-2 py-1 rounded-lg text-xs font-bold border border-primaryBlue/20"
+                        >
+                            98% Match
+                        </motion.div>
+                    )}
+
+                    {/* Scanning Shine Effect */}
+                    <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                        initial={{ x: '-100%' }}
+                        whileInView={{ x: '200%' }}
+                        transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 3, delay: i * 0.2 }}
+                    />
                 </motion.div>
             ))}
         </div>
     )
-}
+})
 
-function PredictionGraphDemo() {
+const PredictionGraphDemo = memo(function PredictionGraphDemo() {
+    const bars = [30, 45, 35, 60, 40, 75, 55, 90, 65, 80, 50, 70]
     return (
-        <div className="relative w-full h-full flex items-end justify-center gap-2 px-8 pb-8">
+        <div className="relative w-full h-full flex items-end justify-center gap-1.5 px-6 pb-6" aria-hidden="true">
             <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/50 to-transparent" />
-            <motion.div className="w-full h-[1px] bg-indigo-500/20 absolute bottom-8 left-0" />
 
-            {[30, 45, 35, 60, 40, 75, 55, 90, 65, 80].map((h, i) => (
-                <motion.div
-                    key={i}
-                    className="flex-1 rounded-t-lg bg-indigo-500"
-                    style={{ opacity: 0.1 + (i / 10) * 0.9 }}
-                    initial={{ height: 0 }}
-                    whileInView={{ height: `${h}%` }}
-                    transition={{ delay: i * 0.05, duration: 1, type: "spring" }}
-                />
-            ))}
+            {/* Bars */}
+            {bars.map((h, i) => {
+                const isHighRisk = h > 80
+                return (
+                    <motion.div
+                        key={i}
+                        className={`flex-1 rounded-t-sm ${isHighRisk ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                        style={{ opacity: 0.2 + (i / 12) * 0.8 }}
+                        initial={{ height: 0 }}
+                        whileInView={{ height: `${h}%` }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.05, duration: 0.8, type: "spring" }}
+                    />
+                )
+            })}
 
-            <div className="absolute top-8 right-8 bg-white/90 backdrop-blur shadow-lg p-3 rounded-xl border border-indigo-100">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-bold text-indigo-700">Trend Detected</span>
-                </div>
-            </div>
+            {/* Scanning Line */}
+            <motion.div
+                className="absolute top-0 bottom-0 w-[2px] bg-indigo-500 shadow-[0_0_10px_#6366f1] z-10"
+                initial={{ left: '0%', opacity: 0 }}
+                whileInView={{ left: '100%', opacity: 1 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            >
+                <div className="absolute top-0 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full border border-indigo-500 shadow-sm" />
+            </motion.div>
+
+            {/* Risk Alert Tooltip */}
+            <motion.div
+                className="absolute top-10 right-10 bg-white/90 backdrop-blur shadow-lg p-2.5 rounded-xl border border-rose-100 flex items-center gap-2 z-20"
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                whileInView={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.8], y: [10, 0, 0, 10] }}
+                transition={{ duration: 3, repeat: Infinity, times: [0, 0.2, 0.8, 1], delay: 1.8 }}
+            >
+                <AlertCircle size={14} className="text-rose-500" />
+                <span className="text-[10px] font-bold text-rose-700 uppercase">Risk Detected</span>
+            </motion.div>
         </div>
     )
-}
+})
 
-function ResolutionFlowDemo() {
+const ResolutionFlowDemo = memo(function ResolutionFlowDemo() {
     return (
-        <div className="relative w-full flex items-center justify-center">
-            {/* Animated Flow Line */}
-            <svg className="absolute w-[200px] h-20 overflow-visible">
-                <motion.path
-                    d="M 0 40 Q 100 0, 200 40"
-                    fill="none"
-                    stroke="#10B981"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeOpacity="0.2"
-                />
-                <motion.path
-                    d="M 0 40 Q 100 0, 200 40"
-                    fill="none"
-                    stroke="#10B981"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    whileInView={{ pathLength: 1 }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                />
-            </svg>
+        <div className="relative w-full flex items-center justify-center -mt-4" aria-hidden="true">
+            {/* Timeline Line */}
+            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2" />
 
-            <div className="flex justify-between w-[300px] z-10">
-                <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center border border-gray-100">
-                    <AlertCircle className="text-rose-500" />
-                </div>
-                <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center border border-emerald-500 shadow-emerald-200">
-                    <CheckCircle2 className="text-emerald-500" />
-                </div>
+            {/* Animated Progress Line */}
+            <motion.div
+                className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-emerald-500 to-primaryBlue -translate-y-1/2 z-0"
+                initial={{ width: '0%' }}
+                whileInView={{ width: '100%' }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            />
+
+            <div className="relative w-full flex justify-between items-center z-10">
+                {/* Step 1: Issue */}
+                <StepNode
+                    icon={Package}
+                    color="text-gray-500"
+                    bg="bg-white"
+                    activeColor="text-rose-500"
+                    activeBg="bg-rose-50"
+                    label="Delayed"
+                    triggerTime={0}
+                />
+
+                {/* Step 2: AI Fix */}
+                <StepNode
+                    icon={Brain}
+                    color="text-gray-400"
+                    bg="bg-white"
+                    activeColor="text-primaryBlue"
+                    activeBg="bg-blue-50"
+                    label="AI Fix"
+                    triggerTime={1}
+                />
+
+                {/* Step 3: Resolved */}
+                <StepNode
+                    icon={CheckCircle2}
+                    color="text-gray-300"
+                    bg="bg-white"
+                    activeColor="text-emerald-500"
+                    activeBg="bg-emerald-50"
+                    label="Resolved"
+                    triggerTime={2}
+                />
             </div>
+
+            {/* Moving Package */}
+            <motion.div
+                className="absolute top-1/2 left-0 -translate-y-1/2 z-20 bg-white p-1.5 rounded-full border border-gray-200 shadow-sm"
+                initial={{ left: '0%' }}
+                whileInView={{ left: '100%' }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            >
+                <RefreshCw size={12} className="text-primaryBlue animate-spin" />
+            </motion.div>
+        </div>
+    )
+})
+
+function StepNode({ icon: Icon, color, bg, activeColor, activeBg, label, triggerTime }: any) {
+    return (
+        <div className="flex flex-col items-center gap-2">
+            <motion.div
+                className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors duration-300 shadow-sm`}
+                initial={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}
+                whileInView={{
+                    backgroundColor: ['#ffffff', '#ffffff', '#eff6ff'],
+                    borderColor: ['#f3f4f6', '#f3f4f6', '#bfdbfe']
+                }}
+                transition={{ duration: 3, repeat: Infinity, times: [0, triggerTime * 0.33, (triggerTime * 0.33) + 0.1] }}
+            >
+                <Icon size={18} className={color} />
+            </motion.div>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</span>
         </div>
     )
 }

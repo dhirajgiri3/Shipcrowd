@@ -96,12 +96,11 @@ class PromoCodeController {
      */
     async listPromos(req: Request, res: Response, next: NextFunction) {
         try {
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const activeOnly = req.query.active === 'true';
-            const promos = await PromoCodeService.listPromos(req.user.companyId.toString(), activeOnly);
+            const promos = await PromoCodeService.listPromos(auth.companyId, activeOnly);
 
             sendSuccess(res, promos);
         } catch (error) {
@@ -118,13 +117,12 @@ class PromoCodeController {
             const { id } = req.params;
             const data = req.body;
 
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const promo = await PromoCodeService.updatePromo(
                 id,
-                req.user.companyId.toString(),
+                auth.companyId,
                 data
             );
 
@@ -142,11 +140,10 @@ class PromoCodeController {
         try {
             const { id } = req.params;
 
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
-            await PromoCodeService.deletePromo(id, req.user.companyId.toString());
+            await PromoCodeService.deletePromo(id, auth.companyId);
 
             sendSuccess(res, null, 'Promo code deleted successfully');
         } catch (error) {

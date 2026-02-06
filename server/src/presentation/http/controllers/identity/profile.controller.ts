@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
   updateProfileCompletionStatus,
@@ -52,11 +53,10 @@ const preferencesProfileSchema = z.object({
  */
 export const getProfileCompletion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
-    let user = await User.findById(req.user._id);
+    let user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
@@ -67,7 +67,7 @@ export const getProfileCompletion = async (req: Request, res: Response, next: Ne
       Date.now() - user.profileCompletion.lastUpdated.getTime() > 24 * 60 * 60 * 1000) { // 24 hours
       await updateProfileCompletionStatus(user._id as string);
       // Refresh user data
-      const updatedUser = await User.findById(req.user._id);
+      const updatedUser = await User.findById(auth.userId);
       if (!updatedUser) {
         throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
       }
@@ -93,9 +93,8 @@ export const getProfileCompletion = async (req: Request, res: Response, next: Ne
  */
 export const updateBasicProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const validation = basicProfileSchema.safeParse(req.body);
     if (!validation.success) {
@@ -106,7 +105,7 @@ export const updateBasicProfile = async (req: Request, res: Response, next: Next
       throw new ValidationError('Validation failed', details);
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
@@ -130,11 +129,11 @@ export const updateBasicProfile = async (req: Request, res: Response, next: Next
 
     // Log the action
     await createAuditLog(
-      req.user._id,
-      req.user.companyId,
+      auth.userId,
+      auth.companyId,
       'profile_update',
       'user',
-      req.user._id as string,
+      auth.userId,
       {
         message: 'Basic profile information updated',
         fields: Object.keys(validation.data),
@@ -163,9 +162,8 @@ export const updateBasicProfile = async (req: Request, res: Response, next: Next
  */
 export const updateAddressProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const validation = addressProfileSchema.safeParse(req.body);
     if (!validation.success) {
@@ -176,7 +174,7 @@ export const updateAddressProfile = async (req: Request, res: Response, next: Ne
       throw new ValidationError('Validation failed', details);
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
@@ -198,11 +196,11 @@ export const updateAddressProfile = async (req: Request, res: Response, next: Ne
 
     // Log the action
     await createAuditLog(
-      req.user._id,
-      req.user.companyId,
+      auth.userId,
+      auth.companyId,
       'profile_update',
       'user',
-      req.user._id as string,
+      auth.userId,
       {
         message: 'Address information updated',
         fields: Object.keys(validation.data),
@@ -231,9 +229,8 @@ export const updateAddressProfile = async (req: Request, res: Response, next: Ne
  */
 export const updatePersonalProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const validation = personalProfileSchema.safeParse(req.body);
     if (!validation.success) {
@@ -244,7 +241,7 @@ export const updatePersonalProfile = async (req: Request, res: Response, next: N
       throw new ValidationError('Validation failed', details);
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
@@ -265,11 +262,11 @@ export const updatePersonalProfile = async (req: Request, res: Response, next: N
 
     // Log the action
     await createAuditLog(
-      req.user._id,
-      req.user.companyId,
+      auth.userId,
+      auth.companyId,
       'profile_update',
       'user',
-      req.user._id as string,
+      auth.userId,
       {
         message: 'Personal information updated',
         fields: Object.keys(validation.data),
@@ -297,9 +294,8 @@ export const updatePersonalProfile = async (req: Request, res: Response, next: N
  */
 export const updateSocialProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const validation = socialProfileSchema.safeParse(req.body);
     if (!validation.success) {
@@ -310,7 +306,7 @@ export const updateSocialProfile = async (req: Request, res: Response, next: Nex
       throw new ValidationError('Validation failed', details);
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
@@ -333,11 +329,11 @@ export const updateSocialProfile = async (req: Request, res: Response, next: Nex
 
     // Log the action
     await createAuditLog(
-      req.user._id,
-      req.user.companyId,
+      auth.userId,
+      auth.companyId,
       'profile_update',
       'user',
-      req.user._id as string,
+      auth.userId,
       {
         message: 'Social links updated',
         fields: Object.keys(validation.data),
@@ -360,9 +356,8 @@ export const updateSocialProfile = async (req: Request, res: Response, next: Nex
  */
 export const updatePreferencesProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const validation = preferencesProfileSchema.safeParse(req.body);
     if (!validation.success) {
@@ -373,7 +368,7 @@ export const updatePreferencesProfile = async (req: Request, res: Response, next
       throw new ValidationError('Validation failed', details);
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
@@ -393,11 +388,11 @@ export const updatePreferencesProfile = async (req: Request, res: Response, next
 
     // Log the action
     await createAuditLog(
-      req.user._id,
-      req.user.companyId,
+      auth.userId,
+      auth.companyId,
       'profile_update',
       'user',
-      req.user._id as string,
+      auth.userId,
       {
         message: 'Preferences updated',
         fields: Object.keys(validation.data),
@@ -424,11 +419,10 @@ export const updatePreferencesProfile = async (req: Request, res: Response, next
  */
 export const getProfilePrompts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
-    let user = await User.findById(req.user._id);
+    let user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
@@ -437,7 +431,7 @@ export const getProfilePrompts = async (req: Request, res: Response, next: NextF
     if (!user.profileCompletion) {
       await updateProfileCompletionStatus(user._id as string);
       // Refresh user data
-      const updatedUser = await User.findById(req.user._id);
+      const updatedUser = await User.findById(auth.userId);
       if (!updatedUser) {
         throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
       }
@@ -479,11 +473,10 @@ export const getProfilePrompts = async (req: Request, res: Response, next: NextF
  */
 export const dismissProfilePrompt = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(auth.userId);
     if (!user) {
       throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
