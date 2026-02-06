@@ -97,9 +97,6 @@ class ManifestController {
             const auth = guardChecks(req);
             requireCompanyContext(auth);
             const companyId = auth.companyId;
-            if (!companyId) {
-                throw new ValidationError('Company ID is required');
-            }
 
             const startOfDay = new Date();
             startOfDay.setHours(0, 0, 0, 0);

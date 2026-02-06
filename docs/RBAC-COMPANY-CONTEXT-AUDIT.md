@@ -22,6 +22,23 @@ This document records the systematic audit for **requireCompanyContext** (backen
 | **cod-analytics.controller** | getForecast, getHealthMetrics, getCarrierPerformance |
 | **early-cod.controller** | checkEligibility, enroll, createEarlyBatch, getEnrollment |
 | **shipment.controller** | createShipment, getShipmentById, trackShipment, updateShipmentStatus, deleteShipment, recommendCourier *(getShipments uses requireCompany: false and returns empty when no company)* |
+| **ratecard.controller** | All handlers (createRateCard, getRateCards, getRateCardById, updateRateCard, calculateRate, compareCarrierRates, getRateCardAnalytics, getRateCardRevenueSeries, exportRateCards, bulkUpdateRateCards, importRateCards, calculateSmartRates, previewPrice, cloneRateCard, deleteRateCard, previewRateCardSelection, simulateRateCardChange, getApplicableRateCards) |
+| **warehouse.controller** | createWarehouse, getWarehouses, getWarehouseById, updateWarehouse, deleteWarehouse, importWarehouses *(admin may pass params.companyId; requireCompanyContext only when no param)* |
+| **support.controller** | createTicket, getTickets, getTicketById, updateTicket, addNote, getMetrics |
+| **invoice.controller** | createInvoice, listInvoices, createCreditNote, getGSTSummary, exportGSTR |
+| **session.controller** | getSessions, terminateSession, terminateAllSessions |
+| **kyc.controller** | validateUserAndCompany helper (used by all KYC handlers) |
+| **audit.controller** | getCompanyAuditLogs *(getMyAuditLogs is per-user only)* |
+| **bank-account.controller** | getBankAccounts, addBankAccount, deleteBankAccount |
+| **label-template.controller** | listTemplates, getTemplate, createTemplate, updateTemplate, deleteTemplate, duplicateTemplate, setAsDefault, generateLabel, createDefaultTemplate |
+| **scheduled-report.controller** | listScheduledReports, getScheduledReport, createScheduledReport, updateScheduledReport, deleteScheduledReport, executeReportNow, pauseReport, resumeReport |
+| **manifest.controller** | createManifest, listEligibleShipments, getManifestStats, listManifests, getManifestById, updateManifest, deleteManifest, addShipments, removeShipments |
+| **bulk-shipment.controller** | createBulkManifest, generateBulkLabels |
+| **ndr.controller** | listNDREvents, getNDREvent, resolveNDR, escalateNDR, getStats, getByType, getTrends, getResolutionRates, getTopReasons, getDashboard, getWorkflows |
+| **ndr-analytics.controller** | getSelfServiceMetrics, getPreventionMetrics, getROIMetrics, getWeeklyTrends |
+| **rto.controller** | listRTOEvents, getRTOEvent, triggerRTO, updateStatus, recordQCResult, getStats, getPendingRTOs, executeDisposition |
+| **integrations.controller** | getHealth |
+| **ekart.controller** | saveConfig, getConfig |
 
 ### Controllers not requiring company (by design)
 
@@ -30,13 +47,13 @@ This document records the systematic audit for **requireCompanyContext** (backen
 - **weight-disputes**: resolveDispute, getDisputeAnalytics, batchOperation are admin-only and may operate across companies; no requireCompanyContext.
 - **audit-log.middleware**: Logs with `req.user.companyId` when present; does not throw when missing (audit can be null company).
 
-### Controllers still using req.user.companyId without requireCompanyContext
+### Controllers still using req.user.companyId (same pattern to apply)
 
-These use `req.user` directly (no guardChecks in the same form). Consider adding guardChecks + requireCompanyContext when the handler is company-scoped:
+Apply `guardChecks(req)` + `requireCompanyContext(auth)` at handler start and use `auth.companyId` / `auth.userId`:
 
-- **ratecard.controller**: Many handlers use `req.user.companyId`; some have `if (!req.user || !req.user.companyId)`. Could standardize with guardChecks + requireCompanyContext.
-- **warehouse.controller**: Uses `req.user.companyId` and explicit `if (!req.user.companyId)` checks. Could standardize.
-- **support.controller**, **invoice.controller**, **session.controller**, **kyc.controller**, **audit.controller**, **bank-account.controller**, **label-template.controller**, **scheduled-report.controller**: Same pattern; add when touching those areas.
+- **woocommerce.controller**, **flipkart.controller**, **amazon.controller**, **shopify.controller**
+- **flipkart-product-mapping.controller**, **product-mapping.controller**, **amazon-product-mapping.controller**
+- **commission**: sales-representative.controller, payout.controller, commission-transaction.controller, commission-rule.controller, commission-analytics.controller
 
 ## Frontend: Redirect utility
 
@@ -84,4 +101,4 @@ These use `req.user` directly (no guardChecks in the same form). Consider adding
 2. **Frontend redirects:** `rg "router\.(push|replace)\s*\(\s*['\"]\/" client` and ensure no hardcoded `/seller` or `/admin` for post-login flows; use redirect utility.
 3. **Frontend hooks:** For any hook calling `/finance/`, `/analytics/` (company-scoped), or orders/shipments, ensure `enabled` includes `hasCompanyContext`.
 
-Last audit: 2026-02-06 (after adding shipment.controller: createShipment, getShipmentById, trackShipment, updateShipmentStatus, deleteShipment, recommendCourier).
+Last audit: 2026-02-06. Full coverage: ratecard, warehouse, support, invoice, session, kyc, audit, bank-account, label-template, scheduled-report, manifest, bulk-shipment, ndr, ndr-analytics, rto, integrations.controller, ekart.controller. Remaining: woocommerce, flipkart, amazon, shopify, *-product-mapping, commission/* (same pattern).

@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { CommissionAnalyticsService } from '../../../../core/application/services/commission/index';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { AppError, ValidationError, AuthenticationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
@@ -20,11 +21,9 @@ export class CommissionAnalyticsController {
      */
     static async getMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
             if (!validation.success) {
@@ -56,11 +55,9 @@ export class CommissionAnalyticsController {
      */
     static async getTopPerformers(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const validation = topPerformersQuerySchema.safeParse(req.query);
             if (!validation.success) {
@@ -93,11 +90,9 @@ export class CommissionAnalyticsController {
      */
     static async getTrend(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
             if (!validation.success) {
@@ -132,12 +127,10 @@ export class CommissionAnalyticsController {
      */
     static async getSalesRepDashboard(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
             const { salesRepId } = req.params;
-
-            if (!companyId) {
-                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-            }
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
             const { startDate, endDate } = validation.success ? validation.data : {};
@@ -162,11 +155,9 @@ export class CommissionAnalyticsController {
      */
     static async getPayoutStats(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
             const { startDate, endDate } = validation.success ? validation.data : {};
@@ -190,11 +181,9 @@ export class CommissionAnalyticsController {
      */
     static async generateReport(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const validation = generateReportSchema.safeParse(req.body);
             if (!validation.success) {

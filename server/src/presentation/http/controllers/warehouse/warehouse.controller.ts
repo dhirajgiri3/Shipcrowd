@@ -95,11 +95,8 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
     const auth = guardChecks(req, { requireCompany: false });
     if (!req.params.companyId) requireCompanyContext(auth);
     const companyId = req.params.companyId || auth.companyId;
-    if (!companyId) {
-      throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
-    }
 
-    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
+    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user!)) {
       throw new AuthorizationError('You do not have permission to create warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
@@ -212,11 +209,8 @@ export const getWarehouses = async (req: Request, res: Response, next: NextFunct
     const auth = guardChecks(req, { requireCompany: false });
     if (!req.params.companyId) requireCompanyContext(auth);
     const companyId = req.params.companyId || auth.companyId;
-    if (!companyId) {
-      throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
-    }
 
-    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
+    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user!)) {
       throw new AuthorizationError('You do not have permission to view warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
@@ -451,11 +445,8 @@ export const importWarehouses = async (req: Request, res: Response, next: NextFu
     const auth = guardChecks(req, { requireCompany: false });
     if (!req.params.companyId) requireCompanyContext(auth);
     const companyId = req.params.companyId || auth.companyId;
-    if (!companyId) {
-      throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
-    }
 
-    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
+    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user!)) {
       throw new AuthorizationError('You do not have permission to import warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 

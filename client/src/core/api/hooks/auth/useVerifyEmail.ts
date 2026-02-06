@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { getDefaultRedirectForUser, isAllowedRedirectPath } from '@/src/config/redirect';
 import { showSuccessToast } from '@/src/lib/error';
 
 export type VerificationStatus = 'loading' | 'success' | 'error' | 'already_verified' | 'expired';
@@ -35,8 +35,11 @@ export function useVerifyEmail() {
                     setStatus('success');
                     setMessage('Email verified successfully!');
 
-                    const responseData = result.data;
-                    const destination = responseData?.redirectUrl || '/seller/dashboard';
+                    const responseData = result.data as { redirectUrl?: string; user?: { role?: string; companyId?: string | null } } | undefined;
+                    const destination =
+                        (responseData?.redirectUrl && isAllowedRedirectPath(responseData.redirectUrl))
+                            ? responseData.redirectUrl
+                            : getDefaultRedirectForUser(responseData?.user ?? undefined) || '/seller';
                     setRedirectDestination(destination.includes('admin') ? 'dashboard' : 'dashboard');
 
                     const timer = setInterval(() => {

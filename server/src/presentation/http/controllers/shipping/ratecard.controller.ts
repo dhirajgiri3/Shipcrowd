@@ -180,7 +180,7 @@ export const createRateCard = async (req: Request, res: Response, next: NextFunc
         await rateCard.save();
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'create',
             'ratecard',
@@ -318,7 +318,7 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
         await rateCard.save();
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'update',
             'ratecard',

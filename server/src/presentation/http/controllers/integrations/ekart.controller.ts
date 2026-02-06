@@ -6,6 +6,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { Integration } from '../../../../infrastructure/database/mongoose/models';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { AuthenticationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
@@ -19,12 +20,10 @@ export class EkartController {
      */
     static async saveConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
             const { clientId, username, password } = req.body;
-
-            if (!companyId) {
-                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-            }
 
             // Validate required fields
             if (!clientId || !username || !password) {
@@ -55,7 +54,7 @@ export class EkartController {
 
             logger.info('Ekart credentials saved', {
                 companyId,
-                userId: req.user?._id,
+                userId: auth.userId,
                 integrationId: integration._id
             });
 
@@ -75,11 +74,9 @@ export class EkartController {
      */
     static async getConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const integration = await Integration.findOne({
                 companyId,

@@ -78,7 +78,7 @@ export const getMyAuditLogs = async (req: Request, res: Response, next: NextFunc
 export const getCompanyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const auth = guardChecks(req);
-    if (!isPlatformAdmin(req.user)) {
+    if (!isPlatformAdmin(req.user!)) {
       throw new AuthorizationError('Insufficient permissions', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
     requireCompanyContext(auth);

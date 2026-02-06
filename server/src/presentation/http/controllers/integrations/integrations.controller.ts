@@ -21,17 +21,15 @@ export default class IntegrationsController {
      */
     static async getHealth(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const health = await IntegrationHealthService.getHealth(companyId);
 
             logger.info('Integration health retrieved', {
                 companyId,
-                userId: req.user?._id,
+                userId: auth.userId,
                 totalStores: health.summary.totalStores,
             });
 
