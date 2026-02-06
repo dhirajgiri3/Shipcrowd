@@ -7,35 +7,37 @@ import React, { memo } from "react"
 export default function BrainAnimation() {
     return (
         <div className="relative h-[400px] w-full flex items-center justify-center">
-            {/* 1. The Core System */}
+            {/* The Core System */}
             <div className="relative w-[300px] h-[300px] flex items-center justify-center">
 
-                {/* Central Brain Core - Glowing & Pulsing */}
-                <div className="relative z-20 flex items-center justify-center w-32 h-32 rounded-full bg-white shadow-xl shadow-primaryBlue/20 border border-white/50 backdrop-blur-sm">
-                    {/* Inner Gradient Mesh */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-50 to-blue-50 opacity-80" />
-
-                    {/* Pulsing Ring */}
+                {/* 1. Central Brain Core - "Neural Pulse" Design */}
+                <div className="relative z-20 flex items-center justify-center w-32 h-32">
+                    {/* Outer Glow Halo - "Breathing" */}
                     <motion.div
-                        className="absolute inset-0 rounded-full border-2 border-primaryBlue/20"
-                        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute inset-0 rounded-full bg-primaryBlue/20 blur-[40px]"
+                        animate={{ opacity: [0.3, 0.6, 0.3], scale: [0.9, 1.1, 0.9] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     />
 
-                    <Brain size={48} className="text-primaryBlue relative z-10" />
+                    {/* Glass Container */}
+                    <div className="relative w-full h-full rounded-3xl bg-bg-primary shadow-2xl shadow-indigo-100/50 border border-white/80 backdrop-blur-xl flex items-center justify-center overflow-hidden">
+                        {/* Subtle Scanning Beam */}
+                        <motion.div
+                            className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-indigo-50/50 to-transparent"
+                            animate={{ top: ['-100%', '100%'] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "linear", repeatDelay: 1 }}
+                        />
+                        <Brain size={56} className="text-primaryBlue relative z-10 drop-shadow-sm" strokeWidth={1.5} />
+                    </div>
                 </div>
 
-                {/* 2. Orbits - Smooth Rotations */}
-                <OrbitRing size={220} duration={20} delay={0} />
-                <OrbitRing size={280} duration={25} delay={5} direction={-1} />
-
-                {/* 3. Floating Nodes - Fixed positions relative to center, gentle float */}
+                {/* 2. Floating Insight Nodes */}
                 {/* Node 1: Speed (Top Left) */}
                 <FloatingNode
                     icon={Zap}
                     label="SPEED"
                     value="0.2ms"
-                    className="-translate-x-[140px] -translate-y-[60px]"
+                    className="-translate-x-[160px] -translate-y-[80px]"
                     delay={0}
                 />
 
@@ -44,7 +46,7 @@ export default function BrainAnimation() {
                     icon={TrendingUp}
                     label="OPTIMIZED"
                     value="+24%"
-                    className="translate-x-[150px] translate-y-0"
+                    className="translate-x-[170px] -translate-y-[10px]"
                     delay={1.5}
                 />
 
@@ -53,14 +55,25 @@ export default function BrainAnimation() {
                     icon={ShieldCheck}
                     label="SECURITY"
                     value="100%"
-                    className="-translate-x-[40px] translate-y-[120px]"
+                    className="-translate-x-[60px] translate-y-[130px]"
                     delay={0.8}
                 />
 
-                {/* 4. Connection Lines - Connecting nodes to center */}
-                <ConnectionLine startX={-140} startY={-60} endX={0} endY={0} />
-                <ConnectionLine startX={150} startY={0} endX={0} endY={0} />
-                <ConnectionLine startX={-40} startY={120} endX={0} endY={0} />
+                {/* 3. Synaptic Connections - "Data Flow" */}
+                {/* We use SVG for clean lines from center to nodes */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none -z-10 overflow-visible">
+                    <defs>
+                        <linearGradient id="pulse-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="transparent" />
+                            <stop offset="50%" stopColor="#2525FF" /> {/* primaryBlue */}
+                            <stop offset="100%" stopColor="transparent" />
+                        </linearGradient>
+                    </defs>
+
+                    <SynapseConnection startX={150} startY={150} endX={-10} endY={70} delay={0} /> {/* To Speed */}
+                    <SynapseConnection startX={150} startY={150} endX={320} endY={140} delay={1.5} /> {/* To Optimized */}
+                    <SynapseConnection startX={150} startY={150} endX={90} endY={280} delay={0.8} /> {/* To Security */}
+                </svg>
 
             </div>
         </div>
@@ -71,71 +84,64 @@ export default function BrainAnimation() {
 // Sub-components
 // ----------------------------------------------------------------------
 
-const OrbitRing = memo(function OrbitRing({ size, duration, delay, direction = 1 }: { size: number, duration: number, delay: number, direction?: number }) {
-    return (
-        <div
-            className="absolute rounded-full border border-indigo-100 dark:border-white/5 flex items-center justify-center"
-            style={{ width: size, height: size }}
-        >
-            <motion.div
-                className="w-full h-full relative"
-                animate={{ rotate: direction * 360 }}
-                transition={{ duration: duration, repeat: Infinity, ease: "linear", delay: delay }}
-            >
-                {/* Satellite Particle */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-primaryBlue rounded-full shadow-sm" />
-            </motion.div>
-        </div>
-    )
-})
-
 const FloatingNode = memo(function FloatingNode({ icon: Icon, label, value, className, delay }: any) {
     return (
         <motion.div
             className={`absolute z-30 ${className}`}
-            animate={{ y: [-5, 5, -5] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: delay }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: delay * 0.2 }}
         >
-            <div className="flex items-center gap-3 bg-white p-3 pr-5 rounded-2xl shadow-lg shadow-indigo-100/50 border border-white/60 backdrop-blur-md hover:scale-105 transition-transform cursor-default">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-primaryBlue">
-                    <Icon size={20} strokeWidth={2.5} />
+            <motion.div
+                animate={{
+                    y: [-12, 12, -12],
+                    x: [-3, 3, -3],
+                    rotate: [-1.5, 1.5, -1.5]
+                }}
+                transition={{
+                    duration: 8,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: delay
+                }}
+                className="flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-3 rounded-[20px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.06)] hover:shadow-[0_15px_50px_-10px_rgba(37,37,255,0.1)] transition-all duration-500 cursor-default group"
+            >
+                <div className="w-9 h-9 rounded-xl bg-primaryBlue/5 group-hover:bg-primaryBlue/10 transition-colors flex items-center justify-center text-primaryBlue">
+                    <Icon size={18} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">{label}</span>
-                    <span className="text-sm font-bold text-gray-900">{value}</span>
+                    <span className="text-[9px] font-bold text-tertiary tracking-[0.1em] uppercase mb-0.5 opacity-60">{label}</span>
+                    <span className="text-body-sm font-bold text-primary tabular-nums tracking-tight">{value}</span>
                 </div>
-            </div>
+            </motion.div>
         </motion.div>
     )
 })
 
-const ConnectionLine = memo(function ConnectionLine({ startX, startY, endX, endY }: { startX: number, startY: number, endX: number, endY: number }) {
-    // Calculate angle and distance
-    const dx = endX - startX;
-    const dy = endY - startY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-    // Offset to not touch the center/nodes directly (visual breathing room)
-    const offsetStart = 40;
-    const offsetEnd = 60; // radius of center core approx
-    const actualWidth = Math.max(0, distance - offsetStart - offsetEnd);
-
+const SynapseConnection = memo(function SynapseConnection({ startX, startY, endX, endY, delay }: { startX: number, startY: number, endX: number, endY: number, delay: number }) {
     return (
-        <div
-            className="absolute top-1/2 left-1/2 h-[1px] bg-indigo-100 origin-left -z-10"
-            style={{
-                width: distance,
-                // We position at start point, then rotate
-                transform: `translate(${startX}px, ${startY}px) rotate(${angle}deg)`,
-            }}
-        >
-            {/* Data Pulse Packet */}
-            <motion.div
-                className="absolute top-1/2 -translate-y-1/2 left-0 h-[2px] w-12 bg-gradient-to-r from-transparent via-primaryBlue to-transparent opacity-0"
-                animate={{ left: ['0%', '100%'], opacity: [0, 1, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear", repeatDelay: Math.random() * 2 }}
+        <g>
+            {/* Base Path (faint) */}
+            <line
+                x1={startX} y1={startY}
+                x2={endX} y2={endY}
+                stroke="#E0E7FF" // indigo-100
+                strokeWidth="1.5"
+                strokeDasharray="4 4"
             />
-        </div>
+
+
+            {/* Better Pulse: Moving Dot along the coordinates */}
+            <motion.circle
+                cx={0} cy={0} r={3} fill="#2525FF"
+                initial={{ x: startX, y: startY, opacity: 0 }}
+                animate={{
+                    x: [startX, endX],
+                    y: [startY, endY],
+                    opacity: [0, 1, 0]
+                }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: delay, repeatDelay: 2 }}
+            />
+        </g>
     )
 })

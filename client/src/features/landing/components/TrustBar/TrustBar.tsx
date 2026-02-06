@@ -1,407 +1,165 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useInView } from "react-intersection-observer"
+import React, { memo } from "react"
+
+const ORBITAL_LOGOS = [
+    // Inner Ring (Radius: 160)
+    { name: "Delhivery", src: "/logos/delhivery.png", ring: 1, angle: 0 },
+    { name: "Shadowfax", src: "/logos/shadowfax.png", ring: 1, angle: 120 },
+    { name: "DTDC", src: "/logos/dtdc.png", ring: 1, angle: 240 },
+
+    // Middle Ring (Radius: 260)
+    { name: "Blue Dart", src: "/logos/blue-dart.png", ring: 2, angle: 45 },
+    { name: "Ecom Express", src: "/logos/ecom-express.png", ring: 2, angle: 135 },
+    { name: "Xpressbees", src: "/logos/xpressbees.png", ring: 2, angle: 225 },
+    { name: "Ekart", src: "/logos/ekart.png", ring: 2, angle: 315 },
+
+    // Outer Ring (Radius: 360)
+    { name: "FedEx", src: "/logos/fedex.png", ring: 3, angle: 90 },
+    { name: "DHL", src: "/logos/dhl.png", ring: 3, angle: 210 },
+    { name: "India Post", src: "/logos/india-post.png", ring: 3, angle: 330 },
+]
 
 export default function TrustBar() {
-    const { ref, inView } = useInView({ threshold: 0.3, triggerOnce: true })
-
-    // SVG viewBox dimensions
-    const viewBoxWidth = 1200
-    const viewBoxHeight = 700
-    const centerX = viewBoxWidth / 2
-    const centerY = 600 // Moved up from 700 for better visual balance
-
-    // Define orbital rings with their radii and rotation speeds
-    const rings = [
-        { radius: 180, strokeWidth: 1.5, opacity: 0.3, rotationDuration: 60 },
-        { radius: 280, strokeWidth: 1.5, opacity: 0.25, rotationDuration: 80 },
-        { radius: 380, strokeWidth: 1.5, opacity: 0.2, rotationDuration: 100 },
-        { radius: 480, strokeWidth: 1.5, opacity: 0.15, rotationDuration: 120 },
-    ]
-
-    // Distribute logos across different rings
-    const logoConfig = [
-        // Ring 1 (innermost) - 2 logos
-        { name: "Microsoft", src: "/logos/delhivery.png", ring: 0, angle: 180, size: 60 },
-        { name: "Meta", src: "/logos/shadowfax.png", ring: 0, angle: 0, size: 60 },
-
-        // Ring 2 - 3 logos
-        { name: "Google", src: "/logos/dtdc.png", ring: 1, angle: 180, size: 70 },
-        { name: "Intel", src: "/logos/ecom-express.png", ring: 1, angle: 270, size: 70 },
-        { name: "RZS", src: "/logos/blue-dart.png", ring: 1, angle: 45, size: 70 },
-
-        // Ring 3 - 3 logos
-        { name: "Maha", src: "/logos/xpressbees.png", ring: 2, angle: 210, size: 80 },
-        { name: "ABN", src: "/logos/ekart.png", ring: 2, angle: 150, size: 80 },
-        { name: "Asus", src: "/logos/india-post.png", ring: 2, angle: 330, size: 80 },
-
-        // Ring 4 (outermost) - 2 logos
-        { name: "MC", src: "/logos/fedex.png", ring: 3, angle: 60, size: 85 },
-        { name: "IBM", src: "/logos/dhl.png", ring: 3, angle: 290, size: 85 },
-    ]
-
-    // Calculate position on circle using polar coordinates
-    const getPositionOnCircle = (radius: number, angle: number) => {
-        const radians = (angle * Math.PI) / 180
-        return {
-            x: centerX + radius * Math.cos(radians),
-            y: centerY - radius * Math.sin(radians), // Subtract because SVG Y increases downward
-        }
-    }
-
-    // Generate SVG arc path for semi-circle
-    const generateArcPath = (radius: number) => {
-        const startX = centerX - radius
-        const startY = centerY
-        const endX = centerX + radius
-        const endY = centerY
-
-        return `M ${startX} ${startY} A ${radius} ${radius} 0 0 1 ${endX} ${endY}`
-    }
-
     return (
-        <section ref={ref} className="py-20 md:py-24 bg-gradient-to-b from-gray-50 to-white overflow-hidden border-b border-gray-100">
-            <div className="container mx-auto px-6 md:px-12 max-w-[1400px]">
-                {/* Minimal Header Section */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={inView ? { opacity: 1 } : {}}
-                    transition={{ duration: 0.6 }}
-                    className="text-center max-w-[800px] mx-auto"
-                >
-                    {/* Minimal Badge */}
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={inView ? { opacity: 1, y: 0 } : {}}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                        className="inline-flex items-center gap-2.5 mb-6"
-                    >
-                        <div className="w-1.5 h-1.5 rounded-full bg-primaryBlue" />
-                        <span className="text-charcoal-600 text-sm font-medium tracking-wide">
-                            Trusted Logistics Network
-                        </span>
-                    </motion.div>
+        <section className="py-24 bg-primary overflow-hidden relative pt-42">
+            {/* Background Gradient Mesh */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-50/50 via-bg-primary to-bg-primary pointer-events-none" />
 
-                    {/* Clean Title */}
-                    <motion.h2
-                        className="text-5xl md:text-7xl font-bold mb-6 leading-[1.1] tracking-tight"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={inView ? { opacity: 1, y: 0 } : {}}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                    >
-                        <span className="text-charcoal-900">
-                            Powered by
-                        </span>
-                        <br />
-                        <span className="text-primaryBlue relative inline-block">
-                            5+ Global Carriers
-                            {/* Minimal underline */}
+            <div className="container mx-auto px-6 relative z-10">
+                {/* Wrapper so fade can cover orbital + full header (badge, title, subtitle) */}
+                <div className="relative isolate min-h-[520px]">
+                    {/* Orbital System — rings and hub */}
+                    <div className="relative w-full min-h-[520px] flex items-center justify-center pt-12">
+                        <div className="absolute inset-0 flex items-center justify-center z-0">
+                            <OrbitalRing radius={160} speed={40} direction={1} ringIndex={1} />
+                            <OrbitalRing radius={260} speed={55} direction={-1} ringIndex={2} />
+                            <OrbitalRing radius={360} speed={70} direction={1} ringIndex={3} />
+                        </div>
+                        <div className="absolute z-10 w-32 h-32 rounded-full bg-white shadow-2xl shadow-indigo-200/50 flex items-center justify-center border border-indigo-50 p-6">
                             <motion.div
-                                className="absolute -bottom-1 left-0 right-0 h-[3px] bg-primaryBlue/20"
-                                initial={{ scaleX: 0 }}
-                                animate={inView ? { scaleX: 1 } : {}}
-                                transition={{ duration: 0.6, delay: 0.5 }}
-                                style={{ transformOrigin: "left" }}
+                                className="absolute inset-0 rounded-full border border-primaryBlue/20"
+                                animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0, 0.5] }}
+                                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                             />
-                        </span>
-                    </motion.h2>
-
-                    {/* Simple Subtitle */}
-                    <motion.p
-                        className="text-lg text-charcoal-500 max-w-2xl mx-auto leading-relaxed"
-                        initial={{ opacity: 0 }}
-                        animate={inView ? { opacity: 1 } : {}}
-                        transition={{ duration: 0.5, delay: 0.4 }}
-                    >
-                        Seamlessly integrated with the world's leading courier partners
-                    </motion.p>
-                </motion.div>
-
-                {/* Circular Orbital Design */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={inView ? { opacity: 1, scale: 1 } : {}}
-                    transition={{ duration: 0.8, delay: 0.3 }}
-                    className="relative w-full max-w-[1200px] mx-auto"
-                >
-                    <svg
-                        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-                        className="w-full h-auto"
-                        style={{ minHeight: "550px" }}
-                    >
-                        {/* Enhanced gradient definitions */}
-                        <defs>
-                            {/* Premium ring gradient with blue to purple transition */}
-                            <linearGradient id="ringGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#2525FF" stopOpacity="0" />
-                                <stop offset="20%" stopColor="#4F46E5" stopOpacity="0.5" />
-                                <stop offset="50%" stopColor="#2525FF" stopOpacity="1" />
-                                <stop offset="80%" stopColor="#4F46E5" stopOpacity="0.5" />
-                                <stop offset="100%" stopColor="#2525FF" stopOpacity="0" />
-                            </linearGradient>
-
-                            {/* Secondary ring gradient */}
-                            <linearGradient id="ringGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#6366F1" stopOpacity="0" />
-                                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="0.4" />
-                                <stop offset="50%" stopColor="#6366F1" stopOpacity="0.8" />
-                                <stop offset="75%" stopColor="#8B5CF6" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
-                            </linearGradient>
-
-                            {/* Tertiary ring gradient */}
-                            <linearGradient id="ringGradient3" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#818CF8" stopOpacity="0" />
-                                <stop offset="30%" stopColor="#A78BFA" stopOpacity="0.35" />
-                                <stop offset="50%" stopColor="#818CF8" stopOpacity="0.6" />
-                                <stop offset="70%" stopColor="#A78BFA" stopOpacity="0.35" />
-                                <stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
-                            </linearGradient>
-
-                            {/* Outer ring gradient */}
-                            <linearGradient id="ringGradient4" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#A5B4FC" stopOpacity="0" />
-                                <stop offset="35%" stopColor="#C7D2FE" stopOpacity="0.3" />
-                                <stop offset="50%" stopColor="#A5B4FC" stopOpacity="0.5" />
-                                <stop offset="65%" stopColor="#C7D2FE" stopOpacity="0.3" />
-                                <stop offset="100%" stopColor="#A5B4FC" stopOpacity="0" />
-                            </linearGradient>
-
-                            {/* Refined background gradient */}
-                            <radialGradient id="bgGradient" cx="50%" cy="100%" r="75%">
-                                <stop offset="0%" stopColor="#EEF2FF" stopOpacity="0.6" />
-                                <stop offset="50%" stopColor="#E0E7FF" stopOpacity="0.3" />
-                                <stop offset="100%" stopColor="#F9FAFB" stopOpacity="0" />
-                            </radialGradient>
-
-                            {/* Subtle glow filter for rings */}
-                            <filter id="ringGlow" x="-50%" y="-50%" width="200%" height="200%">
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
-                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                            </filter>
-                        </defs>
-
-                        {/* Background glow */}
-                        <ellipse
-                            cx={centerX}
-                            cy={centerY}
-                            rx="500"
-                            ry="380"
-                            fill="url(#bgGradient)"
-                        />
-
-                        {/* Orbital Rings with enhanced gradients */}
-                        {rings.map((ring, index) => (
-                            <motion.path
-                                key={index}
-                                d={generateArcPath(ring.radius)}
-                                fill="none"
-                                stroke={`url(#ringGradient${index + 1})`}
-                                strokeWidth={index === 0 ? 2 : index === 1 ? 1.8 : index === 2 ? 1.5 : 1.2}
-                                strokeLinecap="round"
-                                filter="url(#ringGlow)"
-                                initial={{ pathLength: 0, opacity: 0 }}
-                                animate={inView ? { pathLength: 1, opacity: 1 } : {}}
-                                transition={{
-                                    duration: 2,
-                                    delay: index * 0.15,
-                                    ease: "easeInOut"
-                                }}
+                            <img
+                                src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
+                                alt="Shipcrowd"
+                                className="w-full h-full object-contain"
                             />
-                        ))}
+                        </div>
+                    </div>
 
-                        {/* Logos positioned on rings with rotation animation */}
-                        {rings.map((ring, ringIndex) => {
-                            // Filter logos for this ring
-                            const ringLogos = logoConfig.filter(logo => logo.ring === ringIndex)
+                    {/* Fade overlay: covers orbital bottom + entire header (badge, title, subtitle) */}
+                    <div
+                        className="absolute inset-x-0 bottom-0 h-[28rem] pointer-events-none z-20"
+                        style={{
+                            background: "linear-gradient(to top, var(--bg-primary) 0%, var(--bg-primary) 10%, transparent 100%)",
+                        }}
+                        aria-hidden
+                    />
 
-                            return (
-                                <motion.g
-                                    key={`ring-${ringIndex}`}
-                                    animate={{ rotate: 360 }}
-                                    transition={{
-                                        duration: ring.rotationDuration,
-                                        ease: "linear",
-                                        repeat: Infinity,
-                                    }}
-                                    // Use SVG transform-origin, center-based rotation
-                                    style={{
-                                        transformOrigin: `${centerX}px ${centerY}px`,
-                                        transformBox: 'fill-box'
-                                    }}
-                                >
-                                    {ringLogos.map((logo, logoIndex) => {
-                                        const position = getPositionOnCircle(
-                                            ring.radius,
-                                            logo.angle
-                                        )
-
-                                        return (
-                                            <motion.g
-                                                key={`${ringIndex}-${logoIndex}`}
-                                                initial={{ opacity: 0, scale: 0 }}
-                                                animate={inView ? { opacity: 1, scale: 1 } : {}}
-                                                transition={{
-                                                    duration: 0.5,
-                                                    delay: 0.5 + (ringIndex * ringLogos.length + logoIndex) * 0.1,
-                                                    type: "spring",
-                                                    stiffness: 200
-                                                }}
-                                                // Counter-rotate to keep logo upright
-                                                style={{
-                                                    rotate: `calc(var(--rotation) * -1)`,
-                                                }}
-                                            >
-                                                {/* White circle background - minimal, no shadow */}
-                                                <circle
-                                                    cx={position.x}
-                                                    cy={position.y}
-                                                    r={logo.size / 2}
-                                                    fill="white"
-                                                    stroke="#E5E7EB"
-                                                    strokeWidth="0.5"
-                                                />
-
-                                                {/* Logo image - counter-rotate to keep upright */}
-                                                <motion.g
-                                                    animate={{ rotate: -360 }}
-                                                    transition={{
-                                                        duration: ring.rotationDuration,
-                                                        ease: "linear",
-                                                        repeat: Infinity,
-                                                    }}
-                                                    style={{
-                                                        transformOrigin: `${position.x}px ${position.y}px`,
-                                                        transformBox: 'fill-box'
-                                                    }}
-                                                >
-                                                    <foreignObject
-                                                        x={position.x - logo.size / 2}
-                                                        y={position.y - logo.size / 2}
-                                                        width={logo.size}
-                                                        height={logo.size}
-                                                    >
-                                                        <div className="w-full h-full flex items-center justify-center p-2 group">
-                                                            <motion.img
-                                                                src={logo.src}
-                                                                alt={logo.name}
-                                                                className="max-w-[80%] max-h-[80%] object-contain transition-all duration-300"
-                                                                style={{
-                                                                    clipPath: 'circle(50% at center)',
-                                                                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0))'
-                                                                }}
-                                                                whileHover={{
-                                                                    scale: 1.15,
-                                                                    filter: 'drop-shadow(0 4px 12px rgba(37,37,255,0.3))'
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </foreignObject>
-                                                </motion.g>
-                                            </motion.g>
-                                        )
-                                    })}
-                                </motion.g>
-                            )
-                        })}
-
-                        {/* Center Shipcrowd Logo - Minimal Design */}
-                        <motion.g
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={inView ? { opacity: 1, scale: 1 } : {}}
-                            transition={{
-                                duration: 0.6,
-                                delay: 0.8,
-                                ease: "easeOut"
-                            }}
+                    {/* Header: badge + title + subtitle overlaid on fade */}
+                    <div className="text-center max-w-2xl mx-auto -mt-32 relative z-30 px-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primaryBlue/5 border border-primaryBlue/10 mb-4"
                         >
-                            {/* Subtle outer ring */}
-                            <motion.circle
-                                cx={centerX}
-                                cy={centerY}
-                                r="92"
-                                fill="none"
-                                stroke="#2525FF"
-                                strokeWidth="1"
-                                opacity="0.15"
-                                animate={{
-                                    r: [92, 95, 92],
-                                    opacity: [0.15, 0.25, 0.15]
-                                }}
-                                transition={{
-                                    duration: 4,
-                                    repeat: Infinity,
-                                    ease: "easeInOut"
-                                }}
-                            />
-
-                            {/* Main clean circle */}
-                            <circle
-                                cx={centerX}
-                                cy={centerY}
-                                r="85"
-                                fill="white"
-                                stroke="#E5E7EB"
-                                strokeWidth="1"
-                            />
-
-                            {/* Shipcrowd logo */}
-                            <foreignObject
-                                x={centerX - 50}
-                                y={centerY - 50}
-                                width="100"
-                                height="100"
-                            >
-                                <div className="w-full h-full flex items-center justify-center">
-                                    <motion.img
-                                        src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
-                                        alt="Shipcrowd"
-                                        className="w-[75%] h-[75%] object-contain rounded-full"
-                                        initial={{ opacity: 0.95 }}
-                                        animate={{
-                                            opacity: [0.95, 1, 0.95]
-                                        }}
-                                        transition={{
-                                            duration: 3,
-                                            repeat: Infinity,
-                                            ease: "easeInOut"
-                                        }}
-                                    />
-                                </div>
-                            </foreignObject>
-                        </motion.g>
-
-                        {/* Enhanced gradient definitions */}
-                        <defs>
-                            {/* Center glow gradient */}
-                            <linearGradient id="centerGlowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#2525FF" />
-                                <stop offset="100%" stopColor="#8B5CF6" />
-                            </linearGradient>
-
-                            {/* Glassmorphism gradient */}
-                            <radialGradient id="centerGlassGradient" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" stopColor="#F0F4FF" />
-                                <stop offset="100%" stopColor="#FAFBFF" />
-                            </radialGradient>
-
-                            {/* Center shadow filter */}
-                            <filter id="centerShadow" x="-50%" y="-50%" width="200%" height="200%">
-                                <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
-                                <feOffset dx="0" dy="2" result="offsetblur" />
-                                <feComponentTransfer>
-                                    <feFuncA type="linear" slope="0.15" />
-                                </feComponentTransfer>
-                                <feMerge>
-                                    <feMergeNode />
-                                    <feMergeNode in="SourceGraphic" />
-                                </feMerge>
-                            </filter>
-                        </defs>
-                    </svg>
-                </motion.div>
+                            <span className="w-1.5 h-1.5 rounded-full bg-primaryBlue animate-pulse" />
+                            <span className="text-caption font-semibold text-primaryBlue uppercase tracking-widest">Global Network</span>
+                        </motion.div>
+                        <h2 className="text-title-xl md:text-display-lg font-bold text-primary mb-4 tracking-tight">
+                            Connected to <span className="text-transparent bg-clip-text bg-gradient-to-r from-primaryBlue via-indigo-500 to-primaryBlue bg-300% animate-gradient">Everywhere.</span>
+                        </h2>
+                        <p className="text-secondary text-body-lg">
+                            Seamlessly integrated with top-tier courier partners for maximum reach.
+                        </p>
+                    </div>
+                </div>
             </div>
         </section>
     )
 }
+
+const OrbitalRing = memo(function OrbitalRing({ radius, speed, direction, ringIndex }: { radius: number, speed: number, direction: number, ringIndex: number }) {
+    const logos = ORBITAL_LOGOS.filter(l => l.ring === ringIndex)
+
+    return (
+        <div
+            className="absolute rounded-full border border-dashed border-gray-200 flex items-center justify-center"
+            style={{ width: radius * 2, height: radius * 2 }}
+        >
+            {/* The Rotating Container */}
+            <motion.div
+                className="w-full h-full relative"
+                animate={{ rotate: direction * 360 }}
+                transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
+            >
+                {logos.map((logo, i) => (
+                    <div
+                        key={i}
+                        className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                        // Position logic: The 'rotate' on the parent moves the top point around. 
+                        // But we want fixed angles relative to the ring start. 
+                        // So we rotate the individual logo wrapper to its starting angle.
+                        style={{
+                            width: 60, height: 60,
+                            transform: `rotate(${logo.angle}deg) translateY(-${radius}px) rotate(-${logo.angle}deg)`
+                            // This generic CSS transform approach places them correctly around the circle WITHOUT moving the parent's generic rotation. 
+                            // BUT, since the PARENT is rotating, we just need to place them at top and let parent rotate?
+                            // No, if we map them, we need to place them at specific angles.
+                            // Better approach: Absolute position based on angle.
+                            // Actually, simpler:
+                            // The wrapper is rotating. We place items absolute at top, then rotate the WRAPPER for that item?
+                            // Let's retry the standard orbital approach:
+                            // Parent rotates. Children are placed at specific degrees.
+                        }}
+                    >
+                        {/* 
+                            Correct positioning logic for a rotating parent:
+                            The parent rotates 0->360.
+                            To place items at 0, 120, 240:
+                            Item 1: Rotate(0) TranslateY(-R)
+                            Item 2: Rotate(120) TranslateY(-R)
+                            Item 3: Rotate(240) TranslateY(-R)
+                         */}
+                    </div>
+                ))}
+            </motion.div>
+
+            {/* Re-implementing correctly to avoid the confusion above */}
+            <motion.div
+                className="w-full h-full absolute inset-0"
+                animate={{ rotate: direction * 360 }}
+                transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
+            >
+                {logos.map((logo, i) => (
+                    <div
+                        key={logo.name}
+                        className="absolute top-1/2 left-1/2 w-16 h-16 -ml-8 -mt-8"
+                        style={{
+                            transform: `rotate(${logo.angle}deg) translate(${radius}px) rotate(-${logo.angle}deg)`
+                        }}
+                    >
+                        {/* Counter-Rotate to keep upright */}
+                        <motion.div
+                            className="w-full h-full bg-white rounded-full p-3 shadow-md border border-gray-100 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+                            animate={{ rotate: direction * -360 }}
+                            transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
+                        >
+                            <img
+                                src={logo.src}
+                                alt={logo.name}
+                                className="w-full h-full object-contain grayscale hover:grayscale-0 transition-all opacity-70 hover:opacity-100"
+                                draggable="false"
+                            />
+                        </motion.div>
+                    </div>
+                ))}
+            </motion.div>
+        </div>
+    )
+})

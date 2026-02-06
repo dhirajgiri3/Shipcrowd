@@ -79,6 +79,16 @@ All **company-scoped** controllers that could cause 500 for admin-without-compan
 - **company.controller** – filter by company if present (intentional).
 - **require-permission.middleware**, **require-complete-company.middleware**, **feature-flag.middleware**, **audit-log.middleware** – middleware; **controller.helpers** – defines the pattern.
 
+### Optional follow-up (consistency only)
+
+These use `req.user._id` / `req.user.companyId` but are either per-user (no company scope) or mixed; migrating to `guardChecks` + `auth.userId` / `auth.companyId` would give 100% consistency. No functional gap:
+
+- **audit.controller** – `getMyAuditLogs`, `getMySecurityAuditLogs` (per-user; `getCompanyAuditLogs` already uses guardChecks).
+- **team.controller** – organization/team (company-scoped); not yet migrated.
+- **account.controller**, **recovery.controller**, **email.controller**, **mfa.controller** – per-user identity/auth.
+- **manifest.controller**, **rto.controller** – optional `req.user?._id` for performedBy/userId (system or user).
+- **health.controller**, **auth-analytics.controller** – optional user / admin logging.
+
 ## Frontend: Redirect utility
 
 **Rule:** All post-login and role-based redirects use `getDefaultRedirectForUser(user)` or `getLoginRedirect(user, searchParams)` from `@/src/config/redirect`.

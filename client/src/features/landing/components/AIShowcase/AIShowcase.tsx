@@ -1,30 +1,17 @@
 "use client"
 
-import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import React, { useRef, useEffect, useState, memo } from "react"
-import { Brain, Zap, BarChart3, CheckCircle2, AlertCircle, ShieldCheck, Sparkles, TrendingUp, Package, RefreshCw } from "lucide-react"
+import { Zap, BarChart3, CheckCircle2, AlertCircle, Sparkles, Brain } from "lucide-react"
+import BrainAnimation from "./BrainAnimation"
 
 export default function AIShowcase() {
     const containerRef = useRef<HTMLElement>(null)
-    const { scrollYProgress } = useScroll({
-        target: containerRef,
-        offset: ["start end", "end start"]
-    })
-
-    const mouseX = useMotionValue(0)
-    const mouseY = useMotionValue(0)
-
-    function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent) {
-        const { left, top } = currentTarget.getBoundingClientRect()
-        mouseX.set(clientX - left)
-        mouseY.set(clientY - top)
-    }
 
     return (
         <section
             ref={containerRef}
-            onMouseMove={handleMouseMove}
-            className="bg-white text-gray-950 py-16 md:py-24 overflow-hidden relative"
+            className="bg-primary text-primary py-16 md:py-24 overflow-hidden relative"
             aria-label="AI Features Showcase"
         >
 
@@ -50,71 +37,25 @@ export default function AIShowcase() {
                         </span>
                     </motion.div>
 
-                    <h2 className="text-5xl md:text-7xl font-bold leading-[1.05] mb-6 tracking-tighter text-charcoal-900">
-                        Logistics Intelligence. <br />
+                    <h2 className="text-display-lg md:text-display-xl font-bold leading-tight mb-6 tracking-tighter text-primary">
+                        Logistics Intelligence {" "}
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-primaryBlue via-indigo-500 to-primaryBlue bg-300% animate-gradient">
                             Reimagined.
                         </span>
                     </h2>
 
-                    <p className="text-xl text-charcoal-500 max-w-2xl mx-auto leading-relaxed font-medium text-balance">
+                    <p className="text-body-lg text-secondary max-w-3xl mx-auto leading-relaxed text-balance">
                         Shipcrowd analyzes millions of shipments in real-time to predict delays, optimize costs, and automate resolutions.
                     </p>
                 </header>
 
-                {/* Part 2: The Ethereal Core */}
+                {/* Part 2: The Ethereal Core - NEW Brain Animation */}
                 <div
-                    className="relative h-[300px] md:h-[400px] w-full mb-12 flex items-center justify-center perspective-[2000px] [perspective:2000px]"
+                    className="relative w-full mb-12 flex items-center justify-center"
                     role="img"
                     aria-label="Interactive 3D visualization of Shipcrowd's neural network processing data"
                 >
-
-                    {/* Floating Data Particles (Background) */}
-                    <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-                        {[...Array(15)].map((_, i) => (
-                            <FloatingParticle key={i} index={i} />
-                        ))}
-                    </div>
-
-                    {/* Central Orb System */}
-                    <div className="relative w-[400px] h-[400px] flex items-center justify-center transform-style-3d [transform-style:preserve-3d]">
-
-                        {/* 1. Core Energy Ball (Breathing Gradient) */}
-                        <motion.div
-                            className="absolute w-56 h-56 rounded-full bg-gradient-to-br from-primaryBlue via-indigo-500 to-cyan-400 blur-[50px] opacity-40 mix-blend-screen will-change-transform"
-                            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        />
-
-                        {/* 2. Glass Sphere (The Physical Core) */}
-                        <div className="relative w-40 h-40 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-[inset_0_0_40px_rgba(255,255,255,0.2)] flex items-center justify-center z-20 overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-50" />
-                            <Brain size={64} className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] relative z-10" strokeWidth={1} />
-
-                            {/* Inner Scanning Effect */}
-                            <motion.div
-                                className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-white/30 to-transparent will-change-transform"
-                                animate={{ y: ['-100%', '100%'] }}
-                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                            />
-                        </div>
-
-                        {/* 3. 3D Orbital Splines */}
-                        {[0, 1, 2].map((i) => (
-                            <OrbitalSpline key={i} index={i} />
-                        ))}
-
-                        {/* Neural Synapses (Connection Lines) */}
-                        <NeuralSynapse startX={-160} startY={-40} endX={0} endY={0} delay={0} />
-                        <NeuralSynapse startX={160} startY={60} endX={0} endY={0} delay={1.5} />
-                        <NeuralSynapse startX={0} startY={140} endX={0} endY={0} delay={3} />
-
-                        {/* Interactive Floating Interaction Nodes */}
-                        <FloatingNode mouseX={mouseX} mouseY={mouseY} initialX={-160} initialY={-40} icon={Zap} label="Speed" value="0.2ms" delay={0} />
-                        <FloatingNode mouseX={mouseX} mouseY={mouseY} initialX={160} initialY={60} icon={TrendingUp} label="Optimized" value="+24%" delay={1} />
-                        <FloatingNode mouseX={mouseX} mouseY={mouseY} initialX={0} initialY={140} icon={ShieldCheck} label="Security" value="100%" delay={2} />
-
-                    </div>
+                    <BrainAnimation />
                 </div>
 
                 {/* Part 3: Features - Glassmorphism Panels */}
@@ -130,115 +71,7 @@ export default function AIShowcase() {
 // Sub-Components
 // ----------------------------------------------------------------------------------
 
-const OrbitalSpline = memo(function OrbitalSpline({ index }: { index: number }) {
-    const rotateX = index === 0 ? 60 : index === 1 ? -60 : 75
-    const rotateY = index === 0 ? 45 : index === 1 ? -45 : 0
-    const rotateZ = index === 2 ? 45 : 0
 
-    return (
-        <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none will-change-transform"
-            style={{
-                transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`,
-                transformStyle: "preserve-3d"
-            }}
-            aria-hidden="true"
-        >
-            <div className="w-[320px] h-[320px] rounded-full border border-primaryBlue/20 shadow-[0_0_30px_rgba(37,37,255,0.1)] opacity-60 animate-spin-slower" style={{ animationDuration: `${20 + index * 5}s` }}>
-                {/* Particle moving along the path */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_#2525FF]" />
-            </div>
-        </div>
-    )
-})
-
-const FloatingParticle = memo(function FloatingParticle({ index }: { index: number }) {
-    const [mounted, setMounted] = useState(false)
-    const [randomVals, setRandomVals] = useState({ x: 0, y: 0, duration: 15 })
-
-    useEffect(() => {
-        setRandomVals({
-            x: Math.random() * 100 - 50,
-            y: Math.random() * 100 - 50,
-            duration: 10 + Math.random() * 10
-        })
-        setMounted(true)
-    }, [])
-
-    if (!mounted) return null
-
-    return (
-        <motion.div
-            className="absolute w-1 h-1 bg-primaryBlue rounded-full opacity-20 will-change-transform"
-            style={{
-                left: "50%",
-                top: "50%",
-                x: `${randomVals.x}vw`,
-                y: `${randomVals.y}vh`
-            }}
-            animate={{
-                y: [`${randomVals.y}vh`, `calc(${randomVals.y}vh - 100px)`, `${randomVals.y}vh`],
-                opacity: [0, 0.4, 0]
-            }}
-            transition={{
-                duration: randomVals.duration,
-                repeat: Infinity,
-                delay: index * 0.5,
-                ease: "easeInOut"
-            }}
-            aria-hidden="true"
-        />
-    )
-})
-
-const FloatingNode = memo(function FloatingNode({ mouseX, mouseY, initialX, initialY, icon: Icon, label, value, delay }: any) {
-    const x = useSpring(useTransform(mouseX, [0, (typeof window !== 'undefined' ? window.innerWidth : 1400)], [initialX - 15, initialX + 15]), { stiffness: 40, damping: 25 })
-    const y = useSpring(useTransform(mouseY, [0, (typeof window !== 'undefined' ? window.innerHeight : 800)], [initialY - 15, initialY + 15]), { stiffness: 40, damping: 25 })
-
-    return (
-        <motion.div
-            className="absolute z-30 flex flex-col items-center gap-2 will-change-transform"
-            style={{ x, y }}
-            role="group"
-            aria-label={`${label}: ${value}`}
-        >
-            <div className="bg-white/80 backdrop-blur-xl p-3 rounded-2xl border border-white/50 shadow-lg flex items-center gap-3 relative overflow-hidden group hover:scale-105 transition-transform duration-300">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:animate-shimmer" />
-                <div className="w-8 h-8 rounded-full bg-primaryBlue/10 flex items-center justify-center">
-                    <Icon size={16} className="text-primaryBlue" aria-hidden="true" />
-                </div>
-                <div>
-                    <div className="text-[10px] text-charcoal-500 uppercase tracking-wide font-semibold">{label}</div>
-                    <div className="text-sm font-bold text-gray-900">{value}</div>
-                </div>
-            </div>
-        </motion.div>
-    )
-})
-
-const NeuralSynapse = memo(function NeuralSynapse({ startX, startY, endX, endY, delay }: any) {
-    const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
-    const angle = Math.atan2(endY - startY, endX - startX) * (180 / Math.PI)
-
-    return (
-        <div
-            className="absolute top-1/2 left-1/2 h-0.5 bg-gradient-to-r from-primaryBlue/0 via-primaryBlue/30 to-primaryBlue/0 origin-left pointer-events-none"
-            style={{
-                width: length,
-                transform: `translate(${startX}px, ${startY}px) rotate(${angle}deg)`,
-                zIndex: 0
-            }}
-            aria-hidden="true"
-        >
-            <motion.div
-                className="w-10 h-full bg-primaryBlue/80 blur-[2px] will-change-transform"
-                initial={{ x: 0, opacity: 0 }}
-                animate={{ x: length, opacity: [0, 1, 0] }}
-                transition={{ duration: 2, repeat: Infinity, delay: delay, ease: "linear", repeatDelay: 3 }}
-            />
-        </div>
-    )
-})
 
 function FeaturesSection() {
     return (
@@ -283,11 +116,11 @@ function GlassFeature({ index, title, description, icon: Icon, color, align = "l
                     <Icon size={28} className={`text-${color}-600`} strokeWidth={1.5} aria-hidden="true" />
                 </div>
                 <div>
-                    <div className={`text-${color}-600 font-mono text-xs font-bold mb-2`} aria-hidden="true">0{index} / INTELLIGENCE</div>
-                    <h3 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">{title}</h3>
-                    <p className="text-base text-gray-500 leading-relaxed text-balance">{description}</p>
+                    <div className={`text-${color}-600 font-mono text-caption font-bold mb-2 uppercase tracking-widest`} aria-hidden="true">0{index} / INTELLIGENCE</div>
+                    <h3 className="text-display-sm font-bold text-primary mb-3 tracking-tight">{title}</h3>
+                    <p className="text-body-base text-secondary leading-relaxed text-balance">{description}</p>
                 </div>
-                <div className="h-px w-full bg-gradient-to-r from-gray-200 to-transparent" aria-hidden="true" />
+                <div className="h-px w-full bg-gradient-to-r from-indigo-100 to-transparent opacity-50" aria-hidden="true" />
             </div>
 
             {/* Visual Glass Card */}
@@ -300,12 +133,12 @@ function GlassFeature({ index, title, description, icon: Icon, color, align = "l
                     <motion.div
                         whileHover={{ rotateX: 1, rotateY: 1, scale: 1.01 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="relative bg-white/60 backdrop-blur-2xl border border-white/60 p-2 rounded-[30px] shadow-xl shadow-gray-200/50 overflow-hidden will-change-transform"
+                        className="relative bg-bg-secondary/60 backdrop-blur-2xl border border-white/60 p-2 rounded-[30px] shadow-xl shadow-indigo-100/20 overflow-hidden will-change-transform"
                     >
                         {/* Holographic Sheen Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none mix-blend-overlay" aria-hidden="true" />
 
-                        <div className="bg-white/50 rounded-[24px] p-6 h-[280px] flex items-center justify-center relative overflow-hidden">
+                        <div className="bg-bg-primary/50 rounded-[24px] p-6 h-[280px] flex items-center justify-center relative overflow-hidden">
                             {/* Inner content */}
                             {demo}
                         </div>
@@ -339,18 +172,18 @@ const CarrierListDemo = memo(function CarrierListDemo() {
                         opacity: { delay: 1.5, duration: 0.5 }
                     }}
                     viewport={{ once: true }}
-                    className={`relative overflow-hidden flex items-center justify-between p-3 rounded-xl border transition-colors duration-500 ${i === 0 ? 'bg-white border-primaryBlue/30 shadow-lg shadow-primaryBlue/10' : 'bg-white/40 border-transparent'}`}
+                    className={`relative overflow-hidden flex items-center justify-between p-3 rounded-xl border transition-colors duration-500 ${i === 0 ? 'bg-bg-primary border-primaryBlue/30 shadow-lg shadow-primaryBlue/10' : 'bg-bg-primary/40 border-transparent'}`}
                 >
                     <div className="flex items-center gap-3 relative z-10">
-                        <div className={`w-8 h-8 rounded-full ${i === 0 ? 'bg-primaryBlue' : 'bg-gray-200'} flex items-center justify-center text-white font-bold text-xs`}>
+                        <div className={`w-8 h-8 rounded-full ${i === 0 ? 'bg-primaryBlue' : 'bg-bg-tertiary'} flex items-center justify-center text-white font-bold text-xs`}>
                             {i === 0 ? 'AI' : ''}
                         </div>
                         <div className="space-y-1.5">
                             {/* Animated Stats Bars - Grow on load */}
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-semibold text-gray-400 w-8">Cost</span>
+                                <span className="text-caption font-semibold text-tertiary w-8 italic">Cost</span>
                                 <motion.div
-                                    className={`h-1.5 rounded-full ${i === 0 ? 'bg-primaryBlue' : 'bg-gray-300'}`}
+                                    className={`h-1.5 rounded-full ${i === 0 ? 'bg-primaryBlue' : 'bg-bg-tertiary'}`}
                                     initial={{ width: 0 }}
                                     whileInView={{ width: i === 0 ? 96 : 64 }}
                                     transition={{ duration: 1, delay: 0.5 + i * 0.1 }}

@@ -20,23 +20,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
       },
+      {
+         protocol: 'https',
+         hostname: 'chatgpt.com', 
+      }
     ],
   },
-
-  // Bundle analyzer (optional, uncomment to use)
-  // webpack: (config, { isServer }) => {
-  //   if (!isServer) {
-  //     config.optimization.splitChunks.cacheGroups = {
-  //       ...config.optimization.splitChunks.cacheGroups,
-  //       vendor: {
-  //         test: /[\\/]node_modules[\\/]/,
-  //         name: 'vendors',
-  //         chunks: 'all',
-  //       },
-  //     };
-  //   }
-  //   return config;
-  //},
 
   // Security headers
   async headers() {
