@@ -8,7 +8,7 @@
  */
 
 import mongoose from 'mongoose';
-import CODRemittanceService from '../../../src/core/application/services/finance/cod-remittance.service';
+import { CODRemittanceService } from '../../../src/core/application/services/finance/cod-remittance.service';
 import { Shipment } from '../../../src/infrastructure/database/mongoose/models';
 import CODRemittance from '../../../src/infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 
@@ -75,8 +75,8 @@ describe('COD Settlement Webhook Handler', () => {
             (Shipment.findOne as jest.Mock)
                 .mockResolvedValueOnce(mockShipment1)
                 .mockResolvedValueOnce(mockShipment2)
-                .mockResolvedValueOnce({ ...mockShipment1, select: jest.fn().mockReturnThis() })
-                .mockResolvedValueOnce({ ...mockShipment2, select: jest.fn().mockReturnThis() });
+                .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(mockShipment1) })
+                .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(mockShipment2) });
 
             (Shipment.find as jest.Mock).mockResolvedValue([mockShipment1]);
 
@@ -203,7 +203,7 @@ describe('COD Settlement Webhook Handler', () => {
 
             (Shipment.findOne as jest.Mock)
                 .mockResolvedValueOnce(mockShipment)
-                .mockResolvedValueOnce({ ...mockShipment, select: jest.fn().mockReturnThis() });
+                .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(mockShipment) });
             (Shipment.find as jest.Mock).mockResolvedValue([mockShipment]);
 
             (CODRemittance.find as jest.Mock).mockResolvedValue([mockBatch]);

@@ -124,7 +124,7 @@ describe('NDR Webhook Integration Flow', () => {
 
         // Spy on Detection Service and handler's updateShipmentStatus
         const detectionSpy = jest.spyOn(NDRDetectionService, 'handleWebhookNDRDetection');
-        const updateStatusSpy = jest.spyOn(velocityHandler, 'updateShipmentStatus').mockResolvedValue(undefined);
+        const updateStatusSpy = jest.spyOn(velocityHandler as any, 'updateShipmentStatus').mockResolvedValue(undefined);
 
         // 3. Execute Handler
         jest.spyOn(velocityHandler, 'verifySignature').mockReturnValue(true);
@@ -171,7 +171,7 @@ describe('NDR Webhook Integration Flow', () => {
         mockShipment.findOneAndUpdate.mockResolvedValue(true);
 
         const detectionSpy = jest.spyOn(NDRDetectionService, 'handleWebhookNDRDetection');
-        const updateStatusSpy = jest.spyOn(velocityHandler, 'updateShipmentStatus').mockResolvedValue(undefined);
+        const updateStatusSpy = jest.spyOn(velocityHandler as any, 'updateShipmentStatus').mockResolvedValue(undefined);
         jest.spyOn(velocityHandler, 'verifySignature').mockReturnValue(true);
 
         await velocityHandler.handleWebhook(velocityHandler.parseWebhook(req));
