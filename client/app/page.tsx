@@ -22,7 +22,6 @@ export function LandingClient() {
             <FeatureEcosystem />
             <HowItWorks />
             <SocialProof />
-            <Pricing />
             <Footer />
         </main>
     );

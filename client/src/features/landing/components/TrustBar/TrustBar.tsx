@@ -23,9 +23,20 @@ const ORBITAL_LOGOS = [
 
 export default function TrustBar() {
     return (
-        <section className="py-24 bg-primary overflow-hidden relative pt-42">
-            {/* Background Gradient Mesh */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-50/50 via-bg-primary to-bg-primary pointer-events-none" />
+        <section className="py-24 bg-primary overflow-hidden relative pt-40">
+            {/* Soft radial glow from center — theme-aware */}
+            <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                    background: "radial-gradient(ellipse 80% 70% at 50% 35%, color-mix(in srgb, var(--primary-blue) 6%, transparent) 0%, transparent 55%)",
+                }}
+            />
+            <div
+                className="absolute inset-0 pointer-events-none opacity-90"
+                style={{
+                    background: "radial-gradient(circle at 50% 40%, var(--bg-secondary) 0%, var(--bg-primary) 45%, var(--bg-primary) 100%)",
+                }}
+            />
 
             <div className="container mx-auto px-6 relative z-10">
                 {/* Wrapper so fade can cover orbital + full header (badge, title, subtitle) */}
@@ -37,11 +48,11 @@ export default function TrustBar() {
                             <OrbitalRing radius={260} speed={55} direction={-1} ringIndex={2} />
                             <OrbitalRing radius={360} speed={70} direction={1} ringIndex={3} />
                         </div>
-                        <div className="absolute z-10 w-32 h-32 rounded-full bg-white shadow-2xl shadow-indigo-200/50 flex items-center justify-center border border-indigo-50 p-6">
+                        <div className="absolute z-10 w-32 h-32 rounded-full bg-(--bg-elevated) flex items-center justify-center border border-primaryBlue/10 dark:border-primaryBlue/20 p-6 shadow-[0_0_0_1px_var(--border-subtle),0_8px_32px_-8px_rgba(37,37,255,0.12)] dark:shadow-[0_0_0_1px_var(--border-default),0_8px_32px_-8px_rgba(123,97,255,0.15)]">
                             <motion.div
                                 className="absolute inset-0 rounded-full border border-primaryBlue/20"
-                                animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0, 0.5] }}
-                                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                                animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
+                                transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
                             />
                             <img
                                 src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
@@ -51,11 +62,30 @@ export default function TrustBar() {
                         </div>
                     </div>
 
-                    {/* Fade overlay: covers orbital bottom + entire header (badge, title, subtitle) */}
+                    {/* Sleek fade: smooth multi-stop gradient so orbitals blend into content */}
                     <div
-                        className="absolute inset-x-0 bottom-0 h-[28rem] pointer-events-none z-20"
+                        className="absolute inset-x-0 bottom-0 h-128 pointer-events-none z-20"
                         style={{
-                            background: "linear-gradient(to top, var(--bg-primary) 0%, var(--bg-primary) 10%, transparent 100%)",
+                            background: `
+                                linear-gradient(
+                                    to top,
+                                    var(--bg-primary) 0%,
+                                    var(--bg-primary) 8%,
+                                    color-mix(in srgb, var(--bg-primary) 92%, transparent) 18%,
+                                    color-mix(in srgb, var(--bg-primary) 75%, transparent) 32%,
+                                    color-mix(in srgb, var(--bg-primary) 45%, transparent) 52%,
+                                    color-mix(in srgb, var(--bg-primary) 18%, transparent) 72%,
+                                    transparent 92%
+                                )
+                            `,
+                        }}
+                        aria-hidden
+                    />
+                    {/* Soft edge vignette so orbital fades at left/right on small viewports */}
+                    <div
+                        className="absolute inset-0 pointer-events-none z-18"
+                        style={{
+                            background: "linear-gradient(to right, var(--bg-primary) 0%, transparent 14%, transparent 86%, var(--bg-primary) 100%)",
                         }}
                         aria-hidden
                     />
@@ -89,48 +119,9 @@ const OrbitalRing = memo(function OrbitalRing({ radius, speed, direction, ringIn
 
     return (
         <div
-            className="absolute rounded-full border border-dashed border-gray-200 flex items-center justify-center"
+            className="absolute rounded-full border border-dashed border-primaryBlue/10 dark:border-primaryBlue/20 flex items-center justify-center"
             style={{ width: radius * 2, height: radius * 2 }}
         >
-            {/* The Rotating Container */}
-            <motion.div
-                className="w-full h-full relative"
-                animate={{ rotate: direction * 360 }}
-                transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
-            >
-                {logos.map((logo, i) => (
-                    <div
-                        key={i}
-                        className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                        // Position logic: The 'rotate' on the parent moves the top point around. 
-                        // But we want fixed angles relative to the ring start. 
-                        // So we rotate the individual logo wrapper to its starting angle.
-                        style={{
-                            width: 60, height: 60,
-                            transform: `rotate(${logo.angle}deg) translateY(-${radius}px) rotate(-${logo.angle}deg)`
-                            // This generic CSS transform approach places them correctly around the circle WITHOUT moving the parent's generic rotation. 
-                            // BUT, since the PARENT is rotating, we just need to place them at top and let parent rotate?
-                            // No, if we map them, we need to place them at specific angles.
-                            // Better approach: Absolute position based on angle.
-                            // Actually, simpler:
-                            // The wrapper is rotating. We place items absolute at top, then rotate the WRAPPER for that item?
-                            // Let's retry the standard orbital approach:
-                            // Parent rotates. Children are placed at specific degrees.
-                        }}
-                    >
-                        {/* 
-                            Correct positioning logic for a rotating parent:
-                            The parent rotates 0->360.
-                            To place items at 0, 120, 240:
-                            Item 1: Rotate(0) TranslateY(-R)
-                            Item 2: Rotate(120) TranslateY(-R)
-                            Item 3: Rotate(240) TranslateY(-R)
-                         */}
-                    </div>
-                ))}
-            </motion.div>
-
-            {/* Re-implementing correctly to avoid the confusion above */}
             <motion.div
                 className="w-full h-full absolute inset-0"
                 animate={{ rotate: direction * 360 }}
@@ -146,7 +137,7 @@ const OrbitalRing = memo(function OrbitalRing({ radius, speed, direction, ringIn
                     >
                         {/* Counter-Rotate to keep upright */}
                         <motion.div
-                            className="w-full h-full bg-white rounded-full p-3 shadow-md border border-gray-100 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+                            className="w-full h-full bg-(--bg-elevated) rounded-full p-3 border border-(--border-default) flex items-center justify-center hover:scale-110 transition-transform duration-200 cursor-pointer hover:border-primaryBlue/20"
                             animate={{ rotate: direction * -360 }}
                             transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
                         >

@@ -1,12 +1,26 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { useInView } from "react-intersection-observer"
-import { Star, Quote, Play, Pause, CheckCircle2, ShieldCheck, Users, Clock, TrendingUp } from "lucide-react"
+import { Star, Quote, Play, Pause, ShieldCheck, Users, Clock, TrendingUp } from "lucide-react"
+
+const STATS = [
+    { icon: ShieldCheck, value: "99.9%", label: "Uptime", color: "text-primaryBlue" },
+    { icon: Users, value: "500+", label: "Businesses", color: "text-primaryBlue" },
+    { icon: Star, value: "4.9", label: "Rating", color: "text-amber" },
+    { icon: Clock, value: "24/7", label: "Support", color: "text-emerald" },
+] as const
+
+const TESTIMONIALS_GRID = [
+    { name: "Rajesh Kumar", company: "TechStore", quote: "Automation is incredible. We process 1000+ orders daily with zero manual work." },
+    { name: "Anita Desai", company: "FashionHub", quote: "Customer complaints dropped by 60% with real-time tracking. Amazing!" },
+    { name: "Vikram Singh", company: "HomeGoods", quote: "The AI rate comparison alone saves us ₹50K monthly. Worth every penny." },
+] as const
 
 export default function SocialProof() {
-    const { ref, inView } = useInView({ threshold: 0.2, triggerOnce: true })
+    const reducedMotion = useReducedMotion()
+    const { ref, inView } = useInView({ threshold: 0.15, triggerOnce: true })
     const [isPlaying, setIsPlaying] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -22,8 +36,16 @@ export default function SocialProof() {
     }
 
     return (
-        <section className="py-24 md:py-32 bg-white overflow-hidden border-y border-gray-100">
-            <div className="container mx-auto px-6 md:px-12 max-w-[1400px]">
+        <section
+            id="social-proof"
+            aria-label="Social proof - testimonials and trust metrics"
+            className="relative py-24 md:py-32 overflow-hidden bg-primary"
+        >
+            <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,var(--tw-gradient-stops))] from-primaryBlue/6 via-transparent to-transparent" />
+                <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-primaryBlue/5 rounded-full blur-[100px]" />
+            </div>
+            <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
                 {/* Header */}
                 <div className="grid lg:grid-cols-[55%_45%] gap-12 mb-16 items-start">
                     <div>
@@ -31,10 +53,11 @@ export default function SocialProof() {
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
-                            className="inline-flex items-center gap-2.5 mb-6"
+                            transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0 }}
+                            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primaryBlue/5 border border-primaryBlue/10 mb-6 backdrop-blur-sm"
                         >
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald" />
-                            <span className="text-emerald text-sm font-medium tracking-wide">
+                            <Users size={12} className="text-primaryBlue shrink-0" aria-hidden="true" />
+                            <span className="text-xs font-bold text-primaryBlue tracking-widest uppercase">
                                 Trusted by Hundreds
                             </span>
                         </motion.div>
@@ -43,20 +66,20 @@ export default function SocialProof() {
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
-                            transition={{ delay: 0.1 }}
-                            className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-6 tracking-tight"
+                            transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0.08 }}
+                            className="text-display-lg md:text-display-xl font-bold leading-tight mb-6 tracking-tighter text-primary"
                         >
                             Real Businesses.<br />
                             Real Results.<br />
-                            <span className="text-primaryBlue">Real Relief.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primaryBlue via-indigo-500 to-primaryBlue bg-300% animate-gradient">Real Relief.</span>
                         </motion.h2>
 
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
-                            transition={{ delay: 0.2 }}
-                            className="text-lg text-gray-600 max-w-[500px]"
+                            transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0.15 }}
+                            className="text-body-lg text-secondary max-w-[500px]"
                         >
                             From bootstrapped startups to established brands shipping 10,000+ orders monthly...
                         </motion.p>
@@ -67,29 +90,24 @@ export default function SocialProof() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: 0.3 }}
-                        className="bg-white rounded-3xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-100"
+                        transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0.2 }}
+                        className="rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[var(--border-default)] bg-[var(--bg-primary)]/90 backdrop-blur-xl"
                     >
                         <div className="grid grid-cols-2 gap-6">
-                            {[
-                                { icon: ShieldCheck, value: "99.9%", label: "Uptime", color: "text-primaryBlue" },
-                                { icon: Users, value: "500+", label: "Businesses", color: "text-primaryBlue" },
-                                { icon: Star, value: "4.9", label: "Rating", color: "text-amber" },
-                                { icon: Clock, value: "24/7", label: "Support", color: "text-emerald" },
-                            ].map((stat, i) => (
+                            {STATS.map((stat, i) => (
                                 <motion.div
                                     key={i}
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    initial={reducedMotion ? false : { opacity: 0, scale: 0.95 }}
+                                    whileInView={reducedMotion ? {} : { opacity: 1, scale: 1 }}
                                     viewport={{ once: true }}
-                                    transition={{ delay: 0.4 + i * 0.1 }}
+                                    transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.25 + i * 0.06 }}
                                     className="text-center"
                                 >
-                                    <div className={`w-12 h-12 mx-auto bg-gray-50 rounded-xl flex items-center justify-center ${stat.color} mb-3`}>
+                                    <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3 bg-[var(--bg-secondary)] border border-[var(--border-default)] ${stat.color}`}>
                                         <stat.icon size={24} />
                                     </div>
-                                    <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-                                    <div className="text-xs text-gray-500 font-medium">{stat.label}</div>
+                                    <div className="text-3xl font-bold text-primary mb-1">{stat.value}</div>
+                                    <div className="text-caption font-medium text-secondary">{stat.label}</div>
                                 </motion.div>
                             ))}
                         </div>
@@ -99,15 +117,19 @@ export default function SocialProof() {
                 {/* Featured Testimonial */}
                 <motion.div
                     ref={ref}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={inView ? { opacity: 1, scale: 1 } : {}}
-                    transition={{ duration: 0.8 }}
-                    className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_30px_70px_-15px_rgba(37,37,255,0.12)] transition-all duration-500 flex flex-col md:flex-row gap-8 items-stretch"
+                    initial={{ opacity: 0, y: reducedMotion ? 0 : 16 }}
+                    animate={inView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: reducedMotion ? 0.25 : 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    className="rounded-3xl p-6 border border-[var(--border-default)] bg-[var(--bg-primary)]/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-primaryBlue/20 hover:shadow-lg hover:shadow-primaryBlue/5 transition-all duration-500 flex flex-col md:flex-row gap-8 items-stretch"
                 >
                     {/* Video/Image Side */}
                     <div
-                        className="w-full md:w-[380px] h-[500px] md:h-auto relative rounded-2xl overflow-hidden group cursor-pointer flex-shrink-0 shadow-xl"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={isPlaying ? "Pause testimonial video" : "Play testimonial video"}
+                        className="w-full md:w-[380px] h-[500px] md:h-auto min-h-[320px] relative rounded-2xl overflow-hidden group cursor-pointer flex-shrink-0 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primaryBlue focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]"
                         onClick={togglePlay}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePlay() } }}
                     >
                         <video
                             ref={videoRef}
@@ -119,91 +141,105 @@ export default function SocialProof() {
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                         />
-                        {/* Gradient overlay - only show when paused or hovering */}
-                        <div className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10 transition-opacity duration-300 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`} />
+                        <div className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10 transition-opacity duration-300 ${isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`} aria-hidden />
 
-                        {/* Play Button */}
-                        <div className={`absolute inset-0 flex items-center justify-center z-20 transition-all duration-300 ${isPlaying ? 'opacity-0 group-hover:opacity-100 scale-90' : 'opacity-100 scale-100'}`}>
+                        <div className={`absolute inset-0 flex items-center justify-center z-20 transition-all duration-300 ${isPlaying ? "opacity-0 group-hover:opacity-100 scale-90" : "opacity-100 scale-100"}`}>
                             <motion.div
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.95 }}
-                                className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center transition-all duration-300"
+                                className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center"
                             >
                                 <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center pl-1 shadow-lg">
                                     {isPlaying ? (
-                                        <Pause size={24} className="text-primaryBlue fill-primaryBlue" />
+                                        <Pause size={24} className="text-primaryBlue fill-primaryBlue" aria-hidden />
                                     ) : (
-                                        <Play size={24} className="text-primaryBlue fill-primaryBlue" />
+                                        <Play size={24} className="text-primaryBlue fill-primaryBlue" aria-hidden />
                                     )}
                                 </div>
                             </motion.div>
                         </div>
 
-                        {/* Customer info */}
                         <div className="absolute bottom-6 left-6 z-20 text-white">
                             <div className="font-bold text-lg mb-1">Priya Sharma</div>
                             <div className="text-sm opacity-90 mb-2">Founder & CEO, StyleHub</div>
-                            <div className="flex gap-1 text-amber">
-                                {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} fill="currentColor" />)}
+                            <div className="flex gap-1 text-amber" aria-hidden>
+                                {[1, 2, 3, 4, 5].map((i) => <Star key={i} size={14} fill="currentColor" />)}
                             </div>
                         </div>
 
-                        {/* Company badge */}
-                        <div className="absolute top-6 right-6 z-20 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-lg">
+                        <div className="absolute top-6 right-6 z-20 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-lg border border-[var(--border-default)]">
                             <div className="w-5 h-5 bg-primaryBlue rounded flex items-center justify-center">
-                                <ShieldCheck size={12} className="text-white" />
+                                <ShieldCheck size={12} className="text-white" aria-hidden />
                             </div>
-                            <span className="font-bold text-gray-900 text-sm">StyleHub</span>
+                            <span className="font-bold text-primary text-sm">StyleHub</span>
                         </div>
                     </div>
 
                     {/* Content Side */}
                     <div className="flex-1 py-4 md:py-6 md:pr-6 flex flex-col justify-center">
-                        <Quote className="text-primaryBlue/20 w-12 h-12 mb-4" />
-
-                        <h3 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-6 tracking-tight">
+                        <motion.div
+                            initial={reducedMotion ? false : { opacity: 0 }}
+                            animate={inView ? { opacity: 1 } : {}}
+                            transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.1 }}
+                        >
+                            <Quote className="text-primaryBlue/20 w-12 h-12 mb-4" aria-hidden />
+                        </motion.div>
+                        <motion.h3
+                            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                            animate={inView ? { opacity: 1, y: 0 } : {}}
+                            transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.15 }}
+                            className="text-title-xl md:text-3xl font-bold text-primary leading-tight mb-6 tracking-tight"
+                        >
                             "Shipcrowd cut our shipping costs by 23% and saved our operations team 15 hours every week..."
-                        </h3>
+                        </motion.h3>
 
-                        <p className="text-gray-600 mb-6 leading-relaxed">
+                        <motion.p
+                            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                            animate={inView ? { opacity: 1, y: 0 } : {}}
+                            transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.22 }}
+                            className="text-body-base text-secondary mb-6 leading-relaxed"
+                        >
                             We used to juggle 7 different courier dashboards. Now everything is in one place with AI doing the heavy lifting. Game changer for our business.
-                        </p>
+                        </motion.p>
 
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald/10 text-emerald rounded-full font-semibold text-sm">
-                                <TrendingUp size={16} />
+                        <motion.div
+                            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                            animate={inView ? { opacity: 1, y: 0 } : {}}
+                            transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.3 }}
+                            className="flex flex-wrap items-center gap-3"
+                        >
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm bg-[var(--success-bg)] text-[var(--success)] focus-within:ring-2 focus-within:ring-[var(--success)] focus-within:ring-offset-2">
+                                <TrendingUp size={16} aria-hidden />
                                 23% cost reduction
-                            </div>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primaryBlue/10 text-primaryBlue rounded-full font-semibold text-sm">
-                                <Clock size={16} />
+                            </span>
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm bg-primaryBlue/10 text-primaryBlue focus-within:ring-2 focus-within:ring-primaryBlue focus-within:ring-offset-2">
+                                <Clock size={16} aria-hidden />
                                 15 hrs saved/week
-                            </div>
-                        </div>
+                            </span>
+                        </motion.div>
                     </div>
                 </motion.div>
 
-                {/* Additional testimonials grid (optional) */}
+                {/* Additional testimonials grid */}
                 <div className="mt-16 grid md:grid-cols-3 gap-6">
-                    {[
-                        { name: "Rajesh Kumar", company: "TechStore", quote: "Automation is incredible. We process 1000+ orders daily with zero manual work." },
-                        { name: "Anita Desai", company: "FashionHub", quote: "Customer complaints dropped by 60% with real-time tracking. Amazing!" },
-                        { name: "Vikram Singh", company: "HomeGoods", quote: "The AI rate comparison alone saves us ₹50K monthly. Worth every penny." }
-                    ].map((testimonial, i) => (
+                    {TESTIMONIALS_GRID.map((testimonial, i) => (
                         <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 20 }}
+                            key={testimonial.name}
+                            initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }}
                             whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.1 * i }}
-                            className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                            viewport={{ once: true, threshold: 0.1 }}
+                            transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.05 + i * 0.08 }}
+                            className="rounded-2xl p-6 border border-[var(--border-default)] bg-[var(--bg-primary)] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-primaryBlue/20 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                         >
-                            <div className="flex gap-1 text-amber mb-3">
-                                {[1, 2, 3, 4, 5].map(j => <Star key={j} size={12} fill="currentColor" />)}
+                            <div className="flex gap-1 text-amber mb-3" aria-hidden>
+                                {[1, 2, 3, 4, 5].map((j) => (
+                                    <Star key={j} size={12} fill="currentColor" />
+                                ))}
                             </div>
-                            <p className="text-sm text-gray-700 mb-4 leading-relaxed">"{testimonial.quote}"</p>
+                            <p className="text-body-sm text-secondary mb-4 leading-relaxed">"{testimonial.quote}"</p>
                             <div>
-                                <div className="font-bold text-gray-900 text-sm">{testimonial.name}</div>
-                                <div className="text-xs text-gray-500">{testimonial.company}</div>
+                                <div className="font-bold text-primary text-sm">{testimonial.name}</div>
+                                <div className="text-caption text-secondary">{testimonial.company}</div>
                             </div>
                         </motion.div>
                     ))}
