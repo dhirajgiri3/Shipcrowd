@@ -16,7 +16,7 @@ import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import CSVExportService from '../../../../core/application/services/analytics/export/csv-export.service';
 import ExcelExportService from '../../../../core/application/services/analytics/export/excel-export.service';
 import PDFExportService from '../../../../core/application/services/analytics/export/pdf-export.service';
-import SpacesStorageService from '../../../../infrastructure/external/storage/spaces/spaces-storage.service';
+import StorageService from '../../../../core/application/services/storage/storage.service';
 import mongoose from 'mongoose';
 
 // Validation schema for export requests
@@ -71,12 +71,15 @@ export const exportToCSV = async (
 
         // Upload to Spaces if configured, otherwise stream directly
         if (isSpacesConfigured()) {
-            const spacesService = new SpacesStorageService();
             const key = `exports/${auth.companyId}/${filename}`;
-            await spacesService.uploadFile(buffer, key, 'text/csv');
+            await StorageService.upload(buffer, {
+                folder: `exports/${auth.companyId}`,
+                fileName: filename,
+                contentType: 'text/csv'
+            });
 
             // Generate signed URL
-            const signedUrl = await spacesService.getFileUrl(key);
+            const signedUrl = await StorageService.getFileUrl(key);
             const expiresAt = new Date(Date.now() + 86400 * 1000); // 24 hours
 
             sendSuccess(res, {
@@ -132,12 +135,15 @@ export const exportToExcel = async (
         const filename = `${dataType}_export_${Date.now()}.xlsx`;
 
         if (isSpacesConfigured()) {
-            const spacesService = new SpacesStorageService();
             const key = `exports/${auth.companyId}/${filename}`;
-            await spacesService.uploadFile(buffer, key, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            await StorageService.upload(buffer, {
+                folder: `exports/${auth.companyId}`,
+                fileName: filename,
+                contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
 
             // Generate signed URL
-            const signedUrl = await spacesService.getFileUrl(key);
+            const signedUrl = await StorageService.getFileUrl(key);
             const expiresAt = new Date(Date.now() + 86400 * 1000);
 
             sendSuccess(res, {
@@ -193,12 +199,15 @@ export const exportToPDF = async (
         const filename = `${dataType}_export_${Date.now()}.pdf`;
 
         if (isSpacesConfigured()) {
-            const spacesService = new SpacesStorageService();
             const key = `exports/${auth.companyId}/${filename}`;
-            await spacesService.uploadFile(buffer, key, 'application/pdf');
+            await StorageService.upload(buffer, {
+                folder: `exports/${auth.companyId}`,
+                fileName: filename,
+                contentType: 'application/pdf'
+            });
 
             // Generate signed URL
-            const signedUrl = await spacesService.getFileUrl(key);
+            const signedUrl = await StorageService.getFileUrl(key);
             const expiresAt = new Date(Date.now() + 86400 * 1000);
 
             sendSuccess(res, {

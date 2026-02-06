@@ -234,6 +234,9 @@ export default class NDRAnalyticsService {
         byStatus: Record<string, number>;
         totalCharges: number;
         avgCharges: number;
+        restockRate: number;
+        dispositionBreakdown: Record<string, number>;
+        avgQcTurnaroundHours?: number;
     }> {
         const matchFilter: any = { company: companyId };
 

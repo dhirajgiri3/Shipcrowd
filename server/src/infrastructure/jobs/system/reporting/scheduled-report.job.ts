@@ -11,7 +11,7 @@ import ReportBuilderService from '../../../../core/application/services/analytic
 import CSVExportService from '../../../../core/application/services/analytics/export/csv-export.service';
 import ExcelExportService from '../../../../core/application/services/analytics/export/excel-export.service';
 import PDFExportService from '../../../../core/application/services/analytics/export/pdf-export.service';
-import SpacesStorageService from '../../../external/storage/spaces/spaces-storage.service';
+import StorageService from '../../../../core/application/services/storage/storage.service';
 import QueueManager from '../../../utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -135,12 +135,16 @@ export class ScheduledReportJob {
 
         // Upload to Spaces if configured
         if (isSpacesConfigured()) {
-            const spacesService = new SpacesStorageService();
             const key = `reports/${companyId}/${filename}`;
-            await spacesService.uploadFile(buffer, key, mimeType);
+            await StorageService.upload(buffer, {
+                folder: `reports/${companyId}`,
+                fileName: filename,
+                contentType: mimeType
+            });
 
             // Generate signed URL with 7-day expiry for scheduled reports
-            const signedUrl = await spacesService.getFileUrl(key);
+            const weekInSeconds = 7 * 24 * 3600;
+            const signedUrl = await StorageService.getFileUrl(key, weekInSeconds);
             const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
 
             logger.info('Scheduled report generated and uploaded', {

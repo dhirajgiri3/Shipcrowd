@@ -250,9 +250,11 @@ const RTO_STATUS_TRANSITIONS: Record<RTOStatus, RTOStatus[]> = {
     in_transit: ['delivered_to_warehouse'],
     delivered_to_warehouse: ['qc_pending'],
     qc_pending: ['qc_completed'],
-    qc_completed: ['restocked', 'disposed'],
+    qc_completed: ['restocked', 'disposed', 'refurbishing', 'claim_filed'],
     restocked: [],
     disposed: [],
+    refurbishing: [],
+    claim_filed: [],
 };
 
 export function isValidRTOStatusTransition(

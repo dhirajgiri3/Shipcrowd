@@ -223,7 +223,6 @@ const CODDiscrepancySchema = new Schema<ICODDiscrepancy>(
         },
         autoResolveAt: {
             type: Date,
-            index: true, // For cleanup job
         },
     },
     {
