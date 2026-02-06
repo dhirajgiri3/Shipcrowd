@@ -1,4 +1,4 @@
-import { SellersClient } from './components/SellersClient';
+import SellersClient from './components/SellersClient';
 
 export const metadata = {
     title: "Seller Management | ShipCrowd Admin",

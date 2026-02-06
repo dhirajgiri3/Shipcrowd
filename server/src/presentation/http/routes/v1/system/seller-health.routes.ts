@@ -10,6 +10,7 @@ const router = express.Router();
  * @desc Get seller health metrics
  * @access Private
  */
+router.get('/export', authenticate, asyncHandler(sellerHealthController.exportSellers));
 router.get('/', authenticate, asyncHandler(sellerHealthController.getSellerHealth));
 
 export default router;

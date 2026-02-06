@@ -9,7 +9,6 @@ const AIShowcase = dynamic(() => import("@/src/features/landing/components/AISho
 const FeatureEcosystem = dynamic(() => import("@/src/features/landing/components/FeatureEcosystem"));
 const HowItWorks = dynamic(() => import("@/src/features/landing/components/HowItWorks"));
 const SocialProof = dynamic(() => import("@/src/features/landing/components/SocialProof"));
-const Pricing = dynamic(() => import("@/src/features/landing/components/Pricing"));
 
 export function LandingClient() {
     return (

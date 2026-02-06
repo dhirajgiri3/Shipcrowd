@@ -25,7 +25,7 @@ const router = Router();
 router.get(
     '/',
     authenticate,
-    requireAccess({ roles: ['super_admin'] }),
+    requireAccess({ roles: ['super_admin', 'admin'] }),
     asyncHandler(userManagementController.listUsers)
 );
 
@@ -37,7 +37,7 @@ router.get(
 router.get(
     '/:id',
     authenticate,
-    requireAccess({ roles: ['super_admin'] }),
+    requireAccess({ roles: ['super_admin', 'admin'] }),
     asyncHandler(userManagementController.getUserDetails)
 );
 

@@ -21,12 +21,12 @@ class UserManagementController {
      */
     async listUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { userId, isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
 
-            // Only super_admin can access user management
-            if (!isSuperAdmin) {
+            // Allow both admin and super_admin to access user management
+            if (!isAdmin) {
                 throw new ValidationError(
-                    'Super admin access required',
+                    'Admin access required',
                     ErrorCode.AUTHZ_FORBIDDEN
                 );
             }
@@ -141,12 +141,12 @@ class UserManagementController {
      */
     async getUserDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
 
-            // Only super_admin can view user details
-            if (!isSuperAdmin) {
+            // Allow both admin and super_admin to view user details
+            if (!isAdmin) {
                 throw new ValidationError(
-                    'Super admin access required',
+                    'Admin access required',
                     ErrorCode.AUTHZ_FORBIDDEN
                 );
             }
