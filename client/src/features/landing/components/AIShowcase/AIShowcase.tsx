@@ -192,8 +192,8 @@ const FloatingParticle = memo(function FloatingParticle({ index }: { index: numb
 })
 
 const FloatingNode = memo(function FloatingNode({ mouseX, mouseY, initialX, initialY, icon: Icon, label, value, delay }: any) {
-    const x = useSpring(useTransform(mouseX, [0, window.innerWidth || 1400], [initialX - 15, initialX + 15]), { stiffness: 40, damping: 25 })
-    const y = useSpring(useTransform(mouseY, [0, window.innerHeight || 800], [initialY - 15, initialY + 15]), { stiffness: 40, damping: 25 })
+    const x = useSpring(useTransform(mouseX, [0, (typeof window !== 'undefined' ? window.innerWidth : 1400)], [initialX - 15, initialX + 15]), { stiffness: 40, damping: 25 })
+    const y = useSpring(useTransform(mouseY, [0, (typeof window !== 'undefined' ? window.innerHeight : 800)], [initialY - 15, initialY + 15]), { stiffness: 40, damping: 25 })
 
     return (
         <motion.div
@@ -254,7 +254,7 @@ function FeaturesSection() {
             <GlassFeature
                 index="02"
                 title="Predictive RTO Analysis"
-                description="We process 10M+ historical data points to flag high-risk orders before you ship, saving you up to 30% in return costs."
+                description="Our risk engine scans 10M+ data points to detect high-risk patterns in real-time, preventing fraud before it happens."
                 icon={BarChart3}
                 color="indigo"
                 align="right"
@@ -317,7 +317,7 @@ function GlassFeature({ index, title, description, icon: Icon, color, align = "l
 }
 
 // ----------------------------------------------------------------------------------
-// Demo Visuals (Enhanced with Storytelling Animation)
+// Demo Visuals (Ultra-Premium & Performance Optimized)
 // ----------------------------------------------------------------------------------
 
 const CarrierListDemo = memo(function CarrierListDemo() {
@@ -326,10 +326,19 @@ const CarrierListDemo = memo(function CarrierListDemo() {
             {[1, 2, 3].map((_, i) => (
                 <motion.div
                     key={i}
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, x: -20, filter: 'blur(0px)' }}
                     whileInView={{ opacity: 1, x: 0 }}
+                    // Focus Mode: Blur other rows when #1 is active (after 1.5s delay)
+                    animate={{
+                        filter: i !== 0 ? ['blur(0px)', 'blur(0px)', 'blur(1px)'] : 'blur(0px)',
+                        opacity: i !== 0 ? [1, 1, 0.5] : 1
+                    }}
+                    transition={{
+                        delay: i * 0.1,
+                        filter: { delay: 1.5, duration: 0.5 },
+                        opacity: { delay: 1.5, duration: 0.5 }
+                    }}
                     viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
                     className={`relative overflow-hidden flex items-center justify-between p-3 rounded-xl border transition-colors duration-500 ${i === 0 ? 'bg-white border-primaryBlue/30 shadow-lg shadow-primaryBlue/10' : 'bg-white/40 border-transparent'}`}
                 >
                     <div className="flex items-center gap-3 relative z-10">
@@ -337,14 +346,24 @@ const CarrierListDemo = memo(function CarrierListDemo() {
                             {i === 0 ? 'AI' : ''}
                         </div>
                         <div className="space-y-1.5">
-                            {/* Animated Stats Bars */}
+                            {/* Animated Stats Bars - Grow on load */}
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-semibold text-gray-400 w-8">Cost</span>
-                                <div className={`h-1.5 rounded-full ${i === 0 ? 'w-24 bg-primaryBlue' : 'w-16 bg-gray-300'}`} />
+                                <motion.div
+                                    className={`h-1.5 rounded-full ${i === 0 ? 'bg-primaryBlue' : 'bg-gray-300'}`}
+                                    initial={{ width: 0 }}
+                                    whileInView={{ width: i === 0 ? 96 : 64 }}
+                                    transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
+                                />
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-semibold text-gray-400 w-8">Speed</span>
-                                <div className={`h-1.5 rounded-full ${i === 0 ? 'w-20 bg-emerald-400' : 'w-12 bg-gray-300'}`} />
+                                <motion.div
+                                    className={`h-1.5 rounded-full ${i === 0 ? 'bg-emerald-400' : 'bg-gray-300'}`}
+                                    initial={{ width: 0 }}
+                                    whileInView={{ width: i === 0 ? 80 : 48 }}
+                                    transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -356,7 +375,7 @@ const CarrierListDemo = memo(function CarrierListDemo() {
                             transition={{ delay: 1.5, type: "spring" }}
                             className="bg-primaryBlue/10 text-primaryBlue px-2 py-1 rounded-lg text-xs font-bold border border-primaryBlue/20"
                         >
-                            98% Match
+                            <ScrambleText text="98% Match" />
                         </motion.div>
                     )}
 
@@ -374,24 +393,25 @@ const CarrierListDemo = memo(function CarrierListDemo() {
 })
 
 const PredictionGraphDemo = memo(function PredictionGraphDemo() {
-    const bars = [30, 45, 35, 60, 40, 75, 55, 90, 65, 80, 50, 70]
+    const bars = [30, 45, 35, 60, 40, 75, 55, 90, 65, 80]
     return (
         <div className="relative w-full h-full flex items-end justify-center gap-1.5 px-6 pb-6" aria-hidden="true">
             <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/50 to-transparent" />
 
             {/* Bars */}
             {bars.map((h, i) => {
-                const isHighRisk = h > 80
+                const isHighRisk = h > 85 // Only one high risk bar ideally
                 return (
-                    <motion.div
-                        key={i}
-                        className={`flex-1 rounded-t-sm ${isHighRisk ? 'bg-rose-500' : 'bg-indigo-500'}`}
-                        style={{ opacity: 0.2 + (i / 12) * 0.8 }}
-                        initial={{ height: 0 }}
-                        whileInView={{ height: `${h}%` }}
-                        viewport={{ once: true }}
-                        transition={{ delay: i * 0.05, duration: 0.8, type: "spring" }}
-                    />
+                    <div key={i} className="relative flex-1 h-full flex items-end group">
+                        <motion.div
+                            className={`w-full rounded-t-sm ${isHighRisk ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                            style={{ opacity: 0.2 + (i / 10) * 0.8 }}
+                            initial={{ height: 0 }}
+                            whileInView={{ height: `${h}%` }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.05, duration: 0.8, type: "spring" }}
+                        />
+                    </div>
                 )
             })}
 
@@ -419,83 +439,133 @@ const PredictionGraphDemo = memo(function PredictionGraphDemo() {
     )
 })
 
+
 const ResolutionFlowDemo = memo(function ResolutionFlowDemo() {
+    const [step, setStep] = useState(0) // 0..3 sequences
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout
+        const loop = () => {
+            setStep(0)
+            setTimeout(() => setStep(1), 1000) // Problem appears
+            setTimeout(() => setStep(2), 2500) // AI Fix appears
+            setTimeout(() => setStep(3), 4500) // Resolved appears
+            // Reset after 7s total
+            timer = setTimeout(loop, 7000)
+        }
+        loop()
+        return () => clearTimeout(timer)
+    }, [])
+
     return (
-        <div className="relative w-full flex items-center justify-center -mt-4" aria-hidden="true">
-            {/* Timeline Line */}
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2" />
+        <div className="w-full h-full flex items-center justify-center p-4 relative" aria-hidden="true">
+            {/* Ambient Background Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-gradient-to-b from-transparent via-gray-50/30 to-transparent pointer-events-none" />
 
-            {/* Animated Progress Line */}
-            <motion.div
-                className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-emerald-500 to-primaryBlue -translate-y-1/2 z-0"
-                initial={{ width: '0%' }}
-                whileInView={{ width: '100%' }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            />
+            <div className="relative w-full max-w-[340px] flex flex-col gap-4 z-10">
+                {/* Connecting Line - masked to reveal as steps progress */}
+                <div className="absolute left-[27px] top-8 bottom-8 w-[2px] bg-gray-100 -z-10 overflow-hidden rounded-full">
+                    <motion.div
+                        className="w-full bg-gradient-to-b from-rose-500 via-primaryBlue to-emerald-500 origin-top opacity-50"
+                        initial={{ height: 0 }}
+                        animate={{ height: step >= 3 ? '100%' : step >= 2 ? '66%' : step >= 1 ? '33%' : '0%' }}
+                        transition={{ duration: 1, ease: "easeInOut" }}
+                    />
+                </div>
 
-            <div className="relative w-full flex justify-between items-center z-10">
-                {/* Step 1: Issue */}
-                <StepNode
-                    icon={Package}
-                    color="text-gray-500"
-                    bg="bg-white"
-                    activeColor="text-rose-500"
-                    activeBg="bg-rose-50"
-                    label="Delayed"
-                    triggerTime={0}
+                {/* Step 1: Delay Detected */}
+                <LogItem
+                    visible={step >= 1}
+                    icon={AlertCircle}
+                    color="text-rose-600"
+                    bgColor="bg-rose-50"
+                    title="Delay Detected"
+                    subtitle="Mumbai Hub • 20m ago"
+                    isLast={false}
                 />
 
-                {/* Step 2: AI Fix */}
-                <StepNode
+                {/* Step 2: AI Intervention */}
+                <LogItem
+                    visible={step >= 2}
                     icon={Brain}
-                    color="text-gray-400"
-                    bg="bg-white"
-                    activeColor="text-primaryBlue"
-                    activeBg="bg-blue-50"
-                    label="AI Fix"
-                    triggerTime={1}
+                    color="text-primaryBlue"
+                    bgColor="bg-blue-50"
+                    title="AI Rerouting..."
+                    subtitle="Optimizing path via Pune"
+                    isLast={false}
+                    pulse={true}
                 />
 
                 {/* Step 3: Resolved */}
-                <StepNode
+                <LogItem
+                    visible={step >= 3}
                     icon={CheckCircle2}
-                    color="text-gray-300"
-                    bg="bg-white"
-                    activeColor="text-emerald-500"
-                    activeBg="bg-emerald-50"
-                    label="Resolved"
-                    triggerTime={2}
+                    color="text-emerald-600"
+                    bgColor="bg-emerald-50"
+                    title="Issue Resolved"
+                    subtitle="Delivery rescheduled: Tomorrow"
+                    isLast={true}
                 />
             </div>
-
-            {/* Moving Package */}
-            <motion.div
-                className="absolute top-1/2 left-0 -translate-y-1/2 z-20 bg-white p-1.5 rounded-full border border-gray-200 shadow-sm"
-                initial={{ left: '0%' }}
-                whileInView={{ left: '100%' }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            >
-                <RefreshCw size={12} className="text-primaryBlue animate-spin" />
-            </motion.div>
         </div>
     )
 })
 
-function StepNode({ icon: Icon, color, bg, activeColor, activeBg, label, triggerTime }: any) {
+const LogItem = memo(function LogItem({ visible, icon: Icon, color, bgColor, title, subtitle, isLast, pulse }: any) {
     return (
-        <div className="flex flex-col items-center gap-2">
-            <motion.div
-                className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors duration-300 shadow-sm`}
-                initial={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}
-                whileInView={{
-                    backgroundColor: ['#ffffff', '#ffffff', '#eff6ff'],
-                    borderColor: ['#f3f4f6', '#f3f4f6', '#bfdbfe']
-                }}
-                transition={{ duration: 3, repeat: Infinity, times: [0, triggerTime * 0.33, (triggerTime * 0.33) + 0.1] }}
-            >
-                <Icon size={18} className={color} />
-            </motion.div>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</span>
-        </div>
+        <motion.div
+            initial={{ opacity: 0, x: -10, scale: 0.98 }}
+            animate={visible ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: -5, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className={`relative flex items-center gap-4 p-3 rounded-xl transition-all duration-500 ${visible ? 'bg-white/60 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}
+        >
+            {/* Icon Circle */}
+            <div className={`relative z-10 w-12 h-12 rounded-2xl ${visible ? bgColor : 'bg-gray-50'} flex items-center justify-center shrink-0 transition-colors duration-500`}>
+                <Icon size={20} className={visible ? color : 'text-gray-300'} strokeWidth={2} />
+                {pulse && visible && (
+                    <div className="absolute inset-0 rounded-2xl border border-primaryBlue/30 animate-ping opacity-20" />
+                )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0 py-1">
+                <h4 className={`text-[13px] font-semibold tracking-wide ${visible ? 'text-gray-900' : 'text-gray-300'} transition-colors duration-300`}>
+                    {title}
+                </h4>
+                <p className={`text-[11px] font-medium uppercase tracking-wider ${visible ? 'text-gray-400' : 'text-gray-300'} transition-colors duration-300 mt-0.5`}>
+                    {subtitle}
+                </p>
+            </div>
+
+            {/* Active Indicator (Subtle Dot) */}
+            {visible && (
+                <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className={`w-1.5 h-1.5 rounded-full ${color.replace('text-', 'bg-')} opacity-80`}
+                />
+            )}
+        </motion.div>
     )
+})
+
+// Optimized Scramble Text Component
+function ScrambleText({ text }: { text: string }) {
+    const [display, setDisplay] = useState("")
+    const chars = "XYZ%#@!"
+
+    useEffect(() => {
+        setDisplay(text) // Reset immediately when text changes
+        // Simple flicker effect
+        let i = 0
+        const interval = setInterval(() => {
+            if (i > 5) clearInterval(interval)
+            setDisplay(prev => prev.split('').map((c, idx) => Math.random() > 0.8 ? chars[Math.floor(Math.random() * chars.length)] : text[idx]).join(''))
+            i++
+        }, 50)
+
+        return () => clearInterval(interval)
+    }, [text])
+
+    return <span>{display}</span>
 }

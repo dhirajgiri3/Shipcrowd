@@ -109,7 +109,7 @@ export default function Hero() {
                             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                             className="mb-6"
                         >
-                            <div className="inline-flex items-center py-1.5 px-4 rounded-full bg-white border border-primaryBlue/10 shadow-[0_2px_10px_-4px_rgba(37,37,255,0.1)]">
+                            <div className="inline-flex items-center py-1.5 px-4 rounded-full bg-primaryBlue/5 ring-1 ring-primaryBlue/20">
                                 <span className="relative flex h-2 w-2 mr-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primaryBlue opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primaryBlue"></span>
