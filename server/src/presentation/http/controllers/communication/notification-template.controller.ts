@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import NotificationTemplateService from '../../../../core/application/services/communication/notification-template.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -30,8 +31,9 @@ class NotificationTemplateController {
      */
     async createTemplate(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user?._id?.toString();
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req, { requireCompany: false });
+            const userId = auth.userId;
+            const companyId = auth.companyId || undefined;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { name, code, category, channel, subject, body, isDefault } = req.body;
@@ -75,7 +77,8 @@ class NotificationTemplateController {
      */
     async listTemplates(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req, { requireCompany: false });
+            const companyId = auth.companyId || undefined;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const {
@@ -125,8 +128,9 @@ class NotificationTemplateController {
      */
     async getTemplateByCode(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req, { requireCompany: false });
             const { code } = req.params;
-            const companyId = req.user?.companyId?.toString();
+            const companyId = auth.companyId || undefined;
 
             const template = await NotificationTemplateService.getTemplateByCode(code, companyId);
 
@@ -147,8 +151,9 @@ class NotificationTemplateController {
      */
     async updateTemplate(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req, { requireCompany: false });
             const { id } = req.params;
-            const companyId = req.user?.companyId?.toString();
+            const companyId = auth.companyId || undefined;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { name, subject, body, isActive, isDefault } = req.body;
@@ -176,8 +181,9 @@ class NotificationTemplateController {
      */
     async deleteTemplate(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req, { requireCompany: false });
             const { id } = req.params;
-            const companyId = req.user?.companyId?.toString();
+            const companyId = auth.companyId || undefined;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             await NotificationTemplateService.deleteTemplate(
@@ -197,8 +203,9 @@ class NotificationTemplateController {
      */
     async getDefaultTemplate(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req, { requireCompany: false });
             const { category, channel } = req.params;
-            const companyId = req.user?.companyId?.toString();
+            const companyId = auth.companyId || undefined;
 
             const template = await NotificationTemplateService.getDefaultTemplate(
                 category,
@@ -244,7 +251,8 @@ class NotificationTemplateController {
      */
     async renderTemplateByCode(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req, { requireCompany: false });
+            const companyId = auth.companyId || undefined;
             const { code, variables } = req.body;
 
             if (!code) {
@@ -273,7 +281,8 @@ class NotificationTemplateController {
      */
     async getTemplateStats(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req, { requireCompany: false });
+            const companyId = auth.companyId || undefined;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const stats = await NotificationTemplateService.getTemplateStats(

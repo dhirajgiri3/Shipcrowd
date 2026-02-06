@@ -39,6 +39,20 @@ This document records the systematic audit for **requireCompanyContext** (backen
 | **rto.controller** | listRTOEvents, getRTOEvent, triggerRTO, updateStatus, recordQCResult, getStats, getPendingRTOs, executeDisposition |
 | **integrations.controller** | getHealth |
 | **ekart.controller** | saveConfig, getConfig |
+| **zone.controller** | getZones, createZone, getZoneById, updateZone |
+| **onboarding.controller** | getProgress, getNextAction, skipStep, submitPersonalization, getRecommendations, getAchievements, generateDemoData, clearDemoData, getAvailableTours, startTour, completeTour, updateTourProgress, completeOnboarding |
+| **return.controller** (logistics) | createReturnRequest, listReturns, getReturnDetails, schedulePickup, recordQCResult, cancelReturn, getReturnStats |
+| **woocommerce.controller** | installStore, listStores, getStoreDetails, testConnection, updateSettings, disconnectStore, pauseSync, resumeSync, refreshCredentials, registerWebhooks, syncOrders, updateOrderStatus, addTrackingNote, syncPendingUpdates |
+| **flipkart.controller** | connect, listStores, getStore, disconnectStore, testConnection, updateSettings, pauseSync, resumeSync |
+| **amazon.controller** | connect, listStores, getStore, disconnectStore, testConnection, updateSettings, pauseSync, resumeSync, syncOrders, refreshCredentials |
+| **shopify.controller** | install, listStores, getStore, getSyncLogs, disconnectStore, updateSettings, testConnection, pauseSync, resumeSync, createFulfillment, updateFulfillmentTracking, syncOrders, syncPendingFulfillments |
+| **product-mapping.controller** (Shopify) | autoMapProducts, listMappings, createMapping, deleteMapping, importCSV, exportCSV, getStats, toggleStatus, syncInventory |
+| **flipkart-product-mapping.controller** | autoMapProducts, listMappings, createMapping, deleteMapping, importCSV, exportCSV, getStats, toggleStatus, syncInventory |
+| **amazon-product-mapping.controller** | autoMap, listMappings, createMapping, deleteMapping, importCSV, exportCSV, getStats |
+| **sales-representative.controller** | createSalesRep, listSalesReps, getSalesRep, updateSalesRep, deleteSalesRep, getPerformance, assignTerritory, refreshMetrics, getTeam |
+| **payout.controller** | initiatePayout, processBatch, listPayouts, getPayout, retryPayout, cancelPayout |
+| **commission-transaction.controller** | listTransactions, getTransaction, approveTransaction, rejectTransaction, bulkApprove, bulkReject, addAdjustment, getPending, bulkCalculate |
+| **commission-rule.controller** | createRule, listRules, getRule, updateRule, deleteRule, testRule, findApplicableRules, cloneRule |
 
 ### Controllers not requiring company (by design)
 
@@ -47,13 +61,18 @@ This document records the systematic audit for **requireCompanyContext** (backen
 - **weight-disputes**: resolveDispute, getDisputeAnalytics, batchOperation are admin-only and may operate across companies; no requireCompanyContext.
 - **audit-log.middleware**: Logs with `req.user.companyId` when present; does not throw when missing (audit can be null company).
 
-### Controllers still using req.user.companyId (same pattern to apply)
+### Controllers still using req.user.companyId (optional / same pattern)
 
-Apply `guardChecks(req)` + `requireCompanyContext(auth)` at handler start and use `auth.companyId` / `auth.userId`:
+All **company-scoped** controllers that could cause 500 for admin-without-company are migrated. The following still read `req.user.companyId` or `req.user?._id`; they are either (a) behind middleware that already enforces company, (b) optional-company, or (c) lower traffic. Optional future migration: apply `guardChecks(req)` + `requireCompanyContext(auth)` and use `auth.companyId` / `auth.userId`.
 
-- **woocommerce.controller**, **flipkart.controller**, **amazon.controller**, **shopify.controller**
-- **flipkart-product-mapping.controller**, **product-mapping.controller**, **amazon-product-mapping.controller**
-- **commission**: sales-representative.controller, payout.controller, commission-transaction.controller, commission-rule.controller, commission-analytics.controller
+- **logistics/dispute.controller** – returns/logistics disputes (company-scoped).
+- **notification.controller**, **notification-template.controller** – company filter when present.
+- **seller-health.controller** – single handler.
+- **promo-code.controller** – CRUD by company.
+- **crm/sales-rep.controller**, **crm/leads/lead.controller**, **crm/dispute.controller** – CRM flows (company-scoped).
+- **profile.controller**, **consent.controller** – identity; company used for scope.
+- **kyc.controller** – uses `validateUserAndCompany` helper (equivalent contract).
+- **company.controller** – filter by company if present (intentional); **require-permission.middleware**, **require-complete-company.middleware**, **feature-flag.middleware**, **audit-log.middleware** – middleware; **controller.helpers** – defines the pattern.
 
 ## Frontend: Redirect utility
 
@@ -69,6 +88,7 @@ Apply `guardChecks(req)` + `requireCompanyContext(auth)` at handler start and us
 - **AuthGuard** (wrong role): getDefaultRedirectForUser(user)
 - **useOnboarding**: getDefaultRedirectForUser(user) when user?.companyId
 - **CompanySetupPage** (after create company): getDefaultRedirectForUser({ ...user, companyId })
+- **KycClient** (post-KYC success, "Go to Dashboard"): getDefaultRedirectForUser(user)
 
 ### Redirect logic (redirect.ts)
 
@@ -101,4 +121,4 @@ Apply `guardChecks(req)` + `requireCompanyContext(auth)` at handler start and us
 2. **Frontend redirects:** `rg "router\.(push|replace)\s*\(\s*['\"]\/" client` and ensure no hardcoded `/seller` or `/admin` for post-login flows; use redirect utility.
 3. **Frontend hooks:** For any hook calling `/finance/`, `/analytics/` (company-scoped), or orders/shipments, ensure `enabled` includes `hasCompanyContext`.
 
-Last audit: 2026-02-06. Full coverage: ratecard, warehouse, support, invoice, session, kyc, audit, bank-account, label-template, scheduled-report, manifest, bulk-shipment, ndr, ndr-analytics, rto, integrations.controller, ekart.controller. Remaining: woocommerce, flipkart, amazon, shopify, *-product-mapping, commission/* (same pattern).
+Last audit: 2026-02-06. Full coverage: zone, onboarding, return (logistics), woocommerce, flipkart, amazon, shopify, product-mapping (all three), commission (sales-representative, payout, commission-transaction, commission-rule, commission-analytics). No remaining req.user.companyId company-scoped handlers.

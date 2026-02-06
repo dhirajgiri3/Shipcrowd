@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import FlipkartOAuthService from '../../../../core/application/services/flipkart/flipkart-oauth.service';
 import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -35,9 +36,9 @@ export class FlipkartController {
    */
   static async connect(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { sellerId, sellerName, sellerEmail, apiKey, apiSecret } = req.body;
-      const companyId = req.user?.companyId;
-      const userId = req.user?._id;
 
       if (!sellerId || typeof sellerId !== 'string') {
         throw new ValidationError('Seller ID is required');
@@ -51,10 +52,6 @@ export class FlipkartController {
         throw new ValidationError('API secret is required');
       }
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Connect Flipkart seller account
       const store = await FlipkartOAuthService.connectStore({
         sellerId,
@@ -62,15 +59,15 @@ export class FlipkartController {
         sellerEmail,
         apiKey,
         apiSecret,
-        companyId: String(companyId),
-        createdBy: String(userId),
+        companyId: String(auth.companyId),
+        createdBy: String(auth.userId),
       });
 
       logger.info('Flipkart seller connected', {
         storeId: store._id,
         sellerId: store.sellerId,
         companyId: store.companyId,
-        userId: req.user?._id,
+        userId: auth.userId,
       });
 
       sendSuccess(res, {
@@ -93,13 +90,10 @@ export class FlipkartController {
    */
   static async listStores(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = req.user?.companyId;
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
-
-      const stores = await FlipkartOAuthService.getActiveStores(companyId);
+      const stores = await FlipkartOAuthService.getActiveStores(auth.companyId);
 
       sendSuccess(res, {
         count: stores.length,
@@ -130,13 +124,14 @@ export class FlipkartController {
    */
   static async getStore(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -171,14 +166,15 @@ export class FlipkartController {
    */
   static async disconnectStore(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -191,8 +187,8 @@ export class FlipkartController {
       logger.info('Store disconnected', {
         storeId: id,
         sellerEmail: store.sellerEmail,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Store disconnected successfully');
@@ -208,14 +204,15 @@ export class FlipkartController {
    */
   static async testConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findById(id).select('+apiKey +apiSecret');
 
-      if (!store || String(store.companyId) !== String(companyId)) {
+      if (!store || String(store.companyId) !== String(auth.companyId)) {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
@@ -266,18 +263,15 @@ export class FlipkartController {
    */
   static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
       const { settings, syncConfig } = req.body;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
 
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -322,14 +316,15 @@ export class FlipkartController {
    */
   static async pauseSync(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -341,8 +336,8 @@ export class FlipkartController {
       logger.info('Store sync paused', {
         storeId: id,
         sellerEmail: store.sellerEmail,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Sync paused successfully');
@@ -358,14 +353,15 @@ export class FlipkartController {
    */
   static async resumeSync(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -377,8 +373,8 @@ export class FlipkartController {
       logger.info('Store sync resumed', {
         storeId: id,
         sellerEmail: store.sellerEmail,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Sync resumed successfully');

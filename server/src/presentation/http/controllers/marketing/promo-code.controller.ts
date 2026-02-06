@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import PromoCodeService from '../../../../core/application/services/marketing/promo-code.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
 
@@ -33,13 +34,12 @@ class PromoCodeController {
                 carriers
             } = req.body;
 
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const promo = await PromoCodeService.createPromo({
                 code,
-                companyId: req.user.companyId.toString(),
+                companyId: auth.companyId,
                 discountType,
                 discountValue,
                 validUntil: new Date(validUntil),

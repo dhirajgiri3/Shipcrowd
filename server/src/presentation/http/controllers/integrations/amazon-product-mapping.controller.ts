@@ -14,6 +14,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import AmazonProductMappingService from '../../../../core/application/services/amazon/amazon-product-mapping.service';
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
 import { ValidationError, NotFoundError, AppError } from '../../../../shared/errors/app.error';
@@ -29,13 +30,14 @@ export class AmazonProductMappingController {
      */
     static async autoMap(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { storeId } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: storeId,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -59,8 +61,9 @@ export class AmazonProductMappingController {
      */
     static async listMappings(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { storeId } = req.params;
-            const companyId = req.user?.companyId;
             const {
                 page = '1',
                 limit = '50',
@@ -74,7 +77,7 @@ export class AmazonProductMappingController {
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: storeId,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -107,9 +110,9 @@ export class AmazonProductMappingController {
      */
     static async createMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { storeId } = req.params;
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
             const {
                 amazonASIN,
                 amazonSKU,
@@ -126,7 +129,7 @@ export class AmazonProductMappingController {
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: storeId,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -156,7 +159,7 @@ export class AmazonProductMappingController {
                 ShipcrowdSKU,
                 ShipcrowdProductName,
                 fulfillmentType,
-                mappedBy: String(userId),
+                mappedBy: String(auth.userId),
                 syncInventory,
                 syncPrice,
             });
@@ -182,13 +185,14 @@ export class AmazonProductMappingController {
      */
     static async deleteMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { storeId, id } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: storeId,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -210,14 +214,15 @@ export class AmazonProductMappingController {
      */
     static async importCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { storeId } = req.params;
-            const companyId = req.user?.companyId;
             const { csvData } = req.body;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: storeId,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -245,13 +250,14 @@ export class AmazonProductMappingController {
      */
     static async exportCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { storeId } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: storeId,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -275,13 +281,14 @@ export class AmazonProductMappingController {
      */
     static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { storeId } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: storeId,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {

@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../../../types/express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -37,11 +38,9 @@ export class OnboardingController {
 
     async getProgress(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
-            const progress = await OnboardingProgressService.getProgress(companyId, userId);
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const progress = await OnboardingProgressService.getProgress(auth.companyId, auth.userId);
             sendSuccess(res, progress, 'Onboarding progress retrieved');
         } catch (error) {
             next(error);
@@ -50,11 +49,9 @@ export class OnboardingController {
 
     async getNextAction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId } = req.user!;
-            if (!companyId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
-            const action = await OnboardingProgressService.getNextAction(companyId);
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const action = await OnboardingProgressService.getNextAction(auth.companyId);
             sendSuccess(res, action, 'Next recommended action');
         } catch (error) {
             next(error);
@@ -63,17 +60,15 @@ export class OnboardingController {
 
     async skipStep(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId } = req.user!;
-            if (!companyId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const result = skipStepSchema.safeParse(req.params);
 
             if (!result.success) {
                 throw new ValidationError('Invalid step');
             }
 
-            const progress = await OnboardingProgressService.skipStep(companyId, result.data.step);
+            const progress = await OnboardingProgressService.skipStep(auth.companyId, result.data.step);
             sendSuccess(res, progress, 'Step skipped successfully');
         } catch (error) {
             next(error);
@@ -84,17 +79,15 @@ export class OnboardingController {
 
     async submitPersonalization(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const result = personalizeSchema.safeParse(req.body);
 
             if (!result.success) {
                 throw new ValidationError('Invalid survey data');
             }
 
-            const persona = await PersonalizationService.savePersona(companyId, userId, result.data);
+            const persona = await PersonalizationService.savePersona(auth.companyId, auth.userId, result.data);
 
             // Also potentially generate demo data now if user wants it (could be a flag in body)
             // For now, trigger separately or auto-trigger via service orchestration
@@ -107,11 +100,9 @@ export class OnboardingController {
 
     async getRecommendations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
-            const recommendations = await PersonalizationService.getRecommendations(companyId, userId);
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const recommendations = await PersonalizationService.getRecommendations(auth.companyId, auth.userId);
             sendSuccess(res, recommendations, 'Recommendations retrieved');
         } catch (error) {
             next(error);
@@ -122,15 +113,13 @@ export class OnboardingController {
 
     async getAchievements(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Update streak on view (optional, or rely on explicit login event)
-            await AchievementService.checkStreak(companyId, userId);
+            await AchievementService.checkStreak(auth.companyId, auth.userId);
 
-            const stats = await AchievementService.getStats(companyId, userId);
+            const stats = await AchievementService.getStats(auth.companyId, auth.userId);
             sendSuccess(res, stats, 'Achievements retrieved');
         } catch (error) {
             next(error);
@@ -147,11 +136,9 @@ export class OnboardingController {
 
     async generateDemoData(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
-            await DemoDataService.generateDemoData({ companyId, userId });
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            await DemoDataService.generateDemoData({ companyId: auth.companyId, userId: auth.userId });
             sendSuccess(res, null, 'Demo data generation started');
         } catch (error) {
             next(error);
@@ -160,14 +147,12 @@ export class OnboardingController {
 
     async clearDemoData(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId } = req.user!;
-            if (!companyId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
-            await DemoDataService.clearDemoData(companyId);
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            await DemoDataService.clearDemoData(auth.companyId);
 
             // Update progress step
-            await OnboardingProgressService.updateStep(companyId, 'demoDataCleared', req.user!._id!);
+            await OnboardingProgressService.updateStep(auth.companyId, 'demoDataCleared', auth.userId);
 
             sendSuccess(res, null, 'Demo data cleared');
         } catch (error) {
@@ -179,11 +164,10 @@ export class OnboardingController {
 
     async getAvailableTours(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId, role } = req.user!;
-            if (!companyId || !userId || !role) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
-            const tours = await ProductTourService.getAvailableTours(companyId, userId, role);
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const role = req.user?.role;
+            const tours = await ProductTourService.getAvailableTours(auth.companyId, auth.userId, role!);
             sendSuccess(res, tours, 'Available tours retrieved');
         } catch (error) {
             next(error);
@@ -192,13 +176,11 @@ export class OnboardingController {
 
     async startTour(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
 
-            await ProductTourService.startTour(companyId, userId, id);
+            await ProductTourService.startTour(auth.companyId, auth.userId, id);
             sendSuccess(res, null, 'Tour started');
         } catch (error) {
             next(error);
@@ -207,13 +189,11 @@ export class OnboardingController {
 
     async completeTour(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
 
-            await ProductTourService.completeTour(companyId, userId, id);
+            await ProductTourService.completeTour(auth.companyId, auth.userId, id);
             sendSuccess(res, null, 'Tour completed');
         } catch (error) {
             next(error);
@@ -222,10 +202,8 @@ export class OnboardingController {
 
     async updateTourProgress(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
             const result = progressUpdateSchema.safeParse(req.body);
 
@@ -233,7 +211,7 @@ export class OnboardingController {
                 throw new ValidationError('Invalid progress data');
             }
 
-            await ProductTourService.updateProgress(companyId, userId, id, result.data.stepIndex, result.data.status);
+            await ProductTourService.updateProgress(auth.companyId, auth.userId, id, result.data.stepIndex, result.data.status);
             sendSuccess(res, null, 'Tour progress updated');
         } catch (error) {
             next(error);
@@ -246,13 +224,11 @@ export class OnboardingController {
      */
     async completeOnboarding(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { companyId, _id: userId } = req.user!;
-            if (!companyId || !userId) {
-                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Fetch company with all required fields
-            const company = await Company.findById(companyId);
+            const company = await Company.findById(auth.companyId);
             if (!company) {
                 throw new NotFoundError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
             }

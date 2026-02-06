@@ -23,6 +23,7 @@
  */
 
 import { Request, Response } from 'express';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import DisputeService from '@/core/application/services/logistics/dispute.service';
 import DisputeAnalyticsService from '@/core/application/services/logistics/dispute-analytics.service';
 import logger from '@/shared/logger/winston.logger';
@@ -41,6 +42,8 @@ export default class DisputeController {
      */
     static async createDispute(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const {
                 shipmentId,
                 type,
@@ -49,17 +52,10 @@ export default class DisputeController {
                 evidence,
             } = req.body;
 
-            const userId = req.user?._id?.toString();
-            const companyId = req.user?.companyId;
-
-            if (!userId || !companyId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
-
             const dispute = await DisputeService.createDispute({
                 shipmentId,
-                companyId,
-                userId,
+                companyId: auth.companyId,
+                userId: auth.userId,
                 type,
                 category,
                 description,
@@ -68,8 +64,8 @@ export default class DisputeController {
 
             logger.info('Dispute created successfully', {
                 disputeId: dispute.disputeId,
-                userId,
-                companyId,
+                userId: auth.userId,
+                companyId: auth.companyId,
             });
 
             sendCreated(res, dispute, 'Dispute created successfully');
@@ -86,7 +82,8 @@ export default class DisputeController {
      */
     static async getDisputes(req: Request, res: Response): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const companyId = auth.companyId;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             if (!companyId && !isAdmin) {
@@ -154,8 +151,9 @@ export default class DisputeController {
      */
     static async getDisputeById(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req, { requireCompany: false });
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const companyId = auth.companyId;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const dispute = await DisputeService.getDisputeById(id);
@@ -186,17 +184,13 @@ export default class DisputeController {
      */
     static async addEvidence(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { id } = req.params;
             const { type, url, description } = req.body;
-            const userId = req.user?._id?.toString();
-
-            if (!userId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
 
             const dispute = await DisputeService.addEvidence({
                 disputeId: id,
-                userId,
+                userId: auth.userId,
                 evidence: {
                     type,
                     url,
@@ -207,7 +201,7 @@ export default class DisputeController {
             logger.info('Evidence added to dispute', {
                 disputeId: id,
                 evidenceType: type,
-                userId,
+                userId: auth.userId,
             });
 
             res.status(200).json({ success: true, data: dispute, message: 'Evidence added successfully' });
@@ -227,8 +221,9 @@ export default class DisputeController {
      */
     static async getTimeline(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req, { requireCompany: false });
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const companyId = auth.companyId;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const dispute = await DisputeService.getDisputeById(id);
@@ -263,17 +258,13 @@ export default class DisputeController {
      */
     static async updateStatus(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { id } = req.params;
             const { status, notes } = req.body;
-            const userId = req.user?._id?.toString();
-
-            if (!userId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
 
             const dispute = await DisputeService.updateStatus({
                 disputeId: id,
-                userId,
+                userId: auth.userId,
                 status,
                 notes,
             });
@@ -281,7 +272,7 @@ export default class DisputeController {
             logger.info('Dispute status updated', {
                 disputeId: id,
                 newStatus: status,
-                userId,
+                userId: auth.userId,
             });
 
             res.status(200).json({ success: true, data: dispute, message: 'Status updated successfully' });
@@ -301,20 +292,16 @@ export default class DisputeController {
      */
     static async escalateDispute(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { id } = req.params;
             const { reason } = req.body;
-            const userId = req.user?._id?.toString();
 
-            if (!userId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
-
-            const dispute = await DisputeService.escalateDispute(id, userId, reason);
+            const dispute = await DisputeService.escalateDispute(id, auth.userId, reason);
 
             logger.warn('Dispute escalated', {
                 disputeId: id,
                 reason,
-                userId,
+                userId: auth.userId,
             });
 
             res.status(200).json({ success: true, data: dispute, message: 'Dispute escalated successfully' });
@@ -331,24 +318,20 @@ export default class DisputeController {
      */
     static async resolveDispute(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { id } = req.params;
             const { resolution } = req.body;
-            const userId = req.user?._id?.toString();
-
-            if (!userId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
 
             const dispute = await DisputeService.resolveDispute({
                 disputeId: id,
-                userId,
+                userId: auth.userId,
                 resolution,
             });
 
             logger.info('Dispute resolved', {
                 disputeId: id,
                 resolutionType: resolution.type,
-                userId,
+                userId: auth.userId,
             });
 
             res.status(200).json({ success: true, data: dispute, message: 'Dispute resolved successfully' });
@@ -365,20 +348,16 @@ export default class DisputeController {
      */
     static async assignDispute(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { id } = req.params;
             const { assignedTo } = req.body;
-            const userId = req.user?._id?.toString();
 
-            if (!userId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
-
-            const dispute = await DisputeService.assignDispute(id, assignedTo, userId);
+            const dispute = await DisputeService.assignDispute(id, assignedTo, auth.userId);
 
             logger.info('Dispute assigned', {
                 disputeId: id,
                 assignedTo,
-                assignedBy: userId,
+                assignedBy: auth.userId,
             });
 
             res.status(200).json({ success: true, data: dispute, message: 'Dispute assigned successfully' });
@@ -395,18 +374,14 @@ export default class DisputeController {
      */
     static async deleteDispute(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { id } = req.params;
-            const userId = req.user?._id?.toString();
 
-            if (!userId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
-
-            await DisputeService.deleteDispute(id, userId);
+            await DisputeService.deleteDispute(id, auth.userId);
 
             logger.info('Dispute deleted', {
                 disputeId: id,
-                deletedBy: userId,
+                deletedBy: auth.userId,
             });
 
             res.status(200).json({ success: true, data: null, message: 'Dispute deleted successfully' });
@@ -427,7 +402,8 @@ export default class DisputeController {
      */
     static async getStats(req: Request, res: Response): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const companyId = auth.companyId;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const {
@@ -467,7 +443,8 @@ export default class DisputeController {
      */
     static async getTrends(req: Request, res: Response): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const companyId = auth.companyId;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { startDate, endDate, groupBy = 'day' } = req.query;
@@ -523,7 +500,8 @@ export default class DisputeController {
      */
     static async getTopReasons(req: Request, res: Response): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const companyId = auth.companyId;
             const isAdmin = req.user ? isPlatformAdmin(req.user) : false;
 
             const { startDate, endDate, limit = 10 } = req.query;
@@ -583,19 +561,15 @@ export default class DisputeController {
      */
     static async queryCourier(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { id } = req.params;
-            const userId = req.user?._id?.toString();
-
-            if (!userId) {
-                throw new AppError('Authentication required', 'AUTH_REQUIRED', 401);
-            }
 
             // TODO: Implement courier integration
             // This will integrate with carrier APIs to query dispute status
 
             logger.info('Courier query initiated', {
                 disputeId: id,
-                userId,
+                userId: auth.userId,
             });
 
             sendSuccess(res, {

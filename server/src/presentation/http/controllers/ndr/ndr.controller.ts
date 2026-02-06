@@ -158,8 +158,9 @@ export class NDRController {
      */
     static async escalateNDR(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
 
             // Validate request body
             const validation = escalateNDRSchema.safeParse(req.body);
@@ -174,7 +175,7 @@ export class NDRController {
             const { reason, escalateTo, priority, notes } = validation.data;
 
             // Verify ownership
-            const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
+            const ndrEvent = await NDREvent.findOne({ _id: id, company: auth.companyId });
             if (!ndrEvent) {
                 throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }

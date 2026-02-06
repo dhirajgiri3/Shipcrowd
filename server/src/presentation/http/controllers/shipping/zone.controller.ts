@@ -4,6 +4,7 @@ import { Zone, IZone } from '../../../../infrastructure/database/mongoose/models
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import {
     sendSuccess,
     sendPaginated,
@@ -66,14 +67,9 @@ const checkPincodeOverlap = async (
  */
 export const getZones = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required');
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         // Pagination
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -116,14 +112,9 @@ export const getZones = async (req: Request, res: Response, next: NextFunction):
  */
 export const createZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required');
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const validation = createZoneSchema.safeParse(req.body);
         if (!validation.success) {
@@ -160,7 +151,7 @@ export const createZone = async (req: Request, res: Response, next: NextFunction
         await zone.save();
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'create',
             'zone',
@@ -182,14 +173,9 @@ export const createZone = async (req: Request, res: Response, next: NextFunction
  */
 export const getZoneById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required');
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const zoneId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(zoneId)) {
@@ -219,14 +205,9 @@ export const getZoneById = async (req: Request, res: Response, next: NextFunctio
  */
 export const updateZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required');
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const zoneId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(zoneId)) {
@@ -280,7 +261,7 @@ export const updateZone = async (req: Request, res: Response, next: NextFunction
         await zone.save();
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'update',
             'zone',

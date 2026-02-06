@@ -1,5 +1,5 @@
-
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import Dispute from '../../../../infrastructure/database/mongoose/models/crm/disputes/dispute.model';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
@@ -12,7 +12,8 @@ import logger from '../../../../shared/logger/winston.logger';
  */
 export const getSellerHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const companyId = req.user?.companyId;
+        const auth = guardChecks(req, { requireCompany: false });
+        const companyId = auth.companyId;
 
         if (!companyId) {
             sendSuccess(res, { healthScore: 0, metrics: {} }, 'No company ID found');

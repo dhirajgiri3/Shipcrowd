@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import FlipkartProductMappingService from '../../../../core/application/services/flipkart/flipkart-product-mapping.service';
 import FlipkartInventorySyncService from '../../../../core/application/services/flipkart/flipkart-inventory-sync.service';
 import { ValidationError, NotFoundError, AuthenticationError, AuthorizationError, AppError } from '../../../../shared/errors/app.error';
@@ -32,12 +33,13 @@ export class FlipkartProductMappingController {
    */
   static async autoMapProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const storeId = req.params.storeId ?? req.params.id;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
-      const store = await FlipkartStore.findOne({ _id: storeId, companyId });
+      const store = await FlipkartStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -47,8 +49,8 @@ export class FlipkartProductMappingController {
 
       logger.info('Auto-mapping triggered', {
         storeId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
         result,
       });
 
@@ -68,12 +70,13 @@ export class FlipkartProductMappingController {
    */
   static async listMappings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const storeId = req.params.storeId ?? req.params.id;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
-      const store = await FlipkartStore.findOne({ _id: storeId, companyId });
+      const store = await FlipkartStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -111,12 +114,13 @@ export class FlipkartProductMappingController {
    */
   static async createMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const storeId = req.params.storeId ?? req.params.id;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
-      const store = await FlipkartStore.findOne({ _id: storeId, companyId });
+      const store = await FlipkartStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -125,13 +129,13 @@ export class FlipkartProductMappingController {
       const mapping = await FlipkartProductMappingService.createManualMapping({
         flipkartStoreId: storeId,
         ...req.body,
-        mappedBy: req.user?._id,
+        mappedBy: auth.userId,
       });
 
       logger.info('Manual mapping created', {
         mappingId: mapping._id,
         storeId,
-        userId: req.user?._id,
+        userId: auth.userId,
       });
 
       sendCreated(res, { mapping }, 'Product mapping created successfully');
@@ -147,8 +151,9 @@ export class FlipkartProductMappingController {
    */
   static async deleteMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: mappingId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership via FlipkartProductMapping
       const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-product-mapping.model').default;
@@ -158,7 +163,7 @@ export class FlipkartProductMappingController {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
-      if (mapping.companyId.toString() !== companyId) {
+      if (mapping.companyId.toString() !== auth.companyId) {
         throw new AuthorizationError('Unauthorized');
       }
 
@@ -166,8 +171,8 @@ export class FlipkartProductMappingController {
 
       logger.info('Mapping deleted', {
         mappingId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Product mapping deleted successfully');
@@ -183,12 +188,13 @@ export class FlipkartProductMappingController {
    */
   static async importCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const storeId = req.params.storeId ?? req.params.id;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
-      const store = await FlipkartStore.findOne({ _id: storeId, companyId });
+      const store = await FlipkartStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -205,8 +211,8 @@ export class FlipkartProductMappingController {
 
       logger.info('CSV import completed', {
         storeId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
         ...result,
       });
 
@@ -226,12 +232,13 @@ export class FlipkartProductMappingController {
    */
   static async exportCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const storeId = req.params.storeId ?? req.params.id;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
-      const store = await FlipkartStore.findOne({ _id: storeId, companyId });
+      const store = await FlipkartStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -241,8 +248,8 @@ export class FlipkartProductMappingController {
 
       logger.info('CSV export completed', {
         storeId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       res.setHeader('Content-Type', 'text/csv');
@@ -260,12 +267,13 @@ export class FlipkartProductMappingController {
    */
   static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const storeId = req.params.storeId ?? req.params.id;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
-      const store = await FlipkartStore.findOne({ _id: storeId, companyId });
+      const store = await FlipkartStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -286,9 +294,10 @@ export class FlipkartProductMappingController {
    */
   static async toggleStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: mappingId } = req.params;
       const { isActive } = req.body;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-product-mapping.model').default;
@@ -298,7 +307,7 @@ export class FlipkartProductMappingController {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
-      if (mapping.companyId.toString() !== companyId) {
+      if (mapping.companyId.toString() !== auth.companyId) {
         throw new AuthorizationError('Unauthorized');
       }
 
@@ -307,7 +316,7 @@ export class FlipkartProductMappingController {
       logger.info('Mapping status toggled', {
         mappingId,
         isActive,
-        userId: req.user?._id,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, `Mapping ${isActive ? 'activated' : 'deactivated'} successfully`);
@@ -323,9 +332,10 @@ export class FlipkartProductMappingController {
    */
   static async syncInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: mappingId } = req.params;
       const { quantity } = req.body;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-product-mapping.model').default;
@@ -335,7 +345,7 @@ export class FlipkartProductMappingController {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
-      if (mapping.companyId.toString() !== companyId) {
+      if (mapping.companyId.toString() !== auth.companyId) {
         throw new AuthorizationError('Unauthorized');
       }
 
@@ -348,7 +358,7 @@ export class FlipkartProductMappingController {
       logger.info('Inventory synced for mapping', {
         mappingId,
         quantity,
-        userId: req.user?._id,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Inventory synced successfully');

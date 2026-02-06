@@ -28,6 +28,7 @@ import { cn } from '@/src/lib/utils';
 import { kycApi } from "@/src/core/api";
 import type { DocumentVerificationState } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
+import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/lib/utils';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
@@ -503,7 +504,7 @@ export function KycClient() {
             });
 
             showSuccessToast('KYC submitted successfully!');
-            router.push('/seller');
+            router.push(getDefaultRedirectForUser(user) || '/seller');
         } catch (err: any) {
             handleApiError(err, 'Failed to submit KYC');
             setError(err.message || 'Failed to submit KYC');
@@ -584,7 +585,7 @@ export function KycClient() {
                         <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
                             Your account is fully verified. You can now access all features and start shipping.
                         </p>
-                        <Button onClick={() => router.push('/seller')} className="w-full bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20">
+                        <Button onClick={() => router.push(getDefaultRedirectForUser(user) || '/seller')} className="w-full bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20">
                             Go to Dashboard
                         </Button>
                     </CardContent>

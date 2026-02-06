@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { NotificationService } from '../../../../core/application/services/crm/communication/notification.service';
 import notificationService, { NotificationType } from '../../../../core/application/services/communication/notification.service';
 import emailService from '../../../../core/application/services/communication/email.service';
@@ -148,6 +149,8 @@ export const verifyPhoneNumber = async (req: Request, res: Response, next: NextF
 
 export const sendShipmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
     const validation = sendShipmentStatusSchema.safeParse(req.body);
     if (!validation.success) {
       throw new ValidationError('Validation failed', validation.error.errors);
@@ -165,7 +168,7 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
       validation.data.awbId,
       validation.data.notificationType as NotificationType,
       { productName: validation.data.productName, courierName: validation.data.courierName },
-      req.user?.companyId?.toString()
+      auth.companyId
     );
 
     if (result.email || result.sms) {

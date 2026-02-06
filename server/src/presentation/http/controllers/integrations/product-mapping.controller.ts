@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import ProductMappingService from '../../../../core/application/services/shopify/product-mapping.service';
 import { ShopifyInventorySyncService } from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
 import { ValidationError, NotFoundError, AuthenticationError, AuthorizationError, AppError } from '../../../../shared/errors/app.error';
@@ -32,12 +33,13 @@ export class ProductMappingController {
    */
   static async autoMapProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -47,8 +49,8 @@ export class ProductMappingController {
 
       logger.info('Auto-mapping triggered', {
         storeId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
         result,
       });
 
@@ -68,12 +70,13 @@ export class ProductMappingController {
    */
   static async listMappings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -111,12 +114,13 @@ export class ProductMappingController {
    */
   static async createMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -125,13 +129,13 @@ export class ProductMappingController {
       const mapping = await ProductMappingService.createManualMapping({
         shopifyStoreId: storeId,
         ...req.body,
-        mappedBy: req.user?._id,
+        mappedBy: auth.userId,
       });
 
       logger.info('Manual mapping created', {
         mappingId: mapping._id,
         storeId,
-        userId: req.user?._id,
+        userId: auth.userId,
       });
 
       sendCreated(res, { mapping }, 'Product mapping created successfully');
@@ -147,8 +151,9 @@ export class ProductMappingController {
    */
   static async deleteMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: mappingId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership via ProductMapping
       const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
@@ -158,7 +163,7 @@ export class ProductMappingController {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
-      if (mapping.companyId.toString() !== companyId) {
+      if (mapping.companyId.toString() !== auth.companyId) {
         throw new AuthorizationError('Unauthorized');
       }
 
@@ -166,8 +171,8 @@ export class ProductMappingController {
 
       logger.info('Mapping deleted', {
         mappingId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Product mapping deleted successfully');
@@ -183,12 +188,13 @@ export class ProductMappingController {
    */
   static async importCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -205,8 +211,8 @@ export class ProductMappingController {
 
       logger.info('CSV import completed', {
         storeId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
         ...result,
       });
 
@@ -226,12 +232,13 @@ export class ProductMappingController {
    */
   static async exportCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -241,8 +248,8 @@ export class ProductMappingController {
 
       logger.info('CSV export completed', {
         storeId,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       res.setHeader('Content-Type', 'text/csv');
@@ -260,12 +267,13 @@ export class ProductMappingController {
    */
   static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify store ownership
       const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -286,9 +294,10 @@ export class ProductMappingController {
    */
   static async toggleStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: mappingId } = req.params;
       const { isActive } = req.body;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
@@ -298,7 +307,7 @@ export class ProductMappingController {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
-      if (mapping.companyId.toString() !== companyId) {
+      if (mapping.companyId.toString() !== auth.companyId) {
         throw new AuthorizationError('Unauthorized');
       }
 
@@ -307,7 +316,7 @@ export class ProductMappingController {
       logger.info('Mapping status toggled', {
         mappingId,
         isActive,
-        userId: req.user?._id,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, `Mapping ${isActive ? 'activated' : 'deactivated'} successfully`);
@@ -323,9 +332,10 @@ export class ProductMappingController {
    */
   static async syncInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: mappingId } = req.params;
       const { quantity } = req.body;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
@@ -335,7 +345,7 @@ export class ProductMappingController {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
-      if (mapping.companyId.toString() !== companyId) {
+      if (mapping.companyId.toString() !== auth.companyId) {
         throw new AuthorizationError('Unauthorized');
       }
 
@@ -348,7 +358,7 @@ export class ProductMappingController {
       logger.info('Inventory synced for mapping', {
         mappingId,
         quantity,
-        userId: req.user?._id,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Inventory synced successfully');

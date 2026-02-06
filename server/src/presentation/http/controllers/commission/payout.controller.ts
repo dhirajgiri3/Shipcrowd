@@ -3,6 +3,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { PayoutProcessingService } from '../../../../core/application/services/commission/index';
 import { AppError } from '../../../../shared/errors/index';
 import { ValidationError } from '../../../../shared/errors/app.error';
@@ -21,12 +22,8 @@ export class PayoutController {
      */
     static async initiatePayout(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const validation = initiatePayoutSchema.safeParse(req.body);
             if (!validation.success) {
@@ -39,8 +36,8 @@ export class PayoutController {
 
             const payout = await PayoutProcessingService.initiatePayout(
                 validation.data,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendCreated(res, payout, 'Payout initiated successfully');
@@ -55,12 +52,8 @@ export class PayoutController {
      */
     static async processBatch(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const validation = processBatchPayoutsSchema.safeParse(req.body);
             if (!validation.success) {
@@ -73,8 +66,8 @@ export class PayoutController {
 
             const result = await PayoutProcessingService.processBatchPayouts(
                 validation.data,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, result, `Batch processing completed: ${result.success} succeeded, ${result.failed} failed`);
@@ -110,11 +103,8 @@ export class PayoutController {
      */
     static async listPayouts(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const validation = listPayoutsQuerySchema.safeParse(req.query);
             if (!validation.success) {
@@ -128,7 +118,7 @@ export class PayoutController {
             const { page, limit, status, salesRepId, startDate, endDate } = validation.data;
 
             const result = await PayoutProcessingService.listPayouts(
-                String(companyId),
+                String(auth.companyId),
                 {
                     status: status as string | undefined,
                     salesRepId: salesRepId as string | undefined,
@@ -151,19 +141,16 @@ export class PayoutController {
      */
     static async getPayout(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             const paramValidation = idParamSchema.safeParse({ id });
             if (!paramValidation.success) {
                 throw new AppError('Invalid payout ID', 'BAD_REQUEST', 400);
             }
 
-            const payout = await PayoutProcessingService.getPayout(id, String(companyId));
+            const payout = await PayoutProcessingService.getPayout(id, String(auth.companyId));
 
             sendSuccess(res, payout);
         } catch (error) {
@@ -177,18 +164,14 @@ export class PayoutController {
      */
     static async retryPayout(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             const payout = await PayoutProcessingService.retryPayout(
                 id,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, payout, 'Payout retry initiated');
@@ -203,18 +186,14 @@ export class PayoutController {
      */
     static async cancelPayout(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             const payout = await PayoutProcessingService.cancelPayout(
                 id,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, payout, 'Payout cancelled successfully');

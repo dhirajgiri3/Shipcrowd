@@ -10,6 +10,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import {
     CommissionCalculationService,
     CommissionApprovalService,
@@ -37,11 +38,8 @@ export class CommissionTransactionController {
      */
     static async listTransactions(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate query parameters
             const validation = listTransactionsQuerySchema.safeParse(req.query);
@@ -57,7 +55,7 @@ export class CommissionTransactionController {
                 validation.data;
 
             const result = await CommissionCalculationService.listTransactions(
-                String(companyId),
+                String(auth.companyId),
                 {
                     status: status as string | undefined,
                     salesRepId: salesRepId as string | undefined,
@@ -81,12 +79,9 @@ export class CommissionTransactionController {
      */
     static async getTransaction(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -94,7 +89,7 @@ export class CommissionTransactionController {
                 throw new AppError('Invalid transaction ID', 'BAD_REQUEST', 400);
             }
 
-            const transaction = await CommissionCalculationService.getTransaction(id, String(companyId));
+            const transaction = await CommissionCalculationService.getTransaction(id, String(auth.companyId));
 
             sendSuccess(res, transaction);
         } catch (error) {
@@ -109,13 +104,9 @@ export class CommissionTransactionController {
      */
     static async approveTransaction(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate request body
             const validation = approveTransactionSchema.safeParse(req.body);
@@ -129,8 +120,8 @@ export class CommissionTransactionController {
 
             const transaction = await CommissionApprovalService.approveTransaction(
                 { transactionId: id, notes: validation.data.notes },
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, transaction, 'Commission transaction approved successfully');
@@ -146,13 +137,9 @@ export class CommissionTransactionController {
      */
     static async rejectTransaction(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate request body
             const validation = rejectTransactionSchema.safeParse(req.body);
@@ -166,8 +153,8 @@ export class CommissionTransactionController {
 
             const transaction = await CommissionApprovalService.rejectTransaction(
                 { transactionId: id, reason: validation.data.reason },
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, transaction, 'Commission transaction rejected successfully');
@@ -183,12 +170,8 @@ export class CommissionTransactionController {
      */
     static async bulkApprove(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate request body
             const validation = bulkApproveSchema.safeParse(req.body);
@@ -202,8 +185,8 @@ export class CommissionTransactionController {
 
             const result = await CommissionApprovalService.bulkApprove(
                 { transactionIds: validation.data.transactionIds },
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, result, `Bulk approve completed: ${result.success} succeeded, ${result.failed} failed`);
@@ -219,12 +202,8 @@ export class CommissionTransactionController {
      */
     static async bulkReject(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate request body
             const validation = bulkRejectSchema.safeParse(req.body);
@@ -241,8 +220,8 @@ export class CommissionTransactionController {
                     transactionIds: validation.data.transactionIds,
                     reason: validation.data.reason,
                 },
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, result, `Bulk reject completed: ${result.success} succeeded, ${result.failed} failed`);
@@ -258,13 +237,9 @@ export class CommissionTransactionController {
      */
     static async addAdjustment(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate request body
             const validation = addAdjustmentSchema.safeParse(req.body);
@@ -283,8 +258,8 @@ export class CommissionTransactionController {
                     reason: validation.data.reason,
                     adjustmentType: validation.data.adjustmentType,
                 },
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, transaction, 'Adjustment added successfully');
@@ -300,18 +275,15 @@ export class CommissionTransactionController {
      */
     static async getPending(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const { salesRepId, minAmount, page = 1, limit = 20 } = req.query;
             const pageNum = Number(page);
             const limitNum = Number(limit);
 
             const result = await CommissionApprovalService.getPendingTransactions(
-                String(companyId),
+                String(auth.companyId),
                 {
                     salesRepId: salesRepId as string,
                     minAmount: minAmount ? Number(minAmount) : undefined,
@@ -333,11 +305,8 @@ export class CommissionTransactionController {
      */
     static async bulkCalculate(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate request body
             const validation = bulkCalculateSchema.safeParse(req.body);
@@ -354,7 +323,7 @@ export class CommissionTransactionController {
             const result = await CommissionCalculationService.bulkCalculate(
                 orderIds,
                 salesRepId,
-                String(companyId)
+                String(auth.companyId)
             );
 
             sendSuccess(res, result, `Bulk calculation completed: ${result.success} succeeded, ${result.failed} failed`);

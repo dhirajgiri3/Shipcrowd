@@ -15,6 +15,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import AmazonOAuthService from '../../../../core/application/services/amazon/amazon-oauth.service';
 import AmazonOrderSyncService from '../../../../core/application/services/amazon/amazon-order-sync.service';
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
@@ -46,8 +47,8 @@ export class AmazonController {
                 region,
             } = req.body;
 
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate required fields
             if (!sellerId) {
@@ -70,10 +71,6 @@ export class AmazonController {
                 throw new ValidationError('IAM Role ARN is required');
             }
 
-            if (!companyId) {
-                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-            }
-
             // Connect Amazon seller account
             const store = await AmazonOAuthService.connectStore({
                 sellerId,
@@ -87,8 +84,8 @@ export class AmazonController {
                 awsSecretAccessKey,
                 roleArn,
                 region: region || 'eu-west-1', // Default to EU for India
-                companyId: String(companyId),
-                userId: String(userId),
+                companyId: String(auth.companyId),
+                userId: String(auth.userId),
             });
 
             logger.info('Amazon seller connected', {
@@ -96,7 +93,7 @@ export class AmazonController {
                 sellerId: store.sellerId,
                 marketplaceId: store.marketplaceId,
                 companyId: store.companyId,
-                userId,
+                userId: auth.userId,
             });
 
             sendSuccess(res, {
@@ -120,13 +117,10 @@ export class AmazonController {
      */
     static async listStores(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
-            if (!companyId) {
-                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-            }
-
-            const stores = await AmazonOAuthService.getActiveStores(String(companyId));
+            const stores = await AmazonOAuthService.getActiveStores(String(auth.companyId));
 
             sendSuccess(res, {
                 count: stores.length,
@@ -161,12 +155,13 @@ export class AmazonController {
      */
     static async getStore(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
 
             const store = await AmazonStore.findOne({
                 _id: id,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -207,13 +202,14 @@ export class AmazonController {
      */
     static async disconnectStore(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: id,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -226,8 +222,8 @@ export class AmazonController {
             logger.info('Amazon store disconnected', {
                 storeId: id,
                 sellerId: store.sellerId,
-                companyId,
-                userId: req.user?._id,
+                companyId: auth.companyId,
+                userId: auth.userId,
             });
 
             sendSuccess(res, null, 'Amazon store disconnected successfully');
@@ -243,15 +239,16 @@ export class AmazonController {
      */
     static async testConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findById(id).select(
                 '+lwaClientId +lwaClientSecret +lwaRefreshToken +awsAccessKeyId +awsSecretAccessKey'
             );
 
-            if (!store || String(store.companyId) !== String(companyId)) {
+            if (!store || String(store.companyId) !== String(auth.companyId)) {
                 throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
@@ -327,17 +324,14 @@ export class AmazonController {
      */
     static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
             const { settings, syncConfig } = req.body;
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-            }
 
             const store = await AmazonStore.findOne({
                 _id: id,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -384,13 +378,14 @@ export class AmazonController {
      */
     static async pauseSync(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: id,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -402,8 +397,8 @@ export class AmazonController {
             logger.info('Amazon store sync paused', {
                 storeId: id,
                 sellerId: store.sellerId,
-                companyId,
-                userId: req.user?._id,
+                companyId: auth.companyId,
+                userId: auth.userId,
             });
 
             sendSuccess(res, null, 'Sync paused successfully');
@@ -419,13 +414,14 @@ export class AmazonController {
      */
     static async resumeSync(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: id,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -437,8 +433,8 @@ export class AmazonController {
             logger.info('Amazon store sync resumed', {
                 storeId: id,
                 sellerId: store.sellerId,
-                companyId,
-                userId: req.user?._id,
+                companyId: auth.companyId,
+                userId: auth.userId,
             });
 
             sendSuccess(res, null, 'Sync resumed successfully');
@@ -454,14 +450,15 @@ export class AmazonController {
      */
     static async syncOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
             const { fromDate, toDate, maxOrders } = req.body;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: id,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -478,7 +475,7 @@ export class AmazonController {
             logger.info('Amazon order sync completed', {
                 storeId: id,
                 ...result,
-                userId: req.user?._id,
+                userId: auth.userId,
             });
 
             sendSuccess(res, {
@@ -502,6 +499,8 @@ export class AmazonController {
      */
     static async refreshCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
             const {
                 lwaClientId,
@@ -511,12 +510,11 @@ export class AmazonController {
                 awsSecretAccessKey,
                 roleArn,
             } = req.body;
-            const companyId = req.user?.companyId;
 
             // Verify ownership
             const store = await AmazonStore.findOne({
                 _id: id,
-                companyId,
+                companyId: auth.companyId,
             });
 
             if (!store) {
@@ -545,8 +543,8 @@ export class AmazonController {
             logger.info('Amazon store credentials refreshed', {
                 storeId: id,
                 sellerId: store.sellerId,
-                companyId,
-                userId: req.user?._id,
+                companyId: auth.companyId,
+                userId: auth.userId,
             });
 
             sendSuccess(res, null, 'Credentials refreshed successfully');

@@ -9,6 +9,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import SalesRepresentativeService from '../../../../core/application/services/commission/sales-representative.service';
 import { AppError } from '../../../../shared/errors/index';
 import { ValidationError } from '../../../../shared/errors/app.error';
@@ -30,12 +31,8 @@ export class SalesRepresentativeController {
      */
     static async createSalesRep(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate request body
             const validation = createSalesRepSchema.safeParse(req.body);
@@ -49,8 +46,8 @@ export class SalesRepresentativeController {
 
             const salesRep = await SalesRepresentativeService.createSalesRep(
                 validation.data,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendCreated(res, salesRep, 'Sales representative created successfully');
@@ -66,11 +63,8 @@ export class SalesRepresentativeController {
      */
     static async listSalesReps(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate query parameters
             const validation = listSalesRepsQuerySchema.safeParse(req.query);
@@ -85,7 +79,7 @@ export class SalesRepresentativeController {
             const { page, limit, status, role, territory, sortBy, sortOrder } = validation.data;
 
             const result = await SalesRepresentativeService.listSalesReps(
-                String(companyId),
+                String(auth.companyId),
                 { status, role, territory },
                 { page, limit, sortBy, sortOrder }
             );
@@ -104,14 +98,10 @@ export class SalesRepresentativeController {
      */
     static async getSalesRep(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const userRole = req.user?.role;
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -126,7 +116,7 @@ export class SalesRepresentativeController {
 
             const salesRep = await SalesRepresentativeService.getSalesRep(
                 id,
-                String(companyId),
+                String(auth.companyId),
                 includeBankDetails
             );
 
@@ -143,13 +133,9 @@ export class SalesRepresentativeController {
      */
     static async updateSalesRep(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -170,8 +156,8 @@ export class SalesRepresentativeController {
             const salesRep = await SalesRepresentativeService.updateSalesRep(
                 id,
                 validation.data,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, salesRep, 'Sales representative updated successfully');
@@ -187,13 +173,9 @@ export class SalesRepresentativeController {
      */
     static async deleteSalesRep(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -201,7 +183,7 @@ export class SalesRepresentativeController {
                 throw new AppError('Invalid sales rep ID', 'BAD_REQUEST', 400);
             }
 
-            await SalesRepresentativeService.deleteSalesRep(id, String(userId), String(companyId));
+            await SalesRepresentativeService.deleteSalesRep(id, String(auth.userId), String(auth.companyId));
 
             sendSuccess(res, null, 'Sales representative deactivated successfully');
         } catch (error) {
@@ -216,12 +198,9 @@ export class SalesRepresentativeController {
      */
     static async getPerformance(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -229,7 +208,7 @@ export class SalesRepresentativeController {
                 throw new AppError('Invalid sales rep ID', 'BAD_REQUEST', 400);
             }
 
-            const salesRep = await SalesRepresentativeService.getSalesRep(id, String(companyId));
+            const salesRep = await SalesRepresentativeService.getSalesRep(id, String(auth.companyId));
 
             sendSuccess(res, {
                 employeeId: salesRep.employeeId,
@@ -248,13 +227,9 @@ export class SalesRepresentativeController {
      */
     static async assignTerritory(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -275,8 +250,8 @@ export class SalesRepresentativeController {
             const salesRep = await SalesRepresentativeService.assignTerritory(
                 id,
                 validation.data.territories,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, {
@@ -295,12 +270,9 @@ export class SalesRepresentativeController {
      */
     static async refreshMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -308,7 +280,7 @@ export class SalesRepresentativeController {
                 throw new AppError('Invalid sales rep ID', 'BAD_REQUEST', 400);
             }
 
-            await SalesRepresentativeService.updatePerformanceMetrics(id, String(companyId));
+            await SalesRepresentativeService.updatePerformanceMetrics(id, String(auth.companyId));
 
             sendSuccess(res, null, 'Performance metrics refreshed successfully');
         } catch (error) {
@@ -323,12 +295,9 @@ export class SalesRepresentativeController {
      */
     static async getTeam(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -336,7 +305,7 @@ export class SalesRepresentativeController {
                 throw new AppError('Invalid sales rep ID', 'BAD_REQUEST', 400);
             }
 
-            const team = await SalesRepresentativeService.getTeamHierarchy(id, String(companyId));
+            const team = await SalesRepresentativeService.getTeamHierarchy(id, String(auth.companyId));
 
             sendSuccess(res, {
                 team,

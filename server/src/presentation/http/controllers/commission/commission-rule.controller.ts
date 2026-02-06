@@ -8,6 +8,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import CommissionRuleService from '../../../../core/application/services/commission/commission-rule.service';
 import { AppError } from '../../../../shared/errors/index';
 import { ValidationError } from '../../../../shared/errors/app.error';
@@ -30,12 +31,8 @@ export class CommissionRuleController {
      */
     static async createRule(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate request body
             const validation = createCommissionRuleSchema.safeParse(req.body);
@@ -49,8 +46,8 @@ export class CommissionRuleController {
 
             const rule = await CommissionRuleService.createRule(
                 validation.data,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendCreated(res, rule, 'Commission rule created successfully');
@@ -66,11 +63,8 @@ export class CommissionRuleController {
      */
     static async listRules(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Validate query parameters
             const validation = listRulesQuerySchema.safeParse(req.query);
@@ -86,7 +80,7 @@ export class CommissionRuleController {
                 validation.data;
 
             const result = await CommissionRuleService.listRules(
-                String(companyId),
+                String(auth.companyId),
                 {
                     ruleType,
                     isActive,
@@ -110,12 +104,9 @@ export class CommissionRuleController {
      */
     static async getRule(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -123,7 +114,7 @@ export class CommissionRuleController {
                 throw new AppError('Invalid rule ID', 'BAD_REQUEST', 400);
             }
 
-            const rule = await CommissionRuleService.getRule(id, String(companyId));
+            const rule = await CommissionRuleService.getRule(id, String(auth.companyId));
 
             sendSuccess(res, rule);
         } catch (error) {
@@ -138,13 +129,9 @@ export class CommissionRuleController {
      */
     static async updateRule(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -164,8 +151,8 @@ export class CommissionRuleController {
             const rule = await CommissionRuleService.updateRule(
                 id,
                 validation.data,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendSuccess(res, rule, 'Commission rule updated successfully');
@@ -181,13 +168,9 @@ export class CommissionRuleController {
      */
     static async deleteRule(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -195,7 +178,7 @@ export class CommissionRuleController {
                 throw new AppError('Invalid rule ID', 'BAD_REQUEST', 400);
             }
 
-            await CommissionRuleService.deleteRule(id, String(userId), String(companyId));
+            await CommissionRuleService.deleteRule(id, String(auth.userId), String(auth.companyId));
 
             sendSuccess(res, null, 'Commission rule deleted successfully');
         } catch (error) {
@@ -210,12 +193,9 @@ export class CommissionRuleController {
      */
     static async testRule(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate ID param
             const paramValidation = idParamSchema.safeParse({ id });
@@ -233,7 +213,7 @@ export class CommissionRuleController {
                 throw new ValidationError('Validation failed', details);
             }
 
-            const result = await CommissionRuleService.testRule(id, validation.data, String(companyId));
+            const result = await CommissionRuleService.testRule(id, validation.data, String(auth.companyId));
 
             sendSuccess(res, result);
         } catch (error) {
@@ -248,12 +228,9 @@ export class CommissionRuleController {
      */
     static async findApplicableRules(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { orderId } = req.params;
-
-            if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             // Validate order ID param
             const paramValidation = orderIdParamSchema.safeParse({ orderId });
@@ -261,7 +238,7 @@ export class CommissionRuleController {
                 throw new AppError('Invalid order ID', 'BAD_REQUEST', 400);
             }
 
-            const rules = await CommissionRuleService.findApplicableRules(orderId, String(companyId));
+            const rules = await CommissionRuleService.findApplicableRules(orderId, String(auth.companyId));
 
             sendSuccess(res, {
                 rules,
@@ -279,14 +256,10 @@ export class CommissionRuleController {
      */
     static async cloneRule(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            const userId = req.user?._id;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
             const { name } = req.body;
-
-            if (!companyId || !userId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
-            }
 
             if (!name || typeof name !== 'string' || name.length < 3) {
                 throw new AppError('New rule name is required (min 3 characters)', 'BAD_REQUEST', 400);
@@ -295,8 +268,8 @@ export class CommissionRuleController {
             const rule = await CommissionRuleService.cloneRule(
                 id,
                 name,
-                String(userId),
-                String(companyId)
+                String(auth.userId),
+                String(auth.companyId)
             );
 
             sendCreated(res, rule, 'Commission rule cloned successfully');

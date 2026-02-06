@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import ShopifyOAuthService from '../../../../core/application/services/shopify/shopify-oauth.service';
 import ShopifyFulfillmentService from '../../../../core/application/services/shopify/shopify-fulfillment.service';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
@@ -36,27 +37,24 @@ export class ShopifyController {
    */
   static async install(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { shop } = req.query;
-      const companyId = req.user?.companyId;
 
       if (!shop || typeof shop !== 'string') {
         throw new ValidationError('Shop parameter is required');
       }
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Generate OAuth install URL
       const installUrl = ShopifyOAuthService.generateInstallUrl({
         shop,
-        companyId,
+        companyId: auth.companyId,
       });
 
       logger.info('Shopify install initiated', {
         shop,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, { installUrl }, 'Redirecting to Shopify for authorization');
@@ -114,13 +112,10 @@ export class ShopifyController {
    */
   static async listStores(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = req.user?.companyId;
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
-
-      const stores = await ShopifyOAuthService.getActiveStores(companyId);
+      const stores = await ShopifyOAuthService.getActiveStores(auth.companyId);
 
       sendSuccess(res, {
         count: stores.length,
@@ -151,12 +146,13 @@ export class ShopifyController {
    */
   static async getStore(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       const store = await ShopifyStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -208,12 +204,13 @@ export class ShopifyController {
    */
   static async getSyncLogs(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const store = await ShopifyStore.findOne({ _id: id, companyId });
+      const store = await ShopifyStore.findOne({ _id: id, companyId: auth.companyId });
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
@@ -246,13 +243,14 @@ export class ShopifyController {
    */
   static async disconnectStore(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const store = await ShopifyStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -265,8 +263,8 @@ export class ShopifyController {
       logger.info('Store disconnected', {
         storeId: id,
         shop: store.shopDomain,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Store disconnected successfully');
@@ -282,16 +280,13 @@ export class ShopifyController {
    */
   static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
       const { settings } = req.body;
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Verify ownership
-      const store = await ShopifyStore.findOne({ _id: id, companyId }) as any;
+      const store = await ShopifyStore.findOne({ _id: id, companyId: auth.companyId }) as any;
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -309,8 +304,8 @@ export class ShopifyController {
 
       logger.info('Store settings updated', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, { store }, 'Settings updated successfully');
@@ -327,13 +322,14 @@ export class ShopifyController {
    */
   static async testConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const store = await ShopifyStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -356,13 +352,14 @@ export class ShopifyController {
    */
   static async pauseSync(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const store = await ShopifyStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -374,8 +371,8 @@ export class ShopifyController {
       logger.info('Store sync paused', {
         storeId: id,
         shop: store.shopDomain,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Sync paused successfully');
@@ -391,13 +388,14 @@ export class ShopifyController {
    */
   static async resumeSync(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
 
       // Verify ownership
       const store = await ShopifyStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -409,8 +407,8 @@ export class ShopifyController {
       logger.info('Store sync resumed', {
         storeId: id,
         shop: store.shopDomain,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Sync resumed successfully');
@@ -426,16 +424,13 @@ export class ShopifyController {
    */
   static async createFulfillment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = req.user?.companyId;
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { storeId, orderId } = req.params;
       const { trackingNumber, trackingCompany, trackingUrl, notifyCustomer } = req.body;
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Validate store access
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -453,7 +448,7 @@ export class ShopifyController {
         storeId,
         orderId,
         fulfillmentId: fulfillment?.id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       sendCreated(res, { fulfillment }, 'Fulfillment created successfully');
@@ -469,16 +464,13 @@ export class ShopifyController {
    */
   static async updateFulfillmentTracking(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = req.user?.companyId;
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { storeId, orderId } = req.params;
       const { trackingNumber, trackingCompany, trackingUrl } = req.body;
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Validate store access
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -494,7 +486,7 @@ export class ShopifyController {
       logger.info('Shopify fulfillment tracking updated', {
         storeId,
         orderId,
-        companyId,
+        companyId: auth.companyId,
       });
 
       sendSuccess(res, { fulfillment: updatedFulfillment }, 'Tracking information updated successfully');
@@ -510,16 +502,13 @@ export class ShopifyController {
    */
   static async syncOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = req.user?.companyId;
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
       const { sinceDate } = req.body;
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Validate store access
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -532,7 +521,7 @@ export class ShopifyController {
 
       logger.info('Manual order sync initiated', {
         storeId,
-        companyId,
+        companyId: auth.companyId,
         sinceDate,
       });
 
@@ -561,15 +550,12 @@ export class ShopifyController {
    */
   static async syncPendingFulfillments(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = req.user?.companyId;
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id: storeId } = req.params;
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Validate store access
-      const store = await ShopifyStore.findOne({ _id: storeId, companyId });
+      const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
@@ -577,7 +563,7 @@ export class ShopifyController {
 
       logger.info('Pending fulfillments sync initiated', {
         storeId,
-        companyId,
+        companyId: auth.companyId,
       });
 
       // Sync pending fulfillments

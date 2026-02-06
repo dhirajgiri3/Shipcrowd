@@ -12,6 +12,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import WooCommerceOAuthService from '../../../../core/application/services/woocommerce/woocommerce-oauth.service';
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/woocommerce/woocommerce-order-sync.job';
@@ -36,16 +37,13 @@ export default class WooCommerceController {
    */
   static async installStore(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { storeUrl, consumerKey, consumerSecret, storeName } = req.body;
-      const companyId = req.user?.companyId;
 
       // Validation
       if (!storeUrl || !consumerKey || !consumerSecret) {
         throw new ValidationError('Store URL, consumer key, and consumer secret are required');
-      }
-
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       // Validate store URL format
@@ -56,7 +54,7 @@ export default class WooCommerceController {
 
       // Install store
       const store = await WooCommerceOAuthService.installStore({
-        companyId,
+        companyId: auth.companyId,
         storeUrl: normalizedUrl,
         consumerKey,
         consumerSecret,
@@ -65,8 +63,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce store installed via API', {
         storeId: store._id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendCreated(res, {
@@ -91,13 +89,10 @@ export default class WooCommerceController {
    */
   static async listStores(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = req.user?.companyId;
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
 
-      if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
-      }
-
-      const stores = await WooCommerceOAuthService.getActiveStores(companyId);
+      const stores = await WooCommerceOAuthService.getActiveStores(auth.companyId);
 
       sendSuccess(res, {
         count: stores.length,
@@ -124,16 +119,13 @@ export default class WooCommerceController {
    */
   static async getStoreDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
 
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       }).select('-consumerKey -consumerSecret');
 
       if (!store) {
@@ -174,16 +166,13 @@ export default class WooCommerceController {
    */
   static async testConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
 
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -246,17 +235,14 @@ export default class WooCommerceController {
    */
   static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
       const { settings, syncConfig } = req.body;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
 
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -300,17 +286,14 @@ export default class WooCommerceController {
    */
   static async disconnectStore(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
-      }
 
       // Verify ownership
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -322,8 +305,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce store disconnected via API', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'WooCommerce store disconnected successfully');
@@ -338,17 +321,14 @@ export default class WooCommerceController {
    */
   static async pauseSync(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
-      }
 
       // Verify ownership
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -360,8 +340,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce sync paused via API', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Sync paused successfully');
@@ -376,17 +356,14 @@ export default class WooCommerceController {
    */
   static async resumeSync(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
-      }
 
       // Verify ownership
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -398,8 +375,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce sync resumed via API', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Sync resumed successfully');
@@ -420,13 +397,10 @@ export default class WooCommerceController {
    */
   static async refreshCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
       const { consumerKey, consumerSecret } = req.body;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
 
       if (!consumerKey || !consumerSecret) {
         throw new ValidationError('Consumer key and consumer secret are required');
@@ -435,7 +409,7 @@ export default class WooCommerceController {
       // Verify ownership
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -447,8 +421,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce credentials refreshed via API', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Credentials updated successfully');
@@ -463,17 +437,14 @@ export default class WooCommerceController {
    */
   static async registerWebhooks(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
-      }
 
       // Verify ownership
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -487,8 +458,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce webhooks registered via API', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
         success: successCount,
         total: results.length,
       });
@@ -517,18 +488,15 @@ export default class WooCommerceController {
    */
   static async syncOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
       const { hoursBack } = req.body;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
-      }
 
       // Verify ownership
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -540,8 +508,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce manual order sync triggered via API', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
         jobId,
         hoursBack,
       });
@@ -578,22 +546,19 @@ export default class WooCommerceController {
    */
   static async updateOrderStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { storeId, orderId } = req.params;
       const { status, awbNumber, courierName, trackingUrl } = req.body;
-      const companyId = req.user?.companyId;
 
       if (!status) {
         throw new ValidationError('Status is required');
       }
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Verify store ownership
       const store = await WooCommerceStore.findOne({
         _id: storeId,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -620,8 +585,8 @@ export default class WooCommerceController {
         storeId,
         orderId,
         status,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, `Order status updated to ${status} in WooCommerce`);
@@ -636,22 +601,19 @@ export default class WooCommerceController {
    */
   static async addTrackingNote(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { storeId, orderId } = req.params;
       const { awbNumber, courierName, trackingUrl, customerNote } = req.body;
-      const companyId = req.user?.companyId;
 
       if (!awbNumber || !courierName) {
         throw new ValidationError('AWB number and courier name are required');
       }
 
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
-
       // Verify store ownership
       const store = await WooCommerceStore.findOne({
         _id: storeId,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -676,8 +638,8 @@ export default class WooCommerceController {
         storeId,
         orderId,
         awbNumber,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
       });
 
       sendSuccess(res, null, 'Tracking note added to order');
@@ -692,17 +654,14 @@ export default class WooCommerceController {
    */
   static async syncPendingUpdates(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
       const { id } = req.params;
-      const companyId = req.user?.companyId;
-
-      if (!companyId) {
-        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
-      }
 
       // Verify store ownership
       const store = await WooCommerceStore.findOne({
         _id: id,
-        companyId,
+        companyId: auth.companyId,
       });
 
       if (!store) {
@@ -717,8 +676,8 @@ export default class WooCommerceController {
 
       logger.info('WooCommerce pending updates synced via API', {
         storeId: id,
-        companyId,
-        userId: req.user?._id,
+        companyId: auth.companyId,
+        userId: auth.userId,
         syncedCount,
       });
 

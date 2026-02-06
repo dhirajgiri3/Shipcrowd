@@ -18,6 +18,7 @@
 
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import ReturnService from '@/core/application/services/logistics/return.service';
 import ReturnOrder, { ReturnReason } from '@/infrastructure/database/mongoose/models/logistics/returns/return-order.model';
 import logger from '@/shared/logger/winston.logger';
@@ -69,24 +70,19 @@ export default class ReturnController {
             // Validate request body
             const validatedData = CreateReturnRequestSchema.parse(req.body);
 
-            // Extract user info from auth middleware
-            const companyId = req.user?.companyId || req.body.companyId;
-            const customerId = req.user?._id;
-
-            if (!companyId) {
-                throw new AppError('Company ID is required', 'MISSING_COMPANY_ID', 400);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             // Create return request
             const returnOrder = await ReturnService.createReturnRequest({
                 ...validatedData,
-                companyId,
-                customerId,
+                companyId: auth.companyId,
+                customerId: auth.userId,
             });
 
             logger.info('Return request created via API', {
                 returnId: returnOrder.returnId,
-                userId: customerId,
+                userId: auth.userId,
             });
 
             sendCreated(res, {
@@ -135,7 +131,9 @@ export default class ReturnController {
      */
     static async listReturns(req: Request, res: Response): Promise<void> {
         try {
-            const companyId = req.user?.companyId || req.query.companyId as string;
+            const auth = guardChecks(req);
+            const companyId = (req.query.companyId as string) || auth.companyId;
+            if (!companyId) requireCompanyContext(auth);
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 20;
             const status = req.query.status as string;
@@ -204,7 +202,8 @@ export default class ReturnController {
             }
 
             // Authorization check (customer can only see their own returns)
-            if (req.user?.role === 'customer' && returnOrder.customerId?.toString() !== req.user._id) {
+            const auth = guardChecks(req);
+            if (req.user?.role === 'customer' && returnOrder.customerId?.toString() !== auth.userId) {
                 throw new AppError('You do not have permission to view this return', 'FORBIDDEN', 403);
             }
 
@@ -247,19 +246,15 @@ export default class ReturnController {
      */
     static async schedulePickup(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { returnId } = req.params;
             const validatedData = SchedulePickupSchema.parse(req.body);
-            const performedBy = req.user?._id;
-
-            if (!performedBy) {
-                throw new AppError('User authentication required', 'UNAUTHORIZED', 401);
-            }
 
             const returnOrder = await ReturnService.schedulePickup({
                 returnId,
                 scheduledDate: new Date(validatedData.scheduledDate),
                 courierId: validatedData.courierId,
-                performedBy,
+                performedBy: auth.userId,
             });
 
             sendSuccess(res, {
@@ -294,18 +289,14 @@ export default class ReturnController {
      */
     static async recordQCResult(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { returnId } = req.params;
             const validatedData = RecordQCResultSchema.parse(req.body);
-            const assignedTo = req.user?._id;
-
-            if (!assignedTo) {
-                throw new AppError('User authentication required', 'UNAUTHORIZED', 401);
-            }
 
             const returnOrder = await ReturnService.recordQCResult({
                 returnId,
                 ...validatedData,
-                assignedTo,
+                assignedTo: auth.userId,
             });
 
             sendSuccess(res, {
@@ -373,19 +364,15 @@ export default class ReturnController {
      */
     static async cancelReturn(req: Request, res: Response): Promise<void> {
         try {
+            const auth = guardChecks(req);
             const { returnId } = req.params;
             const { reason } = req.body;
-            const cancelledBy = req.user?._id;
-
-            if (!cancelledBy) {
-                throw new AppError('User authentication required', 'UNAUTHORIZED', 401);
-            }
 
             if (!reason || reason.trim().length === 0) {
                 throw new AppError('Cancellation reason is required', 'MISSING_REASON', 400);
             }
 
-            const returnOrder = await ReturnService.cancelReturn(returnId, cancelledBy, reason);
+            const returnOrder = await ReturnService.cancelReturn(returnId, auth.userId, reason);
 
             sendSuccess(res, {
                 returnId: returnOrder.returnId,
@@ -406,13 +393,11 @@ export default class ReturnController {
      */
     static async getReturnStats(req: Request, res: Response): Promise<void> {
         try {
-            const companyId = req.user?.companyId || req.query.companyId as string;
+            const auth = guardChecks(req);
+            const companyId = (req.query.companyId as string) || auth.companyId;
+            if (!companyId) requireCompanyContext(auth);
             const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
             const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-
-            if (!companyId) {
-                throw new AppError('Company ID is required', 'MISSING_COMPANY_ID', 400);
-            }
 
             const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
             const stats = await ReturnService.getReturnStats(companyId, dateRange);
