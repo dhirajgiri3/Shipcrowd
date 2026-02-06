@@ -67,15 +67,14 @@ class PromoCodeController {
                 throw new ValidationError('Code and orderAmount are required');
             }
 
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const result = await PromoCodeService.validatePromo(
                 code,
                 orderAmount,
-                req.user._id.toString(),
-                req.user.companyId.toString(),
+                auth.userId,
+                auth.companyId,
                 { carrier, serviceType }
             );
 
