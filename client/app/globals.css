@@ -78,50 +78,39 @@
    --primary-blue-deep: hsl(var(--brand-h), var(--brand-s), 45%);
    --primary-blue-light: hsl(var(--brand-h), var(--brand-s), 65%);
    --primary-blue-soft: hsl(var(--brand-h), var(--brand-s), 96%);
-   /* Very subtle background */
 
-   /* Neutrals (Slate-like) */
+   /* Neutrals */
    --white: hsl(0, 0%, 100%);
    --black: hsl(240, 10%, 4%);
-   /* Soft Black */
 
-   /* Light Mode Backgrounds - Premium Software Crisp */
-   --bg-primary: hsl(0, 0%, 100%);
-   /* Pure White Cards */
-   --bg-secondary: hsl(215, 25%, 97%);
-   /* Ice White Background (Cool Tint) */
-   --bg-tertiary: hsl(215, 20%, 95%);
-   /* Inputs/Subtle */
+   /* Light Mode Backgrounds - Flat & Clean */
+   --bg-primary: hsl(0, 0%, 100%);     /* Pure White */
+   --bg-secondary: hsl(220, 25%, 97%); /* Ice White / Surface */
+   --bg-tertiary: hsl(220, 20%, 95%);  /* Input/Area Background */
    --bg-elevated: hsl(0, 0%, 100%);
-   /* Dropdowns */
-   --bg-hover: hsl(215, 25%, 96%);
-   --bg-active: hsl(215, 25%, 94%);
+   --bg-hover: hsl(220, 25%, 96%);
+   --bg-active: hsl(220, 25%, 94%);
 
    /* Text Colors - High Contrast Professional */
    --text-primary: hsl(222, 30%, 15%);
-   /* Deep Obsidian Blue-Black */
    --text-secondary: hsl(220, 12%, 45%);
-   /* Cool Neutral Gray */
    --text-tertiary: hsl(220, 10%, 60%);
    --text-muted: hsl(220, 10%, 70%);
    --text-inverse: hsl(0, 0%, 100%);
 
-   /* Borders - Crisp & Subtle */
-   --border-subtle: hsl(220, 15%, 92%);
-   --border-default: hsl(220, 15%, 88%);
-   --border-strong: hsl(220, 15%, 80%);
+   /* Borders - Removed/Subtle for Flat Design */
+   --border-subtle: transparent; /* No borders by default */
+   --border-default: hsl(220, 15%, 94%); /* Very subtle separator if needed */
+   --border-strong: hsl(220, 15%, 85%);
    --border-focus: var(--primary-blue);
 
    /* Status Colors */
    --success: hsl(142, 76%, 36%);
    --success-bg: hsl(142, 70%, 96%);
-
    --warning: hsl(38, 92%, 50%);
    --warning-bg: hsl(48, 100%, 96%);
-
    --error: hsl(0, 84%, 60%);
    --error-bg: hsl(0, 100%, 97%);
-
    --info: hsl(217, 91%, 60%);
    --info-bg: hsl(217, 100%, 97%);
 
@@ -129,62 +118,48 @@
    --radius-sm: 0.25rem;
    --radius-md: 0.5rem;
    --radius-lg: 0.75rem;
-   /* Standard Card Radius (12px) */
    --radius-xl: 1rem;
-   /* Larger sections */
    --radius-2xl: 1.5rem;
    --radius-full: 9999px;
 
-   /* Shadows - Soft & Diffused for Light Mode */
-   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
-   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
-   --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
-   --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
-   --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 10px 10px -5px rgba(15, 23, 42, 0.03);
+   /* Shadows - STRIPPED for Flat Design */
+   --shadow-xs: none;
+   --shadow-sm: none;
+   --shadow-md: none;
+   --shadow-lg: none;
+   --shadow-xl: none;
 
-   /* Brand Shadows */
-   --shadow-brand-sm: 0 4px 14px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.2);
-   --shadow-brand: 0 8px 30px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.3);
+   /* Brand Shadows - STRIPPED */
+   --shadow-brand-sm: none;
+   --shadow-brand: none;
 
    /* Transitions */
    --duration-fast: 150ms;
    --duration-base: 200ms;
    --duration-slow: 300ms;
-
    --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-   /* Glass */
-   --glass-bg: rgba(255, 255, 255, 0.7);
-   --glass-border: rgba(255, 255, 255, 0.5);
-   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+   /* Glass - Subtle only */
+   --glass-bg: rgba(255, 255, 255, 0.9);
+   --glass-border: transparent;
+   --glass-shadow: none;
 
-   /* Z-Index Hierarchy (Smart Scale) */
+   /* Z-Index Hierarchy */
    --z-header-sticky: 50;
-   /* Sticky Top Nav */
    --z-search-focus: 51;
-   /* Search Input Highlighting */
    --z-dropdown-page: 45;
-   /* Page-level Dropdowns (Under Header) */
    --z-dropdown: 60;
-   /* Header Dropdowns (Above Header, Below Sidebar) */
    --z-popover: 65;
-   /* Popovers */
    --z-sidebar-desktop: 70;
-   /* Desktop Sidebar */
    --z-overlay: 90;
-   /* Mobile Backdrops */
    --z-sidebar-mobile: 100;
-   /* Mobile Sidebar */
-
    --z-sticky: 1020;
-   /* Legacy */
    --z-fixed: 1030;
    --z-modal-backdrop: 1040;
    --z-modal: 1050;
    --z-tooltip: 1070;
    --z-toast: 1100;
-   /* Toasts (Topmost) */
 }
 
 /* ========================================

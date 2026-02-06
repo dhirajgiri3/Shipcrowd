@@ -10,6 +10,7 @@ import csv from 'csv-parser';
 import { Readable } from 'stream';
 import { formatOperatingHours } from '../../../../shared/helpers/formatOperatingHours';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import {
   sendSuccess,
   sendPaginated,
@@ -91,16 +92,14 @@ const processOperatingHours = (operatingHours?: any) => {
 
 export const createWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
-
-    const companyId = req.params.companyId || req.user.companyId;
+    const auth = guardChecks(req, { requireCompany: false });
+    if (!req.params.companyId) requireCompanyContext(auth);
+    const companyId = req.params.companyId || auth.companyId;
     if (!companyId) {
       throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.params.companyId && req.user.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
+    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
       throw new AuthorizationError('You do not have permission to create warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
@@ -175,7 +174,7 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
       await Company.findByIdAndUpdate(companyId, { 'settings.defaultWarehouseId': warehouse._id });
     }
 
-    await createAuditLog(req.user._id, companyId, 'create', 'warehouse', String(warehouse._id), { message: 'Warehouse created' }, req);
+    await createAuditLog(auth.userId, companyId, 'create', 'warehouse', String(warehouse._id), { message: 'Warehouse created' }, req);
 
     // ✅ ONBOARDING HOOK: Update progress (unlocks badge likely via achievement service internally if configured)
     try {
@@ -183,7 +182,7 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
       // But updateStep checks achievements too.
       // Let's assume we mapped 'warehouse_created' badge to this action in business logic if needed.
       // For now, we update step if it exists, or just to trigger checks.
-      await OnboardingProgressService.updateStep(companyId, 'warehouseAdded', req.user._id);
+      await OnboardingProgressService.updateStep(companyId, 'warehouseAdded', auth.userId);
     } catch (err) {
       logger.error('Error updating onboarding progress for warehouse creation:', err);
     }
@@ -210,16 +209,14 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
 
 export const getWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
-
-    const companyId = req.params.companyId || req.user.companyId;
+    const auth = guardChecks(req, { requireCompany: false });
+    if (!req.params.companyId) requireCompanyContext(auth);
+    const companyId = req.params.companyId || auth.companyId;
     if (!companyId) {
       throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.params.companyId && req.user.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
+    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
       throw new AuthorizationError('You do not have permission to view warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
@@ -258,13 +255,8 @@ export const getWarehouses = async (req: Request, res: Response, next: NextFunct
 
 export const getWarehouseById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
-
-    if (!req.user.companyId) {
-      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const warehouseId = req.params.warehouseId;
     if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
@@ -273,7 +265,7 @@ export const getWarehouseById = async (req: Request, res: Response, next: NextFu
 
     const warehouse = await Warehouse.findOne({
       _id: warehouseId,
-      companyId: req.user.companyId,
+      companyId: auth.companyId,
       isDeleted: false,
     }).lean();
 
@@ -294,13 +286,8 @@ export const getWarehouseById = async (req: Request, res: Response, next: NextFu
 
 export const updateWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
-
-    if (!req.user.companyId) {
-      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const warehouseId = req.params.warehouseId;
     if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
@@ -318,7 +305,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
 
     const warehouse = await Warehouse.findOne({
       _id: warehouseId,
-      companyId: req.user.companyId,
+      companyId: auth.companyId,
       isDeleted: false,
     });
 
@@ -329,7 +316,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
     if (validation.data.name && validation.data.name !== warehouse.name) {
       const existingWarehouse = await Warehouse.findOne({
         name: validation.data.name,
-        companyId: req.user.companyId,
+        companyId: auth.companyId,
         _id: { $ne: warehouseId },
         isDeleted: false,
       }).lean();
@@ -342,14 +329,14 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
     if (validation.data.isDefault === true) {
       // First, unset all other warehouses as default
       const unsetResult = await Warehouse.updateMany(
-        { companyId: req.user.companyId, _id: { $ne: warehouseId }, isDeleted: false },
+        { companyId: auth.companyId, _id: { $ne: warehouseId }, isDeleted: false },
         { $set: { isDefault: false } }
       );
       logger.info(`[Warehouse] Set ${unsetResult.modifiedCount} other warehouses to isDefault: false`);
 
       // Update company's default warehouse ID
-      await Company.findByIdAndUpdate(req.user.companyId, { 'settings.defaultWarehouseId': warehouseId });
-      logger.info(`[Warehouse] Updated company ${req.user.companyId} default warehouse to ${warehouseId}`);
+      await Company.findByIdAndUpdate(auth.companyId, { 'settings.defaultWarehouseId': warehouseId });
+      logger.info(`[Warehouse] Updated company ${auth.companyId} default warehouse to ${warehouseId}`);
     } else if (validation.data.isDefault === false && warehouse.isDefault) {
       throw new ValidationError('Cannot unset the default warehouse. Set another warehouse as default first.');
     }
@@ -367,14 +354,14 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
 
     logger.info(`[Warehouse] Updated warehouse ${warehouseId}, isDefault: ${updatedWarehouse.isDefault}`);
 
-    await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', warehouseId, { message: 'Warehouse updated' }, req);
+    await createAuditLog(auth.userId, auth.companyId, 'update', 'warehouse', warehouseId, { message: 'Warehouse updated' }, req);
 
     // ✅ FIX: Fetch fresh data AFTER all updates are complete
     // Use a small delay to ensure MongoDB index updates are complete
     await new Promise(resolve => setTimeout(resolve, 50));
 
     const allWarehouses = await Warehouse.find({
-      companyId: req.user.companyId,
+      companyId: auth.companyId,
       isDeleted: false
     }).sort({ isDefault: -1, name: 1 }).lean();
 
@@ -397,13 +384,8 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
 
 export const deleteWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
-
-    if (!req.user.companyId) {
-      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const warehouseId = req.params.warehouseId;
     if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
@@ -414,7 +396,7 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
 
     const warehouse = await Warehouse.findOne({
       _id: warehouseId,
-      companyId: req.user.companyId,
+      companyId: auth.companyId,
       isDeleted: false,
     });
 
@@ -424,7 +406,7 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
 
     if (warehouse.isDefault) {
       const otherWarehousesCount = await Warehouse.countDocuments({
-        companyId: req.user.companyId,
+        companyId: auth.companyId,
         _id: { $ne: warehouseId },
         isDeleted: false,
       });
@@ -435,7 +417,7 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
 
       if (autoAssignDefault) {
         const anotherWarehouse = await Warehouse.findOne({
-          companyId: req.user.companyId,
+          companyId: auth.companyId,
           _id: { $ne: warehouseId },
           isDeleted: false,
         }).sort({ createdAt: -1 });
@@ -443,8 +425,8 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
         if (anotherWarehouse) {
           anotherWarehouse.isDefault = true;
           await anotherWarehouse.save();
-          await Company.findByIdAndUpdate(req.user.companyId, { 'settings.defaultWarehouseId': anotherWarehouse._id });
-          await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', String(anotherWarehouse._id), { message: 'Warehouse set as default automatically' }, req);
+          await Company.findByIdAndUpdate(auth.companyId, { 'settings.defaultWarehouseId': anotherWarehouse._id });
+          await createAuditLog(auth.userId, auth.companyId, 'update', 'warehouse', String(anotherWarehouse._id), { message: 'Warehouse set as default automatically' }, req);
         }
       } else {
         throw new ValidationError('Cannot delete the default warehouse. Set another warehouse as default first or add ?autoAssignDefault=true');
@@ -455,7 +437,7 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
     warehouse.isActive = false;
     await warehouse.save();
 
-    await createAuditLog(req.user._id, req.user.companyId, 'delete', 'warehouse', warehouseId, { message: 'Warehouse deleted' }, req);
+    await createAuditLog(auth.userId, auth.companyId, 'delete', 'warehouse', warehouseId, { message: 'Warehouse deleted' }, req);
 
     sendSuccess(res, null, 'Warehouse deleted successfully');
   } catch (error) {
@@ -466,16 +448,14 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
 
 export const importWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required');
-    }
-
-    const companyId = req.params.companyId || req.user.companyId;
+    const auth = guardChecks(req, { requireCompany: false });
+    if (!req.params.companyId) requireCompanyContext(auth);
+    const companyId = req.params.companyId || auth.companyId;
     if (!companyId) {
       throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (req.params.companyId && req.user.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
+    if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user)) {
       throw new AuthorizationError('You do not have permission to import warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
@@ -549,7 +529,7 @@ export const importWarehouses = async (req: Request, res: Response, next: NextFu
             await warehouse.save();
             warehouses.push(warehouse);
 
-            await createAuditLog(req.user!._id, companyId, 'create', 'warehouse', String(warehouse._id), { message: 'Warehouse imported from CSV' }, req);
+            await createAuditLog(auth.userId, companyId, 'create', 'warehouse', String(warehouse._id), { message: 'Warehouse imported from CSV' }, req);
           } catch (error) {
             errors.push({ row, error: error instanceof Error ? error.message : 'Unknown error' });
           }

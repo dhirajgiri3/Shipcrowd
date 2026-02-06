@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import { useEffect } from 'react';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 
@@ -21,8 +22,7 @@ export const OnboardingGuard = ({ children }: OnboardingGuardProps) => {
     useEffect(() => {
         // If user already has a company, redirect to dashboard
         if (!isLoading && user?.companyId) {
-            const redirectPath = ['admin', 'super_admin'].includes(user.role) ? '/admin' : '/seller';
-            router.push(redirectPath);
+            router.push(getDefaultRedirectForUser(user));
         }
     }, [user, isLoading, router]);
 

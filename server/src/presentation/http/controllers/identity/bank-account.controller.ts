@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Company } from '../../../../infrastructure/database/mongoose/models';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -30,6 +30,7 @@ export const getBankAccounts = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const company = await Company.findById(auth.companyId).select('billingInfo');
 
         if (!company) {
@@ -65,6 +66,7 @@ export const addBankAccount = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = bankAccountSchema.safeParse(req.body);
         if (!validation.success) {
@@ -154,6 +156,7 @@ export const deleteBankAccount = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         // We strictly don't allow deleting the primary KYC account easily without replacement
         // But for this API, we can clear the fields if requested
 

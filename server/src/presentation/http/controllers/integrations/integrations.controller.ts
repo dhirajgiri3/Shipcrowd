@@ -7,6 +7,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import IntegrationHealthService from '../../../../core/application/services/integrations/integration-health.service';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { AuthenticationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';

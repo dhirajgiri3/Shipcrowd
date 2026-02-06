@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import ReconciliationReport from '../../../../infrastructure/database/mongoose/models/finance/reports/reconciliation-report.model';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -16,6 +16,7 @@ export const listReconciliationReports = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         // Filters
         const page = parseInt(req.query.page as string) || 1;
@@ -62,6 +63,7 @@ export const getReconciliationReportDetails = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
 
         const report = await ReconciliationReport.findOne({

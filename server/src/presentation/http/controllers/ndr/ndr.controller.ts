@@ -13,6 +13,7 @@ import NDRDetectionService from '../../../../core/application/services/ndr/ndr-d
 import NDRClassificationService from '../../../../core/application/services/ndr/ndr-classification.service';
 import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import {
     listNDREventsQuerySchema,
     resolveNDRSchema,
@@ -30,10 +31,9 @@ export class NDRController {
      */
     static async listNDREvents(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate query parameters
             const validation = listNDREventsQuerySchema.safeParse(req.query);
@@ -95,8 +95,10 @@ export class NDRController {
      */
     static async getNDREvent(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const companyId = auth.companyId;
 
             const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId })
                 .populate('shipment order');
@@ -117,9 +119,11 @@ export class NDRController {
      */
     static async resolveNDR(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const userId = req.user?._id;
-            const companyId = req.user?.companyId;
+            const userId = auth.userId;
+            const companyId = auth.companyId;
 
             // Validate request body
             const validation = resolveNDRSchema.safeParse(req.body);
@@ -190,8 +194,10 @@ export class NDRController {
      */
     static async triggerWorkflow(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const companyId = auth.companyId;
 
             const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
             if (!ndrEvent) {
@@ -212,10 +218,9 @@ export class NDRController {
      */
     static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate query parameters
             const validation = getNDRAnalyticsQuerySchema.safeParse(req.query);
@@ -251,10 +256,9 @@ export class NDRController {
      */
     static async getByType(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const byType = await NDRAnalyticsService.getNDRByType(companyId);
 
@@ -270,10 +274,9 @@ export class NDRController {
      */
     static async getTrends(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate query parameters
             const validation = getNDRTrendsQuerySchema.safeParse(req.query);
@@ -310,10 +313,9 @@ export class NDRController {
      */
     static async getResolutionRates(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const rates = await NDRAnalyticsService.getResolutionRates(companyId);
 
@@ -329,10 +331,9 @@ export class NDRController {
      */
     static async getTopReasons(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate query parameters
             const validation = getTopNDRReasonsQuerySchema.safeParse(req.query);
@@ -363,10 +364,9 @@ export class NDRController {
      */
     static async getDashboard(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const dashboard = await NDRAnalyticsService.getDashboardSummary(companyId);
 
@@ -396,7 +396,9 @@ export class NDRController {
      */
     static async getWorkflows(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const workflows = await NDRWorkflow.find({
                 $or: [{ isDefault: true }, { company: companyId }],

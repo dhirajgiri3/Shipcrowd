@@ -60,6 +60,7 @@ export const GlobalErrorProvider: React.FC<{ children: React.ReactNode }> = ({ c
             // For non-critical errors, just show toast
             toast.error(appError.message, {
                 description: appError.code ? `Code: ${appError.code}` : undefined,
+                id: appError.message, // Deduplication
             });
         }
     }, []);
@@ -83,7 +84,7 @@ export const GlobalErrorProvider: React.FC<{ children: React.ReactNode }> = ({ c
             if (severity === ErrorSeverity.CRITICAL) {
                 setIsModalOpen(true);
             } else {
-                toast.error(message);
+                toast.error(message, { id: message });
             }
         };
 

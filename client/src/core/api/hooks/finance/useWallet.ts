@@ -12,6 +12,7 @@ import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { createOptimisticUpdateHandler } from '../../lib/optimistic-updates';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 // ==================== Import Centralized Types ====================
 import type {
@@ -24,16 +25,22 @@ import type {
 // ==================== Hooks ====================
 
 /**
- * Get wallet balance with short cache time
+ * Get wallet balance with short cache time.
+ * Only runs when user has company context (seller/staff with companyId, or admin with companyId).
  */
 export const useWalletBalance = (options?: Omit<UseQueryOptions<WalletBalance>, 'queryKey' | 'queryFn'>) => {
+    const { isInitialized, user } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
+    const { enabled: optionsEnabled, ...restOptions } = options ?? {};
+
     return useQuery<WalletBalance>({
         queryKey: queryKeys.wallet.balance(),
         queryFn: () => walletApi.getBalance(),
+        enabled: hasCompanyContext && (optionsEnabled !== false),
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         refetchOnWindowFocus: true,
-        ...options,
+        ...restOptions,
     });
 };
 

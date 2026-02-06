@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { clearCSRFToken, prefetchCSRFToken } from '@/src/core/api/http';
+import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import { useAuth } from '@/src/features/auth';
 import { Card } from '@/src/components/ui';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
@@ -38,9 +39,10 @@ function MagicLinkVerifyContent() {
                 setStatus('success');
                 showSuccessToast('Welcome back!');
 
-                // Redirect after short delay
+                const userData = await authApi.getMe();
+                const destination = getDefaultRedirectForUser(userData ?? undefined);
                 setTimeout(() => {
-                    router.push('/seller');
+                    router.push(destination);
                 }, 1500);
             } catch (error: any) {
                 setStatus('error');

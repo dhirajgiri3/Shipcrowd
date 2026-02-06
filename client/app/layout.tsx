@@ -125,26 +125,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className="light scroll-smooth" suppressHydrationWarning>
       <head>
         {/* Preconnect to external domains for faster loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var storageKey = 'Shipcrowd-theme';
-                  var savedTheme = localStorage.getItem(storageKey);
-                  var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                  var theme = savedTheme === 'system' || !savedTheme ? systemTheme : savedTheme;
-                  document.documentElement.classList.add(theme);
-                } catch (e) {}
-              })()
-            `,
-          }}
-        />
       </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
@@ -160,7 +145,13 @@ export default function RootLayout({
             </NetworkStatusProvider>
           </GlobalErrorProvider>
         </ErrorBoundary>
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          theme="system"
+          className="toaster-layer"
+        />
       </body>
     </html>
   );

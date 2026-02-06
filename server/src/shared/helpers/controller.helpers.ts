@@ -55,6 +55,18 @@ export const guardChecks = (
 };
 
 /**
+ * Require a valid company context for company-scoped endpoints.
+ * Call after guardChecks when the handler must have auth.companyId (e.g. seller dashboard, wallet, COD).
+ * Throws AuthenticationError if companyId is missing, ValidationError if invalid format.
+ */
+export const requireCompanyContext = (auth: { companyId: string }): void => {
+    if (!auth.companyId) {
+        throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+    }
+    validateObjectId(auth.companyId, 'company');
+};
+
+/**
  * Validate MongoDB ObjectId format
  */
 export const isValidObjectId = (id: string): boolean => {
@@ -206,6 +218,7 @@ export const validateStatusTransition = (
 
 export default {
     guardChecks,
+    requireCompanyContext,
     isValidObjectId,
     validateObjectId,
     handleZodError,

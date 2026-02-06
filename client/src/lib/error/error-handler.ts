@@ -63,6 +63,7 @@ export function handleApiError(error: unknown | ApiError, fallbackMessage = ERRO
         toast.error(apiError.message, {
             description: apiError.code ? `Error Code: ${apiError.code}` : undefined,
             duration: 5000,
+            id: apiError.message, // Auto-deduplication key
         });
         return;
     }
@@ -86,44 +87,46 @@ export function handleApiError(error: unknown | ApiError, fallbackMessage = ERRO
         // Handle validation errors
         if (errorData?.errors) {
             const firstError = Object.values(errorData.errors)[0]?.[0];
-            toast.error(firstError || fallbackMessage);
+            const msg = firstError || fallbackMessage;
+            toast.error(msg, { id: msg });
             return;
         }
 
         // Handle standard error messages
         const message = errorData?.message || (typeof errorData?.error === 'string' ? errorData?.error : errorData?.error?.message) || error.message || fallbackMessage;
-        toast.error(message);
+        toast.error(message, { id: message });
         return;
     }
 
     // 3. Handle Generic Errors
     if (error instanceof Error) {
-        toast.error(error.message || fallbackMessage);
+        const msg = error.message || fallbackMessage;
+        toast.error(msg, { id: msg });
         return;
     }
 
-    toast.error(fallbackMessage);
+    toast.error(fallbackMessage, { id: fallbackMessage });
 }
 
 /**
  * Show success toast
  */
 export function showSuccessToast(message: string) {
-    toast.success(message);
+    toast.success(message, { id: message });
 }
 
 /**
  * Show info toast
  */
 export function showInfoToast(message: string) {
-    toast.info(message);
+    toast.info(message, { id: message });
 }
 
 /**
  * Show warning toast
  */
 export function showWarningToast(message: string) {
-    toast.warning(message);
+    toast.warning(message, { id: message });
 }
 
 /**

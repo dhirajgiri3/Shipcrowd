@@ -7,7 +7,7 @@ import { authApi, companyApi } from '@/src/core/api';
 import { sessionApi } from '@/src/core/api/clients/auth/sessionApi';
 import type { Session } from '@/src/core/api/clients/auth/sessionApi';
 import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked, normalizeError } from '@/src/core/api/http';
-import { shouldSkipAuthInit } from '@/src/config/routes';
+import { shouldSkipAuthInit, isGuestOnlyRoute } from '@/src/config/routes';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 
@@ -257,6 +257,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [pathname, setupTokenRefresh]);
 
+  // Clear logout overlay once we've landed on login (or any guest page) after redirect.
+  // Keeps "Signing out..." visible until navigation completes, avoiding flash of empty dashboard.
+  useEffect(() => {
+    if (pathname && isGuestOnlyRoute(pathname)) {
+      setIsLoggingOut(false);
+    }
+  }, [pathname]);
+
   /**
    * Refresh user data from server
    * Can be called manually to sync user state
@@ -393,10 +401,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[Auth] Server logout failed:', logoutError);
       }
-      throw logoutError;
-    } finally {
       setIsLoggingOut(false);
+      throw logoutError;
     }
+    // Do NOT set isLoggingOut(false) here - keep overlay until we've navigated to login.
+    // useLogoutRedirect calls router.replace(redirectTo) after this; clearing too early
+    // causes the previous page to flash with empty/fallback data before redirect completes.
   }, []);
 
   /**

@@ -6,6 +6,8 @@ import { Brain, Zap, BarChart3, CheckCircle2, AlertCircle, Scan, Search, Map, Ac
 
 export default function AIShowcase() {
     const words = ["This", "Isn't", "Software.", "This", "Is", "Your", "AI", "Logistics", "Brain."]
+    const brainRef = useRef(null)
+    const isBrainInView = useInView(brainRef, { margin: "0px 0px -200px 0px" })
 
     return (
         <section className="bg-white text-gray-950 py-24 md:py-32 overflow-hidden relative border-y border-transparent">
@@ -59,7 +61,7 @@ export default function AIShowcase() {
                 </div>
 
                 {/* Central Visual: AI Brain Core - OPTIMIZED */}
-                <div className="mb-32 md:mb-40 flex justify-center">
+                <div ref={brainRef} className="mb-32 md:mb-40 flex justify-center">
                     <div className="relative w-[320px] h-[320px] md:w-[500px] md:h-[500px] flex items-center justify-center">
 
                         {/* 1. Circuit Pattern Background (Static) */}
@@ -75,7 +77,7 @@ export default function AIShowcase() {
 
                         {/* 2. Deep Pulsing Glow (Reduced blur) */}
                         <motion.div
-                            animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.25, 0.1] }}
+                            animate={isBrainInView ? { scale: [1, 1.2, 1], opacity: [0.1, 0.25, 0.1] } : {}}
                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                             className="absolute inset-0 bg-gradient-radial from-primaryBlue/30 via-cyan-400/15 to-transparent blur-[60px] rounded-full"
                             style={{ willChange: 'transform, opacity' }}
@@ -88,7 +90,7 @@ export default function AIShowcase() {
                                 className="absolute rounded-full border border-primaryBlue/20"
                                 style={{ width: '60%', height: '60%', willChange: 'transform, opacity' }}
                                 initial={{ scale: 1, opacity: 0.5 }}
-                                animate={{ scale: 2.5, opacity: 0 }}
+                                animate={isBrainInView ? { scale: 2.5, opacity: 0 } : {}}
                                 transition={{
                                     duration: 3,
                                     repeat: Infinity,
@@ -109,12 +111,12 @@ export default function AIShowcase() {
                                     border: `1px ${i === 1 ? 'dashed' : 'solid'} rgba(37,37,255,${0.15 - i * 0.03})`,
                                     willChange: 'transform'
                                 }}
-                                animate={{ rotate: i % 2 === 0 ? 360 : -360 }}
+                                animate={isBrainInView ? { rotate: i % 2 === 0 ? 360 : -360 } : {}}
                                 transition={{ duration: 30 + i * 10, repeat: Infinity, ease: "linear" }}
                             >
                                 <motion.div
                                     className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                                    animate={{ scale: [1, 1.2, 1] }}
+                                    animate={isBrainInView ? { scale: [1, 1.2, 1] } : {}}
                                     transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
                                 >
                                     <div className="w-2 h-2 bg-primaryBlue rounded-full shadow-[0_0_8px_rgba(37,37,255,0.6)]" />
@@ -141,7 +143,7 @@ export default function AIShowcase() {
                                         opacity: 0,
                                         scale: 0
                                     }}
-                                    animate={{
+                                    animate={isBrainInView ? {
                                         x: [
                                             Math.cos(angle * Math.PI / 180) * 180,
                                             Math.cos(angle * Math.PI / 180) * 90,
@@ -154,7 +156,7 @@ export default function AIShowcase() {
                                         ],
                                         opacity: [0, 1, 0],
                                         scale: [0, 1, 0.5]
-                                    }}
+                                    } : {}}
                                     transition={{
                                         duration: 3,
                                         repeat: Infinity,
@@ -174,7 +176,7 @@ export default function AIShowcase() {
                                 stroke="url(#blueGradient)"
                                 strokeWidth="0.15"
                                 initial={{ pathLength: 0 }}
-                                animate={{ pathLength: [0, 1, 0] }}
+                                animate={isBrainInView ? { pathLength: [0, 1, 0] } : {}}
                                 transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                             />
                             <motion.path
@@ -183,7 +185,7 @@ export default function AIShowcase() {
                                 stroke="url(#cyanGradient)"
                                 strokeWidth="0.15"
                                 initial={{ pathLength: 0 }}
-                                animate={{ pathLength: [0, 1, 0] }}
+                                animate={isBrainInView ? { pathLength: [0, 1, 0] } : {}}
                                 transition={{ duration: 6, repeat: Infinity, ease: "linear", delay: 1 }}
                             />
                             <defs>
@@ -211,7 +213,7 @@ export default function AIShowcase() {
                                     strokeDasharray="2 2"
                                     strokeOpacity="0.4"
                                     initial={{ pathLength: 0 }}
-                                    animate={{ pathLength: [0, 1, 1, 0] }}
+                                    animate={isBrainInView ? { pathLength: [0, 1, 1, 0] } : {}}
                                     transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.4 }}
                                 />
                             ))}
@@ -226,7 +228,7 @@ export default function AIShowcase() {
                             {/* Outer glow ring */}
                             <motion.div
                                 className="absolute -inset-3 rounded-full bg-gradient-to-r from-primaryBlue/15 via-cyan-400/10 to-primaryBlue/15 blur-lg"
-                                animate={{ rotate: 360 }}
+                                animate={isBrainInView ? { rotate: 360 } : {}}
                                 transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
                                 style={{ willChange: 'transform' }}
                             />
@@ -239,7 +241,7 @@ export default function AIShowcase() {
                                 {/* Activity rings (simplified) */}
                                 <motion.div
                                     className="absolute inset-10 rounded-full border border-primaryBlue/10"
-                                    animate={{ scale: [1, 1.03, 1] }}
+                                    animate={isBrainInView ? { scale: [1, 1.03, 1] } : {}}
                                     transition={{ duration: 2.5, repeat: Infinity }}
                                 />
                             </div>
@@ -258,7 +260,7 @@ export default function AIShowcase() {
                                     >
                                         <motion.div
                                             className="absolute w-full h-6 bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent"
-                                            animate={{ y: [-80, 80] }}
+                                            animate={isBrainInView ? { y: [-80, 80] } : {}}
                                             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                                             style={{ willChange: 'transform' }}
                                         />
@@ -268,7 +270,7 @@ export default function AIShowcase() {
                                 {/* Pulsing center dot */}
                                 <motion.div
                                     className="absolute w-2.5 h-2.5 bg-primaryBlue rounded-full shadow-[0_0_12px_rgba(37,37,255,0.7)]"
-                                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
+                                    animate={isBrainInView ? { scale: [1, 1.4, 1], opacity: [1, 0.7, 1] } : {}}
                                     transition={{ duration: 2, repeat: Infinity }}
                                 />
                             </div>
@@ -276,12 +278,12 @@ export default function AIShowcase() {
                             {/* Status Badge */}
                             <motion.div
                                 className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 whitespace-nowrap"
-                                animate={{ y: [0, -3, 0] }}
+                                animate={isBrainInView ? { y: [0, -3, 0] } : {}}
                                 transition={{ duration: 3, repeat: Infinity }}
                             >
                                 <motion.div
                                     className="w-2 h-2 bg-emerald-400 rounded-full"
-                                    animate={{ scale: [1, 1.2, 1] }}
+                                    animate={isBrainInView ? { scale: [1, 1.2, 1] } : {}}
                                     transition={{ duration: 1.2, repeat: Infinity }}
                                 />
                                 <span className="tracking-wider">NEURAL ENGINE ACTIVE</span>
@@ -298,10 +300,10 @@ export default function AIShowcase() {
                                 className="absolute bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-gray-100/50 z-20"
                                 style={{ x: stat.x, y: stat.y }}
                                 initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{
+                                animate={isBrainInView ? {
                                     opacity: [0, 1, 1, 0],
                                     scale: [0.9, 1, 1, 0.9],
-                                }}
+                                } : {}}
                                 transition={{
                                     duration: 5,
                                     repeat: Infinity,
@@ -325,7 +327,7 @@ export default function AIShowcase() {
                                 key={`node-${i}`}
                                 className="absolute w-full h-full"
                                 style={{ rotate: node.deg, willChange: 'transform' }}
-                                animate={{ rotate: node.deg + 360 }}
+                                animate={isBrainInView ? { rotate: node.deg + 360 } : {}}
                                 transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
                             >
                                 <div className="absolute top-4 left-1/2 -translate-x-1/2">
@@ -440,13 +442,17 @@ function Pillar({ index, title, description, icon: Icon, points, demo, align = "
 function CourierSelectionDemo() {
     // Dynamic reordering simulation
     const [sorted, setSorted] = useState(false)
+    const ref = useRef(null)
+    const inView = useInView(ref)
 
     useEffect(() => {
+        if (!inView) return; // Pause when not in view
+
         const timer = setInterval(() => {
             setSorted(prev => !prev)
         }, 3000)
         return () => clearInterval(timer)
-    }, [])
+    }, [inView])
 
     const couriers = [
         { name: "Blue Dart", score: 98, price: "₹45", time: "1 Day", badge: "Fastest" },
@@ -459,19 +465,19 @@ function CourierSelectionDemo() {
         : [...couriers].sort((a, b) => b.price.localeCompare(a.price)) // random shuffle simulation
 
     return (
-        <div className="relative z-10 w-full max-w-[400px] mx-auto">
+        <div ref={ref} className="relative z-10 w-full max-w-[400px] mx-auto">
             {/* Scanning Effect Overlay */}
             <motion.div
                 className="absolute -inset-4 bg-gradient-to-b from-primaryBlue/5 to-transparent z-0 rounded-xl"
                 initial={{ opacity: 0, height: "0%" }}
-                animate={{ opacity: [0, 1, 0], height: ["0%", "100%", "0%"], top: ["0%", "0%", "100%"] }}
+                animate={inView ? { opacity: [0, 1, 0], height: ["0%", "100%", "0%"], top: ["0%", "0%", "100%"] } : {}}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
             />
 
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
                     <motion.div
-                        animate={{ rotate: 360 }}
+                        animate={inView ? { rotate: 360 } : {}}
                         transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                     >
                         <Scan size={16} className="text-primaryBlue" />
@@ -551,8 +557,10 @@ function CourierSelectionDemo() {
 }
 
 function PredictiveDemo() {
+    const ref = useRef(null)
+    const inView = useInView(ref)
     return (
-        <div className="relative w-full h-[300px] flex items-center justify-center z-10">
+        <div ref={ref} className="relative w-full h-[300px] flex items-center justify-center z-10">
             {/* Timeline Wave */}
             <div className="absolute inset-0 flex items-center">
                 <svg className="w-full h-24 overflow-visible">
@@ -568,7 +576,7 @@ function PredictiveDemo() {
                         stroke="#2525FF"
                         strokeWidth="2"
                         initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
+                        animate={inView ? { pathLength: 1 } : {}}
                         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                     />
                 </svg>
@@ -593,7 +601,7 @@ function PredictiveDemo() {
                         {i === 2 && (
                             <motion.div
                                 className="absolute -inset-4 rounded-full border border-amber-500/50"
-                                animate={{ scale: [1, 2], opacity: [1, 0] }}
+                                animate={inView ? { scale: [1, 2], opacity: [1, 0] } : {}}
                                 transition={{ duration: 1.5, repeat: Infinity }}
                             />
                         )}
@@ -625,8 +633,10 @@ function PredictiveDemo() {
 }
 
 function ProblemSolvingDemo() {
+    const ref = useRef(null)
+    const inView = useInView(ref)
     return (
-        <div className="relative w-full h-[320px] z-10 flex flex-col justify-center items-center">
+        <div ref={ref} className="relative w-full h-[320px] z-10 flex flex-col justify-center items-center">
             {/* Background Grid */}
             <div className="absolute inset-0 opacity-30 rounded-xl bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -644,7 +654,7 @@ function ProblemSolvingDemo() {
                         stroke="#10B981"
                         strokeWidth="2"
                         initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
+                        animate={inView ? { pathLength: 1 } : {}}
                         transition={{ delay: 1, duration: 0.8 }}
                     />
                 </svg>
@@ -652,7 +662,7 @@ function ProblemSolvingDemo() {
                 {/* Main AI Node */}
                 <motion.div
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center border border-charcoal-100 z-10"
-                    animate={{ y: [0, -5, 0] }}
+                    animate={inView ? { y: [0, -5, 0] } : {}}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 >
                     <ShieldCheck size={32} className="text-primaryBlue" />

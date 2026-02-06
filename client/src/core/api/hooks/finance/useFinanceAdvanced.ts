@@ -3,11 +3,13 @@
  *
  * React Query hooks for advanced financial analytics and forecasting
  * Backend: GET /api/v1/finance/*
+ * Queries are only run when user has a company (avoids 500s for admin without company).
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../http';
 import { queryKeys } from '../../config/query-keys';
+import { useAuth } from '@/src/features/auth';
 
 export interface AvailableBalance {
     currentBalance: number;
@@ -63,8 +65,11 @@ export interface FinancialInsights {
 /**
  * Get available balance with breakdown
  * GET /finance/wallet/available-balance
+ * Only runs when user has a company context.
  */
 export const useAvailableBalance = (options?: any) => {
+    const { user, isInitialized } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
     return useQuery({
         queryKey: queryKeys.finance.availableBalance(),
         queryFn: async () => {
@@ -75,14 +80,18 @@ export const useAvailableBalance = (options?: any) => {
         },
         staleTime: 15 * 1000,
         ...options,
+        enabled: hasCompanyContext && (options?.enabled !== false),
     });
 };
 
 /**
  * Get cash flow forecast
  * GET /finance/wallet/cash-flow-forecast
+ * Only runs when user has a company context.
  */
 export const useCashFlowForecast = (options?: any) => {
+    const { user, isInitialized } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
     return useQuery<CashFlowForecast>({
         queryKey: queryKeys.finance.cashFlowForecast(),
         queryFn: async () => {
@@ -93,14 +102,18 @@ export const useCashFlowForecast = (options?: any) => {
         },
         staleTime: 60 * 1000,
         ...options,
+        enabled: hasCompanyContext && (options?.enabled !== false),
     });
 };
 
 /**
  * Get spending insights and recommendations
  * GET /finance/wallet/insights
+ * Only runs when user has a company context.
  */
 export const useFinancialInsights = (options?: any) => {
+    const { user, isInitialized } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
     return useQuery({
         queryKey: queryKeys.finance.insights(),
         queryFn: async () => {
@@ -111,6 +124,7 @@ export const useFinancialInsights = (options?: any) => {
         },
         staleTime: 300 * 1000, // 5 minutes
         ...options,
+        enabled: hasCompanyContext && (options?.enabled !== false),
     });
 };
 

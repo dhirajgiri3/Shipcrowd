@@ -28,7 +28,7 @@ import {
     markDamagedSchema,
     checkAvailabilitySchema,
 } from '@/shared/validation/warehouse.schemas';
-import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
 
 /**
  * Create inventory record
@@ -37,6 +37,7 @@ import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers
 async function createInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = createInventorySchema.safeParse(req.body);
         if (!validation.success) {
@@ -72,6 +73,7 @@ async function createInventory(req: Request, res: Response, next: NextFunction):
 async function getInventoryList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { warehouseId, sku, status, category, lowStockOnly } = req.query;
         const pagination = parsePagination(req.query);
@@ -140,6 +142,7 @@ async function getInventoryBySKU(req: Request, res: Response, next: NextFunction
 async function receiveStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = receiveStockSchema.safeParse(req.body);
         if (!validation.success) {
@@ -176,6 +179,7 @@ async function receiveStock(req: Request, res: Response, next: NextFunction): Pr
 async function adjustStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         validateObjectId(id, 'inventory');
@@ -273,6 +277,7 @@ async function releaseReservation(req: Request, res: Response, next: NextFunctio
 async function transferStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         validateObjectId(id, 'inventory');
@@ -312,6 +317,7 @@ async function transferStock(req: Request, res: Response, next: NextFunction): P
 async function markDamaged(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         validateObjectId(id, 'inventory');
@@ -356,6 +362,7 @@ async function markDamaged(req: Request, res: Response, next: NextFunction): Pro
 async function cycleCount(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         validateObjectId(id, 'inventory');
@@ -416,6 +423,7 @@ async function checkAvailability(req: Request, res: Response, next: NextFunction
 async function getLowStockAlerts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const alerts = await InventoryService.getLowStockAlerts(auth.companyId);
 
@@ -432,6 +440,7 @@ async function getLowStockAlerts(req: Request, res: Response, next: NextFunction
 async function getMovements(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { warehouseId, inventoryId, type, startDate, endDate } = req.query;
         const pagination = parsePagination(req.query);
@@ -496,6 +505,7 @@ async function getMovementSummary(req: Request, res: Response, next: NextFunctio
 async function importInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { warehouseId } = req.params;
         validateObjectId(warehouseId, 'warehouse');

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../http";
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 /**
  * Geographic Insights Hook
@@ -29,7 +30,11 @@ export interface GeographicInsightsData {
     totalOrders: number;
 }
 
-export function useGeographicInsights() {
+export function useGeographicInsights(options?: { enabled?: boolean }) {
+    const { isInitialized, user } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
+    const enabled = hasCompanyContext && (options?.enabled !== false);
+
     return useQuery({
         queryKey: ["geographic-insights"],
         queryFn: async () => {
@@ -38,7 +43,7 @@ export function useGeographicInsights() {
             );
             return data.data;
         },
-        // Cache for 5 minutes
+        enabled,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: false,

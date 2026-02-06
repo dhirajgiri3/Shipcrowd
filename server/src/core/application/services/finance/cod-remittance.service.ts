@@ -1304,3 +1304,5 @@ export class CODRemittanceService {
         }
     }
 }
+
+export default CODRemittanceService;

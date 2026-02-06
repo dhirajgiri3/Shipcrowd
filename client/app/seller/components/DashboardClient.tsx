@@ -1,6 +1,9 @@
 "use client";
 export const dynamic = "force-dynamic";
 
+import dynamicImport from 'next/dynamic';
+import { Skeleton } from '@/src/components/ui';
+
 import { useState, useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
@@ -19,15 +22,6 @@ import {
 import {
     UrgentActionsBar,
     PerformanceBar,
-    OrderTrendChart,
-    GeographicInsights,
-    SmartInsightsPanel,
-    CODSettlementTimeline,
-    CashFlowForecast,
-    RTOAnalytics,
-    RTODashboardCards,
-    ProfitabilityCard,
-    // Phase 2: Dashboard Optimization
     CriticalAlertsBanner,
     DeltaSinceLastVisit,
 } from '@/src/components/seller/dashboard';
@@ -39,6 +33,70 @@ import {
     OrderTrendChartSkeleton,
     UrgentActionsBarSkeleton
 } from '@/src/components/seller/dashboard';
+
+// --- DYNAMIC IMPORTS (Code Splitting) ---
+
+const OrderTrendChart = dynamicImport(
+    () => import('@/src/components/seller/dashboard/OrderTrendChart').then(mod => mod.OrderTrendChart),
+    {
+        loading: () => <OrderTrendChartSkeleton />,
+        ssr: false
+    }
+);
+
+const GeographicInsights = dynamicImport(
+    () => import('@/src/components/seller/dashboard/GeographicInsights').then(mod => mod.GeographicInsights),
+    {
+        loading: () => <Skeleton className="w-full h-[400px] rounded-2xl" />,
+        ssr: false
+    }
+);
+
+const SmartInsightsPanel = dynamicImport(
+    () => import('@/src/components/seller/dashboard/SmartInsightsPanel').then(mod => mod.SmartInsightsPanel),
+    {
+        loading: () => <Skeleton className="w-full h-[200px] rounded-xl" />
+    }
+);
+
+const CODSettlementTimeline = dynamicImport(
+    () => import('@/src/components/seller/dashboard/CODSettlementTimeline').then(mod => mod.CODSettlementTimeline),
+    {
+        loading: () => <Skeleton className="w-full h-[180px] rounded-2xl" />
+    }
+);
+
+const CashFlowForecast = dynamicImport(
+    () => import('@/src/components/seller/dashboard/CashFlowForecast').then(mod => mod.CashFlowForecast),
+    {
+        loading: () => <Skeleton className="w-full h-[250px] rounded-2xl" />
+    }
+);
+
+const RTOAnalytics = dynamicImport(
+    () => import('@/src/components/seller/dashboard/RTOAnalytics').then(mod => mod.RTOAnalytics),
+    {
+        loading: () => <Skeleton className="w-full h-[300px] rounded-2xl" />
+    }
+);
+
+const RTODashboardCards = dynamicImport(
+    () => import('@/src/components/seller/dashboard/RTODashboardCards').then(mod => mod.RTODashboardCards),
+    {
+        loading: () => <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-32 rounded-xl" />
+            <Skeleton className="h-32 rounded-xl" />
+            <Skeleton className="h-32 rounded-xl" />
+        </div>
+    }
+);
+
+const ProfitabilityCard = dynamicImport(
+    () => import('@/src/components/seller/dashboard/ProfitabilityCard').then(mod => mod.ProfitabilityCard),
+    {
+        loading: () => <Skeleton className="w-full h-[200px] rounded-2xl" />
+    }
+);
 
 // Real API Hooks
 import { useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';

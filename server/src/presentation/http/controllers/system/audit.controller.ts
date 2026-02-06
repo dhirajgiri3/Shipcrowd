@@ -3,6 +3,7 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -76,13 +77,11 @@ export const getMyAuditLogs = async (req: Request, res: Response, next: NextFunc
 
 export const getCompanyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
-
+    const auth = guardChecks(req);
     if (!isPlatformAdmin(req.user)) {
       throw new AuthorizationError('Insufficient permissions', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
+    requireCompanyContext(auth);
 
     const validation = getAuditLogsSchema.safeParse(req.query);
     if (!validation.success) {
@@ -95,7 +94,7 @@ export const getCompanyAuditLogs = async (req: Request, res: Response, next: Nex
 
     const { page, limit, startDate, endDate, action, resource, resourceId, userId, search } = validation.data;
 
-    const query: any = { companyId: req.user.companyId, isDeleted: false };
+    const query: any = { companyId: auth.companyId, isDeleted: false };
 
     if (startDate || endDate) {
       query.timestamp = {};

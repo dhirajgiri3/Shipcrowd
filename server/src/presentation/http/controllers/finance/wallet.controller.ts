@@ -3,9 +3,10 @@ import WalletService from '../../../../core/application/services/wallet/wallet.s
 import { WalletAnalyticsService } from '../../../../core/application/services/wallet';
 import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
-import { ValidationError, AppError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import {
     rechargeWalletSchema,
@@ -25,6 +26,7 @@ export const getBalance = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const balance = await WalletService.getBalance(auth.companyId);
 
@@ -46,6 +48,7 @@ export const getTransactionHistory = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
@@ -92,6 +95,7 @@ export const rechargeWallet = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = rechargeWalletSchema.safeParse(req.body);
         if (!validation.success) {
@@ -140,6 +144,7 @@ export const refundTransaction = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { transactionId } = req.params;
 
@@ -190,6 +195,7 @@ export const getWalletStats = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const dateRange = req.query.startDate && req.query.endDate
             ? {
@@ -218,6 +224,7 @@ export const updateLowBalanceThreshold = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = updateWalletThresholdSchema.safeParse(req.body);
         if (!validation.success) {
@@ -254,6 +261,7 @@ export const getSpendingInsights = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const insights = await WalletAnalyticsService.getSpendingInsights(auth.companyId);
 
@@ -275,6 +283,7 @@ export const getWalletTrends = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const trends = await WalletAnalyticsService.getWalletTrends(auth.companyId);
 
@@ -297,6 +306,7 @@ export const getAvailableBalance = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         // Get current wallet balance
         const walletBalanceData = await WalletService.getBalance(auth.companyId);
@@ -356,6 +366,7 @@ export const getCashFlowForecast = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const forecast = await WalletService.getCashFlowForecast(auth.companyId);
         sendSuccess(res, forecast, 'Cash flow forecast retrieved successfully');
     } catch (error) {
@@ -375,6 +386,7 @@ export const updateAutoRechargeSettings = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         // Zod validation
         const schema = z.object({
@@ -422,6 +434,7 @@ export const getAutoRechargeSettings = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const settings = await WalletService.getAutoRechargeSettings(auth.companyId);
 
         sendSuccess(res, settings, 'Auto-recharge settings retrieved');

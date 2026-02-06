@@ -1,13 +1,15 @@
+import dynamic from 'next/dynamic';
 import Hero from "@/src/features/landing/components/Hero";
-import TrustBar from "@/src/features/landing/components/TrustBar";
-import ProblemSection from "@/src/features/landing/components/ProblemSection";
-import AIShowcase from "@/src/features/landing/components/AIShowcase";
-import FeatureEcosystem from "@/src/features/landing/components/FeatureEcosystem";
-import HowItWorks from "@/src/features/landing/components/HowItWorks";
-import SocialProof from "@/src/features/landing/components/SocialProof";
-import Pricing from "@/src/features/landing/components/Pricing";
 import { Navigation, Footer } from "@/src/components/ui";
 
+// Dynamic imports for below-the-fold content
+const TrustBar = dynamic(() => import("@/src/features/landing/components/TrustBar"));
+const ProblemSection = dynamic(() => import("@/src/features/landing/components/ProblemSection"));
+const AIShowcase = dynamic(() => import("@/src/features/landing/components/AIShowcase"));
+const FeatureEcosystem = dynamic(() => import("@/src/features/landing/components/FeatureEcosystem"));
+const HowItWorks = dynamic(() => import("@/src/features/landing/components/HowItWorks"));
+const SocialProof = dynamic(() => import("@/src/features/landing/components/SocialProof"));
+const Pricing = dynamic(() => import("@/src/features/landing/components/Pricing"));
 
 export function LandingClient() {
     return (

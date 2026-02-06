@@ -13,6 +13,7 @@ import { AppError, ValidationError, NotFoundError, AuthenticationError, RateLimi
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import StorageService from '../../../../infrastructure/external/storage/storage.service';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import {
     listRTOEventsQuerySchema,
     triggerManualRTOSchema,
@@ -30,10 +31,9 @@ export class RTOController {
      */
     static async listRTOEvents(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate query parameters
             const validation = listRTOEventsQuerySchema.safeParse(req.query);
@@ -101,7 +101,9 @@ export class RTOController {
     static async getRTOEvent(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId })
                 .populate('shipment order warehouse ndrEvent');
@@ -122,8 +124,10 @@ export class RTOController {
      */
     static async triggerRTO(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const userId = req.user?._id;
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
+            const userId = auth.userId;
 
             // Validate request body
             const validation = triggerManualRTOSchema.safeParse(req.body);
@@ -176,7 +180,9 @@ export class RTOController {
     static async updateStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate request body
             const validation = updateRTOStatusSchema.safeParse(req.body);
@@ -218,7 +224,9 @@ export class RTOController {
     static async uploadQCPhotos(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
             if (!rtoEvent) {
@@ -256,7 +264,9 @@ export class RTOController {
         try {
             const { id } = req.params;
             const userId = req.user?._id;
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate request body
             const validation = recordQCResultSchema.safeParse(req.body);
@@ -293,10 +303,9 @@ export class RTOController {
      */
     static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate query parameters
             const validation = getRTOStatsQuerySchema.safeParse(req.query);
@@ -333,7 +342,9 @@ export class RTOController {
     static async suggestDisposition(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
             if (!rtoEvent) {
@@ -354,7 +365,9 @@ export class RTOController {
     static async executeDisposition(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const companyId = req.user?.companyId;
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
             const performedBy = req.user?._id?.toString() ?? 'system';
 
             const validation = executeDispositionSchema.safeParse(req.body);
@@ -386,10 +399,9 @@ export class RTOController {
      */
     static async getPendingRTOs(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Validate query parameters
             const validation = getPendingRTOsQuerySchema.safeParse(req.query);

@@ -21,6 +21,7 @@ import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import {
     guardChecks,
+    requireCompanyContext,
     validateObjectId,
     parsePagination,
 } from '../../../../shared/helpers/controller.helpers';
@@ -48,6 +49,7 @@ export const listDisputes = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { page, limit, skip } = parsePagination(req.query as any);
 
@@ -109,6 +111,7 @@ export const getDisputeDetails = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { disputeId } = req.params;
         validateObjectId(disputeId, 'dispute');
@@ -149,6 +152,7 @@ export const submitSellerEvidence = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { disputeId } = req.params;
         validateObjectId(disputeId, 'dispute');
@@ -360,6 +364,7 @@ export const getMetrics = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const dateRange = req.query.startDate && req.query.endDate
             ? {

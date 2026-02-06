@@ -6,7 +6,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -49,6 +49,7 @@ export const exportToCSV = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -56,7 +57,7 @@ export const exportToCSV = async (
         }
 
         const { dataType, filters } = validation.data;
-        const data = await fetchData(auth.companyId!, dataType, filters);
+        const data = await fetchData(auth.companyId, dataType, filters);
 
         if (data.length === 0) {
             throw new NotFoundError('No data to export', ErrorCode.BIZ_NOT_FOUND);
@@ -111,6 +112,7 @@ export const exportToExcel = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -118,7 +120,7 @@ export const exportToExcel = async (
         }
 
         const { dataType, filters } = validation.data;
-        const data = await fetchData(auth.companyId!, dataType, filters);
+        const data = await fetchData(auth.companyId, dataType, filters);
 
         if (data.length === 0) {
             throw new NotFoundError('No data to export', ErrorCode.BIZ_NOT_FOUND);
@@ -175,6 +177,7 @@ export const exportToPDF = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -182,7 +185,7 @@ export const exportToPDF = async (
         }
 
         const { dataType, filters } = validation.data;
-        const data = await fetchData(auth.companyId!, dataType, filters);
+        const data = await fetchData(auth.companyId, dataType, filters);
 
         if (data.length === 0) {
             throw new NotFoundError('No data to export', ErrorCode.BIZ_NOT_FOUND);

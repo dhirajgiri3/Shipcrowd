@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { clearCSRFToken, prefetchCSRFToken } from '@/src/core/api/http';
+import { getLoginRedirect } from '@/src/config/redirect';
 import { toast } from 'sonner';
 import { showSuccessToast } from '@/src/lib/error';
 
@@ -56,8 +57,7 @@ export function useOAuthCallback() {
 
                 // Small delay for toast visibility, then redirect
                 setTimeout(() => {
-                    // ✅ Use fresh userData, not stale user from closure
-                    const destination = userData?.companyId ? '/seller' : '/onboarding';
+                    const destination = getLoginRedirect(userData ?? undefined, searchParams);
                     router.push(destination);
                 }, 800);
             } catch (err) {

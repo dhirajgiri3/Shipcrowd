@@ -2,7 +2,7 @@
 
 import { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Toaster } from 'sonner';
+
 import { useState } from 'react';
 import { QUERY_CONFIG } from '../api/config/query-client';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -40,12 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             }}
         >
             {children}
-            <Toaster
-                position="top-right"
-                richColors
-                closeButton
-                theme="dark"
-            />
+
             {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
         </PersistQueryClientProvider>
     );

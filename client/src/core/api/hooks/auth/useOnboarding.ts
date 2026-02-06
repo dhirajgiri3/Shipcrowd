@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import { companyApi, CreateCompanyData } from '@/src/core/api';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { isValidGSTIN, isValidPAN, isValidPincode } from '@/src/lib/utils';
@@ -106,7 +107,7 @@ export function useOnboarding() {
             if (!isAuthenticated) {
                 router.push("/login");
             } else if (user?.companyId) {
-                router.push("/seller");
+                router.push(getDefaultRedirectForUser(user));
             } else if (step === 1 && user?.isEmailVerified) {
                 setStep(2);
             }

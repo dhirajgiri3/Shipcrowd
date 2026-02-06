@@ -1,8 +1,13 @@
 import mongoose from 'mongoose';
 import Role from '../../mongoose/models/iam/role.model';
 import logger from '../../../../shared/logger/winston.logger';
+import dotenv from 'dotenv';
+import path from 'path';
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shipcrowd';
+// Fix: Load .env from project root
+dotenv.config({ path: path.resolve(__dirname, '../../../../../.env') });
+
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd';
 
 /**
  * Default Roles Seeder - V5 RBAC

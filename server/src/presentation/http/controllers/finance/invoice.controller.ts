@@ -10,6 +10,7 @@ import Company from '../../../../infrastructure/database/mongoose/models/organiz
 import { sendEmail } from '../../../../core/application/services/communication/email.service';
 import { formatFinancialPeriod } from '../../../../shared/utils/date-format.util';
 import { ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -34,16 +35,15 @@ class InvoiceController {
      */
     async createInvoice(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+
             const {
                 shipmentIds,
                 billingPeriod,
                 sellerGSTIN,
                 buyerGSTIN,
             } = req.body;
-
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
 
             if (!shipmentIds || !Array.isArray(shipmentIds) || shipmentIds.length === 0) {
                 throw new ValidationError('At least one shipment ID required');
@@ -58,7 +58,7 @@ class InvoiceController {
             }
 
             const invoice = await InvoiceService.createInvoice({
-                companyId: req.user.companyId.toString(),
+                companyId: auth.companyId.toString(),
                 shipmentIds,
                 billingPeriod: {
                     startDate: new Date(billingPeriod.startDate),
@@ -66,7 +66,7 @@ class InvoiceController {
                 },
                 sellerGSTIN,
                 buyerGSTIN,
-                createdBy: req.user._id.toString(),
+                createdBy: auth.userId.toString(),
             });
 
             res.status(201).json({
@@ -85,9 +85,8 @@ class InvoiceController {
      */
     async listInvoices(req: Request, res: Response, next: NextFunction) {
         try {
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const filters = {
                 status: req.query.status as string,
@@ -98,7 +97,7 @@ class InvoiceController {
             };
 
             const result = await InvoiceService.listInvoices(
-                req.user.companyId.toString(),
+                auth.companyId.toString(),
                 filters
             );
 
@@ -307,9 +306,8 @@ class InvoiceController {
         try {
             const { invoiceId, reason, reasonDescription, adjustmentPercentage, referenceDocument } = req.body;
 
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             if (!invoiceId) {
                 throw new ValidationError('Invoice ID required');
@@ -324,13 +322,13 @@ class InvoiceController {
             }
 
             const creditNote = await CreditNoteService.createCreditNote({
-                companyId: req.user.companyId.toString(),
+                companyId: auth.companyId.toString(),
                 invoiceId,
                 reason,
                 reasonDescription,
                 adjustmentPercentage,
                 referenceDocument,
-                createdBy: req.user._id.toString(),
+                createdBy: auth.userId.toString(),
             });
 
             logger.info(`Credit note created: ${creditNote.creditNoteNumber}`, {
@@ -355,9 +353,8 @@ class InvoiceController {
      */
     async getGSTSummary(req: Request, res: Response, next: NextFunction) {
         try {
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const month = req.query.month as string;
             if (!month || !/^\d{6}$/.test(month)) {
@@ -365,7 +362,7 @@ class InvoiceController {
             }
 
             const summary = await InvoiceService.getGSTSummary(
-                req.user.companyId.toString(),
+                auth.companyId.toString(),
                 month
             );
 
@@ -384,9 +381,8 @@ class InvoiceController {
      */
     async exportGSTR(req: Request, res: Response, next: NextFunction) {
         try {
-            if (!req.user?.companyId) {
-                throw new ValidationError('Company ID required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
 
             const month = req.query.month as string;
             if (!month || !/^\d{6}$/.test(month)) {

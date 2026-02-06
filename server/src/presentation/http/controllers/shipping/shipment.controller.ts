@@ -7,6 +7,7 @@ import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
 import {
     guardChecks,
+    requireCompanyContext,
     validateObjectId,
     parsePagination,
 } from '../../../../shared/helpers/controller.helpers';
@@ -32,6 +33,7 @@ import { auth } from '../../middleware';
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = createShipmentSchema.safeParse(req.body);
         if (!validation.success) {
@@ -236,6 +238,7 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
 export const getShipmentById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { shipmentId } = req.params;
         validateObjectId(shipmentId, 'shipment');
@@ -263,6 +266,7 @@ export const getShipmentById = async (req: Request, res: Response, next: NextFun
 export const trackShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { trackingNumber } = req.params;
 
@@ -309,6 +313,7 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
 export const updateShipmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { shipmentId } = req.params;
         validateObjectId(shipmentId, 'shipment');
@@ -366,6 +371,7 @@ export const updateShipmentStatus = async (req: Request, res: Response, next: Ne
 export const deleteShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { shipmentId } = req.params;
         validateObjectId(shipmentId, 'shipment');
@@ -464,6 +470,7 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
 export const recommendCourier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = recommendCourierSchema.safeParse(req.body);
         if (!validation.success) {

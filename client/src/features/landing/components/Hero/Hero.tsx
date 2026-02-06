@@ -34,7 +34,7 @@ const smallChartData = [
     { value: 10 }, { value: 25 }, { value: 15 }, { value: 35 }, { value: 20 }, { value: 45 }, { value: 30 }
 ]
 
-const GridBackground = () => {
+const GridBackground = ({ inView }: { inView: boolean }) => {
     return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none bg-[#F8FAFC]">
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#E2E8F0_1px,transparent_1px),linear-gradient(to_bottom,#E2E8F0_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40" />
@@ -42,7 +42,7 @@ const GridBackground = () => {
 
             {/* Subtle Animated Highlight */}
             <motion.div
-                animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.1, 1] }}
+                animate={inView ? { opacity: [0.3, 0.6, 0.3], scale: [1, 1.1, 1] } : {}}
                 transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primaryBlue/5 rounded-full blur-[100px]"
             />
@@ -52,7 +52,14 @@ const GridBackground = () => {
 
 export default function Hero() {
     const { scrollY } = useScroll()
-    const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
+    const [ref, inView] = useInView({ triggerOnce: false, threshold: 0 })
+    const [hasAnimated, setHasAnimated] = useState(false)
+
+    useEffect(() => {
+        if (inView && !hasAnimated) {
+            setHasAnimated(true)
+        }
+    }, [inView, hasAnimated])
 
     // Mouse parallax effect
     const mouseX = useMotionValue(0)
@@ -63,6 +70,8 @@ export default function Hero() {
     const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-3, 3]), { stiffness: 150, damping: 20 })
 
     useEffect(() => {
+        if (!inView) return;
+
         const handleMouseMove = (e: MouseEvent) => {
             const { clientX, clientY } = e
             const { innerWidth, innerHeight } = window
@@ -77,7 +86,7 @@ export default function Hero() {
 
         window.addEventListener('mousemove', handleMouseMove)
         return () => window.removeEventListener('mousemove', handleMouseMove)
-    }, [mouseX, mouseY])
+    }, [mouseX, mouseY, inView])
 
     // Enhanced parallax for scroll
     const dashboardY = useTransform(scrollY, [0, 600], [0, 100])
@@ -88,7 +97,7 @@ export default function Hero() {
     return (
         <section ref={ref} className="relative min-h-screen flex items-center pt-[72px] overflow-hidden bg-[#F8FAFC]">
             {/* Premium Animated Grid Background */}
-            <GridBackground />
+            <GridBackground inView={inView} />
 
             <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
                 <div className="grid lg:grid-cols-[40%_60%] gap-12 items-center">
@@ -430,7 +439,7 @@ export default function Hero() {
                                                     <div>
                                                         <div className="text-[10px] text-slate-500 font-medium">Orders today</div>
                                                         <div className="text-2xl font-bold text-slate-900">
-                                                            {inView && <CountUp end={1247} duration={2} separator="," />}
+                                                            {hasAnimated && <CountUp end={1247} duration={2} separator="," />}
                                                         </div>
                                                     </div>
                                                     <div className="w-7 h-7 rounded-lg bg-emerald/10 flex items-center justify-center text-emerald">
@@ -468,7 +477,7 @@ export default function Hero() {
                                                         <div>
                                                             <div className="text-[10px] text-slate-500 font-medium">Settlement</div>
                                                             <div className="text-2xl font-bold text-slate-900">
-                                                                ₹{inView && <CountUp end={2675} duration={2.2} separator="," />}
+                                                                ₹{hasAnimated && <CountUp end={2675} duration={2.2} separator="," />}
                                                             </div>
                                                         </div>
                                                         <div className="w-7 h-7 rounded-lg bg-primaryBlue/10 flex items-center justify-center text-primaryBlue">
@@ -508,7 +517,7 @@ export default function Hero() {
                                                     <div className="text-[10px] font-bold text-emerald">+5%</div>
                                                 </div>
                                                 <div className="text-2xl font-bold text-slate-900 mb-2">
-                                                    {inView && <CountUp end={279} duration={2.4} />}
+                                                    {hasAnimated && <CountUp end={279} duration={2.4} />}
                                                 </div>
                                                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                                     <motion.div
@@ -540,7 +549,7 @@ export default function Hero() {
                                 </div>
                                 <div>
                                     <div className="text-2xl font-bold text-slate-900 leading-none mb-0.5">
-                                        ₹{inView && <CountUp end={2.4} decimals={1} duration={2.5} />}L
+                                        ₹{hasAnimated && <CountUp end={2.4} decimals={1} duration={2.5} />}L
                                     </div>
                                     <div className="text-[10px] text-slate-500 font-medium">Saved This Month</div>
                                 </div>
@@ -557,7 +566,7 @@ export default function Hero() {
                             >
                                 <div className="flex items-center justify-between gap-3 mb-1">
                                     <div className="text-2xl font-bold text-slate-900 leading-none">
-                                        {inView && <CountUp end={1247} duration={2.6} separator="," />}
+                                        {hasAnimated && <CountUp end={1247} duration={2.6} separator="," />}
                                     </div>
                                     <div className="px-1.5 py-0.5 bg-emerald/10 text-emerald text-[9px] font-bold rounded-md flex items-center gap-1">
                                         <TrendingUp size={10} strokeWidth={3} /> Top
@@ -580,7 +589,7 @@ export default function Hero() {
                                 </div>
                                 <div>
                                     <div className="text-2xl font-bold text-slate-900 leading-none mb-0.5">
-                                        {inView && <CountUp end={15} duration={2.7} />}+
+                                        {hasAnimated && <CountUp end={15} duration={2.7} />}+
                                     </div>
                                     <div className="text-[10px] text-slate-500 font-medium">Couriers Connected</div>
                                 </div>

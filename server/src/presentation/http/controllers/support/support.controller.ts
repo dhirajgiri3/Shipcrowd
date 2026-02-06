@@ -3,6 +3,7 @@ import { z } from 'zod';
 import SupportTicketService from '@/core/application/services/crm/support/SupportTicketService';
 import logger from '@/shared/logger/winston.logger';
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import {
     sendSuccess,
     sendCreated,
@@ -38,14 +39,8 @@ const service = SupportTicketService.getInstance();
 
 export const createTicket = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required');
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = createTicketSchema.safeParse(req.body);
         if (!validation.success) {
@@ -53,12 +48,12 @@ export const createTicket = async (req: Request, res: Response, next: NextFuncti
         }
 
         const ticket = await service.createTicket({
-            companyId: companyId.toString(),
-            userId: req.user._id.toString(),
+            companyId: auth.companyId.toString(),
+            userId: auth.userId.toString(),
             ...validation.data
         });
 
-        await createAuditLog(req.user._id, companyId, 'create', 'support_ticket', ticket.ticketId, { message: 'Support ticket created' }, req);
+        await createAuditLog(auth.userId, auth.companyId, 'create', 'support_ticket', ticket.ticketId, { message: 'Support ticket created' }, req);
 
         sendCreated(res, ticket, 'Support ticket created successfully');
     } catch (error) {
@@ -69,15 +64,14 @@ export const createTicket = async (req: Request, res: Response, next: NextFuncti
 
 export const getTickets = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
 
         const result = await service.getTickets({
-            companyId: req.user.companyId.toString(),
+            companyId: auth.companyId.toString(),
             page,
             limit,
             status: req.query.status as string,
@@ -106,12 +100,11 @@ export const getTickets = async (req: Request, res: Response, next: NextFunction
 
 export const getTicketById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
-        const ticket = await service.getTicketById(id, req.user.companyId.toString());
+        const ticket = await service.getTicketById(id, auth.companyId.toString());
 
         sendSuccess(res, ticket, 'Ticket retrieved successfully');
     } catch (error) {
@@ -122,9 +115,8 @@ export const getTicketById = async (req: Request, res: Response, next: NextFunct
 
 export const updateTicket = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         const validation = updateTicketSchema.safeParse(req.body);
@@ -134,12 +126,12 @@ export const updateTicket = async (req: Request, res: Response, next: NextFuncti
 
         const ticket = await service.updateTicket(
             id,
-            req.user.companyId.toString(),
+            auth.companyId.toString(),
             validation.data,
-            req.user._id.toString()
+            auth.userId.toString()
         );
 
-        await createAuditLog(req.user._id, req.user.companyId, 'update', 'support_ticket', ticket.ticketId, { message: 'Support ticket updated', updates: validation.data }, req);
+        await createAuditLog(auth.userId, auth.companyId, 'update', 'support_ticket', ticket.ticketId, { message: 'Support ticket updated', updates: validation.data }, req);
 
         sendSuccess(res, ticket, 'Ticket updated successfully');
     } catch (error) {
@@ -150,9 +142,8 @@ export const updateTicket = async (req: Request, res: Response, next: NextFuncti
 
 export const addNote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
         const validation = addNoteSchema.safeParse(req.body);
@@ -162,9 +153,9 @@ export const addNote = async (req: Request, res: Response, next: NextFunction): 
 
         const ticket = await service.addNote(
             id,
-            req.user.companyId.toString(),
+            auth.companyId.toString(),
             validation.data.message,
-            req.user._id.toString(),
+            auth.userId.toString(),
             validation.data.type as 'internal_note' | 'reply'
         );
 
@@ -177,11 +168,10 @@ export const addNote = async (req: Request, res: Response, next: NextFunction): 
 
 export const getMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required');
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
-        const metrics = await service.getSLAMetrics(req.user.companyId.toString());
+        const metrics = await service.getSLAMetrics(auth.companyId.toString());
 
         sendSuccess(res, metrics, 'SLA metrics retrieved successfully');
     } catch (error) {

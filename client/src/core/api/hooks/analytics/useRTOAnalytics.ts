@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../http";
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 /**
  * RTO Analytics Hook
@@ -49,7 +50,11 @@ export interface RTOAnalyticsData {
     recommendations: RTORecommendation[];
 }
 
-export function useRTOAnalytics() {
+export function useRTOAnalytics(options?: { enabled?: boolean }) {
+    const { isInitialized, user } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
+    const enabled = hasCompanyContext && (options?.enabled !== false);
+
     return useQuery({
         queryKey: ["rto-analytics"],
         queryFn: async () => {
@@ -58,7 +63,7 @@ export function useRTOAnalytics() {
             );
             return data.data;
         },
-        // Cache for 5 minutes (RTO data doesn't change rapidly)
+        enabled,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: false,

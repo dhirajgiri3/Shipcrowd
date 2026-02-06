@@ -5,219 +5,129 @@ import { useInView } from "react-intersection-observer"
 import { Network, BarChart2, Map, Package, Layers, CreditCard, Bell, Printer, Puzzle, LayoutDashboard, Truck, ArrowRight, Zap } from "lucide-react"
 import Image from "next/image"
 
+// Redesigned: Flat & Clean Aesthetic
+function FeatureShowcase({ feature, index, inView }: any) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: index * 0.05, duration: 0.6 }}
+            className="group flex flex-col p-8 rounded-2xl bg-secondary hover:bg-white transition-colors duration-200"
+        >
+            {/* Context Icon */}
+            <div className="mb-6 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primaryBlue/5 text-primaryBlue group-hover:bg-primaryBlue group-hover:text-white transition-colors duration-200">
+                <feature.icon size={24} strokeWidth={1.5} />
+            </div>
+
+            {/* Typography Content */}
+            <div className="flex-1 space-y-4">
+                <h3 className="text-xl font-bold text-charcoal-900 tracking-tight">
+                    {feature.title}
+                </h3>
+                <p className="text-sm text-charcoal-600 leading-relaxed">
+                    {feature.description}
+                </p>
+            </div>
+
+            {/* Metric/Footer */}
+            <div className="mt-8 pt-6 border-t border-charcoal-100 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-primaryBlue tabular-nums tracking-tight">
+                    {feature.stats.count}
+                </span>
+                <span className="text-xs font-semibold text-charcoal-400 uppercase tracking-wide">
+                    {feature.stats.label}
+                </span>
+            </div>
+        </motion.div>
+    )
+}
+
 export default function FeatureEcosystem() {
     const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true })
 
     const features = [
         {
             title: "Multi-Courier Network",
-            description: "Access 15+ courier partners instantly through a single unified platform. No individual negotiations, no separate contracts—just seamless integration with India's top logistics providers.",
+            description: "Access 15+ courier partners instantly via a unified API. No separate contracts required.",
             icon: Network,
-            image: "/images/feature_network.png",
-            stats: { count: "15+", label: "Courier Partners" }
+            stats: { count: "15+", label: "Partners" }
         },
         {
-            title: "AI Rate Comparison",
-            description: "Our intelligent engine analyzes rates across all carriers in real-time, automatically selecting the most cost-effective option for each shipment while maintaining delivery speed.",
+            title: "AI Rate Optimization",
+            description: "Intelligent routing engine selects the best carrier for every shipment based on SLA and cost.",
             icon: BarChart2,
-            image: "/images/feature_rate_comparison.png",
-            stats: { count: "25%", label: "Average Savings" }
+            stats: { count: "25%", label: "Savings" }
         },
         {
             title: "Real-Time Tracking",
-            description: "Give your customers complete visibility with branded tracking pages that update in real-time. Reduce WISMO calls by 70% with proactive status updates.",
+            description: "Proactive status updates via SMS & Email. Branded tracking pages for superior CX.",
             icon: Map,
-            image: "/images/feature_tracking.png",
-            stats: { count: "70%", label: "Fewer Support Tickets" }
+            stats: { count: "70%", label: "Fewer Calls" }
         },
         {
-            title: "Warehouse Automation",
-            description: "Streamline your fulfillment operations with intelligent picking, packing, and label generation. Reduce processing time from hours to minutes.",
+            title: "Warehouse Logic",
+            description: "Automated label generation and manifest creation. Streamline picking and packing.",
             icon: Package,
-            image: "/images/feature_warehouse.png",
-            stats: { count: "5x", label: "Faster Processing" }
+            stats: { count: "5x", label: "Efficient" }
         },
         {
             title: "Bulk Operations",
-            description: "Process hundreds of orders in seconds with our powerful CSV upload and bulk processing tools. Perfect for flash sales and high-volume periods.",
+            description: "CSV upload and bulk processing for high-volume days. Handle thousands of orders in minutes.",
             icon: Layers,
-            image: "/images/feature_bulk_ops.png",
-            stats: { count: "500+", label: "Orders/Minute" }
+            stats: { count: "500+", label: "Orders/Min" }
         },
         {
-            title: "COD Management",
-            description: "Automated COD remittance tracking and reconciliation with real-time updates. Never miss a payment cycle or lose track of your cash flow.",
+            title: "COD Reconciliation",
+            description: "Automated payment tracking and remittance cycles. precise cash flow visibility.",
             icon: CreditCard,
-            image: "/images/feature_cod.png",
-            stats: { count: "100%", label: "Reconciliation" }
+            stats: { count: "100%", label: "Accurate" }
         },
         {
             title: "Smart Alerts",
-            description: "Stay informed with intelligent notifications for delays, exceptions, and delivery updates. Get alerts only when action is needed.",
+            description: "Exception management system. Get notified only when shipments are delayed or stuck.",
             icon: Bell,
-            image: "/images/feature_smart_alerts.png",
-            stats: { count: "Real-time", label: "Notifications" }
+            stats: { count: "Instant", label: "Updates" }
         },
         {
             title: "Label Generation",
-            description: "Generate and print shipping labels in bulk with one click. Support for all major couriers with automatic format detection.",
+            description: "One-click bulk label printing. Auto-formats for all major courier standards.",
             icon: Printer,
-            image: "/images/feature_label_gen.png",
-            stats: { count: "Instant", label: "Label Printing" }
+            stats: { count: "0.2s", label: "Gen Time" }
         },
         {
-            title: "Platform Integrations",
-            description: "Seamlessly connect with Shopify, WooCommerce, Magento, and custom solutions. Our API supports any e-commerce platform.",
+            title: "API Integrations",
+            description: "Plugins for Shopify, WooCommerce, and Magento. Custom REST API for enterprise.",
             icon: Puzzle,
-            image: "/images/feature_integrations.png",
-            stats: { count: "10+", label: "Integrations" }
-        },
-        {
-            title: "Advanced Analytics",
-            description: "Deep insights into shipping performance, cost analysis, carrier efficiency, and delivery trends. Make data-driven decisions confidently.",
-            icon: LayoutDashboard,
-            image: "/images/feature_analytics.png",
-            stats: { count: "50+", label: "Metrics Tracked" }
+            stats: { count: "10+", label: "Plugins" }
         }
     ]
 
     return (
-        <section className="py-20 md:py-32 bg-white relative overflow-hidden">
-            {/* Subtle background decoration */}
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primaryBlue/[0.02] rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primaryBlue/[0.02] rounded-full blur-3xl pointer-events-none" />
-
-            <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
-                {/* Header */}
-                <div className="text-center max-w-[900px] mx-auto mb-20">
+        <section className="py-24 md:py-32 bg-white relative">
+            <div className="container mx-auto px-6 md:px-12 max-w-[1400px]">
+                {/* Minimal Header */}
+                <div className="mb-20">
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="inline-flex items-center gap-2.5 mb-6"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={inView ? { opacity: 1, y: 0 } : {}}
+                        className="max-w-2xl"
                     >
-                        <div className="w-1.5 h-1.5 rounded-full bg-primaryBlue" />
-                        <span className="text-charcoal-600 text-sm font-medium tracking-wide">
-                            Complete Feature Set
-                        </span>
+                        <h2 className="text-4xl md:text-5xl font-bold text-charcoal-900 mb-6 tracking-tight">
+                            Complete Logistics Stack
+                        </h2>
+                        <p className="text-lg text-charcoal-500 max-w-xl">
+                            Everything you need to ship, track, and manage orders. One platform, zero bloat.
+                        </p>
                     </motion.div>
-
-                    <motion.h2
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.1 }}
-                        className="text-4xl md:text-6xl font-bold text-charcoal-950 mb-6 leading-tight"
-                    >
-                        Everything You Need.<br />
-                        <span className="text-primaryBlue">Nothing You Don't.</span>
-                    </motion.h2>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.2 }}
-                        className="text-lg md:text-xl text-charcoal-600 leading-relaxed max-w-[700px] mx-auto"
-                    >
-                        One unified platform. Unlimited couriers. AI-powered intelligence. Complete control over your logistics operations.
-                    </motion.p>
                 </div>
 
-                {/* Feature Showcase - Alternating Layout */}
-                <div ref={ref} className="space-y-32">
+                {/* Flat Grid Layout */}
+                <div ref={ref} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
                     {features.map((feature, i) => (
-                        <FeatureShowcase key={i} feature={feature} index={i} inView={inView} reverse={i % 2 !== 0} />
+                        <FeatureShowcase key={i} feature={feature} index={i} inView={inView} />
                     ))}
                 </div>
             </div>
         </section>
-    )
-}
-
-function FeatureShowcase({ feature, index, inView, reverse }: any) {
-    const x = useMotionValue(0)
-    const y = useMotionValue(0)
-    const rotateX = useTransform(y, [-100, 100], [5, -5])
-    const rotateY = useTransform(x, [-100, 100], [-5, 5])
-
-    function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
-        const rect = event.currentTarget.getBoundingClientRect()
-        const width = rect.width
-        const height = rect.height
-        const mouseX = event.clientX - rect.left
-        const mouseY = event.clientY - rect.top
-        const xPct = mouseX / width - 0.5
-        const yPct = mouseY / height - 0.5
-        x.set(xPct * 200)
-        y.set(yPct * 200)
-    }
-
-    function handleMouseLeave() {
-        x.set(0)
-        y.set(0)
-    }
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: index * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className={`flex flex-col lg:flex-row items-center gap-12 md:gap-20 ${reverse ? 'lg:flex-row-reverse' : ''}`}
-        >
-            {/* Content Side */}
-            <div className="flex-1 space-y-8 relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100 shadow-sm">
-                    <feature.icon size={14} className="text-gray-600" />
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{feature.title}</span>
-                </div>
-
-                <h3 className="text-3xl md:text-5xl font-bold text-gray-900 leading-tight tracking-tight">
-                    {feature.title}
-                </h3>
-
-                <p className="text-lg text-gray-600 leading-relaxed font-medium">
-                    {feature.description}
-                </p>
-
-                <div className="flex items-center gap-8 pt-4 border-t border-gray-100">
-                    <div>
-                        <div className="text-3xl font-bold text-primaryBlue">{feature.stats.count}</div>
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{feature.stats.label}</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Visual Side with 3D Parallax */}
-            <div className="flex-1 w-full perspective-1000">
-                <motion.div
-                    style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-                    onMouseMove={handleMouseMove}
-                    onMouseLeave={handleMouseLeave}
-                    className="relative w-full aspect-[4/3] rounded-3xl bg-white border border-gray-100/50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-200 ease-linear cursor-grab active:cursor-grabbing group"
-                >
-                    {/* Floating Elements / Depth Layers */}
-                    <motion.div
-                        style={{ translateZ: 50 }}
-                        className="absolute inset-4 md:inset-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl overflow-hidden shadow-inner border border-gray-100"
-                    >
-                        {feature.image && (
-                            <Image
-                                src={feature.image}
-                                alt={feature.title}
-                                fill
-                                className="object-contain p-4 group-hover:scale-105 transition-transform duration-700"
-                            />
-                        )}
-                    </motion.div>
-
-                    {/* Glossy Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none" />
-
-                    {/* Shadow Layer */}
-                    <div className="absolute -inset-4 bg-primaryBlue/10 blur-3xl -z-10 opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                </motion.div>
-            </div>
-        </motion.div>
     )
 }

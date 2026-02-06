@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import LabelTemplate from '../../../../infrastructure/database/mongoose/models/shipping/label-template.model';
 import LabelGeneratorService from '../../../../core/application/services/shipping/label-generator.service';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -19,6 +19,7 @@ import { validateObjectId } from '../../../../shared/helpers/controller.helpers'
 export const listTemplates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { type, format, isActive } = req.query;
 
         const filters: any = { companyId: auth.companyId };
@@ -46,6 +47,7 @@ export const listTemplates = async (req: Request, res: Response, next: NextFunct
 export const getTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'template');
 
@@ -75,6 +77,7 @@ export const getTemplate = async (req: Request, res: Response, next: NextFunctio
 export const createTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const templateData = {
             ...req.body,
@@ -109,6 +112,7 @@ export const createTemplate = async (req: Request, res: Response, next: NextFunc
 export const updateTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'template');
 
@@ -155,6 +159,7 @@ export const updateTemplate = async (req: Request, res: Response, next: NextFunc
 export const deleteTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'template');
 
@@ -192,6 +197,7 @@ export const deleteTemplate = async (req: Request, res: Response, next: NextFunc
 export const duplicateTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'template');
 
@@ -236,6 +242,7 @@ export const duplicateTemplate = async (req: Request, res: Response, next: NextF
 export const setAsDefault = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'template');
 
@@ -285,6 +292,7 @@ export const setAsDefault = async (req: Request, res: Response, next: NextFuncti
 export const generateLabel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { orderId } = req.params;
         const { templateId } = req.body;
 
@@ -314,6 +322,7 @@ export const generateLabel = async (req: Request, res: Response, next: NextFunct
 export const createDefaultTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         // Check if default already exists
         const existing = await LabelTemplate.findOne({

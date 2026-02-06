@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { AuthenticationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
@@ -13,10 +14,9 @@ export class NDRAnalyticsController {
      */
     static async getSelfServiceMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) {
-                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             // Simple validation for date range query params
             const schema = z.object({
@@ -45,8 +45,9 @@ export class NDRAnalyticsController {
      */
     static async getPreventionMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) throw new AuthenticationError('Unauthorized');
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const schema = z.object({
                 startDate: z.string().optional(),
@@ -71,8 +72,9 @@ export class NDRAnalyticsController {
      */
     static async getROIMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) throw new AuthenticationError('Unauthorized');
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const schema = z.object({
                 startDate: z.string().optional(),
@@ -97,8 +99,9 @@ export class NDRAnalyticsController {
      */
     static async getWeeklyTrends(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const companyId = req.user?.companyId;
-            if (!companyId) throw new AuthenticationError('Unauthorized');
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const schema = z.object({
                 weeks: z.string().optional().transform(val => val ? parseInt(val, 10) : 4),

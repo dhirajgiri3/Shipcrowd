@@ -2,6 +2,7 @@ import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 /**
  * COD Settlement Timeline Hook
@@ -56,6 +57,10 @@ export interface CODSettlementData {
 export function useCODTimeline(
     options?: UseQueryOptions<CODTimelineResponse, ApiError>
 ) {
+    const { isInitialized, user } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
+    const { enabled: optionsEnabled, ...restOptions } = options ?? {};
+
     return useQuery<CODTimelineResponse, ApiError>({
         queryKey: queryKeys.cod.timeline(),
         queryFn: async () => {
@@ -64,9 +69,10 @@ export function useCODTimeline(
             );
             return data.data;
         },
+        enabled: hasCompanyContext && (optionsEnabled !== false),
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
-        ...options,
+        ...restOptions,
     });
 }
 

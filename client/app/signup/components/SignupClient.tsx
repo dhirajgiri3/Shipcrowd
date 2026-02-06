@@ -26,6 +26,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import { useSignup } from '@/src/core/api/hooks/auth/useSignup';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { Button } from '@/src/components/ui/core/Button';
@@ -35,7 +36,7 @@ import { PasswordStrengthIndicator } from '@/src/components/ui/form/PasswordStre
 
 export function SignupClient() {
   const router = useRouter();
-  const { isInitialized, isAuthenticated } = useAuth();
+  const { isInitialized, isAuthenticated, user } = useAuth();
 
   // Use centralized hook for form state and logic
   const {
@@ -59,10 +60,10 @@ export function SignupClient() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isInitialized && isAuthenticated) {
-      router.push('/seller');
+    if (isInitialized && isAuthenticated && user) {
+      router.push(getDefaultRedirectForUser(user));
     }
-  }, [isInitialized, isAuthenticated, router]);
+  }, [isInitialized, isAuthenticated, user, router]);
 
   // Don't render until auth is initialized
   if (!isInitialized) {

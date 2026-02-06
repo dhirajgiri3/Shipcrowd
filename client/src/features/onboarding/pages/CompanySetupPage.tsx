@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 
@@ -10,7 +11,7 @@ import { Loader } from '@/src/components/ui/feedback/Loader';
  * Collects company details and creates the company profile.
  */
 export const CompanySetupPage = () => {
-    const { createCompany, isLoading } = useAuth();
+    const { createCompany, isLoading, user } = useAuth();
     const router = useRouter();
     const { addToast } = useToast();
 
@@ -68,7 +69,8 @@ export const CompanySetupPage = () => {
         const result = await createCompany(formData);
 
         if (result.success) {
-            router.push('/seller/dashboard');
+            const companyId = result.company?._id ?? result.company?.id ?? user?.companyId;
+            router.push(getDefaultRedirectForUser(user ? { ...user, companyId } : undefined));
         }
     };
 

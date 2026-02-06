@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import ManifestService from '../../../../core/application/services/shipping/manifest.service';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
@@ -26,12 +27,10 @@ class ManifestController {
      */
     async createManifest(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user?._id?.toString();
-            const companyId = req.user?.companyId?.toString();
-
-            if (!companyId) {
-                throw new ValidationError('Company ID is required');
-            }
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const userId = auth.userId?.toString();
+            const companyId = auth.companyId;
 
             const { warehouseId, carrier, shipmentIds, pickup, notes } = req.body;
 
@@ -72,12 +71,10 @@ class ManifestController {
      */
     async listEligibleShipments(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
             const { carrier, warehouseId } = req.query;
-
-            if (!companyId) {
-                throw new ValidationError('Company ID is required');
-            }
 
             const shipments = await ManifestService.listEligibleShipments({
                 companyId,
@@ -97,7 +94,9 @@ class ManifestController {
      */
     async getManifestStats(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
             if (!companyId) {
                 throw new ValidationError('Company ID is required');
             }
@@ -153,7 +152,9 @@ class ManifestController {
      */
     async listManifests(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
 
             const {
                 warehouseId,
@@ -283,13 +284,11 @@ class ManifestController {
      */
     async updateManifest(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId?.toString();
+            const companyId = auth.companyId;
             const { pickup, notes } = req.body;
-
-            if (!companyId) {
-                throw new ValidationError('Company ID is required');
-            }
 
             // Validate at least one field is being updated
             if (!pickup && notes === undefined) {
@@ -318,12 +317,10 @@ class ManifestController {
      */
     async deleteManifest(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId?.toString();
-
-            if (!companyId) {
-                throw new ValidationError('Company ID is required');
-            }
+            const companyId = auth.companyId;
 
             await ManifestService.deleteManifest(id, companyId);
 
@@ -339,13 +336,11 @@ class ManifestController {
      */
     async addShipments(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId?.toString();
+            const companyId = auth.companyId;
             const { shipmentIds } = req.body;
-
-            if (!companyId) {
-                throw new ValidationError('Company ID is required');
-            }
 
             if (!shipmentIds || !Array.isArray(shipmentIds) || shipmentIds.length === 0) {
                 throw new ValidationError('shipmentIds array is required and must not be empty');
@@ -365,13 +360,11 @@ class ManifestController {
      */
     async removeShipments(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
-            const companyId = req.user?.companyId?.toString();
+            const companyId = auth.companyId;
             const { shipmentIds } = req.body;
-
-            if (!companyId) {
-                throw new ValidationError('Company ID is required');
-            }
 
             if (!shipmentIds || !Array.isArray(shipmentIds) || shipmentIds.length === 0) {
                 throw new ValidationError('shipmentIds array is required and must not be empty');

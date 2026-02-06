@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import RemittanceReconciliationService from '../../../../core/application/services/finance/remittance-reconciliation.service';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendCreated, sendPaginated } from '../../../../shared/utils/responseHelper';
 import { ValidationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -23,6 +23,7 @@ export const getEligibleShipments = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const cutoffDate = req.query.cutoffDate
             ? new Date(req.query.cutoffDate as string)
@@ -51,6 +52,7 @@ export const createRemittanceBatch = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = createRemittanceSchema.safeParse(req.body);
         if (!validation.success) {
@@ -88,6 +90,7 @@ export const getRemittanceDetails = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { id } = req.params;
 
@@ -111,6 +114,7 @@ export const listRemittances = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const status = req.query.status as string | undefined;
         const startDate = req.query.startDate
@@ -248,6 +252,7 @@ export const getTimeline = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const timeline = await CODRemittanceService.getTimeline(auth.companyId);
         sendSuccess(res, timeline, 'COD timeline retrieved successfully');
     } catch (error) {
@@ -268,6 +273,7 @@ export const getDashboard = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const stats = await CODRemittanceService.getDashboardStats(auth.companyId);
         sendSuccess(res, stats, 'Dashboard stats retrieved successfully');
     } catch (error) {
@@ -307,6 +313,7 @@ export const requestPayout = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { amount } = req.body;
 
         if (!amount || amount <= 0) {
@@ -332,6 +339,7 @@ export const schedulePayout = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const schedule = req.body; // Validation normally via schema
 
         const result = await CODRemittanceService.schedulePayout(auth.companyId, schedule);
@@ -353,6 +361,7 @@ export const uploadMIS = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         if (!req.file) {
             throw new ValidationError('MIS file is required');

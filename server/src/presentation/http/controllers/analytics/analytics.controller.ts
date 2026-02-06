@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Order, Company, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import cacheService from '../../../../core/application/services/analytics/analytics-cache.service';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
@@ -721,6 +721,7 @@ export const getRevenueStats = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -734,7 +735,7 @@ export const getRevenueStats = async (
             return;
         }
 
-        const stats = await RevenueAnalyticsService.getRevenueStats(auth.companyId!, dateRange);
+        const stats = await RevenueAnalyticsService.getRevenueStats(auth.companyId, dateRange);
         await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Revenue stats retrieved successfully');
     } catch (error) {
@@ -754,6 +755,7 @@ export const getWalletStats = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -767,7 +769,7 @@ export const getWalletStats = async (
             return;
         }
 
-        const stats = await RevenueAnalyticsService.getWalletStats(auth.companyId!, dateRange);
+        const stats = await RevenueAnalyticsService.getWalletStats(auth.companyId, dateRange);
         await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Wallet stats retrieved successfully');
     } catch (error) {
@@ -787,6 +789,7 @@ export const getCustomerStats = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -800,7 +803,7 @@ export const getCustomerStats = async (
             return;
         }
 
-        const stats = await CustomerAnalyticsService.getCustomerStats(auth.companyId!, dateRange);
+        const stats = await CustomerAnalyticsService.getCustomerStats(auth.companyId, dateRange);
         await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Customer stats retrieved successfully');
     } catch (error) {
@@ -820,6 +823,7 @@ export const getTopCustomers = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const limit = parseInt(req.query.limit as string) || 10;
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
@@ -834,7 +838,7 @@ export const getTopCustomers = async (
             return;
         }
 
-        const customers = await CustomerAnalyticsService.getTopCustomers(auth.companyId!, dateRange, limit);
+        const customers = await CustomerAnalyticsService.getTopCustomers(auth.companyId, dateRange, limit);
         await cacheService.set(cacheKey, customers, 300);
         sendSuccess(res, customers, 'Top customers retrieved successfully');
     } catch (error) {
@@ -854,6 +858,7 @@ export const getInventoryStats = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const warehouseId = req.query.warehouseId as string | undefined;
 
@@ -865,7 +870,7 @@ export const getInventoryStats = async (
             return;
         }
 
-        const stats = await InventoryAnalyticsService.getStockLevels(auth.companyId!, warehouseId);
+        const stats = await InventoryAnalyticsService.getStockLevels(auth.companyId, warehouseId);
         await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Inventory stats retrieved successfully');
     } catch (error) {
@@ -885,6 +890,7 @@ export const getTopProducts = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const limit = parseInt(req.query.limit as string) || 10;
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
@@ -899,7 +905,7 @@ export const getTopProducts = async (
             return;
         }
 
-        const products = await OrderAnalyticsService.getTopProducts(auth.companyId!, dateRange, limit);
+        const products = await OrderAnalyticsService.getTopProducts(auth.companyId, dateRange, limit);
         await cacheService.set(cacheKey, products, 300);
         sendSuccess(res, products, 'Top products retrieved successfully');
     } catch (error) {
@@ -919,6 +925,7 @@ export const buildCustomReport = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const validation = buildReportSchema.safeParse(req.body);
         if (!validation.success) {
@@ -927,7 +934,7 @@ export const buildCustomReport = async (
 
         const { reportType, filters, metrics, groupBy } = validation.data;
         const report = await ReportBuilderService.buildCustomReport(
-            auth.companyId!,
+            auth.companyId,
             reportType,
             filters as any,
             metrics,
@@ -952,6 +959,7 @@ export const saveReportConfig = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const validation = saveReportConfigSchema.safeParse(req.body);
         if (!validation.success) {
@@ -960,8 +968,8 @@ export const saveReportConfig = async (
 
         const config = await ReportBuilderService.saveReportConfig(
             validation.data as any,
-            auth.userId!,
-            auth.companyId!
+            auth.userId,
+            auth.companyId
         );
 
         sendSuccess(res, config, 'Report configuration saved successfully');
@@ -982,11 +990,12 @@ export const listReportConfigs = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
 
-        const result = await ReportBuilderService.listReportConfigs(auth.companyId!, page, limit);
+        const result = await ReportBuilderService.listReportConfigs(auth.companyId, page, limit);
         sendSuccess(res, result, 'Report configurations retrieved successfully');
     } catch (error) {
         logger.error('Error listing report configs:', error);
@@ -1005,8 +1014,9 @@ export const deleteReportConfig = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
-        await ReportBuilderService.deleteReportConfig(req.params.id, auth.companyId!);
+        await ReportBuilderService.deleteReportConfig(req.params.id, auth.companyId);
         sendSuccess(res, null, 'Report configuration deleted successfully');
     } catch (error) {
         logger.error('Error deleting report config:', error);
@@ -1178,6 +1188,7 @@ export const getRTOAnalytics = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         // Cache key
         const cacheKey = `analytics:rto:${auth.companyId}`;
@@ -1187,7 +1198,7 @@ export const getRTOAnalytics = async (
             return;
         }
 
-        const analytics = await RTOService.getRTOAnalytics(auth.companyId!);
+        const analytics = await RTOService.getRTOAnalytics(auth.companyId);
 
         // Cache for 5 minutes
         await cacheService.set(cacheKey, analytics, 300);
@@ -1211,6 +1222,7 @@ export const getProfitabilityAnalytics = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         // Cache key
         const cacheKey = `analytics:profitability:${auth.companyId}`;
@@ -1220,7 +1232,7 @@ export const getProfitabilityAnalytics = async (
             return;
         }
 
-        const analytics = await RevenueAnalyticsService.getProfitabilityAnalytics(auth.companyId!);
+        const analytics = await RevenueAnalyticsService.getProfitabilityAnalytics(auth.companyId);
 
         // Cache for 5 minutes
         await cacheService.set(cacheKey, analytics, 300);
@@ -1244,9 +1256,10 @@ export const getSmartInsights = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         // Cache handled within Service layer (1 hour)
-        const insights = await SmartInsightsService.generateInsights(auth.companyId!);
+        const insights = await SmartInsightsService.generateInsights(auth.companyId);
 
         sendSuccess(res, insights, 'Smart insights generated successfully');
     } catch (error) {
@@ -1267,6 +1280,7 @@ export const getGeographicInsights = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
 
         // Cache key
         const cacheKey = `analytics:geography:${auth.companyId}`;
@@ -1276,7 +1290,7 @@ export const getGeographicInsights = async (
             return;
         }
 
-        const analytics = await GeographicAnalyticsService.getGeographicInsights(auth.companyId!);
+        const analytics = await GeographicAnalyticsService.getGeographicInsights(auth.companyId);
 
         // Cache for 5 minutes
         await cacheService.set(cacheKey, analytics, 300);

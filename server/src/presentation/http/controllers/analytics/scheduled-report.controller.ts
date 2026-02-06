@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import ScheduledReport from '../../../../infrastructure/database/mongoose/models/analytics/scheduled-report.model';
 import ScheduledReportExecutorService from '../../../../core/application/services/analytics/scheduled-report-executor.service';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -20,6 +20,7 @@ import { validateObjectId } from '../../../../shared/helpers/controller.helpers'
 export const listScheduledReports = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { reportType, isActive, frequency } = req.query;
 
         const filters: any = { companyId: auth.companyId };
@@ -47,6 +48,7 @@ export const listScheduledReports = async (req: Request, res: Response, next: Ne
 export const getScheduledReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'report');
 
@@ -76,6 +78,7 @@ export const getScheduledReport = async (req: Request, res: Response, next: Next
 export const createScheduledReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const reportData = {
             ...req.body,
@@ -118,6 +121,7 @@ export const createScheduledReport = async (req: Request, res: Response, next: N
 export const updateScheduledReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'report');
 
@@ -177,6 +181,7 @@ export const updateScheduledReport = async (req: Request, res: Response, next: N
 export const deleteScheduledReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'report');
 
@@ -210,6 +215,7 @@ export const deleteScheduledReport = async (req: Request, res: Response, next: N
 export const executeReportNow = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'report');
 
@@ -251,6 +257,7 @@ export const executeReportNow = async (req: Request, res: Response, next: NextFu
 export const pauseReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'report');
 
@@ -286,6 +293,7 @@ export const pauseReport = async (req: Request, res: Response, next: NextFunctio
 export const resumeReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { id } = req.params;
         validateObjectId(id, 'report');
 

@@ -4,13 +4,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { codAnalyticsApi } from '@/src/core/api/clients/finance/codAnalyticsApi';
 import { Card } from '@/src/components/ui/core/Card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/src/components/ui/core/Select';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     BarChart, Bar
 } from 'recharts';
 import { Loader2, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
-import { formatCurrency } from '@/src/components/utils/format'; // Assuming this exists, I'll allow fallback
 
 // Fallback formatter if utility not found
 const formatMoney = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import ManifestService from '../../../../core/application/services/shipping/manifest.service';
 import LabelService from '../../../../core/application/services/shipping/label.service';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
@@ -15,10 +16,10 @@ class BulkShipmentController {
      */
     async createBulkManifest(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
             const { shipmentIds, pickup } = req.body;
-
-            if (!companyId) throw new ValidationError('Company ID is required');
             if (!shipmentIds || !Array.isArray(shipmentIds) || shipmentIds.length === 0) {
                 throw new ValidationError('Shipment IDs required');
             }
@@ -90,10 +91,10 @@ class BulkShipmentController {
      */
     async generateBulkLabels(req: Request, res: Response, next: NextFunction) {
         try {
-            const companyId = req.user?.companyId?.toString();
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const companyId = auth.companyId;
             const { shipmentIds } = req.body; // or Query param ?ids=...
-
-            if (!companyId) throw new ValidationError('Company ID is required');
 
             // 1. Fetch Shipments with Sender/Receiver details
             const shipments = await Shipment.find({

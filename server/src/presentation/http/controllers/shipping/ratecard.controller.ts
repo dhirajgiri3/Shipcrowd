@@ -6,6 +6,10 @@ import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
 import {
+    guardChecks,
+    requireCompanyContext,
+} from '../../../../shared/helpers/controller.helpers';
+import {
     sendSuccess,
     sendPaginated,
     sendCreated,
@@ -131,14 +135,9 @@ const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number
 
 export const createRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const validation = createRateCardSchema.safeParse(req.body);
         if (!validation.success) {
@@ -199,13 +198,9 @@ export const createRateCard = async (req: Request, res: Response, next: NextFunc
 
 export const getRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const filter: any = { companyId, isDeleted: false };
         if (req.query.status) filter.status = req.query.status;
@@ -234,14 +229,9 @@ export const getRateCards = async (req: Request, res: Response, next: NextFuncti
 
 export const getRateCardById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const rateCardId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
@@ -267,14 +257,9 @@ export const getRateCardById = async (req: Request, res: Response, next: NextFun
 
 export const updateRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const rateCardId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
@@ -351,14 +336,9 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
 
 export const calculateRate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const validation = calculateRateSchema.safeParse(req.body);
         if (!validation.success) {
@@ -406,18 +386,13 @@ export const calculateRate = async (req: Request, res: Response, next: NextFunct
 
 export const compareCarrierRates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const validation = calculateRateSchema.safeParse(req.body);
         if (!validation.success) {
             throw new ValidationError(validation.error.errors[0].message, ErrorCode.VAL_INVALID_INPUT);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User not associated with company', ErrorCode.AUTH_REQUIRED);
         }
 
         // Get all carriers from CARRIERS static data
@@ -493,14 +468,9 @@ export const compareCarrierRates = async (req: Request, res: Response, next: Nex
 
 export const getRateCardAnalytics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const rateCardId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
@@ -537,14 +507,9 @@ export const getRateCardAnalytics = async (req: Request, res: Response, next: Ne
 
 export const getRateCardRevenueSeries = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const rateCardId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
@@ -587,14 +552,9 @@ export const getRateCardRevenueSeries = async (req: Request, res: Response, next
 
 export const exportRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const rateCards = await RateCard.find({
             companyId,
@@ -641,14 +601,9 @@ export const exportRateCards = async (req: Request, res: Response, next: NextFun
 
 export const bulkUpdateRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const bulkUpdateSchema = z.object({
             rateCardIds: z.array(z.string()).min(1),
@@ -717,7 +672,7 @@ export const bulkUpdateRateCards = async (req: Request, res: Response, next: Nex
         }
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'update',
             'ratecard',
@@ -741,14 +696,9 @@ export const bulkUpdateRateCards = async (req: Request, res: Response, next: Nex
 
 export const importRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         if (!req.file) {
             throw new ValidationError('CSV or Excel file is required');
@@ -775,7 +725,7 @@ export const importRateCards = async (req: Request, res: Response, next: NextFun
             companyId,
             req.file.buffer,
             req.file.mimetype,
-            req.user._id,
+            auth.userId,
             req,
             { overrides }
         );
@@ -794,14 +744,9 @@ export const importRateCards = async (req: Request, res: Response, next: NextFun
  */
 export const calculateSmartRates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const validation = smartRateCalculateSchema.safeParse(req.body);
         if (!validation.success) {
@@ -829,7 +774,7 @@ export const calculateSmartRates = async (req: Request, res: Response, next: Nex
         });
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'read',
             'smart_rate_calculation',
@@ -855,14 +800,9 @@ export const calculateSmartRates = async (req: Request, res: Response, next: Nex
  */
 export const previewPrice = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const {
             fromPincode,
@@ -900,14 +840,9 @@ export const previewPrice = async (req: Request, res: Response, next: NextFuncti
 
 export const cloneRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
-        }
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
 
         const rateCardId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
@@ -944,7 +879,7 @@ export const cloneRateCard = async (req: Request, res: Response, next: NextFunct
         await newRateCard.save();
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'create',
             'ratecard',
@@ -962,11 +897,9 @@ export const cloneRateCard = async (req: Request, res: Response, next: NextFunct
 
 export const deleteRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
-        const companyId = req.user.companyId;
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
         const rateCardId = req.params.id;
 
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
@@ -1004,7 +937,7 @@ export const deleteRateCard = async (req: Request, res: Response, next: NextFunc
         }
 
         await createAuditLog(
-            req.user._id,
+            auth.userId,
             companyId,
             'delete',
             'ratecard',
@@ -1022,12 +955,10 @@ export const deleteRateCard = async (req: Request, res: Response, next: NextFunc
 
 export const previewRateCardSelection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const input = {
-            companyId: req.user.companyId,
+            companyId: auth.companyId,
             customerId: req.query.customerId as string,
             customerGroup: req.query.customerGroup as string,
             effectiveDate: req.query.effectiveDate ? new Date(req.query.effectiveDate as string) : new Date(),
@@ -1050,13 +981,11 @@ export const previewRateCardSelection = async (req: Request, res: Response, next
 
 export const simulateRateCardChange = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const simulationService = new RateCardSimulationService();
         const input: SimulationInput = {
-            companyId: req.user.companyId,
+            companyId: auth.companyId,
             proposedRateCardId: req.body.proposedRateCardId,
             baselineRateCardId: req.body.baselineRateCardId,
             sampleSize: req.body.sampleSize,
@@ -1077,14 +1006,12 @@ export const simulateRateCardChange = async (req: Request, res: Response, next: 
 
 export const getApplicableRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.user || !req.user.companyId) {
-            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-        }
-
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const effectiveDate = req.query.effectiveDate ? new Date(req.query.effectiveDate as string) : new Date();
 
         const rateCards = await RateCard.find({
-            companyId: req.user.companyId,
+            companyId: auth.companyId,
             status: 'active',
             'effectiveDates.startDate': { $lte: effectiveDate },
             $or: [

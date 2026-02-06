@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../http";
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 /**
  * Profitability Analytics Hook
@@ -36,7 +37,11 @@ export interface ProfitabilityData {
     };
 }
 
-export function useProfitabilityAnalytics() {
+export function useProfitabilityAnalytics(options?: { enabled?: boolean }) {
+    const { isInitialized, user } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
+    const enabled = hasCompanyContext && (options?.enabled !== false);
+
     return useQuery({
         queryKey: ["profitability-analytics"],
         queryFn: async () => {
@@ -45,7 +50,7 @@ export function useProfitabilityAnalytics() {
             );
             return data.data;
         },
-        // Cache for 5 minutes
+        enabled,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: false,

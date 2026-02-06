@@ -8,6 +8,7 @@ import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import type {
     CODRemittance,
     CODRemittanceResponse,
@@ -20,15 +21,20 @@ import type {
 } from '@/src/types/api/finance';
 
 export function useCODRemittances(filters?: RemittanceFilters, options?: UseQueryOptions<CODRemittanceResponse, ApiError>): UseQueryResult<CODRemittanceResponse, ApiError> {
+    const { isInitialized, user } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
+    const { enabled: optionsEnabled, ...restOptions } = options ?? {};
+
     return useQuery<CODRemittanceResponse, ApiError>({
         queryKey: queryKeys.cod.remittances(filters),
         queryFn: async () => {
             const response = await apiClient.get<CODRemittanceResponse>('/finance/cod-remittance', { params: filters });
             return response.data;
         },
+        enabled: hasCompanyContext && (optionsEnabled !== false),
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
-        ...options,
+        ...restOptions,
     });
 }
 
@@ -47,15 +53,20 @@ export function useCODRemittance(id: string, options?: UseQueryOptions<CODRemitt
 }
 
 export function useCODStats(options?: UseQueryOptions<CODStats, ApiError>): UseQueryResult<CODStats, ApiError> {
+    const { isInitialized, user } = useAuth();
+    const hasCompanyContext = isInitialized && !!user?.companyId;
+    const { enabled: optionsEnabled, ...restOptions } = options ?? {};
+
     return useQuery<CODStats, ApiError>({
         queryKey: queryKeys.cod.analytics(),
         queryFn: async () => {
             const response = await apiClient.get<CODStats>('/finance/cod-remittance/dashboard');
             return response.data;
         },
+        enabled: hasCompanyContext && (optionsEnabled !== false),
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
-        ...options,
+        ...restOptions,
     });
 }
 

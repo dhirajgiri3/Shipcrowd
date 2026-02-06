@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../../../shared/utils/asyncHandler';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { CODDiscrepancyService } from '../../../../core/application/services/finance/cod-discrepancy.service';
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
 import CODDiscrepancy from '../../../../infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
@@ -10,9 +11,10 @@ export class CODDiscrepancyController {
      * Get Discrepancies List with Filters
      */
     static getDiscrepancies = asyncHandler(async (req: Request, res: Response) => {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { status, type, page = 1, limit = 10 } = req.query;
-        // @ts-ignore
-        const companyId = req.user.companyId;
+        const companyId = auth.companyId;
 
         const query: any = { companyId };
         if (status) query.status = status;

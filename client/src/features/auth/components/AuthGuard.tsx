@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
+import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import type { User } from '@/src/types/auth';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 
@@ -67,10 +68,8 @@ export function AuthGuard({
         (isSuperAdmin && allowedRoles.includes('admin'));
 
       if (!hasRequiredRole && !isAdminAccessingSeller) {
-        // Only redirect if user truly doesn't have access
-        // Sellers can't access admin routes, but admins/super_admins CAN access seller routes
-        const destination = (user.role === 'admin' || isSuperAdmin) ? '/admin' : '/seller';
-        if (pathname !== destination) {
+        const destination = getDefaultRedirectForUser(user);
+        if (pathname !== destination && !pathname.startsWith(`${destination}/`)) {
           router.replace(destination);
         }
         return;

@@ -87,6 +87,14 @@ export function SellerLayoutClient({
                             <Header onMenuClick={() => setSidebarOpen(true)} />
                             <main className="p-4 sm:p-6 lg:p-8">
                                 <div className="mx-auto max-w-7xl">
+                                    {isInitialized && user && (user.role === 'admin' || user.role === 'super_admin') && !user.companyId && (
+                                        <div
+                                            className="mb-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-tertiary)] px-4 py-3 text-sm text-[var(--text-secondary)]"
+                                            role="status"
+                                        >
+                                            No seller company is linked to this admin account yet. Seller metrics are unavailable.
+                                        </div>
+                                    )}
                                     {children}
                                 </div>
                             </main>

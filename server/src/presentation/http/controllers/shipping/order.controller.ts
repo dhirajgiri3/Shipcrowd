@@ -8,6 +8,7 @@ import csv from 'csv-parser';
 import { Readable } from 'stream';
 import {
     guardChecks,
+    requireCompanyContext,
     validateObjectId,
     parsePagination,
 } from '../../../../shared/helpers/controller.helpers';
@@ -29,6 +30,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 export const createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const validation = createOrderSchema.safeParse(req.body);
         if (!validation.success) {
@@ -111,6 +113,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 export const getOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
 
@@ -163,6 +166,7 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
 export const getOrderById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { orderId } = req.params;
         validateObjectId(orderId, 'order');
@@ -187,6 +191,7 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
 export const updateOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { orderId } = req.params;
         validateObjectId(orderId, 'order');
@@ -258,6 +263,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
 export const deleteOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { orderId } = req.params;
         validateObjectId(orderId, 'order');
@@ -291,6 +297,7 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
 export const bulkImportOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         if (!req.file) {
             throw new ValidationError('CSV file is required');
@@ -339,6 +346,7 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
 export const cloneOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { orderId } = req.params;
         validateObjectId(orderId, 'order');
@@ -369,6 +377,7 @@ export const cloneOrder = async (req: Request, res: Response, next: NextFunction
 export const splitOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         const { orderId } = req.params;
         validateObjectId(orderId, 'order');
@@ -407,6 +416,7 @@ export const splitOrder = async (req: Request, res: Response, next: NextFunction
 export const mergeOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+        requireCompanyContext(auth);
 
         if (!req.body.orderIds || !Array.isArray(req.body.orderIds) || req.body.orderIds.length < 2) {
             throw new ValidationError('At least 2 order IDs are required for merging');

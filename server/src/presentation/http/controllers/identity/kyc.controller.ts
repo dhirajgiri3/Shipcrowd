@@ -12,6 +12,7 @@ import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 // Import validation schemas
 import { submitKYCSchema, verifyDocumentSchema, invalidateDocumentSchema } from '../../../../shared/validation/schemas';
 import { DocumentVerificationState } from '../../../../core/domain/types/document-verification-state';
@@ -49,26 +50,18 @@ const getDocumentIdString = (doc: any): string => {
  * @returns User object if valid, null if invalid (response is sent in case of error)
  */
 const validateUserAndCompany = async (req: Request, res: Response): Promise<(IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId }) | null> => {
-  if (!req.user) {
-    throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-  }
+  const auth = guardChecks(req);
+  requireCompanyContext(auth);
 
   // Get the latest user data from the database to ensure we have the most up-to-date companyId
-  const userDoc = await User.findById(req.user._id);
+  const userDoc = await User.findById(auth.userId);
 
   if (!userDoc) {
     throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
   }
 
-  // Now we know user exists, we can safely cast it
-  const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
-
-  if (!user.companyId) {
-    throw new AuthenticationError('User is not associated with any company. Please create a company first.', ErrorCode.AUTH_REQUIRED);
-  }
-
-  // Return user with guaranteed companyId
-  return user as IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId };
+  // Return user with guaranteed companyId from auth
+  return userDoc as IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId };
 };
 
 /**

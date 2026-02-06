@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { getUserSessions, revokeSession, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { ISession } from '../../../../infrastructure/database/mongoose/models';
 import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
@@ -38,11 +39,10 @@ const findCurrentSessionId = async (sessions: ISession[], cookieToken?: string):
 
 export const getSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
-    const sessions = await getUserSessions(req.user._id);
+    const sessions = await getUserSessions(auth.userId);
 
     // ✅ FIX: Use bcrypt.compare to identify current session (was comparing plaintext with hash)
     const currentSessionId = await findCurrentSessionId(sessions, getRefreshTokenFromRequest(req));
@@ -67,9 +67,8 @@ export const getSessions = async (req: Request, res: Response, next: NextFunctio
 
 export const terminateSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     const validation = sessionIdSchema.safeParse(req.params);
     if (!validation.success) {
@@ -81,15 +80,15 @@ export const terminateSession = async (req: Request, res: Response, next: NextFu
       throw new ValidationError('Validation failed', errors);
     }
 
-    const success = await revokeSession(validation.data.sessionId, req.user._id.toString());
+    const success = await revokeSession(validation.data.sessionId, auth.userId.toString());
 
     if (!success) {
       throw new NotFoundError('Session', ErrorCode.BIZ_NOT_FOUND);
     }
 
     await createAuditLog(
-      req.user._id,
-      req.user.companyId,
+      auth.userId,
+      auth.companyId,
       'session_revoke',
       'session',
       validation.data.sessionId,
@@ -106,24 +105,23 @@ export const terminateSession = async (req: Request, res: Response, next: NextFu
 
 export const terminateAllSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
-    }
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
 
     // ✅ FIX: Use bcrypt.compare via helper to find current session
-    const sessions = await getUserSessions(req.user._id);
+    const sessions = await getUserSessions(auth.userId);
     const currentSessionId = req.body?.keepCurrent === true
       ? await findCurrentSessionId(sessions, getRefreshTokenFromRequest(req))
       : undefined;
 
-    const count = await revokeAllSessions(req.user._id, currentSessionId);
+    const count = await revokeAllSessions(auth.userId, currentSessionId);
 
     await createAuditLog(
-      req.user._id,
-      req.user.companyId,
+      auth.userId,
+      auth.companyId,
       'session_revoke',
       'session',
-      req.user._id,
+      auth.userId,
       { message: 'All sessions terminated', count, keepCurrent: !!currentSessionId, success: true },
       req
     );

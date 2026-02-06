@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../../../shared/utils/asyncHandler';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { CODAnalyticsService } from '../../../../core/application/services/finance/cod-analytics.service';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
@@ -15,9 +16,10 @@ export class CODAnalyticsController {
      * GET /api/v1/finance/cod/analytics/forecast?days=7
      */
     static getForecast = asyncHandler(async (req: Request, res: Response) => {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { days } = req.query;
-        // @ts-ignore - Validated by middleware usually, but ensuring string conversion
-        const companyId = req.user.companyId.toString();
+        const companyId = auth.companyId;
 
         const data = await CODAnalyticsService.forecastCashFlow(companyId, days ? parseInt(days as string) : 7);
 
@@ -29,9 +31,10 @@ export class CODAnalyticsController {
      * GET /api/v1/finance/cod/analytics/health?period=30 (days)
      */
     static getHealthMetrics = asyncHandler(async (req: Request, res: Response) => {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { period } = req.query; // in days
-        // @ts-ignore
-        const companyId = req.user.companyId.toString();
+        const companyId = auth.companyId;
         const days = period ? parseInt(period as string) : 30;
 
         const endDate = new Date();
@@ -48,9 +51,10 @@ export class CODAnalyticsController {
      * GET /api/v1/finance/cod/analytics/carrier-performance?days=30
      */
     static getCarrierPerformance = asyncHandler(async (req: Request, res: Response) => {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
         const { days } = req.query;
-        // @ts-ignore
-        const companyId = req.user.companyId.toString();
+        const companyId = auth.companyId;
 
         const data = await CODAnalyticsService.carrierPerformance(companyId, days ? parseInt(days as string) : 30);
 
