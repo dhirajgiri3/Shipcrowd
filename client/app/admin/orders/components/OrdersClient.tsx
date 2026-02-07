@@ -5,14 +5,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Package, Truck, CheckCircle, AlertCircle, Clock,
-    Search, Filter, MoreVertical, FileText, Download,
+    Search, Filter, MoreVertical, FileText, ArrowUpRight,
     RefreshCw, Calendar as CalendarIcon, XCircle,
-    LayoutDashboard, RefreshCcw, Box, Loader2, ArrowRight
+    LayoutDashboard, RefreshCcw, Box, Loader2, ArrowRight,
+    ChevronDown
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { OrderTable } from './OrderTable'; // New component
-import { useAdminOrders, useGetCourierRates, useShipOrder, useDeleteOrder } from '@/src/core/api/hooks/admin';
+import { useAdminOrders, useGetCourierRates, useShipOrder, useDeleteOrder, useOrderExport } from '@/src/core/api/hooks/admin';
+import { useWarehouses } from '@/src/core/api/hooks/logistics';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
 import { showSuccessToast, showErrorToast } from '@/src/lib/error';
 import { formatCurrency, cn } from '@/src/lib/utils';
@@ -44,8 +46,13 @@ export default function OrdersClient() {
     const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
     const search = searchParams.get('search') || '';
 
+
     const [searchTerm, setSearchTerm] = useState(search);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('all');
+
+    // -- Hooks --
+    const { data: warehouses = [] } = useWarehouses();
 
     // Shipping Modal State
     const [isShipModalOpen, setIsShipModalOpen] = useState(false);
@@ -89,7 +96,8 @@ export default function OrdersClient() {
         sortBy: sort,
         sortOrder: order,
         search: debouncedSearch || undefined,
-    }), [page, limit, status, sort, order, debouncedSearch]);
+        warehouse: selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
+    }), [page, limit, status, sort, order, debouncedSearch, selectedWarehouseId]);
 
     // -- Fetch Data --
     const {
@@ -102,6 +110,7 @@ export default function OrdersClient() {
     const getCourierRatesMutation = useGetCourierRates();
     const shipOrderMutation = useShipOrder();
     const deleteOrderMutation = useDeleteOrder();
+    const exportOrderMutation = useOrderExport();
 
     const orders = ordersResponse?.data || [];
     const pagination = ordersResponse?.pagination;
@@ -198,7 +207,17 @@ export default function OrdersClient() {
         }
     };
 
-    const isExporting = false; // Placeholder for now
+    const handleExport = () => {
+        exportOrderMutation.mutate({
+            dataType: 'orders',
+            filters: {
+                search: debouncedSearch || undefined,
+                status: status === 'all' ? undefined : [status],
+                warehouse: selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
+                // startDate, endDate from state if available
+            }
+        });
+    };
 
     return (
         <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
@@ -218,11 +237,12 @@ export default function OrdersClient() {
                         Refresh Data
                     </button>
                     <button
-                        disabled={isExporting}
-                        className="px-4 py-2 bg-primary-blue text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium shadow-md shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                        onClick={handleExport}
+                        disabled={exportOrderMutation.isPending}
+                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
                     >
-                        <Download size={16} />
-                        Export Data
+                        {exportOrderMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
+                        {exportOrderMutation.isPending ? 'Exporting...' : 'Export Data'}
                     </button>
                 </div>
             </div>
@@ -233,29 +253,33 @@ export default function OrdersClient() {
                     title="Total Orders"
                     value={stats['all'] || pagination?.total || 0}
                     icon={Package}
-                    variant="default"
+                    iconColor="bg-blue-600 text-white"
                     trend={{ value: 12, label: 'vs last week', positive: true }}
+                    delay={0}
                 />
                 <StatsCard
                     title="Pending Shipments"
                     value={(stats['new'] || 0) + (stats['ready'] || 0) + (stats['pending'] || 0)}
                     icon={Clock}
-                    variant="warning"
+                    iconColor="bg-orange-500 text-white"
                     trend={{ value: 5, label: 'vs yesterday', positive: false }}
+                    delay={1}
                 />
                 <StatsCard
                     title="RTO Rate"
                     value="2.4%"
                     icon={XCircle}
-                    variant="critical"
+                    iconColor="bg-red-500 text-white"
                     description="Calculated from last 30 days"
+                    delay={2}
                 />
                 <StatsCard
                     title="Delivered Today"
                     value={stats['delivered'] || 0}
                     icon={CheckCircle}
-                    variant="success"
+                    iconColor="bg-emerald-500 text-white"
                     trend={{ value: 8, label: 'vs yesterday', positive: true }}
+                    delay={3}
                 />
             </div>
 
@@ -274,6 +298,27 @@ export default function OrdersClient() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                    {/* Warehouse Filter */}
+
+                    <div className="relative">
+                        <select
+                            value={selectedWarehouseId}
+                            onChange={(e) => {
+                                setSelectedWarehouseId(e.target.value);
+                                updateUrl({ page: 1 });
+                            }}
+                            className="h-10 pl-3 pr-10 rounded-lg bg-transparent hover:bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] font-medium focus:outline-none transition-all cursor-pointer appearance-none border border-transparent hover:border-[var(--border-subtle)]"
+                        >
+                            <option value="all">All Warehouses</option>
+                            {warehouses.map((w) => (
+                                <option key={w._id} value={w._id}>
+                                    {w.name}
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={16} />
+                    </div>
+
                     {/* Date Picker Integrated */}
                     <div className="hidden md:block">
                         <DateRangePicker onRangeChange={handleDateRangeChange} className="border-none shadow-none bg-transparent hover:bg-[var(--bg-tertiary)]" />

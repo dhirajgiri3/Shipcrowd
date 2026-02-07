@@ -14,7 +14,8 @@ import {
     Filter,
     ArrowUpRight,
     TrendingUp,
-    Shield
+    Shield,
+    Loader2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -145,10 +146,10 @@ const SellersClient = () => {
                     <button
                         onClick={handleExport}
                         disabled={isExporting}
-                        className="px-4 py-2 bg-primary-blue text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium shadow-md shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
                     >
                         {isExporting ? (
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                            <Loader2 className="animate-spin h-4 w-4" />
                         ) : (
                             <ArrowUpRight size={16} />
                         )}

@@ -13,6 +13,10 @@ const CACHE_KEY = 'admin_insights';
 const CACHE_TTL_SEC = 3600; // 1 hour
 const LAST_30_DAYS = 30;
 const PREVIOUS_30_DAYS = 60;
+/** Minimum delivery outcomes (delivered + shipped + rto) before showing success-rate insight (avoids noise from 0% with 1 RTO). */
+const MIN_ATTEMPTED_FOR_SUCCESS_RATE_INSIGHT = 10;
+/** Minimum RTO count before showing "top RTO reason" insight (avoids "100% — single reason" with 1 RTO). */
+const MIN_RTO_COUNT_FOR_TOP_REASON_INSIGHT = 5;
 
 /** Minimal types for aggregation results to avoid `any` */
 interface CompanyStatRow {
@@ -164,7 +168,7 @@ export default class AdminInsightsService {
         ]);
 
         const successRate = attempted > 0 ? (delivered / attempted) * 100 : 0;
-        if (attempted > 0 && successRate < 85) {
+        if (attempted >= MIN_ATTEMPTED_FOR_SUCCESS_RATE_INSIGHT && successRate < 85) {
             insights.push({
                 id: `admin_success_rate_${Date.now()}`,
                 type: 'efficiency',
@@ -353,8 +357,8 @@ export default class AdminInsightsService {
             { $limit: 5 },
         ]);
 
-        if (reasons.length > 0) {
-            const total = (reasons as RTOReasonRow[]).reduce((s, r) => s + r.count, 0);
+        const total = (reasons as RTOReasonRow[]).reduce((s, r) => s + r.count, 0);
+        if (reasons.length > 0 && total >= MIN_RTO_COUNT_FOR_TOP_REASON_INSIGHT) {
             const top = reasons[0] as RTOReasonRow;
             const pct = total > 0 ? (top.count / total) * 100 : 0;
             const reasonLabel = top._id ?? 'Unknown';

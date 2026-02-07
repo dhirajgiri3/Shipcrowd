@@ -1,6 +1,7 @@
 export * from './useUserManagement';
 export * from './useEmailQueue';
 export * from './useAdminOrders';
+export * from './useOrderExport';
 
 export * from './intelligence/useAdminIntelligence';
 export * from './useAdminNDR';

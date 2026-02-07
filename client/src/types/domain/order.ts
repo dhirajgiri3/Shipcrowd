@@ -203,7 +203,7 @@ export interface OrderListParams {
   status?: string;
   startDate?: string;
   endDate?: string;
-  warehouseId?: string;
+  warehouse?: string;
   search?: string; // Search by order number or customer name/phone
   // Admin-specific filters
   sellerId?: string; // Filter by seller (admin only)

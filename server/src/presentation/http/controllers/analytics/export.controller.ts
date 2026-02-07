@@ -25,7 +25,8 @@ const exportRequestSchema = z.object({
     filters: z.object({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
-        status: z.array(z.string()).optional()
+        status: z.array(z.string()).optional(),
+        warehouse: z.string().optional()
     }).optional()
 });
 
@@ -48,8 +49,7 @@ export const exportToCSV = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, { requireCompany: true });
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -71,10 +71,18 @@ export const exportToCSV = async (
         const filename = `${dataType}_export_${Date.now()}.csv`;
 
         // Upload to Spaces if configured, otherwise stream directly
-        if (isSpacesConfigured()) {
-            const key = `exports/${auth.companyId}/${filename}`;
+        if (isSpacesConfigured() && auth.companyId) { // Only upload if company context exists, otherwise stream? Or use 'admin' folder?
+            // For now, let's keep it simple: if admin, maybe just stream or use 'admin' folder. 
+            // But existing logic uses companyId for folder. 
+            // "exports/${auth.companyId}/${filename}"
+            // If valid companyId, use it. If not, maybe 'admin'? 
+            // Let's assume for admin we might want to just stream for now or use 'platform' folder.
+            // Given the requirements, I will assume streaming is fine for now or handle 'admin' folder.
+            // But simpler to just use 'platform_admin' if companyId is missing.
+            const folderId = auth.companyId || 'platform_admin';
+            const key = `exports/${folderId}/${filename}`;
             await StorageService.upload(buffer, {
-                folder: `exports/${auth.companyId}`,
+                folder: `exports/${folderId}`,
                 fileName: filename,
                 contentType: 'text/csv'
             });
@@ -111,8 +119,7 @@ export const exportToExcel = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, { requireCompany: true });
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -136,10 +143,11 @@ export const exportToExcel = async (
 
         const filename = `${dataType}_export_${Date.now()}.xlsx`;
 
-        if (isSpacesConfigured()) {
-            const key = `exports/${auth.companyId}/${filename}`;
+        if (isSpacesConfigured() && auth.companyId) {
+            const folderId = auth.companyId || 'platform_admin';
+            const key = `exports/${folderId}/${filename}`;
             await StorageService.upload(buffer, {
-                folder: `exports/${auth.companyId}`,
+                folder: `exports/${folderId}`,
                 fileName: filename,
                 contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             });
@@ -176,8 +184,7 @@ export const exportToPDF = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, { requireCompany: true });
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -201,10 +208,11 @@ export const exportToPDF = async (
 
         const filename = `${dataType}_export_${Date.now()}.pdf`;
 
-        if (isSpacesConfigured()) {
-            const key = `exports/${auth.companyId}/${filename}`;
+        if (isSpacesConfigured() && auth.companyId) {
+            const folderId = auth.companyId || 'platform_admin';
+            const key = `exports/${folderId}/${filename}`;
             await StorageService.upload(buffer, {
-                folder: `exports/${auth.companyId}`,
+                folder: `exports/${folderId}`,
                 fileName: filename,
                 contentType: 'application/pdf'
             });
@@ -240,8 +248,15 @@ async function fetchData(
     filters?: ExportRequestBody['filters']
 ): Promise<any[]> {
     const MAX_EXPORT_RECORDS = 10000;
-    const companyObjectId = new mongoose.Types.ObjectId(companyId);
-    const query: any = { companyId: companyObjectId, isDeleted: false };
+
+    // Base query
+    const query: any = { isDeleted: false };
+
+    // Apply company filter only if companyId is provided (e.g. Seller or Staff)
+    // If companyId is empty/null (Admin), we don't filter by company
+    if (companyId) {
+        query.companyId = new mongoose.Types.ObjectId(companyId);
+    }
 
     if (filters?.startDate && filters?.endDate) {
         query.createdAt = {
@@ -252,6 +267,10 @@ async function fetchData(
 
     if (filters?.status?.length) {
         query.currentStatus = { $in: filters.status };
+    }
+
+    if (filters?.warehouse) {
+        query.warehouseId = new mongoose.Types.ObjectId(filters.warehouse);
     }
 
     // Check total count before fetching to warn user if truncation will occur

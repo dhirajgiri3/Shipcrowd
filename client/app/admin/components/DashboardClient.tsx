@@ -1,12 +1,14 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/ui/core/Button';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import {
     ArrowUpRight,
     BrainCircuit,
@@ -16,7 +18,6 @@ import {
     Shield,
     Target,
     TrendingDown,
-    TrendingUp,
     Users,
     Zap,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ import {
     LazyResponsiveContainer as ResponsiveContainer,
     LazyCell as Cell,
 } from '@/src/components/features/charts/LazyCharts';
+import { formatCurrency } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
 import { cn } from '@/src/lib/utils';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
@@ -41,6 +43,7 @@ import { useAdminDashboard, useAdminInsights } from '@/src/core/api/hooks/analyt
 import { useDateRange } from '@/src/lib/data';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import type { SmartInsight } from '@/src/core/api/hooks/analytics/useSmartInsights';
+import type { AdminDashboard } from '@/src/types/api/analytics';
 
 // --- ADMIN INSIGHTS CONFIG (stable across renders) ---
 const ADMIN_INSIGHTS_TYPE_CONFIG: Record<
@@ -75,92 +78,64 @@ const itemVariants = {
 
 // --- COMPONENTS ---
 
-interface StatCardProps {
-    title: string;
-    value: number;
-    subtext: string;
-    icon: React.ComponentType<{ className?: string }>;
-    trend?: 'up' | 'down' | 'stable';
-    trendValue?: string;
-    color: 'blue' | 'emerald' | 'violet' | 'amber';
-    data: Array<{ value: number }>;
-    /** When set, shown instead of numeric value (e.g. "N/A") */
-    valueLabel?: string;
-}
+/** Build CSV content from current dashboard data */
+function buildDashboardCsv(
+    adminData: AdminDashboard | undefined,
+    revenueTrendData: Array<{ name: string; revenue: number; orders: number }>,
+    topSellersData: Array<{ companyName: string; totalOrders: number; totalRevenue: number; companyId: string }>,
+    orderStatusData: Array<{ name: string; value: number }>,
+    dateLabel: string
+): string {
+    const rows: string[] = [];
+    const escape = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 
-function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data, valueLabel }: StatCardProps) {
-    return (
-        <motion.div
-            variants={itemVariants}
-            className="group relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-6 text-left transition-all duration-200 hover:border-[var(--border-focus)]"
-        >
-            <div className="flex items-start justify-between mb-4">
-                <div className={cn(
-                    "p-2.5 rounded-lg transition-colors border",
-                    color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20" :
-                        color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
-                            color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border-[var(--primary-blue)]/20" :
-                                "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20"
-                )}>
-                    <Icon className="w-5 h-5" />
-                </div>
-                {trend && (
-                    <div className={cn(
-                        "flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
-                        trend === 'up' ? "text-[var(--success)] bg-[var(--success-bg)]" :
-                            trend === 'down' ? "text-[var(--error)] bg-[var(--error-bg)]" :
-                                "text-[var(--text-secondary)] bg-[var(--bg-secondary)]"
-                    )}>
-                        {trend !== 'stable' && <TrendingUp className={cn("w-3 h-3", trend === 'down' && "rotate-180")} />}
-                        {trendValue}
-                    </div>
-                )}
-            </div>
+    rows.push('Admin Dashboard Export');
+    rows.push(`Date range,${dateLabel}`);
+    rows.push('');
 
-            <div>
-                <p className="text-sm font-medium text-[var(--text-secondary)]">{title}</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                    <h3 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-                        {valueLabel != null ? valueLabel : <AnimatedNumber value={value} />}
-                    </h3>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] mt-1">{subtext}</p>
-            </div>
+    if (adminData) {
+        rows.push('Summary');
+        rows.push('Metric,Value');
+        rows.push(`Total Revenue,${adminData.totalRevenue ?? 0}`);
+        rows.push(`Total Orders,${adminData.totalOrders ?? 0}`);
+        rows.push(`Active Sellers,${adminData.totalRegisteredSellers ?? 0}`);
+        const sr = adminData.successRateBasedOnAttempts && adminData.globalSuccessRate != null
+            ? `${Number(adminData.globalSuccessRate).toFixed(1)}%`
+            : 'N/A';
+        rows.push(`Success Rate,${sr}`);
+        rows.push(`Pending Orders,${adminData.pendingOrders ?? 0}`);
+        rows.push(`Delivered Orders,${adminData.deliveredOrders ?? 0}`);
+        rows.push('');
+    }
 
-            <div className="h-10 mt-4 -mx-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data || []}>
-                        <defs>
-                            <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={
-                                    color === 'blue' ? 'var(--primary-blue)' :
-                                        color === 'emerald' ? 'var(--success)' :
-                                            color === 'violet' ? 'var(--primary-blue)' : 'var(--warning)'
-                                } stopOpacity={0.1} />
-                                <stop offset="100%" stopColor="transparent" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <Area
-                            type="monotone"
-                            dataKey="value"
-                            stroke={
-                                color === 'blue' ? 'var(--primary-blue)' :
-                                    color === 'emerald' ? 'var(--success)' :
-                                        color === 'violet' ? 'var(--primary-blue)' : 'var(--warning)'
-                            }
-                            fill={`url(#gradient-${title})`}
-                            strokeWidth={1.5}
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
-            </div>
-        </motion.div>
-    );
+    if (revenueTrendData.length > 0) {
+        rows.push('Revenue & Orders by Date');
+        rows.push('Date,Revenue,Orders');
+        revenueTrendData.forEach((d) => rows.push([d.name, d.revenue, d.orders].map(escape).join(',')));
+        rows.push('');
+    }
+
+    if (topSellersData.length > 0) {
+        rows.push('Top Sellers');
+        rows.push('Company,Orders,Revenue');
+        topSellersData.forEach((d) => rows.push([d.companyName, d.totalOrders, d.totalRevenue].map(escape).join(',')));
+        rows.push('');
+    }
+
+    if (orderStatusData.length > 0) {
+        rows.push('Order Status');
+        rows.push('Status,Count');
+        orderStatusData.forEach((d) => rows.push([d.name, d.value].map(escape).join(',')));
+    }
+
+    return rows.join('\r\n');
 }
 
 export function DashboardClient() {
+    const router = useRouter();
     const { user } = useAuth();
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [exporting, setExporting] = useState(false);
     const { dateRange } = useDateRange();
 
     useEffect(() => {
@@ -214,11 +189,6 @@ export function DashboardClient() {
         }));
     }, [adminData]);
 
-    const successRateSparklineData = useMemo(() => {
-        if (!adminData?.revenueGraph?.length) return [];
-        return adminData.revenueGraph.map((d) => ({ value: d.orders }));
-    }, [adminData]);
-
     const orderStatusHint = useMemo(() => {
         if (!orderStatusData.length || !adminData?.totalOrders) return null;
         const delivered = orderStatusData.find((s) => s.name === 'Delivered')?.value ?? 0;
@@ -227,6 +197,27 @@ export function DashboardClient() {
         if (pending > delivered) return 'High pending share';
         return null;
     }, [orderStatusData, adminData?.totalOrders]);
+
+    const dateLabel = useMemo(
+        () => `${dateRange.from.toLocaleDateString()} – ${dateRange.to.toLocaleDateString()}`,
+        [dateRange.from, dateRange.to]
+    );
+
+    const handleExportDashboard = useCallback(() => {
+        setExporting(true);
+        try {
+            const csv = buildDashboardCsv(adminData, revenueTrendData, topSellersData, orderStatusData, dateLabel);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `admin-dashboard-${dateRange.from.toISOString().slice(0, 10)}-to-${dateRange.to.toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } finally {
+            setExporting(false);
+        }
+    }, [adminData, revenueTrendData, topSellersData, orderStatusData, dateLabel, dateRange.from, dateRange.to]);
 
     const isLoading = adminLoading;
     const isError = !!adminError;
@@ -295,12 +286,29 @@ export function DashboardClient() {
 
                 <div className="flex items-center gap-3">
                     <DateRangePicker />
-                    <Button variant="outline" size="icon" className="bg-[var(--bg-primary)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]" title="Settings">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="bg-[var(--bg-primary)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+                        title="Platform settings"
+                        onClick={() => router.push('/admin/settings')}
+                    >
                         <Settings className="w-5 h-5" />
                     </Button>
-                    <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white border-0" title="Export Dashboard">
-                        <span className="mr-2">Export</span>
-                        <ArrowUpRight className="w-4 h-4" />
+                    <Button
+                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white border-0"
+                        title="Export dashboard data as CSV"
+                        onClick={handleExportDashboard}
+                        disabled={exporting || !adminData}
+                    >
+                        {exporting ? (
+                            <span className="mr-2">Exporting…</span>
+                        ) : (
+                            <>
+                                <span className="mr-2">Export</span>
+                                <ArrowUpRight className="w-4 h-4" />
+                            </>
+                        )}
                     </Button>
                 </div>
             </header>
@@ -312,42 +320,53 @@ export function DashboardClient() {
                 animate="visible"
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
             >
-                <StatCard
+                <StatsCard
                     title="Total Revenue"
-                    value={adminData?.totalRevenue ?? 0}
-                    subtext="Selected period"
+                    value={formatCurrency(adminData?.totalRevenue ?? 0)}
                     icon={DollarSign}
-                    color="emerald"
-                    data={revenueTrendData.map((d) => ({ value: d.revenue }))}
+                    variant="success"
+                    description="Selected period"
+                    delay={0}
                 />
-                <StatCard
+                <StatsCard
                     title="Total Orders"
                     value={adminData?.totalOrders ?? 0}
-                    subtext="Selected period"
                     icon={Package}
-                    color="blue"
-                    data={revenueTrendData.map((d) => ({ value: d.orders }))}
+                    variant="info"
+                    description="Selected period"
+                    delay={1}
                 />
-                <StatCard
+                <StatsCard
                     title="Active Sellers"
                     value={activeSellersCount}
-                    subtext="Total Sellers"
                     icon={Users}
-                    trend="up"
-                    trendValue="Live"
-                    color="violet"
-                    data={[{ value: activeSellersCount }]}
+                    variant="default"
+                    description="Total Sellers"
+                    delay={2}
                 />
-                <StatCard
+                <StatsCard
                     title="Success Rate"
-                    value={adminData?.globalSuccessRate ?? 0}
-                    subtext={adminData?.successRateBasedOnAttempts ? 'Delivery Performance' : 'No delivery outcomes in period'}
+                    value={adminData?.successRateBasedOnAttempts && adminData?.globalSuccessRate != null
+                        ? `${Number(adminData.globalSuccessRate).toFixed(1)}%`
+                        : 'N/A'}
                     icon={Zap}
-                    trend={adminData?.successRateBasedOnAttempts ? ((adminData?.globalSuccessRate ?? 0) >= 95 ? 'up' : 'stable') : undefined}
-                    trendValue={adminData?.successRateBasedOnAttempts && adminData?.globalSuccessRate != null ? `${Number(adminData.globalSuccessRate).toFixed(1)}%` : undefined}
-                    color="amber"
-                    data={successRateSparklineData}
-                    valueLabel={adminData?.successRateBasedOnAttempts ? undefined : 'N/A'}
+                    variant={
+                        !adminData?.successRateBasedOnAttempts
+                            ? 'default'
+                            : (adminData?.globalSuccessRate ?? 0) >= 85
+                                ? 'success'
+                                : (adminData?.globalSuccessRate ?? 0) === 0
+                                    ? 'critical'
+                                    : 'warning'
+                    }
+                    description={
+                        !adminData?.successRateBasedOnAttempts
+                            ? 'No delivery outcomes in period'
+                            : (adminData?.globalSuccessRate ?? 0) === 0
+                                ? 'No delivered orders in period'
+                                : 'Delivery Performance'
+                    }
+                    delay={3}
                 />
             </motion.section>
 
@@ -505,10 +524,11 @@ export function DashboardClient() {
                                         </Pie>
                                         <Tooltip
                                             contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                                            formatter={(value: number, name: string, props: { payload: { value: number; name: string; color: string } }) => {
+                                            formatter={(value, name) => {
                                                 const total = (adminData?.totalOrders ?? 0) || 1;
-                                                const pct = ((value / total) * 100).toFixed(1);
-                                                return [`${value.toLocaleString()} (${pct}%)`, name];
+                                                const num = Number(value);
+                                                const pct = ((num / total) * 100).toFixed(1);
+                                                return [`${num.toLocaleString()} (${pct}%)`, name];
                                             }}
                                             itemStyle={{ color: 'var(--text-primary)' }}
                                             labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}

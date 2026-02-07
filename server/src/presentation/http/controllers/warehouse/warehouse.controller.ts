@@ -207,7 +207,13 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
 export const getWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const auth = guardChecks(req, { requireCompany: false });
-    if (!req.params.companyId) requireCompanyContext(auth);
+
+    // Only require company context for non-admins if companyId not in params
+    if (!req.params.companyId && !auth.isAdmin && !auth.isSuperAdmin) {
+      requireCompanyContext(auth);
+    }
+
+    // Determine companyId (could be undefined for Admin)
     const companyId = req.params.companyId || auth.companyId;
 
     if (req.params.companyId && auth.companyId !== req.params.companyId && !isPlatformAdmin(req.user!)) {
@@ -218,7 +224,11 @@ export const getWarehouses = async (req: Request, res: Response, next: NextFunct
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
     const skip = (page - 1) * limit;
 
-    const filter: any = { companyId: companyId, isDeleted: false };
+    const filter: any = { isDeleted: false };
+    if (companyId) {
+      filter.companyId = companyId;
+    }
+
     if (req.query.search) {
       filter.$or = [
         { name: { $regex: req.query.search, $options: 'i' } },
