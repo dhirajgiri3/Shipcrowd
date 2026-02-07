@@ -26,6 +26,7 @@ import type {
     AdminDashboardFilters,
 } from '@/src/types/api/analytics';
 import { QUERY_CONFIG } from '../../config/query-client';
+import type { SmartInsight } from './useSmartInsights';
 
 // Legacy analytics interface (keep for backward compatibility)
 export interface AnalyticsData {
@@ -111,6 +112,27 @@ export function useAdminDashboard(
         gcTime: CACHE_TIMES.SHORT.gcTime,
         retry: RETRY_CONFIG.DEFAULT,
         refetchInterval: QUERY_CONFIG.refetchInterval.adminDashboard,
+        ...options,
+    });
+}
+
+/**
+ * Get admin dashboard AI insights (platform-level). Uses GET /analytics/dashboard/admin/insights.
+ */
+export function useAdminInsights(
+    options?: UseQueryOptions<SmartInsight[], ApiError>
+) {
+    return useQuery<SmartInsight[], ApiError>({
+        queryKey: queryKeys.analytics.adminInsights(),
+        queryFn: async () => {
+            const { data } = await apiClient.get<{ data: SmartInsight[] }>(
+                '/analytics/dashboard/admin/insights'
+            );
+            return Array.isArray(data?.data) ? data.data : [];
+        },
+        staleTime: 60 * 60 * 1000,
+        gcTime: 2 * 60 * 60 * 1000,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 }

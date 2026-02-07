@@ -12,7 +12,7 @@ import {
 import { Button } from '@/src/components/ui/core/Button';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { OrderTable } from './OrderTable'; // New component
-import { useAdminOrders, useGetCourierRates, useShipOrder } from '@/src/core/api/hooks/admin';
+import { useAdminOrders, useGetCourierRates, useShipOrder, useDeleteOrder } from '@/src/core/api/hooks/admin';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
 import { showSuccessToast, showErrorToast } from '@/src/lib/error';
 import { formatCurrency, cn } from '@/src/lib/utils';
@@ -101,12 +101,20 @@ export default function OrdersClient() {
 
     const getCourierRatesMutation = useGetCourierRates();
     const shipOrderMutation = useShipOrder();
+    const deleteOrderMutation = useDeleteOrder();
 
     const orders = ordersResponse?.data || [];
     const pagination = ordersResponse?.pagination;
     const stats = ordersResponse?.stats || {};
 
     // -- Event Handlers --
+    // Sync search with URL
+    useEffect(() => {
+        if (debouncedSearch !== search) {
+            updateUrl({ search: debouncedSearch, page: 1 });
+        }
+    }, [debouncedSearch]);
+
     const handleTabChange = (newStatus: string) => {
         updateUrl({ status: newStatus, page: 1 });
     };
@@ -177,6 +185,16 @@ export default function OrdersClient() {
             refetch();
         } catch (error) {
             // Error handled by mutation
+        }
+    };
+
+    const handleDeleteOrder = async (orderId: string) => {
+        if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+            try {
+                await deleteOrderMutation.mutateAsync(orderId);
+            } catch (error) {
+                // Error handled by mutation
+            }
         }
     };
 
@@ -310,6 +328,7 @@ export default function OrdersClient() {
                     sortBy={sort}
                     sortOrder={order}
                     onShip={handleShipNow}
+                    onDelete={handleDeleteOrder}
                 />
             </motion.div>
 

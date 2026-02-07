@@ -40,6 +40,7 @@ interface OrderTableProps {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     onShip?: (order: Order) => void;
+    onDelete?: (orderId: string) => void;
 }
 
 export function OrderTable({
@@ -51,7 +52,8 @@ export function OrderTable({
     onSort,
     sortBy,
     sortOrder,
-    onShip
+    onShip,
+    onDelete
 }: OrderTableProps) {
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
     const router = useRouter();
@@ -221,7 +223,7 @@ export function OrderTable({
                                                                 className="fixed inset-0 z-10"
                                                                 onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); }}
                                                             />
-                                                            <div className="absolute right-0 top-10 mt-1 w-48 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                                            <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
                                                                 <div className="py-1">
                                                                     <button
                                                                         className="w-full text-left px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] flex items-center gap-2"
@@ -232,7 +234,11 @@ export function OrderTable({
                                                                     <div className="h-px bg-[var(--border-subtle)] my-1" />
                                                                     <button
                                                                         className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
-                                                                        onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); /* Handle Delete */ }}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setActiveDropdown(null);
+                                                                            onDelete?.(order._id);
+                                                                        }}
                                                                     >
                                                                         <Trash2 size={14} /> Delete Order
                                                                     </button>

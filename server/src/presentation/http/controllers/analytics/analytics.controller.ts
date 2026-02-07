@@ -11,6 +11,7 @@ import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import RTOService from '../../../../core/application/services/rto/rto.service';
 import GeographicAnalyticsService from '../../../../core/application/services/analytics/geographic-analytics.service';
 import SmartInsightsService from '../../../../core/application/services/analytics/smart-insights.service';
+import AdminInsightsService from '../../../../core/application/services/analytics/admin-insights.service';
 
 /**
  * Analytics Controller
@@ -1220,6 +1221,24 @@ export const getProfitabilityAnalytics = async (
 };
 
 /**
+ * Get Admin Insights for admin dashboard (platform-level)
+ * @route GET /api/v1/analytics/dashboard/admin/insights
+ */
+export const getAdminInsights = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const insights = await AdminInsightsService.generateInsights();
+        sendSuccess(res, insights, 'Admin insights retrieved successfully');
+    } catch (error) {
+        logger.error('Error generating admin insights:', error);
+        next(error);
+    }
+};
+
+/**
  * Get Smart Insights for dashboard
  * Phase 5: Powers SmartInsightsPanel component
  * @route GET /api/v1/analytics/insights
@@ -1301,4 +1320,5 @@ export default {
     getGeographicInsights,
     // Phase 5: Smart Insights
     getSmartInsights,
+    getAdminInsights,
 };

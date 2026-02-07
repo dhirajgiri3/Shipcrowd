@@ -95,3 +95,25 @@ export const useBulkShipOrders = () => {
     },
   });
 };
+
+/**
+ * Delete an order (Admin only)
+ */
+export const useDeleteOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { success: true; message: string },
+    ApiError,
+    string
+  >({
+    mutationFn: async (orderId) => await orderApi.deleteOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
+      showSuccessToast('Order deleted successfully');
+    },
+    onError: (error) => {
+      handleApiError(error, 'Failed to delete order');
+    },
+  });
+};

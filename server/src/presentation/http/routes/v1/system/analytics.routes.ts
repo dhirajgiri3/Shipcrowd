@@ -39,8 +39,20 @@ router.get(
 router.get(
     '/dashboard/admin',
     authenticate,
-    requireAccess({ roles: ['admin'] }),
+    requireAccess({ roles: ['admin', 'super_admin'] }),
     asyncHandler(analyticsController.getAdminDashboard)
+);
+
+/**
+ * @route GET /api/v1/analytics/dashboard/admin/insights
+ * @desc Get platform-level AI insights for admin dashboard
+ * @access Private (Admin, Super Admin)
+ */
+router.get(
+    '/dashboard/admin/insights',
+    authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'] }),
+    asyncHandler(analyticsController.getAdminInsights)
 );
 
 /**

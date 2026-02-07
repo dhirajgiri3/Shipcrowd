@@ -13,6 +13,9 @@ import {
     DollarSign,
     Package,
     Settings,
+    Shield,
+    Target,
+    TrendingDown,
     TrendingUp,
     Users,
     Zap,
@@ -34,10 +37,22 @@ import { useAuth } from '@/src/features/auth';
 import { cn } from '@/src/lib/utils';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { TopSellers } from '@/src/components/admin/TopSellers';
-import { useAdminDashboard } from '@/src/core/api/hooks/analytics/useAnalytics';
+import { useAdminDashboard, useAdminInsights } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { useDateRange } from '@/src/lib/data';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
+import type { SmartInsight } from '@/src/core/api/hooks/analytics/useSmartInsights';
 
+// --- ADMIN INSIGHTS CONFIG (stable across renders) ---
+const ADMIN_INSIGHTS_TYPE_CONFIG: Record<
+    SmartInsight['type'],
+    { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; accentColor: string }
+> = {
+    cost_saving: { icon: TrendingDown, accentColor: 'var(--success)' },
+    rto_prevention: { icon: Shield, accentColor: 'var(--error)' },
+    efficiency: { icon: Package, accentColor: 'var(--warning)' },
+    speed: { icon: Zap, accentColor: 'var(--info)' },
+    growth_opportunity: { icon: Target, accentColor: 'var(--primary-blue)' },
+};
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -161,6 +176,7 @@ export function DashboardClient() {
 
     // --- API HOOKS ---
     const { data: adminData, isLoading: adminLoading, error: adminError, refetch: refetchAdmin } = useAdminDashboard(adminFilters);
+    const { data: adminInsights = [], isLoading: insightsLoading } = useAdminInsights();
 
     // --- DATA TRANSFORMATION ---
 
@@ -202,6 +218,15 @@ export function DashboardClient() {
         if (!adminData?.revenueGraph?.length) return [];
         return adminData.revenueGraph.map((d) => ({ value: d.orders }));
     }, [adminData]);
+
+    const orderStatusHint = useMemo(() => {
+        if (!orderStatusData.length || !adminData?.totalOrders) return null;
+        const delivered = orderStatusData.find((s) => s.name === 'Delivered')?.value ?? 0;
+        const pending = orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0;
+        if (delivered >= pending && delivered > 0) return 'Most orders delivered';
+        if (pending > delivered) return 'High pending share';
+        return null;
+    }, [orderStatusData, adminData?.totalOrders]);
 
     const isLoading = adminLoading;
     const isError = !!adminError;
@@ -385,19 +410,74 @@ export function DashboardClient() {
                 {/* RIGHT COLUMN (1/3) */}
                 <div className="space-y-8">
 
-                    {/* AI Insights - Placeholder (no backend yet) */}
-                    <div className="p-6 rounded-3xl bg-gradient-to-br from-[var(--bg-primary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] relative overflow-hidden">
+                    {/* Admin AI Insights */}
+                    <section
+                        className="p-6 rounded-3xl bg-gradient-to-br from-[var(--bg-primary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] relative overflow-hidden"
+                        aria-labelledby="admin-insights-heading"
+                        aria-busy={insightsLoading}
+                        aria-live="polite"
+                    >
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary-blue)]/10 blur-3xl rounded-full pointer-events-none" />
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center">
+                        <div className="flex items-center gap-3 relative z-10 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center" aria-hidden>
                                 <BrainCircuit className="w-6 h-6" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-[var(--text-primary)]">AI Insights</h3>
-                                <p className="text-xs text-[var(--text-muted)]">Coming soon</p>
+                                <h3 id="admin-insights-heading" className="font-bold text-[var(--text-primary)]">AI Insights</h3>
+                                <p className="text-xs text-[var(--text-muted)]">Platform-level recommendations</p>
                             </div>
                         </div>
-                    </div>
+                        {insightsLoading ? (
+                            <div className="space-y-3 relative z-10" aria-hidden>
+                                <Skeleton className="h-20 w-full rounded-xl" />
+                                <Skeleton className="h-20 w-full rounded-xl" />
+                                <Skeleton className="h-20 w-full rounded-xl" />
+                            </div>
+                        ) : adminInsights.length === 0 ? (
+                            <p className="text-sm text-[var(--text-muted)] relative z-10">No insights right now. Platform metrics are healthy.</p>
+                        ) : (
+                            <ul className="space-y-3 relative z-10" role="list">
+                                {adminInsights.map((insight, index) => {
+                                    const config = ADMIN_INSIGHTS_TYPE_CONFIG[insight.type] ?? ADMIN_INSIGHTS_TYPE_CONFIG.efficiency;
+                                    const Icon = config.icon;
+                                    const accent = config.accentColor;
+                                    return (
+                                        <li key={insight.id}>
+                                            <motion.article
+                                                initial={{ opacity: 0, y: 8 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.05 }}
+                                                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:border-[var(--border-default)] transition-colors"
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div className="p-2 rounded-lg shrink-0" style={{ backgroundColor: `${accent}20` }} aria-hidden>
+                                                        <Icon className="w-4 h-4" style={{ color: accent }} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-sm font-semibold text-[var(--text-primary)]">{insight.title}</h4>
+                                                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">{insight.description}</p>
+                                                        {insight.impact?.formatted && (
+                                                            <p className="text-xs mt-1.5 font-medium" style={{ color: accent }}>{insight.impact.formatted}</p>
+                                                        )}
+                                                        {insight.action?.endpoint && (
+                                                            <Link
+                                                                href={insight.action.endpoint}
+                                                                className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)]"
+                                                                aria-label={`${insight.action.label} for ${insight.title}`}
+                                                            >
+                                                                {insight.action.label}
+                                                                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden />
+                                                            </Link>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </motion.article>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </section>
 
                     {/* Order Status Distribution (Donut Chart) */}
                     <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
@@ -419,8 +499,8 @@ export function DashboardClient() {
                                             animationBegin={150}
                                             isAnimationActive
                                         >
-                                            {orderStatusData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                            {orderStatusData.map((entry) => (
+                                                <Cell key={entry.name} fill={entry.color} strokeWidth={0} />
                                             ))}
                                         </Pie>
                                         <Tooltip
@@ -467,17 +547,9 @@ export function DashboardClient() {
                                         );
                                     })}
                                 </div>
-                                {(() => {
-                                    const delivered = orderStatusData.find((s) => s.name === 'Delivered')?.value ?? 0;
-                                    const pending = orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0;
-                                    const total = adminData?.totalOrders ?? 0;
-                                    const hint = total > 0 && delivered >= pending && delivered > 0
-                                        ? 'Most orders delivered'
-                                        : total > 0 && pending > delivered
-                                            ? 'High pending share'
-                                            : null;
-                                    return hint ? <p className="text-xs text-[var(--text-muted)] mt-3 italic">{hint}</p> : null;
-                                })()}
+                                {orderStatusHint != null && (
+                                    <p className="text-xs text-[var(--text-muted)] mt-3 italic">{orderStatusHint}</p>
+                                )}
                             </>
                         )}
                     </div>
