@@ -87,11 +87,12 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
         const companyIds = candidateSellers.map(s => s.companyId);
 
         if (companyIds.length === 0) {
-            return sendSuccess(res, {
+            sendSuccess(res, {
                 sellers: [],
                 pagination: { total: 0, page, limit, totalPages: 0 },
                 summary: { total: 0, byStatus: {}, avgHealthScore: 0 }
             });
+            return;
         }
 
         // 2. Parallel Aggregations for Real Data
@@ -304,7 +305,8 @@ export const exportSellers = async (req: Request, res: Response, next: NextFunct
             // Empty CSV
             res.header('Content-Type', 'text/csv');
             res.attachment(`sellers_export_${new Date().toISOString().split('T')[0]}.csv`);
-            return res.send('');
+            res.send('');
+            return;
         }
 
         // Parallel Aggregations (Identical to main controller)
