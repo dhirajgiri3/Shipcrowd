@@ -54,7 +54,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-blue)]"></div>
             </div>
         );
     }
@@ -70,7 +70,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                     </Button>
                     <div>
                         <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                            <BarChart3 className="h-6 w-6 text-indigo-600" />
+                            <BarChart3 className="h-6 w-6 text-[var(--primary-blue)]" />
                             Rate Card Analytics
                         </h2>
                         <p className="text-[var(--text-muted)] text-sm mt-1">
@@ -209,7 +209,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-indigo-600" />
+                        <TrendingUp className="h-5 w-5 text-[var(--primary-blue)]" />
                         Revenue Trend
                     </CardTitle>
                 </CardHeader>
@@ -223,7 +223,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                                     return (
                                         <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                                             <div
-                                                className="w-full bg-indigo-600 rounded-t hover:bg-indigo-700 transition-colors cursor-pointer relative group"
+                                                className="w-full bg-[var(--primary-blue)] rounded-t hover:bg-[var(--primary-blue-deep)] transition-colors cursor-pointer relative group"
                                                 style={{ height: `${heightPercent}%` }}
                                                 title={`${point.date}: ${formatCurrency(point.revenue)} (${point.count} shipments)`}
                                             >
@@ -256,7 +256,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <MapPin className="h-5 w-5 text-indigo-600" />
+                            <MapPin className="h-5 w-5 text-[var(--primary-blue)]" />
                             Zone Distribution
                         </CardTitle>
                     </CardHeader>
@@ -280,7 +280,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                                                 </div>
                                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                                     <div
-                                                        className="bg-indigo-600 h-2 rounded-full transition-all"
+                                                        className="bg-[var(--primary-blue)] h-2 rounded-full transition-all"
                                                         style={{ width: `${percentage}%` }}
                                                     ></div>
                                                 </div>
@@ -300,7 +300,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Truck className="h-5 w-5 text-indigo-600" />
+                            <Truck className="h-5 w-5 text-[var(--primary-blue)]" />
                             Top Carriers
                         </CardTitle>
                     </CardHeader>

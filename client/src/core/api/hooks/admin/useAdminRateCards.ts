@@ -26,6 +26,14 @@ export interface AdminRateCard {
     fuelSurcharge?: number;
     minimumCall?: number;
     isLocked?: boolean;
+    minimumFare?: number;
+    minimumFareCalculatedOn?: 'freight' | 'freight_overhead';
+    gst?: number;
+    codPercentage?: number;
+    codMinimumCharge?: number;
+    shipmentType?: 'forward' | 'reverse';
+    zoneBType?: 'state' | 'region';
+    rateCardCategory?: string;
     baseRates: Array<{
         carrier: string;
         serviceType: string;
@@ -59,7 +67,15 @@ export interface AdminRateCard {
 
 export interface CreateAdminRateCardPayload {
     name: string;
-    companyId: string;
+    companyId?: string;
+    rateCardCategory?: string;
+    shipmentType?: 'forward' | 'reverse';
+    gst?: number;
+    minimumFare?: number;
+    minimumFareCalculatedOn?: 'freight' | 'freight_overhead';
+    zoneBType?: 'state' | 'region';
+    codPercentage?: number;
+    codMinimumCharge?: number;
     baseRates: Array<{
         carrier: string;
         serviceType: string;

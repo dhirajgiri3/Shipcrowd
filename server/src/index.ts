@@ -31,6 +31,7 @@ const PORT = process.env.PORT || 5005;
 
 /**
  * Validate KYC-related env (encryption and hashing). Fail fast at startup if missing.
+ * KYC hashing uses KYC_HASH_SECRET or falls back to ENCRYPTION_KEY (see kyc-utils).
  */
 function validateKYCConfig(): void {
     const key = process.env.ENCRYPTION_KEY;
@@ -40,8 +41,9 @@ function validateKYCConfig(): void {
             'Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
         );
     }
-    if (!process.env.KYC_HASH_SECRET) {
-        throw new Error('KYC_HASH_SECRET is required for KYC input hashing');
+    const hashSecret = process.env.KYC_HASH_SECRET || process.env.ENCRYPTION_KEY;
+    if (!hashSecret) {
+        throw new Error('KYC_HASH_SECRET or ENCRYPTION_KEY is required for KYC input hashing');
     }
 }
 

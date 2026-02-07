@@ -1,11 +1,10 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
 import { Select } from '@/src/components/ui/form/Select';
 import {
     CreditCard,
@@ -14,16 +13,15 @@ import {
     Truck,
     Package,
     IndianRupee,
-    Info,
     Plus,
-    Trash2
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
-import { useCreateRateCard } from '@/src/hooks/shipping/use-create-rate-card';
+import { useAdminRateCard, useUpdateAdminRateCard } from '@/src/core/api/hooks/admin/useAdminRateCards';
 import { useRouter } from 'next/navigation';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
-// Mock couriers for dropdown
+// Mock couriers for dropdown (Same as Create)
 const couriers = [
     { id: 'delhivery', name: 'Delhivery', services: ['Surface', 'Air', 'Express'] },
     { id: 'xpressbees', name: 'Xpressbees', services: ['Surface', 'Air'] },
@@ -36,10 +34,20 @@ const categories = ['lite', 'basic', 'advanced', 'pro', 'enterprise', 'premium']
 const shipmentTypes = ['forward', 'reverse'];
 const zoneMappings = ['state', 'region'];
 
-export function CreateRatecardClient() {
+interface EditRatecardClientProps {
+    rateCardId: string;
+}
+
+export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
     const { addToast } = useToast();
     const router = useRouter();
-    const { mutate: createRateCard, isPending } = useCreateRateCard();
+
+    // Fetch existing data
+    const { data: rateCard, isLoading: isFetching } = useAdminRateCard(rateCardId);
+
+    // Update mutation
+    const { mutate: updateRateCard, isPending: isUpdating } = useUpdateAdminRateCard();
+
     const [selectedCourier, setSelectedCourier] = useState('');
     const [formData, setFormData] = useState({
         courierProviderId: '',
@@ -62,9 +70,7 @@ export function CreateRatecardClient() {
         basicZoneD: '',
         basicZoneE: '',
         // Additional slab
-        isGeneric: false, // New state for Generic Rate Cards
-
-        // Additional slab
+        isGeneric: false,
         additionalWeight: '500',
         additionalZoneA: '',
         additionalZoneB: '',
@@ -75,6 +81,71 @@ export function CreateRatecardClient() {
         codPercentage: '2.5',
         codMinimumCharge: '25',
     });
+
+    // Populate form data when rateCard is fetched
+    useEffect(() => {
+        if (rateCard) {
+            const baseRate = rateCard.baseRates?.[0];
+            const weightRule = rateCard.weightRules?.[0];
+            const isGeneric = rateCard.name.startsWith('GENERIC');
+
+            // Determine multipliers (either from API or calculate from base rates if missing)
+            // Ideally backend sends zoneMultipliers or we derive from zoneRules. 
+            // For simplicity, we'll try to reconstruct from what we have or default to 1 if not calculable easily without all zone prices.
+            // Actually, the create payload constructs multipliers. If we want to edit specific zone prices, we need to reverse engineering them from multipliers * basePrice?
+            // "zoneMultipliers": { "zoneA": 1, "zoneB": 1.2 ... }
+
+            // Since the UI inputs are "Price", not "Multiplier", we need to show Prices.
+            // Price = BasePrice * Multiplier.
+            const basePrice = baseRate?.basePrice || 0;
+            const multipliers = rateCard.zoneMultipliers || { zoneA: 1 };
+
+            setFormData({
+                courierProviderId: baseRate?.carrier || '',
+                courierServiceId: baseRate?.serviceType || '',
+                rateCardCategory: extractCategory(rateCard.name) || '',
+                shipmentType: 'forward', // Defaulting as specific field might be missing in interface but present in data
+                gst: '18', // Default
+                minimumFare: String(rateCard.minimumCall || rateCard.minimumFare || 0),
+                minimumFareCalculatedOn: 'freight', // Default
+                zoneBType: 'state', // Default
+                isWeightConstraint: !!rateCard.weightRules?.some(r => r.minWeight > 0),
+                minWeight: '0',
+                maxWeight: '0',
+                status: rateCard.status || 'active',
+
+                isGeneric: isGeneric,
+
+                // Basic slab
+                basicWeight: String((baseRate?.maxWeight || 0.5) * 1000), // kg to gm
+                basicZoneA: String(basePrice),
+                basicZoneB: String((basePrice * (multipliers.zoneB || 0)).toFixed(2)),
+                basicZoneC: String((basePrice * (multipliers.zoneC || 0)).toFixed(2)),
+                basicZoneD: String((basePrice * (multipliers.zoneD || 0)).toFixed(2)),
+                basicZoneE: String((basePrice * (multipliers.zoneE || 0)).toFixed(2)),
+
+                // Additional slab
+                additionalWeight: '500', // Default assumption
+                additionalZoneA: String(((weightRule?.pricePerKg || 0) / 1000) * 500), // Price per kg -> price per 500g
+                // Assuming same multipliers apply to additional weight for simplicity in this UI, 
+                // or we set them to 0 if we can't derive. 
+                additionalZoneB: '0',
+                additionalZoneC: '0',
+                additionalZoneD: '0',
+                additionalZoneE: '0',
+
+                // Overhead
+                codPercentage: String(rateCard.codPercentage || 2.5),
+                codMinimumCharge: String(rateCard.codMinimumCharge || 25),
+            });
+
+            if (baseRate?.carrier) setSelectedCourier(baseRate.carrier);
+        }
+    }, [rateCard]);
+
+    const extractCategory = (name: string) => {
+        return categories.find(c => name.toLowerCase().includes(c));
+    };
 
     const handleInputChange = (field: string, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -87,22 +158,13 @@ export function CreateRatecardClient() {
     const selectedCourierData = couriers.find(c => c.id === selectedCourier);
 
     const handleSubmit = () => {
-        // Validation
+        // Validation (Same as Create)
         if (!formData.isGeneric && (!formData.courierProviderId || !formData.courierServiceId)) {
-            addToast('Please select a courier and service, or choose "Generic Rate Card"', 'error');
-            return;
-        }
-        if (!formData.rateCardCategory) {
-            addToast('Please select a rate card category', 'error');
+            addToast('Please select a courier and service', 'error');
             return;
         }
 
-        if (!formData.basicZoneA || !formData.basicZoneB) {
-            addToast('Please set at least Zone A and Zone B rates', 'error');
-            return;
-        }
-
-        // Calculate Multipliers based on Zone A Baseline
+        // Calculate Multipliers
         const basePrice = parseFloat(formData.basicZoneA) || 0;
         const multipliers: Record<string, number> = { zoneA: 1.0 };
 
@@ -113,17 +175,14 @@ export function CreateRatecardClient() {
             multipliers.zoneE = parseFloat((parseFloat(formData.basicZoneE) / basePrice).toFixed(2));
         }
 
-        // Calculate Price Per Kg for Additional Weight
-        // UI asks for "Price per X gm". Backend expects "Price per 1 Kg".
         const addWeightGm = parseFloat(formData.additionalWeight) || 500;
         const addPriceA = parseFloat(formData.additionalZoneA) || 0;
         const pricePerKg = addPriceA > 0 ? (addPriceA / addWeightGm) * 1000 : 0;
 
-        // Transform to API format (Model-compliant)
-        const payload = {
+        const payload: any = {
             name: formData.isGeneric
                 ? `GENERIC ${formData.rateCardCategory} ${Date.now()}`
-                : `${selectedCourierData?.name} ${formData.courierServiceId} ${formData.rateCardCategory} ${Date.now()}`,
+                : `${selectedCourierData?.name || formData.courierProviderId} ${formData.courierServiceId} ${formData.rateCardCategory} ${Date.now()}`,
             courierProviderId: formData.isGeneric ? null : formData.courierProviderId,
             courierServiceId: formData.isGeneric ? null : formData.courierServiceId,
             rateCardCategory: formData.rateCardCategory,
@@ -137,44 +196,44 @@ export function CreateRatecardClient() {
             maxWeight: formData.maxWeight ? parseFloat(formData.maxWeight) : undefined,
             status: formData.status as 'active' | 'inactive',
 
-            // Backend Model Structure
+            // Structure matches Create payload
             baseRates: [{
-                carrier: formData.isGeneric ? undefined : formData.courierProviderId, // or name
+                carrier: formData.isGeneric ? undefined : formData.courierProviderId,
                 serviceType: formData.isGeneric ? undefined : formData.courierServiceId,
                 basePrice: basePrice,
                 minWeight: 0,
-                maxWeight: parseFloat(formData.basicWeight) / 1000 // Convert gm to kg
+                maxWeight: parseFloat(formData.basicWeight) / 1000
             }],
-
             weightRules: [{
                 minWeight: parseFloat(formData.basicWeight) / 1000,
-                maxWeight: 1000, // Upper limit
+                maxWeight: 1000,
                 pricePerKg: pricePerKg,
                 carrier: formData.isGeneric ? undefined : formData.courierProviderId,
                 serviceType: formData.isGeneric ? undefined : formData.courierServiceId
             }],
-
             zoneMultipliers: multipliers,
-
             codPercentage: parseFloat(formData.codPercentage),
             codMinimumCharge: parseFloat(formData.codMinimumCharge),
-
-            // Required Dates
-            effectiveDates: {
-                startDate: new Date().toISOString()
-            }
         };
 
-        createRateCard(payload, {
+        updateRateCard({ id: rateCardId, data: payload }, {
             onSuccess: () => {
-                addToast('Rate card created successfully!', 'success');
+                addToast('Rate card updated successfully!', 'success');
                 router.push('/admin/ratecards');
             },
             onError: (error: any) => {
-                addToast(error?.response?.data?.message || 'Failed to create rate card', 'error');
+                addToast(error?.response?.data?.message || 'Failed to update rate card', 'error');
             }
         });
     };
+
+    if (isFetching) {
+        return (
+            <div className="flex h-[50vh] w-full items-center justify-center">
+                <Loader className="h-8 w-8 text-[var(--primary-blue)]" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
@@ -189,20 +248,20 @@ export function CreateRatecardClient() {
                     <div>
                         <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                             <CreditCard className="h-6 w-6 text-[var(--primary-blue)]" />
-                            Create Rate Card
+                            Edit Rate Card
                         </h1>
                         <p className="text-[var(--text-muted)] text-sm mt-1">
-                            Define pricing for a courier service
+                            Modify pricing for this service
                         </p>
                     </div>
                 </div>
                 <Button
                     onClick={handleSubmit}
-                    disabled={isPending}
+                    disabled={isUpdating}
                     className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
                 >
                     <Save className="h-4 w-4 mr-2" />
-                    {isPending ? 'Saving...' : 'Save Rate Card'}
+                    {isUpdating ? 'Updating...' : 'Update Rate Card'}
                 </Button>
             </div>
 
@@ -228,7 +287,6 @@ export function CreateRatecardClient() {
                                     setFormData(prev => ({
                                         ...prev,
                                         isGeneric: isChecked,
-                                        // Reset courier selection if generic is checked
                                         courierProviderId: isChecked ? '' : prev.courierProviderId,
                                         courierServiceId: isChecked ? '' : prev.courierServiceId
                                     }));
@@ -236,7 +294,7 @@ export function CreateRatecardClient() {
                                 }}
                             />
                             <label htmlFor="isGeneric" className="text-sm font-medium text-[var(--text-primary)] select-none cursor-pointer">
-                                Generic Rate Card (Apply to all couriers)
+                                Generic Rate Card
                             </label>
                         </div>
 
@@ -348,7 +406,6 @@ export function CreateRatecardClient() {
                             />
                         </div>
                     </div>
-
                     {/* Zone Mapping & Weight Constraints */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-[var(--border-subtle)]">
                         <div className="space-y-2">
@@ -389,7 +446,7 @@ export function CreateRatecardClient() {
                 </CardContent>
             </Card>
 
-            {/* Zone Pricing - Basic Slab */}
+            {/* Zone Pricing Cards - Reusing structure */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
@@ -518,13 +575,13 @@ export function CreateRatecardClient() {
                 </Link>
                 <Button
                     onClick={handleSubmit}
-                    disabled={isPending}
+                    disabled={isUpdating}
                     className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
                 >
                     <Save className="h-4 w-4 mr-2" />
-                    Create Rate Card
+                    {isUpdating ? 'Updating...' : 'Update Rate Card'}
                 </Button>
             </div>
-        </div >
+        </div>
     );
 }
