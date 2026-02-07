@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import {
     Receipt,
@@ -42,19 +43,7 @@ export function BillingClient() {
         addToast
     } = useBillingPage();
 
-    // Helper for badges
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'success':
-                return <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" />Success</Badge>;
-            case 'pending':
-                return <Badge variant="warning" className="gap-1"><Clock className="h-3 w-3" />Pending</Badge>;
-            case 'failed':
-                return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Failed</Badge>;
-            default:
-                return <Badge variant="neutral">{status}</Badge>;
-        }
-    };
+
 
     // Columns Configuration
     const columns = [
@@ -125,7 +114,7 @@ export function BillingClient() {
         columns.push({
             accessorKey: 'status',
             header: 'Status',
-            cell: (row: BillingTransaction) => getStatusBadge(row.status)
+            cell: (row: BillingTransaction) => <StatusBadge domain="billing" status={row.status} />
         });
     }
 

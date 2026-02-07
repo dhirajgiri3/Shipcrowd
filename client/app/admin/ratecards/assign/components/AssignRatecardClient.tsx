@@ -23,7 +23,7 @@ import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useRateCardAssignments, useAssignRateCard, useUnassignRateCard } from '@/src/core/api/hooks/admin/useRateCardManagement';
 import { useAdminCompanies } from '@/src/core/api/hooks/admin/companies/useCompanies';
-import { useRateCards } from '@/src/core/api/hooks/logistics/useRateCards';
+import { useAdminRateCards } from '@/src/core/api/hooks/admin/useAdminRateCards';
 
 export function AssignRatecardClient() {
     const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
@@ -34,13 +34,13 @@ export function AssignRatecardClient() {
     // API Hooks
     const { data: sellersData, isLoading: isLoadingSellers } = useAdminCompanies({ limit: 100 });
     const { data: assignmentsData, isLoading: isLoadingAssignments } = useRateCardAssignments();
-    const { data: rateCardsData, isLoading: isLoadingRateCards } = useRateCards();
+    const { data: rateCardsAdminData, isLoading: isLoadingRateCards } = useAdminRateCards();
     const { mutate: assignCard, isPending: isAssigning } = useAssignRateCard();
     const { mutate: unassignCard, isPending: isUnassigning } = useUnassignRateCard();
 
     const sellers = sellersData?.companies || [];
     const assignments = assignmentsData?.assignments || [];
-    const rateCards = rateCardsData || [];
+    const rateCards = rateCardsAdminData?.rateCards || [];
 
     const filteredSellers = sellers.filter(s =>
         s.name.toLowerCase().includes(searchSeller.toLowerCase())

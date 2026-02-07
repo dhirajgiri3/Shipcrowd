@@ -6,7 +6,7 @@ import { isUsingMockData } from '@/src/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Input } from '@/src/components/ui/core/Input';
 import { useWarehouses } from '@/src/core/api/hooks/logistics/useWarehouses';
 import {
@@ -199,12 +199,7 @@ export function WarehousesClient() {
                                         <div className="p-3 rounded-xl bg-[var(--bg-secondary)] group-hover:bg-[var(--bg-tertiary)] transition-colors">
                                             <Warehouse className="h-6 w-6 text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)] transition-colors" />
                                         </div>
-                                        <span className={cn(
-                                            "px-2.5 py-1 rounded-full text-xs font-bold",
-                                            !(wh as any).isDeleted ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
-                                        )}>
-                                            {!(wh as any).isDeleted ? 'Active' : 'Inactive'}
-                                        </span>
+                                        <StatusBadge domain="warehouse" status={!(wh as any).isDeleted ? 'active' : 'inactive'} />
                                     </div>
 
                                     <h3 className="font-bold text-[var(--text-primary)] text-lg mb-1">{wh.name}</h3>
@@ -286,13 +281,7 @@ export function WarehousesClient() {
                                     <td className="px-6 py-4 text-[var(--text-secondary)]">{item.warehouse}</td>
                                     <td className="px-6 py-4 font-bold text-[var(--text-primary)]">{item.quantity}</td>
                                     <td className="px-6 py-4">
-                                        <span className={cn(
-                                            "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase",
-                                            item.status === 'In Stock' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                                item.status === 'Low Stock' ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
-                                        )}>
-                                            {item.status}
-                                        </span>
+                                        <StatusBadge domain="inventory" status={item.status} />
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button className="text-xs font-medium text-[var(--primary-blue)] hover:underline">

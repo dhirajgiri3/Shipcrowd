@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
+
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Plug, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { useIntegrations } from '@/src/core/api/hooks/integrations/useIntegrations';
 import { useUserList } from '@/src/core/api/hooks/admin/useUserManagement';
@@ -81,12 +83,7 @@ export function IntegrationsClient() {
                                     <div className="h-10 w-10 flex items-center justify-center">
                                         <img src={integration.logo} alt={integration.name} className="h-full w-full object-contain" />
                                     </div>
-                                    <Badge variant={
-                                        integration.status === 'connected' ? 'success' :
-                                            integration.status === 'error' ? 'warning' : 'neutral'
-                                    }>
-                                        {integration.status}
-                                    </Badge>
+                                    <StatusBadge domain="integration" status={integration.status} />
                                 </div>
                                 <h3 className="font-semibold text-[var(--text-primary)] mb-1">{integration.name}</h3>
                                 <p className="text-xs text-[var(--text-muted)] mb-3">
@@ -109,9 +106,9 @@ export function IntegrationsClient() {
                 </div>
             </div>
 
-            <EkartSetupModal 
-                isOpen={isEkartModalOpen} 
-                onClose={() => setIsEkartModalOpen(false)} 
+            <EkartSetupModal
+                isOpen={isEkartModalOpen}
+                onClose={() => setIsEkartModalOpen(false)}
                 integration={selectedIntegration}
             />
 
@@ -145,9 +142,7 @@ export function IntegrationsClient() {
                                                 <Badge variant="outline">{user.role}</Badge>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <Badge variant={user.status === 'Active' ? 'success' : 'neutral'}>
-                                                    {user.status}
-                                                </Badge>
+                                                <StatusBadge domain="user" status={user.status} />
                                             </td>
                                             <td className="px-6 py-4 text-[var(--text-muted)]">{user.lastActive}</td>
                                             <td className="px-6 py-4 text-right">

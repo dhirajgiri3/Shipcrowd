@@ -113,7 +113,7 @@ interface AdminRateCardsFilters {
  */
 export const useAdminRateCards = (
     filters?: AdminRateCardsFilters,
-    options?: Omit<UseQueryOptions<{ rateCards: AdminRateCard[]; pagination: any }>, 'queryKey' | 'queryFn'>
+    options?: Partial<UseQueryOptions<{ rateCards: AdminRateCard[]; pagination: any }, ApiError>>
 ) => {
     return useQuery<{ rateCards: AdminRateCard[]; pagination: any }, ApiError>({
         queryKey: ['admin', 'ratecards', 'list', filters],
@@ -142,7 +142,7 @@ export const useAdminRateCards = (
  */
 export const useAdminRateCard = (
     rateCardId: string,
-    options?: Omit<UseQueryOptions<AdminRateCard>, 'queryKey' | 'queryFn'>
+    options?: Partial<UseQueryOptions<AdminRateCard, ApiError>>
 ) => {
     return useQuery<AdminRateCard, ApiError>({
         queryKey: ['admin', 'ratecards', 'detail', rateCardId],
@@ -161,7 +161,7 @@ export const useAdminRateCard = (
  * Get platform-wide rate card statistics
  */
 export const useAdminRateCardStats = (
-    options?: Omit<UseQueryOptions<AdminRateCardStats>, 'queryKey' | 'queryFn'>
+    options?: Partial<UseQueryOptions<AdminRateCardStats, ApiError>>
 ) => {
     return useQuery<AdminRateCardStats, ApiError>({
         queryKey: ['admin', 'ratecards', 'stats'],

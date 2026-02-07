@@ -122,7 +122,8 @@ export const RETURN_STATUS_CONFIG: Record<ReturnStatus, StatusConfig> = {
 // NDR STATUS CONFIGURATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const NDR_STATUS_CONFIG: Record<NDRStatus, StatusConfig> = {
+// Fix for NDRStatus type mismatch: cast to any or Record<string, StatusConfig> to allow extra statuses
+export const NDR_STATUS_CONFIG: Record<string, StatusConfig> = {
   open: {
     label: 'Open',
     color: 'info',
@@ -184,6 +185,10 @@ export const NDR_STATUS_CONFIG: Record<NDRStatus, StatusConfig> = {
     description: 'Waiting for seller response',
   },
 };
+
+// ... (other configs)
+
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MANIFEST STATUS CONFIGURATIONS
@@ -540,13 +545,207 @@ type StatusConfigMap =
   | typeof COURIER_STATUS_CONFIG
   | typeof KYC_STATUS_CONFIG
   | typeof ORDER_STATUS_CONFIG
-  | typeof COMMISSION_STATUS_CONFIG;
+  | typeof COMMISSION_STATUS_CONFIG
+  | typeof BILLING_STATUS_CONFIG
+  | typeof SALES_REP_STATUS_CONFIG;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BILLING STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const BILLING_STATUS_CONFIG: Record<string, StatusConfig> = {
+  success: {
+    label: 'Success',
+    color: 'success',
+    description: 'Transaction successful',
+  },
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'Transaction pending',
+  },
+  failed: {
+    label: 'Failed',
+    color: 'error',
+    description: 'Transaction failed',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SALES REP STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SALES_REP_STATUS_CONFIG: Record<string, StatusConfig> = {
+  active: {
+    label: 'Active',
+    color: 'success',
+    description: 'Sales representative is active',
+  },
+  inactive: {
+    label: 'Inactive',
+    color: 'neutral',
+    description: 'Sales representative is inactive',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INTEGRATION STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const INTEGRATION_STATUS_CONFIG: Record<string, StatusConfig> = {
+  connected: {
+    label: 'Connected',
+    color: 'success',
+    description: 'Integration active',
+  },
+  disconnected: {
+    label: 'Disconnected',
+    color: 'neutral',
+    description: 'Integration inactive',
+  },
+  error: {
+    label: 'Error',
+    color: 'error',
+    description: 'Sync error',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const USER_STATUS_CONFIG: Record<string, StatusConfig> = {
+  Active: {
+    label: 'Active',
+    color: 'success',
+    description: 'User active',
+  },
+  Inactive: {
+    label: 'Inactive',
+    color: 'neutral',
+    description: 'User inactive',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAREHOUSE STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const WAREHOUSE_STATUS_CONFIG: Record<string, StatusConfig> = {
+  active: {
+    label: 'Active',
+    color: 'success',
+    description: 'Warehouse operational',
+  },
+  inactive: {
+    label: 'Inactive',
+    color: 'neutral',
+    description: 'Warehouse inactive',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INVENTORY STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const INVENTORY_STATUS_CONFIG: Record<string, StatusConfig> = {
+  'In Stock': {
+    label: 'In Stock',
+    color: 'success',
+    description: 'Item in stock',
+  },
+  'Low Stock': {
+    label: 'Low Stock',
+    color: 'warning',
+    description: 'Stock running low',
+  },
+  'Out of Stock': {
+    label: 'Out of Stock',
+    color: 'error',
+    description: 'Item out of stock',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPPORT TICKET STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SUPPORT_TICKET_STATUS_CONFIG: Record<string, StatusConfig> = {
+  open: {
+    label: 'Open',
+    color: 'info',
+    description: 'New ticket',
+  },
+  in_progress: {
+    label: 'In Progress',
+    color: 'warning',
+    description: 'Ticket being worked on',
+  },
+  resolved: {
+    label: 'Resolved',
+    color: 'success',
+    description: 'Ticket resolved',
+  },
+  closed: {
+    label: 'Closed',
+    color: 'neutral',
+    description: 'Ticket closed',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPPORT PRIORITY CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SUPPORT_PRIORITY_CONFIG: Record<string, StatusConfig> = {
+  high: {
+    label: 'High',
+    color: 'error',
+    description: 'High priority',
+  },
+  medium: {
+    label: 'Medium',
+    color: 'warning',
+    description: 'Medium priority',
+  },
+  low: {
+    label: 'Low',
+    color: 'success',
+    description: 'Low priority',
+  },
+  critical: {
+    label: 'Critical',
+    color: 'error',
+    description: 'Critical priority',
+  },
+};
 
 /**
  * Get status configuration for a specific domain and status
  */
 export function getStatusConfig(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier' | 'kyc' | 'order' | 'commission',
+  domain:
+    | 'return'
+    | 'ndr'
+    | 'manifest'
+    | 'dispute'
+    | 'remittance'
+    | 'payout'
+    | 'webhook'
+    | 'company'
+    | 'coupon'
+    | 'courier'
+    | 'kyc'
+    | 'order'
+    | 'commission'
+    | 'billing'
+    | 'sales_rep'
+    | 'integration'
+    | 'user'
+    | 'warehouse'
+    | 'inventory'
+    | 'support_ticket'
+    | 'support_priority',
   status: string
 ): StatusConfig | undefined {
   const configs: Record<string, StatusConfigMap> = {
@@ -563,17 +762,29 @@ export function getStatusConfig(
     kyc: KYC_STATUS_CONFIG,
     order: ORDER_STATUS_CONFIG,
     commission: COMMISSION_STATUS_CONFIG,
+    billing: BILLING_STATUS_CONFIG,
+    sales_rep: SALES_REP_STATUS_CONFIG,
+    integration: INTEGRATION_STATUS_CONFIG,
+    user: USER_STATUS_CONFIG,
+    warehouse: WAREHOUSE_STATUS_CONFIG,
+    inventory: INVENTORY_STATUS_CONFIG,
+    support_ticket: SUPPORT_TICKET_STATUS_CONFIG,
+    support_priority: SUPPORT_PRIORITY_CONFIG,
   };
 
-  const config = configs[domain];
-  return config ? (config as any)[status] : undefined;
+  const domainConfig = configs[domain];
+  if (!domainConfig) return undefined;
+
+  // Cast to Record<string, StatusConfig> to allow string indexing
+  const typedConfig = domainConfig as Record<string, StatusConfig>;
+  return typedConfig[status] || typedConfig[status.toLowerCase()];
 }
 
 /**
  * Get CSS color class for a status
  */
 export function getStatusColorClass(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier' | 'kyc' | 'order' | 'commission',
+  domain: Parameters<typeof getStatusConfig>[0],
   status: string
 ): string {
   const config = getStatusConfig(domain, status);
@@ -584,7 +795,7 @@ export function getStatusColorClass(
  * Get status label for a status
  */
 export function getStatusLabel(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier' | 'kyc' | 'order' | 'commission',
+  domain: Parameters<typeof getStatusConfig>[0],
   status: string
 ): string {
   const config = getStatusConfig(domain, status);
@@ -609,4 +820,12 @@ export const STATUS_CONFIGS = {
   kyc: KYC_STATUS_CONFIG,
   order: ORDER_STATUS_CONFIG,
   commission: COMMISSION_STATUS_CONFIG,
+  billing: BILLING_STATUS_CONFIG,
+  sales_rep: SALES_REP_STATUS_CONFIG,
+  integration: INTEGRATION_STATUS_CONFIG,
+  user: USER_STATUS_CONFIG,
+  warehouse: WAREHOUSE_STATUS_CONFIG,
+  inventory: INVENTORY_STATUS_CONFIG,
+  support_ticket: SUPPORT_TICKET_STATUS_CONFIG,
+  support_priority: SUPPORT_PRIORITY_CONFIG,
 } as const;

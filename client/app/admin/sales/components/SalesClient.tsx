@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import {
     Users,
@@ -483,9 +484,7 @@ function SalesPersonCard({ sp }: { sp: SalesRep }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Badge variant={sp.status === 'active' ? 'success' : 'neutral'}>
-                            {sp.status}
-                        </Badge>
+                        <StatusBadge domain="sales_rep" status={sp.status} />
                         <button onClick={toggleStatus} disabled={updateMutation.isPending}>
                             {updateMutation.isPending ? (
                                 <Loader className="h-5 w-5 text-[var(--primary-blue)]" />

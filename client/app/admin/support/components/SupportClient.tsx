@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Select } from '@/src/components/ui/form/Select';
 import {
     Search,
@@ -101,25 +101,7 @@ export function SupportClient() {
         { title: 'SLA Breach Rate', value: `${metricsData?.slaBreachRate || 0}%`, icon: AlertCircle, color: 'red' },
     ];
 
-    const getPriorityColor = (priority: string) => {
-        switch (priority) {
-            case 'high': return 'destructive';
-            case 'medium': return 'warning';
-            case 'low': return 'success';
-            case 'critical': return 'destructive';
-            default: return 'neutral';
-        }
-    };
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'resolved': return 'success';
-            case 'in_progress': return 'warning';
-            case 'open': return 'info';
-            case 'closed': return 'neutral';
-            default: return 'neutral';
-        }
-    };
+    // Helper functions removed in favor of StatusBadge
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
@@ -251,9 +233,7 @@ export function SupportClient() {
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="font-semibold text-[var(--text-primary)]">{ticket.subject}</h3>
-                                            <Badge variant={getPriorityColor(ticket.priority)}>
-                                                {ticket.priority}
-                                            </Badge>
+                                            <StatusBadge domain="support_priority" status={ticket.priority} />
                                         </div>
                                         <p className="text-sm text-[var(--text-secondary)] line-clamp-1 mb-2">
                                             {ticket.description}
@@ -271,9 +251,7 @@ export function SupportClient() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                    <Badge variant={getStatusColor(ticket.status)}>
-                                        {ticket.status.replace('_', ' ')}
-                                    </Badge>
+                                    <StatusBadge domain="support_ticket" status={ticket.status} />
                                     <span className="text-xs text-[var(--text-muted)]">
                                         Last update: {format(new Date(ticket.updatedAt), 'MMM d')}
                                     </span>
@@ -356,9 +334,7 @@ export function SupportClient() {
                                         </div>
                                         <div>
                                             <p className="text-[var(--text-muted)] mb-1">Priority</p>
-                                            <Badge variant={getPriorityColor(selectedTicket.priority)} className="h-8 flex items-center justify-center">
-                                                {selectedTicket.priority}
-                                            </Badge>
+                                            <StatusBadge domain="support_priority" status={selectedTicket.priority} />
                                         </div>
                                     </div>
 
