@@ -24,6 +24,7 @@ import { formatCurrency, cn } from '@/src/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '@/src/components/ui/core/Button';
 import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
+import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 
 interface OrderTableProps {
     data: Order[];
@@ -89,11 +90,7 @@ export function OrderTable({
     };
 
     if (isLoading && data.length === 0) {
-        return (
-            <div className="w-full h-64 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-blue"></div>
-            </div>
-        );
+        return <TableSkeleton rows={10} columns={6} />;
     }
 
     if (!isLoading && data.length === 0) {

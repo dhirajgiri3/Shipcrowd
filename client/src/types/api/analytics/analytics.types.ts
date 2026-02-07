@@ -319,6 +319,10 @@ export interface AdminDashboard {
     attemptedDeliveries?: number;
     /** True when success rate is computed from delivery outcomes; false when no attempts in period. */
     successRateBasedOnAttempts?: boolean;
+    /** RTO order count in period (delivery outcome). */
+    rtoCount?: number;
+    /** RTO rate as % of attempted deliveries (rto / attempted). */
+    rtoRate?: number;
     ndrCases: number;
     pendingOrders: number;
     deliveredOrders: number;
@@ -327,6 +331,12 @@ export interface AdminDashboard {
     companiesStats: AdminDashboardCompanyStat[];
     revenueGraph: AdminDashboardRevenueGraphPoint[];
     dateRange: AdminDashboardDateRange;
+    /** Same-length period immediately before startDate; for "vs previous period" comparison. */
+    previousPeriod?: {
+        totalRevenue: number;
+        totalOrders: number;
+        globalSuccessRate: number;
+    };
 }
 
 /** Filters for admin dashboard (query params) */

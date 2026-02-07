@@ -22,6 +22,7 @@ import {
     LazyPie as Pie,
     LazyCell as Cell
 } from '@/src/components/features/charts/LazyCharts';
+import { ChartSkeleton } from '@/src/components/ui/data/Skeleton';
 import { Download, Loader2 } from 'lucide-react';
 
 const COLORS = ['var(--primary-blue)', '#4338CA', 'var(--success)', 'var(--warning)', 'var(--error)'];
@@ -94,9 +95,7 @@ export function AnalyticsClient() {
             <div className="grid gap-6 lg:grid-cols-2">
                 <ChartCard title="Delivery Performance Trend" height={350}>
                     {isLoadingDelivery ? (
-                        <div className="flex items-center justify-center h-full">
-                            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
-                        </div>
+                        <ChartSkeleton height={300} />
                     ) : (
                         <AreaChart data={deliveryPerformanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <defs>
@@ -131,7 +130,7 @@ export function AnalyticsClient() {
                 <ChartCard title="Zone-wise Distribution" height={350}>
                     {isLoadingZones ? (
                         <div className="flex items-center justify-center h-full">
-                            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                            <ChartSkeleton height={300} />
                         </div>
                     ) : (
                         <PieChart>

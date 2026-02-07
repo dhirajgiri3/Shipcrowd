@@ -58,7 +58,7 @@ export const useAdminDisputes = (filters?: DisputeFilters) => {
 };
 
 /**
- * Get dispute metrics for dashboard
+ * Get dispute metrics for dashboard (company-scoped; requires company context)
  */
 export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate?: string }) => {
     return useQuery<DisputeMetrics, ApiError>({
@@ -69,6 +69,22 @@ export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate
             if (dateRange?.endDate) params.append('endDate', dateRange.endDate);
 
             const response = await apiClient.get(`/disputes/weight/metrics?${params.toString()}`);
+            return response.data.data.metrics;
+        },
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+    });
+};
+
+/**
+ * Get platform-wide weight dispute metrics (admin dashboard). No company filter.
+ * Use for "Needs attention" strip on admin dashboard.
+ */
+export const useAdminPlatformDisputeMetrics = () => {
+    return useQuery<DisputeMetrics, ApiError>({
+        queryKey: queryKeys.disputes.platformMetrics(),
+        queryFn: async () => {
+            const response = await apiClient.get('/admin/disputes/weight/metrics');
             return response.data.data.metrics;
         },
         ...CACHE_TIMES.MEDIUM,

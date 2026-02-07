@@ -30,8 +30,9 @@ import {
     sendPaginated,
     calculatePagination,
 } from '../../../../shared/utils/responseHelper';
-import { NotFoundError, ValidationError, AppError } from '../../../../shared/errors/app.error';
+import { NotFoundError, ValidationError, AppError, AuthorizationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**
  * GET /api/v1/disputes/weight
@@ -386,6 +387,28 @@ export const getMetrics = async (
 };
 
 /**
+ * GET /api/v1/admin/disputes/weight/metrics
+ * Get platform-wide weight dispute metrics (admin only). No company filter.
+ */
+export const getAdminPlatformMetrics = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        guardChecks(req, { requireCompany: false });
+        if (!req.user || !isPlatformAdmin(req.user)) {
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
+        }
+        const metrics = await WeightDisputeResolutionService.getDisputeMetrics(undefined);
+        sendSuccess(res, { metrics }, 'Platform dispute metrics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching admin platform dispute metrics:', error);
+        next(error);
+    }
+};
+
+/**
  * POST /api/v1/disputes/weight/webhook
  * Handle carrier weight discrepancy webhook
  * 
@@ -532,5 +555,6 @@ export default {
     handleWebhook,
     getAnalytics,
     getMetrics,
+    getAdminPlatformMetrics,
     batchOperation,
 };

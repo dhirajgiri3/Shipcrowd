@@ -2,6 +2,11 @@
  * Admin Insights Service
  * Platform-level, data-driven insights for admins (no company scope).
  * Reuses SmartInsight shape for frontend compatibility.
+ *
+ * DATA SOURCE: 100% live — all insights are computed from Order and Shipment
+ * collections (MongoDB). No hardcoded values or mock data. Rule-based analytics
+ * (thresholds, aggregates, comparisons); not ML. Cache: 1 hour (admin_insights).
+ * Period: last 30 days for trend/reason insights; comparison uses previous 30 days.
  */
 
 import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';

@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import { HealthGauge } from '@/src/components/ui/visualizations/HealthGauge';
 import { SuspendUserModal } from './SuspendUserModal';
 import { UnsuspendUserModal } from './UnsuspendUserModal';
+import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 
 interface SellerTableProps {
     data: SellerHealth[];
@@ -94,11 +95,7 @@ export function SellerTable({
     };
 
     if (isLoading && data.length === 0) {
-        return (
-            <div className="w-full h-64 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-blue"></div>
-            </div>
-        );
+        return <TableSkeleton rows={10} columns={6} />;
     }
 
     if (!isLoading && data.length === 0) {

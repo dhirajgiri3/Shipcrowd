@@ -10,6 +10,7 @@ import { useProfile, useProfileUpdate } from '@/src/core/api/hooks/identity/useP
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from '@/src/lib/utils';
 import { Loader } from '@/src/components/ui/feedback/Loader';
+import { StandardPageLoading } from '@/src/components/ui/data/Skeleton';
 
 export function SettingsClient() {
     const [activeTab, setActiveTab] = useState('profile');
@@ -59,7 +60,7 @@ export function SettingsClient() {
     ];
 
     if (isLoading) {
-        return <Loader fullScreen message="Loading settings..." />;
+        return <StandardPageLoading layout="form" showHeader={false} />;
     }
 
     return (

@@ -36,13 +36,13 @@ export function Skeleton({ className, shimmer = true, delay = 0, style, ...props
 // Skeleton for metric/stat cards
 export function CardSkeleton({ className }: { className?: string }) {
     return (
-        <div className={cn("bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-5", className)}>
+        <div className={cn("bg-[--card-background] rounded-[--radius-xl] p-5 shadow-sm", className)}>
             <div className="flex items-center justify-between mb-4">
-                <Skeleton className="h-10 w-10 rounded-[--radius-lg]" />
-                <Skeleton className="h-6 w-16 rounded-[--radius-full]" />
+                <Skeleton className="h-10 w-10 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
+                <Skeleton className="h-6 w-16 rounded-[--radius-full] bg-[var(--bg-tertiary)]/50" />
             </div>
-            <Skeleton className="h-4 w-24 mb-2" />
-            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-24 mb-2 bg-[var(--bg-tertiary)]/50" />
+            <Skeleton className="h-8 w-32 bg-[var(--bg-tertiary)]/80" />
         </div>
     );
 }
@@ -50,23 +50,23 @@ export function CardSkeleton({ className }: { className?: string }) {
 // Skeleton for data tables
 export function TableSkeleton({ rows = 5, columns = 4, showHeader = true }: { rows?: number; columns?: number; showHeader?: boolean }) {
     return (
-        <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] overflow-hidden">
+        <div className="bg-[--card-background] rounded-[--radius-xl] overflow-hidden shadow-sm">
             {/* Header */}
             {showHeader && (
-                <div className="bg-[--color-gray-50] border-b border-[--color-gray-100] p-4">
+                <div className="bg-[var(--bg-secondary)]/50 p-4 border-b border-[var(--border-subtle)]/30">
                     <div className="flex gap-4">
                         {Array.from({ length: columns }).map((_, i) => (
-                            <Skeleton key={i} className="h-4" style={{ width: `${Math.max(60, Math.floor(Math.random() * 100)) + 20}px` }} />
+                            <Skeleton key={i} className="h-4 bg-[var(--bg-tertiary)]/60" style={{ width: `${Math.max(60, Math.floor(Math.random() * 100)) + 20}px` }} />
                         ))}
                     </div>
                 </div>
             )}
             {/* Rows */}
-            <div className="divide-y divide-[--color-gray-100]">
+            <div className="divide-y divide-[var(--border-subtle)]/30">
                 {Array.from({ length: rows }).map((_, i) => (
                     <div key={i} className="p-4 flex gap-4 items-center">
                         {Array.from({ length: columns }).map((_, j) => (
-                            <Skeleton key={j} className="h-4" style={{ width: j === 0 ? '120px' : j === columns - 1 ? '60px' : `${Math.max(40, Math.floor(Math.random() * 80)) + 20}px` }} />
+                            <Skeleton key={j} className="h-4 bg-[var(--bg-tertiary)]/40" style={{ width: j === 0 ? '120px' : j === columns - 1 ? '60px' : `${Math.max(40, Math.floor(Math.random() * 80)) + 20}px` }} />
                         ))}
                     </div>
                 ))}
@@ -79,14 +79,14 @@ export function TableSkeleton({ rows = 5, columns = 4, showHeader = true }: { ro
 export function ChartSkeleton({ height = 200 }: { height?: number }) {
     return (
         <div
-            className="animate-pulse bg-[--color-gray-100] rounded-[--radius-lg] flex items-end justify-around p-4 gap-2"
+            className="animate-pulse bg-[var(--bg-secondary)]/30 rounded-[--radius-lg] flex items-end justify-around p-4 gap-2"
             style={{ height }}
         >
             {/* Fake bar chart */}
             {[40, 65, 45, 80, 55, 70, 50].map((h, i) => (
                 <div
                     key={i}
-                    className="bg-[--color-gray-200] rounded-t w-8"
+                    className="bg-[var(--bg-tertiary)]/40 rounded-t w-8"
                     style={{ height: `${h}%` }}
                 />
             ))}
@@ -100,8 +100,8 @@ export function NavSkeleton() {
         <div className="space-y-2 p-4">
             {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-3 p-2">
-                    <Skeleton className="h-5 w-5 rounded-[--radius-md]" />
-                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-5 rounded-[--radius-md] bg-[var(--bg-tertiary)]/50" />
+                    <Skeleton className="h-4 w-24 bg-[var(--bg-tertiary)]/50" />
                 </div>
             ))}
         </div>
@@ -113,10 +113,10 @@ export function PageHeaderSkeleton() {
     return (
         <div className="flex items-center justify-between mb-6">
             <div>
-                <Skeleton className="h-8 w-48 mb-2" />
-                <Skeleton className="h-4 w-64" />
+                <Skeleton className="h-8 w-48 mb-2 bg-[var(--bg-tertiary)]/60" />
+                <Skeleton className="h-4 w-64 bg-[var(--bg-tertiary)]/40" />
             </div>
-            <Skeleton className="h-10 w-32 rounded-[--radius-lg]" />
+            <Skeleton className="h-10 w-32 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
         </div>
     );
 }
@@ -162,11 +162,11 @@ interface StandardPageLoadingProps {
 function FiltersSkeleton() {
     return (
         <div className="flex items-center gap-4 mb-6">
-            <Skeleton className="h-10 w-64 rounded-[--radius-lg]" />
-            <Skeleton className="h-10 w-32 rounded-[--radius-lg]" />
-            <Skeleton className="h-10 w-32 rounded-[--radius-lg]" />
+            <Skeleton className="h-10 w-64 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
+            <Skeleton className="h-10 w-32 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
+            <Skeleton className="h-10 w-32 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
             <div className="flex-1" />
-            <Skeleton className="h-10 w-24 rounded-[--radius-lg]" />
+            <Skeleton className="h-10 w-24 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
         </div>
     );
 }
@@ -174,43 +174,43 @@ function FiltersSkeleton() {
 // Form fields skeleton
 function FormSkeleton() {
     return (
-        <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-6 space-y-6">
+        <div className="bg-[--card-background] rounded-[--radius-xl] p-6 space-y-6 shadow-sm">
             {/* Form section 1 */}
             <div className="space-y-4">
-                <Skeleton className="h-5 w-32 mb-4" />
+                <Skeleton className="h-5 w-32 mb-4 bg-[var(--bg-tertiary)]/60" />
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Skeleton className="h-4 w-20" />
-                        <Skeleton className="h-10 w-full rounded-[--radius-lg]" />
+                        <Skeleton className="h-4 w-20 bg-[var(--bg-tertiary)]/40" />
+                        <Skeleton className="h-10 w-full rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
                     </div>
                     <div className="space-y-2">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-10 w-full rounded-[--radius-lg]" />
+                        <Skeleton className="h-4 w-24 bg-[var(--bg-tertiary)]/40" />
+                        <Skeleton className="h-10 w-full rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
                     </div>
                 </div>
             </div>
             {/* Form section 2 */}
             <div className="space-y-4">
-                <Skeleton className="h-5 w-40 mb-4" />
+                <Skeleton className="h-5 w-40 mb-4 bg-[var(--bg-tertiary)]/60" />
                 <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-10 w-full rounded-[--radius-lg]" />
+                        <Skeleton className="h-4 w-16 bg-[var(--bg-tertiary)]/40" />
+                        <Skeleton className="h-10 w-full rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
                     </div>
                     <div className="space-y-2">
-                        <Skeleton className="h-4 w-20" />
-                        <Skeleton className="h-10 w-full rounded-[--radius-lg]" />
+                        <Skeleton className="h-4 w-20 bg-[var(--bg-tertiary)]/40" />
+                        <Skeleton className="h-10 w-full rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
                     </div>
                     <div className="space-y-2">
-                        <Skeleton className="h-4 w-18" />
-                        <Skeleton className="h-10 w-full rounded-[--radius-lg]" />
+                        <Skeleton className="h-4 w-18 bg-[var(--bg-tertiary)]/40" />
+                        <Skeleton className="h-10 w-full rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
                     </div>
                 </div>
             </div>
             {/* Form actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-[--color-gray-100]">
-                <Skeleton className="h-10 w-24 rounded-[--radius-lg]" />
-                <Skeleton className="h-10 w-32 rounded-[--radius-lg]" />
+            <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]/30">
+                <Skeleton className="h-10 w-24 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
+                <Skeleton className="h-10 w-32 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
             </div>
         </div>
     );
@@ -228,21 +228,21 @@ function DetailSkeleton() {
             </div>
             {/* Detail sections */}
             <div className="grid grid-cols-2 gap-6">
-                <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-6 space-y-4">
-                    <Skeleton className="h-6 w-40 mb-4" />
+                <div className="bg-[--card-background] rounded-[--radius-xl] p-6 space-y-4 shadow-sm">
+                    <Skeleton className="h-6 w-40 mb-4 bg-[var(--bg-tertiary)]/60" />
                     {Array.from({ length: 5 }).map((_, i) => (
                         <div key={i} className="flex justify-between">
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-4 w-24 bg-[var(--bg-tertiary)]/40" />
+                            <Skeleton className="h-4 w-32 bg-[var(--bg-tertiary)]/40" />
                         </div>
                     ))}
                 </div>
-                <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-6 space-y-4">
-                    <Skeleton className="h-6 w-36 mb-4" />
+                <div className="bg-[--card-background] rounded-[--radius-xl] p-6 space-y-4 shadow-sm">
+                    <Skeleton className="h-6 w-36 mb-4 bg-[var(--bg-tertiary)]/60" />
                     {Array.from({ length: 5 }).map((_, i) => (
                         <div key={i} className="flex justify-between">
-                            <Skeleton className="h-4 w-28" />
-                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-28 bg-[var(--bg-tertiary)]/40" />
+                            <Skeleton className="h-4 w-24 bg-[var(--bg-tertiary)]/40" />
                         </div>
                     ))}
                 </div>
@@ -264,12 +264,12 @@ function AnalyticsSkeleton() {
             </div>
             {/* Charts */}
             <div className="grid grid-cols-2 gap-6">
-                <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-6">
-                    <Skeleton className="h-6 w-40 mb-4" />
+                <div className="bg-[--card-background] rounded-[--radius-xl] p-6 shadow-sm">
+                    <Skeleton className="h-6 w-40 mb-4 bg-[var(--bg-tertiary)]/60" />
                     <ChartSkeleton height={250} />
                 </div>
-                <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-6">
-                    <Skeleton className="h-6 w-36 mb-4" />
+                <div className="bg-[--card-background] rounded-[--radius-xl] p-6 shadow-sm">
+                    <Skeleton className="h-6 w-36 mb-4 bg-[var(--bg-tertiary)]/60" />
                     <ChartSkeleton height={250} />
                 </div>
             </div>
@@ -284,17 +284,17 @@ function CardsGridSkeleton({ count = 6 }: { count?: number }) {
     return (
         <div className="grid grid-cols-3 gap-6">
             {Array.from({ length: count }).map((_, i) => (
-                <div key={i} className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-6">
+                <div key={i} className="bg-[--card-background] rounded-[--radius-xl] p-6 shadow-sm">
                     <div className="flex items-center gap-4 mb-4">
-                        <Skeleton className="h-12 w-12 rounded-[--radius-lg]" />
+                        <Skeleton className="h-12 w-12 rounded-[--radius-lg] bg-[var(--bg-tertiary)]/50" />
                         <div className="flex-1">
-                            <Skeleton className="h-5 w-32 mb-2" />
-                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-5 w-32 mb-2 bg-[var(--bg-tertiary)]/60" />
+                            <Skeleton className="h-4 w-24 bg-[var(--bg-tertiary)]/40" />
                         </div>
-                        <Skeleton className="h-6 w-16 rounded-[--radius-full]" />
+                        <Skeleton className="h-6 w-16 rounded-[--radius-full] bg-[var(--bg-tertiary)]/50" />
                     </div>
-                    <Skeleton className="h-4 w-full mb-2" />
-                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full mb-2 bg-[var(--bg-tertiary)]/40" />
+                    <Skeleton className="h-4 w-3/4 bg-[var(--bg-tertiary)]/40" />
                 </div>
             ))}
         </div>

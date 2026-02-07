@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { StandardPageLoading } from '@/src/components/ui/data/Skeleton';
 
 
 export function WarehousesClient() {
@@ -51,16 +52,7 @@ export function WarehousesClient() {
 
     // Loading state
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-center space-y-4">
-                    <div className="w-16 h-16 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center mx-auto animate-pulse">
-                        <Warehouse className="h-8 w-8 text-[var(--primary-blue)]" />
-                    </div>
-                    <p className="text-[var(--text-muted)] font-medium">Loading warehouses...</p>
-                </div>
-            </div>
-        );
+        return <StandardPageLoading layout="cards" cardCount={8} />;
     }
 
     // Error state

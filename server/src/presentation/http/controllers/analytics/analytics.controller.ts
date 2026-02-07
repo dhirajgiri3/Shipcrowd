@@ -381,8 +381,12 @@ export const getAdminDashboard = async (
             : new Date();
 
         const orderMatch = { isDeleted: false, createdAt: { $gte: startDate, $lte: endDate } };
+        const periodMs = endDate.getTime() - startDate.getTime();
+        const previousEnd = startDate;
+        const previousStart = new Date(startDate.getTime() - periodMs);
+        const previousOrderMatch = { isDeleted: false, createdAt: { $gte: previousStart, $lt: previousEnd } };
 
-        const [orderFacetResult, shipmentStats, totalRegisteredSellers] = await Promise.all([
+        const [orderFacetResult, shipmentStats, totalRegisteredSellers, previousFacetResult] = await Promise.all([
             Order.aggregate([
                 { $match: orderMatch },
                 {
@@ -446,6 +450,16 @@ export const getAdminDashboard = async (
                 { $group: { _id: '$currentStatus', count: { $sum: 1 } } },
             ]),
             User.countDocuments({ role: 'seller' }),
+            Order.aggregate([
+                { $match: previousOrderMatch },
+                {
+                    $group: {
+                        _id: '$currentStatus',
+                        count: { $sum: 1 },
+                        totalValue: { $sum: '$totals.total' },
+                    },
+                },
+            ]),
         ]);
 
         const statusCounts: Record<string, number> = {};
@@ -470,6 +484,22 @@ export const getAdminDashboard = async (
         const attemptedDeliveries = deliveredCount + shippedCount + rtoCount;
         const globalSuccessRate =
             attemptedDeliveries > 0 ? ((deliveredCount / attemptedDeliveries) * 100).toFixed(1) : '0.0';
+        const rtoRate =
+            attemptedDeliveries > 0 ? ((rtoCount / attemptedDeliveries) * 100).toFixed(1) : '0.0';
+
+        const prevStatusCounts: Record<string, number> = {};
+        let prevTotalOrders = 0;
+        let prevTotalRevenue = 0;
+        for (const stat of previousFacetResult) {
+            prevStatusCounts[stat._id] = stat.count;
+            prevTotalOrders += stat.count;
+            prevTotalRevenue += stat.totalValue;
+        }
+        const prevDelivered = prevStatusCounts['delivered'] || 0;
+        const prevAttempted =
+            prevDelivered + (prevStatusCounts['shipped'] || 0) + (prevStatusCounts['rto'] || 0);
+        const prevSuccessRate =
+            prevAttempted > 0 ? ((prevDelivered / prevAttempted) * 100).toFixed(1) : '0.0';
 
         sendSuccess(
             res,
@@ -480,6 +510,8 @@ export const getAdminDashboard = async (
                 globalSuccessRate: parseFloat(globalSuccessRate),
                 attemptedDeliveries,
                 successRateBasedOnAttempts: attemptedDeliveries > 0,
+                rtoCount,
+                rtoRate: parseFloat(rtoRate),
                 ndrCases,
                 pendingOrders: statusCounts['pending'] || 0,
                 deliveredOrders: statusCounts['delivered'] || 0,
@@ -487,6 +519,11 @@ export const getAdminDashboard = async (
                 companiesStats: orderFacetResult.companiesStats,
                 revenueGraph: orderFacetResult.revenueGraph,
                 dateRange: { startDate, endDate },
+                previousPeriod: {
+                    totalRevenue: prevTotalRevenue,
+                    totalOrders: prevTotalOrders,
+                    globalSuccessRate: parseFloat(prevSuccessRate),
+                },
             },
             'Admin dashboard data retrieved successfully'
         );

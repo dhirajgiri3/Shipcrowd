@@ -472,7 +472,10 @@ export class OrderService extends CachedService {
             price: row.price,
             weight: row.weight,
             payment_method: row.payment_method || row.payment_mode || 'prepaid',
-            payment_status: row.payment_status
+            payment_status: row.payment_status,
+            current_status: row.current_status || row.status || row.order_status,
+            status: row.status,
+            order_status: row.order_status
         };
 
         try {
@@ -506,6 +509,16 @@ export class OrderService extends CachedService {
             const price = parseFloat(String(normalizedRow.price));
             const subtotal = quantity * price;
 
+            // Validate Status
+            let currentStatus = 'pending';
+            if (normalizedRow.current_status || normalizedRow.status || normalizedRow.order_status) {
+                const statusInput = (normalizedRow.current_status || normalizedRow.status || normalizedRow.order_status).toLowerCase();
+                const allowedStatuses = ['new', 'pending', 'ready', 'shipped', 'delivered', 'cancelled', 'rto'];
+                if (allowedStatuses.includes(statusInput)) {
+                    currentStatus = statusInput;
+                }
+            }
+
             const order = new Order({
                 orderNumber,
                 companyId,
@@ -532,7 +545,7 @@ export class OrderService extends CachedService {
                 paymentMethod: normalizedRow.payment_method === 'cod' ? 'cod' : 'prepaid',
                 paymentStatus: normalizedRow.payment_status || (normalizedRow.payment_method === 'cod' ? 'pending' : 'paid'),
                 source: 'manual',
-                currentStatus: 'pending',
+                currentStatus,
                 totals: { subtotal, tax: 0, shipping: 0, discount: 0, total: subtotal },
                 shippingDetails: { shippingCost: 0 },
             });

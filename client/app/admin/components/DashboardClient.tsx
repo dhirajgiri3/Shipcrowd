@@ -10,15 +10,21 @@ import { Button } from '@/src/components/ui/core/Button';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import {
+    AlertTriangle,
     ArrowUpRight,
     BrainCircuit,
     DollarSign,
     Package,
+    PackageX,
+    RefreshCw,
+    RotateCcw,
     Settings,
     Shield,
+    ShoppingCart,
     Target,
     TrendingDown,
     Users,
+    X,
     Zap,
 } from 'lucide-react';
 
@@ -40,6 +46,7 @@ import { cn } from '@/src/lib/utils';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { TopSellers } from '@/src/components/admin/TopSellers';
 import { useAdminDashboard, useAdminInsights } from '@/src/core/api/hooks/analytics/useAnalytics';
+import { useAdminPlatformDisputeMetrics } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
 import { useDateRange } from '@/src/lib/data';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import type { SmartInsight } from '@/src/core/api/hooks/analytics/useSmartInsights';
@@ -78,57 +85,127 @@ const itemVariants = {
 
 // --- COMPONENTS ---
 
-/** Build CSV content from current dashboard data */
+const CSV_QUOTE = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+
+/** Build well-structured CSV from dashboard data (UTF-8 with BOM for Excel). */
 function buildDashboardCsv(
     adminData: AdminDashboard | undefined,
-    revenueTrendData: Array<{ name: string; revenue: number; orders: number }>,
+    revenueGraph: Array<{ _id: string; revenue?: number; orders?: number }>,
     topSellersData: Array<{ companyName: string; totalOrders: number; totalRevenue: number; companyId: string }>,
     orderStatusData: Array<{ name: string; value: number }>,
-    dateLabel: string
+    adminInsights: Array<{ title: string; description: string; impact?: { formatted: string }; action?: { label: string; endpoint?: string }; confidence?: number }>,
+    dateLabel: string,
+    exportedAt: string
 ): string {
     const rows: string[] = [];
-    const escape = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const nl = '\r\n';
 
+    // UTF-8 BOM for Excel and other tools
+    rows.push('\uFEFF');
+
+    // ---- Meta ----
     rows.push('Admin Dashboard Export');
-    rows.push(`Date range,${dateLabel}`);
+    rows.push(CSV_QUOTE('Exported at') + ',' + CSV_QUOTE(exportedAt));
+    rows.push(CSV_QUOTE('Date range') + ',' + CSV_QUOTE(dateLabel));
+    rows.push('');
+    rows.push('---');
     rows.push('');
 
+    // ---- 1. Summary ----
+    rows.push(CSV_QUOTE('SECTION: Summary'));
+    rows.push(CSV_QUOTE('Metric') + ',' + CSV_QUOTE('Value') + ',' + CSV_QUOTE('Unit'));
     if (adminData) {
-        rows.push('Summary');
-        rows.push('Metric,Value');
-        rows.push(`Total Revenue,${adminData.totalRevenue ?? 0}`);
-        rows.push(`Total Orders,${adminData.totalOrders ?? 0}`);
-        rows.push(`Active Sellers,${adminData.totalRegisteredSellers ?? 0}`);
+        rows.push(CSV_QUOTE('Total Revenue') + ',' + (adminData.totalRevenue ?? 0) + ',' + CSV_QUOTE('INR'));
+        rows.push(CSV_QUOTE('Total Orders') + ',' + (adminData.totalOrders ?? 0) + ',' + CSV_QUOTE('count'));
+        rows.push(CSV_QUOTE('Active Sellers') + ',' + (adminData.totalRegisteredSellers ?? 0) + ',' + CSV_QUOTE('count'));
         const sr = adminData.successRateBasedOnAttempts && adminData.globalSuccessRate != null
             ? `${Number(adminData.globalSuccessRate).toFixed(1)}%`
             : 'N/A';
-        rows.push(`Success Rate,${sr}`);
-        rows.push(`Pending Orders,${adminData.pendingOrders ?? 0}`);
-        rows.push(`Delivered Orders,${adminData.deliveredOrders ?? 0}`);
-        rows.push('');
+        rows.push(CSV_QUOTE('Success Rate') + ',' + CSV_QUOTE(sr) + ',' + CSV_QUOTE('percent'));
+        rows.push(CSV_QUOTE('Pending Orders') + ',' + (adminData.pendingOrders ?? 0) + ',' + CSV_QUOTE('count'));
+        rows.push(CSV_QUOTE('Delivered Orders') + ',' + (adminData.deliveredOrders ?? 0) + ',' + CSV_QUOTE('count'));
+        rows.push(CSV_QUOTE('Attempted Deliveries') + ',' + (adminData.attemptedDeliveries ?? 0) + ',' + CSV_QUOTE('count'));
+    } else {
+        rows.push(CSV_QUOTE('No data'));
     }
+    rows.push('');
+    rows.push('---');
+    rows.push('');
 
-    if (revenueTrendData.length > 0) {
-        rows.push('Revenue & Orders by Date');
-        rows.push('Date,Revenue,Orders');
-        revenueTrendData.forEach((d) => rows.push([d.name, d.revenue, d.orders].map(escape).join(',')));
-        rows.push('');
+    // ---- 2. Revenue & Orders by Date ----
+    rows.push(CSV_QUOTE('SECTION: Revenue & Orders by Date'));
+    rows.push(CSV_QUOTE('Date') + ',' + CSV_QUOTE('Revenue (INR)') + ',' + CSV_QUOTE('Orders'));
+    if (revenueGraph.length > 0) {
+        revenueGraph.forEach((d) => {
+            const dateFormatted = d._id ? new Date(d._id).toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : d._id;
+            rows.push(CSV_QUOTE(dateFormatted) + ',' + (d.revenue ?? 0) + ',' + (d.orders ?? 0));
+        });
+    } else {
+        rows.push(CSV_QUOTE('No data'));
     }
+    rows.push('');
+    rows.push('---');
+    rows.push('');
 
+    // ---- 3. Top Sellers ----
+    rows.push(CSV_QUOTE('SECTION: Top Sellers'));
+    rows.push(CSV_QUOTE('Rank') + ',' + CSV_QUOTE('Company') + ',' + CSV_QUOTE('Orders') + ',' + CSV_QUOTE('Revenue (INR)'));
     if (topSellersData.length > 0) {
-        rows.push('Top Sellers');
-        rows.push('Company,Orders,Revenue');
-        topSellersData.forEach((d) => rows.push([d.companyName, d.totalOrders, d.totalRevenue].map(escape).join(',')));
-        rows.push('');
+        topSellersData.forEach((d, i) => {
+            rows.push((i + 1) + ',' + CSV_QUOTE(d.companyName) + ',' + d.totalOrders + ',' + (d.totalRevenue ?? 0));
+        });
+    } else {
+        rows.push(CSV_QUOTE('No data'));
+    }
+    rows.push('');
+    rows.push('---');
+    rows.push('');
+
+    // ---- 4. Order Status ----
+    rows.push(CSV_QUOTE('SECTION: Order Status'));
+    const totalOrders = adminData?.totalOrders ?? 0;
+    rows.push(CSV_QUOTE('Status') + ',' + CSV_QUOTE('Count') + ',' + CSV_QUOTE('Percentage'));
+    if (orderStatusData.length > 0 && totalOrders > 0) {
+        orderStatusData.forEach((d) => {
+            const pct = ((d.value / totalOrders) * 100).toFixed(1);
+            rows.push(CSV_QUOTE(d.name) + ',' + d.value + ',' + CSV_QUOTE(pct + '%'));
+        });
+    } else if (orderStatusData.length > 0) {
+        orderStatusData.forEach((d) => rows.push(CSV_QUOTE(d.name) + ',' + d.value + ',' + CSV_QUOTE('')));
+    } else {
+        rows.push(CSV_QUOTE('No data'));
+    }
+    rows.push('');
+    rows.push('---');
+    rows.push('');
+
+    // ---- 5. AI Insights ----
+    rows.push(CSV_QUOTE('SECTION: AI Insights (platform-level, last 30 days)'));
+    rows.push(CSV_QUOTE('Title') + ',' + CSV_QUOTE('Description') + ',' + CSV_QUOTE('Impact') + ',' + CSV_QUOTE('Action') + ',' + CSV_QUOTE('Confidence %'));
+    if (adminInsights.length > 0) {
+        adminInsights.forEach((i) => {
+            rows.push(
+                CSV_QUOTE(i.title) + ',' +
+                CSV_QUOTE(i.description) + ',' +
+                CSV_QUOTE(i.impact?.formatted ?? '') + ',' +
+                CSV_QUOTE((i.action?.label ?? '') + (i.action?.endpoint ? ` (${i.action.endpoint})` : '')) + ',' +
+                (i.confidence ?? '')
+            );
+        });
+    } else {
+        rows.push(CSV_QUOTE('No insights in this period'));
     }
 
-    if (orderStatusData.length > 0) {
-        rows.push('Order Status');
-        rows.push('Status,Count');
-        orderStatusData.forEach((d) => rows.push([d.name, d.value].map(escape).join(',')));
-    }
+    return rows.join(nl);
+}
 
-    return rows.join('\r\n');
+function formatTimeAgo(date: Date): string {
+    const sec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    if (sec < 60) return 'just now';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min} min ago`;
+    const hr = Math.floor(min / 60);
+    return hr === 1 ? '1 hr ago' : `${hr} hrs ago`;
 }
 
 export function DashboardClient() {
@@ -136,7 +213,12 @@ export function DashboardClient() {
     const { user } = useAuth();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [exporting, setExporting] = useState(false);
-    const { dateRange } = useDateRange();
+    const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+    const [alertBannerDismissed, setAlertBannerDismissed] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return sessionStorage.getItem('admin_dashboard_alert_dismissed') === '1';
+    });
+    const { dateRange, setDateRange, presets } = useDateRange();
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -152,6 +234,11 @@ export function DashboardClient() {
     // --- API HOOKS ---
     const { data: adminData, isLoading: adminLoading, error: adminError, refetch: refetchAdmin } = useAdminDashboard(adminFilters);
     const { data: adminInsights = [], isLoading: insightsLoading } = useAdminInsights();
+    const { data: disputeMetrics } = useAdminPlatformDisputeMetrics();
+
+    useEffect(() => {
+        if (adminData && !adminLoading) setLastRefreshedAt(new Date());
+    }, [adminData, adminLoading]);
 
     // --- DATA TRANSFORMATION ---
 
@@ -159,18 +246,29 @@ export function DashboardClient() {
         if (!adminData?.revenueGraph?.length) return [];
         return adminData.revenueGraph.map((point) => ({
             name: new Date(point._id).toLocaleDateString('en-US', { weekday: 'short' }),
+            fullDate: point._id,
             revenue: point.revenue ?? 0,
             orders: point.orders ?? 0,
         }));
     }, [adminData]);
 
+    const handleRevenuePointClick = useCallback(
+        (payload?: { fullDate?: string }) => {
+            if (!payload?.fullDate) return;
+            router.push(`/admin/orders?startDate=${payload.fullDate}&endDate=${payload.fullDate}&page=1`);
+        },
+        [router]
+    );
+
     const orderStatusData = useMemo(() => {
         if (!adminData) return [];
-        const { totalOrders, pendingOrders, deliveredOrders } = adminData;
-        const other = Math.max(0, totalOrders - (pendingOrders ?? 0) - (deliveredOrders ?? 0));
+        const { totalOrders, pendingOrders, deliveredOrders, rtoCount } = adminData;
+        const rto = rtoCount ?? 0;
+        const other = Math.max(0, totalOrders - (pendingOrders ?? 0) - (deliveredOrders ?? 0) - rto);
         return [
             { name: 'Delivered', value: deliveredOrders ?? 0, color: 'var(--success)' },
             { name: 'Pending', value: pendingOrders ?? 0, color: 'var(--warning)' },
+            ...(rto > 0 ? [{ name: 'RTO', value: rto, color: 'var(--error)' }] : []),
             ...(other > 0 ? [{ name: 'In Transit / Other', value: other, color: 'var(--primary-blue)' }] : []),
         ].filter((item) => item.value > 0);
     }, [adminData]);
@@ -198,6 +296,43 @@ export function DashboardClient() {
         return null;
     }, [orderStatusData, adminData?.totalOrders]);
 
+    const criticalInsight = useMemo(
+        () => adminInsights.find((i) => i.priority === 'high'),
+        [adminInsights]
+    );
+    const showCriticalBanner = criticalInsight && !alertBannerDismissed;
+    const dismissAlertBanner = useCallback(() => {
+        setAlertBannerDismissed(true);
+        if (typeof window !== 'undefined') sessionStorage.setItem('admin_dashboard_alert_dismissed', '1');
+    }, []);
+
+    const prev = adminData?.previousPeriod;
+    const trendRevenue = useMemo(() => {
+        if (!prev || prev.totalRevenue === 0) return undefined;
+        const pct = (((adminData?.totalRevenue ?? 0) - prev.totalRevenue) / prev.totalRevenue) * 100;
+        return { value: Math.round(pct * 10) / 10, label: 'vs previous period', positive: pct >= 0 };
+    }, [adminData?.totalRevenue, prev?.totalRevenue]);
+    const trendOrders = useMemo(() => {
+        if (!prev || prev.totalOrders === 0) return undefined;
+        const pct = (((adminData?.totalOrders ?? 0) - prev.totalOrders) / prev.totalOrders) * 100;
+        return { value: Math.round(pct * 10) / 10, label: 'vs previous period', positive: pct >= 0 };
+    }, [adminData?.totalOrders, prev?.totalOrders]);
+    const trendSuccessRate = useMemo(() => {
+        if (!prev || !adminData?.successRateBasedOnAttempts || adminData?.globalSuccessRate == null) return undefined;
+        const curr = adminData.globalSuccessRate;
+        const pct = curr - prev.globalSuccessRate;
+        return { value: Math.round(pct * 10) / 10, label: 'vs previous period', positive: pct >= 0 };
+    }, [adminData?.successRateBasedOnAttempts, adminData?.globalSuccessRate, prev?.globalSuccessRate]);
+
+    const avgOrderValue = useMemo(() => {
+        const orders = adminData?.totalOrders ?? 0;
+        const revenue = adminData?.totalRevenue ?? 0;
+        if (orders <= 0) return null;
+        return revenue / orders;
+    }, [adminData?.totalOrders, adminData?.totalRevenue]);
+
+    const needsAttentionSep1 = (adminData?.pendingOrders ?? 0) > 0 && ((adminData?.ndrCases ?? 0) > 0 || ((disputeMetrics?.pending ?? 0) + (disputeMetrics?.underReview ?? 0) > 0));
+
     const dateLabel = useMemo(
         () => `${dateRange.from.toLocaleDateString()} – ${dateRange.to.toLocaleDateString()}`,
         [dateRange.from, dateRange.to]
@@ -206,7 +341,17 @@ export function DashboardClient() {
     const handleExportDashboard = useCallback(() => {
         setExporting(true);
         try {
-            const csv = buildDashboardCsv(adminData, revenueTrendData, topSellersData, orderStatusData, dateLabel);
+            const exportedAt = new Date().toISOString();
+            const revenueGraph = adminData?.revenueGraph ?? [];
+            const csv = buildDashboardCsv(
+                adminData,
+                revenueGraph,
+                topSellersData,
+                orderStatusData,
+                adminInsights,
+                dateLabel,
+                exportedAt
+            );
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -217,7 +362,7 @@ export function DashboardClient() {
         } finally {
             setExporting(false);
         }
-    }, [adminData, revenueTrendData, topSellersData, orderStatusData, dateLabel, dateRange.from, dateRange.to]);
+    }, [adminData, topSellersData, orderStatusData, adminInsights, dateLabel, dateRange.from, dateRange.to]);
 
     const isLoading = adminLoading;
     const isError = !!adminError;
@@ -232,8 +377,8 @@ export function DashboardClient() {
                         <Skeleton className="h-10 w-24" />
                     </div>
                 </header>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {[1, 2, 3, 4].map((i) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                    {[1, 2, 3, 4, 5].map((i) => (
                         <Skeleton key={i} className="h-40 rounded-2xl" />
                     ))}
                 </div>
@@ -258,6 +403,15 @@ export function DashboardClient() {
 
     return (
         <div className="min-h-screen space-y-8 pb-10">
+            {/* Skip to Needs attention (when there are items) - first focusable for a11y */}
+            {adminData && ((adminData.pendingOrders ?? 0) > 0 || (adminData.ndrCases ?? 0) > 0 || ((disputeMetrics?.pending ?? 0) + (disputeMetrics?.underReview ?? 0) > 0)) && (
+                <a
+                    href="#needs-attention-block"
+                    className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--primary-blue)] focus:text-white focus:outline-none"
+                >
+                    Skip to Needs attention
+                </a>
+            )}
             {/* 1. Top Navigation & Welcome */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
                 <motion.div
@@ -276,6 +430,23 @@ export function DashboardClient() {
                         </div>
                         <span className="text-[var(--text-muted)]">•</span>
                         <span className="text-[var(--text-muted)]">{currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                        {lastRefreshedAt && (
+                            <>
+                                <span className="text-[var(--text-muted)]">•</span>
+                                <span className="text-[var(--text-muted)]" title={lastRefreshedAt.toLocaleString()}>
+                                    Data: {formatTimeAgo(lastRefreshedAt)}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => refetchAdmin()}
+                                    className="ml-1 p-1 rounded hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                                    title="Refresh dashboard data"
+                                    aria-label="Refresh dashboard data"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
                     </div>
                     <h1
                         className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
@@ -285,6 +456,31 @@ export function DashboardClient() {
                 </motion.div>
 
                 <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        {presets.slice(1, 5).map((preset) => {
+                            const label = preset.label;
+                            const short =
+                                label === 'Last 7 Days' ? '7D' : label === 'Last 30 Days' ? '30D' : label === 'Last 90 Days' ? '90D' : label === 'This Month' ? 'MTD' : label;
+                            const isActive = dateRange.label === label;
+                            return (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    onClick={() => setDateRange(preset)}
+                                    className={cn(
+                                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                                        isActive
+                                            ? 'bg-[var(--primary-blue)] text-white'
+                                            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'
+                                    )}
+                                    aria-pressed={isActive}
+                                    aria-label={`Set period to ${label}`}
+                                >
+                                    {short}
+                                </button>
+                            );
+                        })}
+                    </div>
                     <DateRangePicker />
                     <Button
                         variant="outline"
@@ -313,19 +509,59 @@ export function DashboardClient() {
                 </div>
             </header>
 
+            {/* Critical alert banner (high-priority AI insight) */}
+            {showCriticalBanner && (
+                <motion.section
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-[var(--error)]/30 bg-[var(--error-bg)]"
+                    role="alert"
+                    aria-live="assertive"
+                >
+                    <AlertTriangle className="w-5 h-5 shrink-0 text-[var(--error)]" aria-hidden />
+                    <p className="text-sm font-medium text-[var(--text-primary)] flex-1 min-w-0">
+                        {criticalInsight.title}
+                        {' — '}
+                        <Link
+                            href="#admin-insights-heading"
+                            className="text-[var(--primary-blue)] hover:underline"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                document.getElementById('admin-insights-heading')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                        >
+                            Review AI Insights
+                        </Link>
+                        {' · '}
+                        <Link href="/admin/sellers" className="text-[var(--primary-blue)] hover:underline">
+                            Seller Health
+                        </Link>
+                    </p>
+                    <button
+                        type="button"
+                        onClick={dismissAlertBanner}
+                        className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                        aria-label="Dismiss alert"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </motion.section>
+            )}
+
             {/* 2. Key Metrics Grid */}
             <motion.section
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6"
             >
                 <StatsCard
                     title="Total Revenue"
                     value={formatCurrency(adminData?.totalRevenue ?? 0)}
                     icon={DollarSign}
                     variant="success"
-                    description="Selected period"
+                    description={avgOrderValue != null ? `Selected period · Avg ${formatCurrency(avgOrderValue)}/order` : 'Selected period'}
+                    trend={trendRevenue}
                     delay={0}
                 />
                 <StatsCard
@@ -334,6 +570,7 @@ export function DashboardClient() {
                     icon={Package}
                     variant="info"
                     description="Selected period"
+                    trend={trendOrders}
                     delay={1}
                 />
                 <StatsCard
@@ -366,8 +603,114 @@ export function DashboardClient() {
                                 ? 'No delivered orders in period'
                                 : 'Delivery Performance'
                     }
+                    trend={trendSuccessRate}
                     delay={3}
                 />
+                <StatsCard
+                    title="RTO Rate"
+                    value={adminData?.successRateBasedOnAttempts && adminData?.rtoRate != null
+                        ? `${Number(adminData.rtoRate).toFixed(1)}%`
+                        : 'N/A'}
+                    icon={RotateCcw}
+                    variant={
+                        !adminData?.successRateBasedOnAttempts
+                            ? 'default'
+                            : (adminData?.rtoRate ?? 0) <= 10
+                                ? 'default'
+                                : (adminData?.rtoRate ?? 0) <= 20
+                                    ? 'warning'
+                                    : 'critical'
+                    }
+                    description={
+                        !adminData?.successRateBasedOnAttempts
+                            ? 'No delivery outcomes in period'
+                            : `Return to origin (${adminData?.rtoCount ?? 0} orders)`
+                    }
+                    delay={4}
+                />
+            </motion.section>
+
+            {/* Quick links & Needs attention */}
+            <motion.section
+                id="needs-attention-block"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="flex flex-col gap-3"
+                aria-label="Quick links and items needing attention"
+            >
+                <div
+                    className="sr-only"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    role="status"
+                >
+                    {adminData && ((adminData.pendingOrders ?? 0) > 0 || (adminData.ndrCases ?? 0) > 0 || ((disputeMetrics?.pending ?? 0) + (disputeMetrics?.underReview ?? 0) > 0))
+                        ? `${(adminData.pendingOrders ?? 0) + (adminData.ndrCases ?? 0) + (disputeMetrics?.pending ?? 0) + (disputeMetrics?.underReview ?? 0)} items need attention.`
+                        : 'No items need attention.'}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                        href="/admin/orders"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] hover:border-[var(--border-default)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-2"
+                    >
+                        <ShoppingCart className="w-4 h-4 text-[var(--text-muted)]" />
+                        Orders
+                        {adminData?.pendingOrders != null && adminData.pendingOrders > 0 && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-md bg-[var(--warning-bg)] text-[var(--warning)] text-xs font-semibold">
+                                {adminData.pendingOrders} pending
+                            </span>
+                        )}
+                    </Link>
+                    <Link
+                        href="/admin/sellers"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] hover:border-[var(--border-default)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-2"
+                    >
+                        <Users className="w-4 h-4 text-[var(--text-muted)]" />
+                        Sellers
+                    </Link>
+                    <Link
+                        href="/admin/returns"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] hover:border-[var(--border-default)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-2"
+                    >
+                        <PackageX className="w-4 h-4 text-[var(--text-muted)]" />
+                        Returns & NDR
+                        {adminData?.ndrCases != null && adminData.ndrCases > 0 && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-md bg-[var(--error-bg)] text-[var(--error)] text-xs font-semibold">
+                                {adminData.ndrCases} NDR
+                            </span>
+                        )}
+                    </Link>
+                    <Link
+                        href="/admin/ndr"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] hover:border-[var(--border-default)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-2"
+                    >
+                        NDR
+                    </Link>
+                </div>
+                {(adminData && ((adminData.pendingOrders ?? 0) > 0 || (adminData.ndrCases ?? 0) > 0 || ((disputeMetrics?.pending ?? 0) + (disputeMetrics?.underReview ?? 0) > 0))) && (
+                    <p className="text-xs text-[var(--text-muted)]">
+                        Needs attention: {(adminData.pendingOrders ?? 0) > 0 && (
+                            <Link href="/admin/orders" className="text-[var(--primary-blue)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-1 rounded">
+                                {(adminData.pendingOrders ?? 0)} pending orders
+                            </Link>
+                        )}
+                        {needsAttentionSep1 ? ' \u2022 ' : null}
+                        {(adminData.ndrCases ?? 0) > 0 && (
+                            <Link href="/admin/returns" className="text-[var(--primary-blue)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-1 rounded">
+                                {(adminData.ndrCases ?? 0)} NDR cases
+                            </Link>
+                        )}
+                        {(disputeMetrics?.pending ?? 0) + (disputeMetrics?.underReview ?? 0) > 0 && (
+                            <>
+                                {((adminData.pendingOrders ?? 0) > 0 || (adminData.ndrCases ?? 0) > 0) ? ' \u2022 ' : null}
+                                <Link href="/admin/disputes/weight" className="text-[var(--primary-blue)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-1 rounded">
+                                    {(disputeMetrics?.pending ?? 0) + (disputeMetrics?.underReview ?? 0)} weight disputes
+                                </Link>
+                            </>
+                        )}
+                    </p>
+                )}
             </motion.section>
 
             {/* 3. Main Dashboard Content - Grid Layout */}
@@ -385,12 +728,18 @@ export function DashboardClient() {
                     >
                         <div className="mb-6">
                             <h3 className="text-lg font-bold text-[var(--text-primary)]">Revenue Analytics</h3>
-                            <p className="text-sm text-[var(--text-secondary)]">Income vs orders (selected date range)</p>
+                            <p className="text-sm text-[var(--text-secondary)]">Income vs orders (selected date range). Click a point to view that day&apos;s orders.</p>
                         </div>
                         <div className="h-[350px] w-full">
                             {revenueTrendData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={revenueTrendData}>
+                                    <AreaChart
+                                        data={revenueTrendData}
+                                        onClick={(e: Record<string, unknown>) => {
+                                            const payload = (e?.activePayload as Array<{ payload?: { fullDate?: string } }>)?.[0]?.payload;
+                                            handleRevenuePointClick(payload);
+                                        }}
+                                    >
                                         <defs>
                                             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
@@ -409,8 +758,8 @@ export function DashboardClient() {
                                             contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)', borderRadius: '12px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }}
                                             itemStyle={{ color: 'var(--text-primary)', fontSize: '12px' }}
                                         />
-                                        <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--primary-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                                        <Area yAxisId="right" type="monotone" dataKey="orders" stroke="var(--success)" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
+                                        <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--primary-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" cursor="pointer" />
+                                        <Area yAxisId="right" type="monotone" dataKey="orders" stroke="var(--success)" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" cursor="pointer" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             ) : (

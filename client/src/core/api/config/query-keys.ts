@@ -269,6 +269,7 @@ export const queryKeys = {
     detail: (id: string) => ['disputes', 'detail', id],
     analytics: (filters?: DisputeFilters) => ['disputes', 'analytics', filters],
     metrics: (filters?: DisputeFilters) => ['disputes', 'metrics', filters],
+    platformMetrics: () => ['disputes', 'platformMetrics'],
   },
 
   // ========================================================================

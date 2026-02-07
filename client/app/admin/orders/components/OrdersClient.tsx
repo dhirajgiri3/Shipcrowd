@@ -45,6 +45,8 @@ export default function OrdersClient() {
     const sort = searchParams.get('sort') || 'createdAt';
     const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
     const search = searchParams.get('search') || '';
+    const startDate = searchParams.get('startDate') || '';
+    const endDate = searchParams.get('endDate') || '';
 
 
     const [searchTerm, setSearchTerm] = useState(search);
@@ -97,7 +99,9 @@ export default function OrdersClient() {
         sortOrder: order,
         search: debouncedSearch || undefined,
         warehouse: selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
-    }), [page, limit, status, sort, order, debouncedSearch, selectedWarehouseId]);
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+    }), [page, limit, status, sort, order, debouncedSearch, selectedWarehouseId, startDate, endDate]);
 
     // -- Fetch Data --
     const {
@@ -321,7 +325,7 @@ export default function OrdersClient() {
 
                     {/* Date Picker Integrated */}
                     <div className="hidden md:block">
-                        <DateRangePicker onRangeChange={handleDateRangeChange} className="border-none shadow-none bg-transparent hover:bg-[var(--bg-tertiary)]" />
+                        <DateRangePicker onRangeChange={handleDateRangeChange} />
                     </div>
 
                     {/* Filter Tabs */}

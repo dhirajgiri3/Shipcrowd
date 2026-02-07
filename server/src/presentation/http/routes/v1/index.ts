@@ -102,6 +102,7 @@ import userManagementRoutes from './admin/user-management.routes';
 import impersonationRoutes from './admin/impersonation.routes';
 import featureFlagRoutes from './admin/feature-flag.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
+import disputeMetricsRoutes from './admin/dispute-metrics.routes';
 
 // ============================================================================
 // 10. WEBHOOKS
@@ -211,6 +212,7 @@ router.use('/admin/users', userManagementRoutes);
 router.use('/admin/impersonation', impersonationRoutes);
 router.use('/admin/feature-flags', featureFlagRoutes);
 router.use('/admin/sku-weight-profiles', skuWeightProfileRoutes);
+router.use('/admin/disputes/weight', disputeMetricsRoutes);
 
 // 10. Webhooks
 router.use('/webhooks/velocity', velocityWebhookRoutes);

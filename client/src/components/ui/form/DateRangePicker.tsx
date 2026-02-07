@@ -63,15 +63,15 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-xl)] border",
-                    "bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)]",
+                    "flex items-center gap-2 h-10 px-3 rounded-lg border", // Match height and rounding of other inputs
+                    "bg-transparent border-transparent text-[var(--text-primary)] font-medium text-sm",
                     "transition-all duration-[var(--duration-fast)]",
-                    "hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]",
-                    isOpen && "border-[var(--primary-blue)] ring-2 ring-[var(--primary-blue-soft)]"
+                    "hover:bg-[var(--bg-tertiary)] hover:border-[var(--border-subtle)]", // Subtle hover state
+                    isOpen && "bg-[var(--bg-tertiary)] border-[var(--border-subtle)]" // Active state
                 )}
             >
                 <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium whitespace-nowrap">
                     {dateRange.label === 'Custom Range'
                         ? `${formatDate(dateRange.from)} - ${formatDate(dateRange.to)}`
                         : dateRange.label
