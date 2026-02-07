@@ -22,6 +22,10 @@ export interface AdminRateCard {
         phone?: string;
     } | string;
     status: 'draft' | 'active' | 'inactive' | 'expired';
+    version?: string;
+    fuelSurcharge?: number;
+    minimumCall?: number;
+    isLocked?: boolean;
     baseRates: Array<{
         carrier: string;
         serviceType: string;
@@ -85,7 +89,7 @@ export interface CreateAdminRateCardPayload {
     status?: 'draft' | 'active' | 'inactive';
 }
 
-export interface UpdateAdminRateCardPayload extends Partial<CreateAdminRateCardPayload> {}
+export interface UpdateAdminRateCardPayload extends Partial<CreateAdminRateCardPayload> { }
 
 export interface AdminRateCardStats {
     total: number;

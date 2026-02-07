@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
@@ -278,30 +280,14 @@ export function OrdersClient() {
             header: 'Payment',
             accessorKey: 'paymentStatus',
             cell: (row: Order) => (
-                <span className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border",
-                    row.paymentStatus === 'paid' ? "bg-[var(--success-bg)] text-[var(--success)] border-transparent" :
-                        row.paymentStatus === 'pending' ? "bg-[var(--warning-bg)] text-[var(--warning)] border-transparent" :
-                            "bg-[var(--error-bg)] text-[var(--error)] border-transparent"
-                )}>
-                    {row.paymentStatus}
-                </span>
+                <StatusBadge domain="payment" status={row.paymentStatus} />
             )
         },
         {
             header: 'Status',
             accessorKey: 'currentStatus',
             cell: (row: Order) => (
-                <div className="flex items-center gap-2">
-                    <span className={cn(
-                        "w-2 h-2 rounded-full",
-                        row.currentStatus === 'delivered' ? "bg-[var(--success)]" :
-                            row.currentStatus === 'shipped' || row.currentStatus === 'in_transit' ? "bg-[var(--primary-blue)]" :
-                                row.currentStatus === 'cancelled' ? "bg-[var(--error)]" :
-                                    "bg-[var(--warning)]"
-                    )} />
-                    <span className="text-sm text-[var(--text-primary)] capitalize">{row.currentStatus.replace(/_/g, ' ')}</span>
-                </div>
+                <StatusBadge domain="order" status={row.currentStatus} />
             )
         },
         {
@@ -316,9 +302,9 @@ export function OrdersClient() {
             accessorKey: '_id',
             cell: (row: Order) => (
                 <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedOrder(row); }} className="h-8 w-8 p-0 hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg">
-                        <Eye className="w-4 h-4" />
-                    </Button>
+                    <ViewActionButton
+                        onClick={(e) => { e.stopPropagation(); setSelectedOrder(row); }}
+                    />
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg">
                         <MoreHorizontal className="w-4 h-4" />
                     </Button>

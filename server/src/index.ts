@@ -30,6 +30,22 @@ dotenv.config();
 const PORT = process.env.PORT || 5005;
 
 /**
+ * Validate KYC-related env (encryption and hashing). Fail fast at startup if missing.
+ */
+function validateKYCConfig(): void {
+    const key = process.env.ENCRYPTION_KEY;
+    if (!key || key.length < 64) {
+        throw new Error(
+            'ENCRYPTION_KEY must be set (64+ hex characters). ' +
+            'Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+        );
+    }
+    if (!process.env.KYC_HASH_SECRET) {
+        throw new Error('KYC_HASH_SECRET is required for KYC input hashing');
+    }
+}
+
+/**
  * Start server
  */
 const startServer = async (): Promise<void> => {
@@ -117,6 +133,9 @@ const startServer = async (): Promise<void> => {
         // Initialize CRM Event Handlers (NDR, etc.)
         initializeCRMListeners();
         logger.info('CRM event handlers initialized');
+
+        // Validate KYC config before accepting requests
+        validateKYCConfig();
 
         // Start listening
         app.listen(PORT, () => {

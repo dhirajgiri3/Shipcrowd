@@ -25,20 +25,8 @@ import type { Manifest, ManifestStatus, CourierPartner } from '@/src/types/api/o
 
 // ==================== Status Badge Config ====================
 
-const statusConfig: Record<ManifestStatus, { label: string; className: string }> = {
-    open: {
-        label: 'Open',
-        className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-    },
-    closed: {
-        label: 'Closed',
-        className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-    },
-    handed_over: {
-        label: 'Handed Over',
-        className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-    },
-};
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 
 const courierDisplayNames: Record<CourierPartner, string> = {
     velocity: 'Velocity',
@@ -206,21 +194,15 @@ export function ManifestTable({
 
                                 {/* Status */}
                                 <td className="px-4 py-4">
-                                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[manifest.status].className}`}>
-                                        {statusConfig[manifest.status].label}
-                                    </span>
+                                    <StatusBadge domain="manifest" status={manifest.status} />
                                 </td>
 
                                 {/* Actions */}
                                 <td className="px-4 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                        <button
+                                        <ViewActionButton
                                             onClick={() => onManifestClick?.(manifest)}
-                                            className="p-2 text-[var(--text-muted)] hover:text-[var(--primary-blue)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
-                                            title="View Details"
-                                        >
-                                            <Eye className="w-4 h-4" />
-                                        </button>
+                                        />
                                         <button
                                             onClick={() => onDownloadPdf?.(manifest._id)}
                                             className="p-2 text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"

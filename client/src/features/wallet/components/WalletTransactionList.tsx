@@ -16,6 +16,7 @@ import React, { useState } from 'react';
 import { useWalletTransactions } from '@/src/core/api/hooks';
 import { formatCurrency } from '@/src/lib/utils';
 import type { TransactionFilters, WalletTransaction } from '@/src/types/api/finance';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 
 export function WalletTransactionList() {
     const [filters, setFilters] = useState<TransactionFilters>({
@@ -25,12 +26,7 @@ export function WalletTransactionList() {
 
     const { data, isLoading, isError } = useWalletTransactions(filters);
 
-    // Transaction type badge colors
-    const getTypeBadge = (type: 'credit' | 'debit') => {
-        return type === 'credit'
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    };
+
 
     // Transaction reason display text
     const getReasonText = (reason: string) => {
@@ -142,9 +138,7 @@ export function WalletTransactionList() {
                     >
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getTypeBadge(transaction.type)}`}>
-                                    {transaction.type.toUpperCase()}
-                                </span>
+                                <StatusBadge domain="transaction_type" status={transaction.type} size="sm" />
                                 <span className="text-sm font-medium text-gray-900 dark:text-white">
                                     {getReasonText(transaction.reason)}
                                 </span>

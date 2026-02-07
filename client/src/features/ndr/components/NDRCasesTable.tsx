@@ -17,15 +17,7 @@ import { useNDRCases } from '@/src/core/api/hooks';
 import type { NDRStatus, NDRFilters } from '@/src/types/api/orders';
 import { useDebouncedValue } from '@/src/hooks/data';
 
-const STATUS_CONFIG: Record<NDRStatus, { label: string; color: string }> = {
-    open: { label: 'Open', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
-    in_progress: { label: 'In Progress', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
-    customer_action: { label: 'Customer Action', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
-    reattempt_scheduled: { label: 'Reattempt Scheduled', color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
-    resolved: { label: 'Resolved', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
-    escalated: { label: 'Escalated', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' },
-    converted_to_rto: { label: 'Converted to RTO', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
-};
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 
 const STATUS_TABS: { status: NDRStatus | 'all'; label: string }[] = [
     { status: 'all', label: 'All Cases' },
@@ -208,9 +200,7 @@ export function NDRCasesTable() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${STATUS_CONFIG[ndrCase.status].color}`}>
-                                                {STATUS_CONFIG[ndrCase.status].label}
-                                            </span>
+                                            <StatusBadge domain="ndr" status={ndrCase.status} />
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {ndrCase.slaBreach ? (

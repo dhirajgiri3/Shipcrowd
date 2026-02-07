@@ -187,11 +187,11 @@ export const publicTrackingRateLimiter = createLimiterConfig(
 
 /**
  * Rate limiter for KYC verification endpoints
- * Moderate strictness: 10 requests per hour
+ * 30 requests per hour (covers multiple document types and retries)
  */
 export const kycRateLimiter = createLimiterConfig(
     60 * 60 * 1000,
-    10,
+    30,
     'Too many KYC verification attempts. Please try again in an hour.',
     'rl:kyc:'
 );

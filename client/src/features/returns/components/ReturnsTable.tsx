@@ -17,20 +17,7 @@ import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data';
 import type { ReturnStatus, ReturnFilters } from '@/src/types/api/returns';
 
-const STATUS_CONFIG: Record<ReturnStatus, { label: string; color: string }> = {
-    requested: { label: 'Requested', color: 'bg-[var(--warning-bg)] text-[var(--warning)]' },
-    approved: { label: 'Approved', color: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]' },
-    rejected: { label: 'Rejected', color: 'bg-[var(--error-bg)] text-[var(--error)]' },
-    pickup_scheduled: { label: 'Pickup Scheduled', color: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]' },
-    in_transit: { label: 'In Transit', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' }, // Pending purple var
-    received: { label: 'Received', color: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]' },
-    qc_pending: { label: 'QC Pending', color: 'bg-[var(--warning-bg)] text-[var(--warning)]' },
-    qc_passed: { label: 'QC Passed', color: 'bg-[var(--success-bg)] text-[var(--success)]' },
-    qc_failed: { label: 'QC Failed', color: 'bg-[var(--error-bg)] text-[var(--error)]' },
-    refund_initiated: { label: 'Refund Initiated', color: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400' },
-    refund_completed: { label: 'Refund Completed', color: 'bg-[var(--success-bg)] text-[var(--success)]' },
-    closed: { label: 'Closed', color: 'bg-[var(--bg-secondary)] text-[var(--text-secondary)]' },
-};
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 
 const STATUS_TABS = [
     { status: 'all' as const, label: 'All Returns' },
@@ -184,9 +171,7 @@ export function ReturnsTable() {
                                             {formatDate(returnReq.requestedAt)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${STATUS_CONFIG[returnReq.status].color}`}>
-                                                {STATUS_CONFIG[returnReq.status].label}
-                                            </span>
+                                            <StatusBadge domain="return" status={returnReq.status} />
                                         </td>
                                     </tr>
                                 );

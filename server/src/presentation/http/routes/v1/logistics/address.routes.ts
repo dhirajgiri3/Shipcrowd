@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate } from '../../../middleware';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/index';
 import * as addressController from '../../../controllers/logistics/address.controller';
 
 const router = express.Router();
@@ -11,10 +11,10 @@ router.get('/pincode/:pincode/info', addressController.getPincodeInfo);
 // All routes below require authentication
 router.use(authenticate);
 
-// Validate Pincode and Check Serviceability should check KYC
-router.get('/validate-pincode/:pincode', checkKYC, addressController.validatePincode);
-router.post('/check-serviceability', checkKYC, addressController.checkServiceability);
-router.post('/calculate-distance', checkKYC, addressController.calculateDistance);
+// Validate Pincode and Check Serviceability require KYC
+router.get('/validate-pincode/:pincode', requireAccess({ kyc: true }), addressController.validatePincode);
+router.post('/check-serviceability', requireAccess({ kyc: true }), addressController.checkServiceability);
+router.post('/calculate-distance', requireAccess({ kyc: true }), addressController.calculateDistance);
 router.get('/suggestions', addressController.getAddressSuggestions);
 
 export default router;

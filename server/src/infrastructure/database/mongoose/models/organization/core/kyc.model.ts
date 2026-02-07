@@ -130,6 +130,18 @@ const verificationSchema = new Schema(
     lastCheckedAt: Date,
     failureReason: String,
     revokedAt: Date,
+    data: {
+      type: Schema.Types.Mixed,
+      required: false,
+      validate: {
+        validator(v: unknown) {
+          if (v == null) return true;
+          const size = JSON.stringify(v).length;
+          return size <= 1024 * 1024; // 1MB limit
+        },
+        message: 'Verification data exceeds 1MB limit',
+      },
+    },
   },
   { _id: false }
 );
@@ -368,11 +380,14 @@ if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
 KYCSchema.plugin(fieldEncryption, {
   fields: [
     'documents.pan.number',
+    'documents.pan.name',
     'documents.aadhaar.number',
-    'documents.bankAccount.accountNumber'
+    'documents.bankAccount.accountNumber',
+    'documents.bankAccount.accountHolderName',
+    'documents.gstin.addresses',
   ],
   secret: process.env.ENCRYPTION_KEY!,
-  saltGenerator: () => crypto.randomBytes(8).toString('hex'),
+  saltGenerator: () => crypto.randomBytes(32).toString('hex'),
   encryptOnSave: true,  // Automatically encrypt on save
   decryptOnFind: true,  // Automatically decrypt on retrieval
 });

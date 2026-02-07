@@ -74,7 +74,7 @@ export const useVerifyKYC = (
             return response.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all() });
+            queryClient.invalidateQueries({ queryKey: ['kyc'], exact: false });
             showSuccessToast('KYC verified successfully');
         },
         retry: RETRY_CONFIG.DEFAULT,
@@ -99,7 +99,7 @@ export const useRejectKYC = (
             return response.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['kycs'] });
+            queryClient.invalidateQueries({ queryKey: ['kyc'], exact: false });
             showSuccessToast('KYC rejected');
         },
         onError: (error) => {

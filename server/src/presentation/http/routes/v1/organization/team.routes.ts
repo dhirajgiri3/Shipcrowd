@@ -1,14 +1,13 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import { checkKYC } from '../../../middleware/auth/kyc';
 import teamController from '../../../controllers/organization/team.controller';
 
 const router = express.Router();
 
 // All team routes require authentication and KYC
 router.use(authenticate);
-router.use(checkKYC);
+router.use(requireAccess({ kyc: true }));
 
 /**
  * @route GET /team

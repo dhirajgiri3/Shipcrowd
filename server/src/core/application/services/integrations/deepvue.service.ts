@@ -47,70 +47,83 @@ if (!DEEPVUE_DEV_MODE && (!DEEPVUE_CLIENT_ID || !DEEPVUE_API_KEY)) {
 // Access token storage and management
 let accessToken: string | null = null;
 let tokenExpiryTime: number | null = null;
+let tokenRefreshPromise: Promise<string> | null = null;
 
 /**
  * Get a valid access token for DeepVue API
- * Makes an API call to the DeepVue authorization endpoint to get a token
+ * Uses a queue so concurrent callers share one refresh; token is refreshed 1min before expiry.
  */
 const getAccessToken = async (): Promise<string> => {
-  try {
-    // Check if we have a valid token
-    if (accessToken && tokenExpiryTime && Date.now() < tokenExpiryTime) {
-      return accessToken;
-    }
+  if (accessToken && tokenExpiryTime && Date.now() < tokenExpiryTime) {
+    return accessToken;
+  }
 
-    // Create form data for the request
-    const formData = new URLSearchParams();
-    if (!DEEPVUE_CLIENT_ID || !DEEPVUE_API_KEY) {
-      throw new ExternalServiceError(
-        'DeepVue API credentials not configured. Set DEEPVUE_CLIENT_ID and DEEPVUE_API_KEY environment variables.',
-        ErrorCode.EXT_SERVICE_ERROR
-      );
-    }
-    formData.append('client_id', DEEPVUE_CLIENT_ID);
-    formData.append('client_secret', DEEPVUE_API_KEY);
+  if (tokenRefreshPromise) {
+    logger.debug('DeepVue token refresh in progress, waiting...');
+    return tokenRefreshPromise;
+  }
 
-    // Make the API call to get a token
-    const response = await axios.post(
-      `${DEEPVUE_API_BASE_URL}/authorize`,
-      formData.toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+  logger.info('Starting DeepVue token refresh');
+  tokenRefreshPromise = (async (): Promise<string> => {
+    try {
+      const formData = new URLSearchParams();
+      if (!DEEPVUE_CLIENT_ID || !DEEPVUE_API_KEY) {
+        throw new ExternalServiceError(
+          'DeepVue API credentials not configured. Set DEEPVUE_CLIENT_ID and DEEPVUE_API_KEY environment variables.',
+          ErrorCode.EXT_SERVICE_ERROR
+        );
       }
-    );
+      formData.append('client_id', DEEPVUE_CLIENT_ID);
+      formData.append('client_secret', DEEPVUE_API_KEY);
 
-    // Check if the response contains the access token
-    if (response.data && response.data.access_token) {
-      accessToken = response.data.access_token;
+      const response = await axios.post(
+        `${DEEPVUE_API_BASE_URL}/authorize`,
+        formData.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          timeout: 10000,
+        }
+      );
 
-      // Set token expiry time (default to 1 hour if not provided)
-      const expiresIn = response.data.expires_in || 3600;
-      tokenExpiryTime = Date.now() + (expiresIn * 1000);
+      if (response.data && response.data.access_token) {
+        accessToken = response.data.access_token;
+        const expiresIn = response.data.expires_in || 3600;
+        tokenExpiryTime = Date.now() + (expiresIn * 1000) - 60000; // 1min buffer
 
-      logger.info('DeepVue API token obtained successfully');
-      return accessToken as string;
-    } else {
+        logger.info('DeepVue token refreshed successfully', {
+          expiresIn,
+          expiresAt: new Date(tokenExpiryTime).toISOString(),
+        });
+        return accessToken;
+      }
+
       logger.error('Invalid response from DeepVue authorization endpoint:', response.data);
       throw new ExternalServiceError(
         'Failed to obtain access token from DeepVue API',
         ErrorCode.EXT_SERVICE_ERROR
       );
-    }
-  } catch (error) {
-    logger.error('Error getting DeepVue access token:', error);
-    if (axios.isAxiosError(error)) {
+    } catch (error) {
+      accessToken = null;
+      tokenExpiryTime = null;
+      logger.error('Failed to refresh DeepVue token', { error });
+      if (axios.isAxiosError(error)) {
+        throw new ExternalServiceError(
+          `DeepVue authentication failed: ${error.response?.data?.message || error.message}`,
+          ErrorCode.EXT_SERVICE_ERROR
+        );
+      }
       throw new ExternalServiceError(
-        `DeepVue authentication failed: ${error.response?.data?.message || error.message}`,
+        'Failed to authenticate with DeepVue API',
         ErrorCode.EXT_SERVICE_ERROR
       );
+    } finally {
+      tokenRefreshPromise = null;
     }
-    throw new ExternalServiceError(
-      'Failed to authenticate with DeepVue API',
-      ErrorCode.EXT_SERVICE_ERROR
-    );
-  }
+  })();
+
+  return tokenRefreshPromise;
 };
 
 // Create axios instance for DeepVue API with updated headers

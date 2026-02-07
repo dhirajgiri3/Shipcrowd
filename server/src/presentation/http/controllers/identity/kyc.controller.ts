@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import { KYC, KYCVerificationAttempt, User, IUser } from '../../../../infrastructure/database/mongoose/models';
+import { KYC, KYCVerificationAttempt, User, IUser, Company } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
@@ -17,6 +17,7 @@ import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/c
 import { submitKYCSchema, verifyDocumentSchema, invalidateDocumentSchema } from '../../../../shared/validation/schemas';
 import { DocumentVerificationState } from '../../../../core/domain/types/document-verification-state';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { KYCStateMachine } from '../../../../core/domain/kyc/kyc-state-machine';
 import { KYC_DEFAULT_PROVIDER } from '../../../../shared/config/kyc.config';
 import {
   appendVerificationHistory,
@@ -26,6 +27,7 @@ import {
   createKycInputHash,
   resolveVerificationState,
 } from '../../../../shared/utils/kyc-utils';
+import { queueKYCApprovedEmail, queueKYCRejectedEmail } from '../../../../core/application/services/communication/email-queue.service';
 
 
 /**
@@ -78,7 +80,6 @@ const findOrCreateKyc = async (userId: mongoose.Types.ObjectId, companyId: mongo
     kyc = new KYC({
       userId,
       companyId,
-      status: 'pending',
       documents: {},
       completionStatus: {
         personalKycComplete: false,
@@ -147,8 +148,8 @@ const maybeSetSubmittedState = (kyc: any) => {
     kyc.completionStatus.agreementComplete;
 
   if (allComplete) {
+    KYCStateMachine.validateTransition(kyc.state, KYCState.SUBMITTED);
     kyc.state = KYCState.SUBMITTED;
-    kyc.status = 'pending';
     kyc.submittedAt = new Date();
   }
 };
@@ -221,8 +222,8 @@ export const submitKYC = async (req: Request, res: Response, next: NextFunction)
     }
 
     if (kyc.status === 'rejected') {
-      kyc.status = 'pending';
       kyc.rejectionReason = undefined;
+      KYCStateMachine.validateTransition(kyc.state, KYCState.ACTION_REQUIRED);
       kyc.state = KYCState.ACTION_REQUIRED;
     }
 
@@ -311,8 +312,8 @@ export const getKYC = async (req: Request, res: Response, next: NextFunction): P
     });
 
     if (expiredUpdated) {
+      KYCStateMachine.validateTransition(kyc.state, KYCState.EXPIRED);
       kyc.state = KYCState.EXPIRED;
-      kyc.status = 'pending';
       refreshCompletionStatus(kyc, Boolean(kyc.documents?.gstin?.number));
       await kyc.save();
     }
@@ -341,12 +342,35 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
       throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
+    const auth = guardChecks(req, { requireCompany: false });
     const kycId = req.params.kycId;
     const validatedData = verifyDocumentSchema.parse(req.body);
 
     const kyc = await KYC.findById(kycId);
     if (!kyc) {
       throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
+    }
+
+    // Non-admin path: must verify only own company (admin-only endpoint, but guard for consistency)
+    if (!isPlatformAdmin(req.user) && auth.companyId && String(kyc.companyId) !== String(auth.companyId)) {
+      throw new AuthorizationError('Cannot verify KYC for a different company', ErrorCode.AUTHZ_FORBIDDEN);
+    }
+
+    // Platform admin: audit cross-company verification
+    if (isPlatformAdmin(req.user) && (auth.companyId == null || String(kyc.companyId) !== String(auth.companyId))) {
+      await createAuditLog(
+        auth.userId,
+        String(kyc.companyId),
+        'verify',
+        'kyc',
+        kycId,
+        {
+          adminCompanyId: auth.companyId ?? null,
+          message: 'Cross-company KYC verification by platform admin',
+          adminRole: (req.user as any).role,
+        },
+        req
+      );
     }
 
     const now = new Date();
@@ -401,31 +425,59 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
       .filter((type) => Boolean((kyc.documents as any)[type]))
       .every((type) => isDocumentVerified((kyc.documents as any)[type]));
 
-    if (allDocumentsVerified) {
-      kyc.state = KYCState.VERIFIED;
-      kyc.status = 'verified';
+    let updatedKYC;
 
-      // ✅ ONBOARDING HOOK: Update progress
-      try {
-        // Fix KYC Deadlock: Update user KYC status
-        await User.findByIdAndUpdate(kyc.userId, {
-          'kycStatus.isComplete': true,
-          'kycStatus.state': KYCState.VERIFIED,
-          'kycStatus.lastUpdated': new Date()
-        });
+    if (allDocumentsVerified) {
+      KYCStateMachine.validateTransition(kyc.state, KYCState.VERIFIED);
+      updatedKYC = await withTransaction(async (session) => {
+        kyc.state = KYCState.VERIFIED;
+        const saved = await kyc.save({ session });
+
+        await User.findByIdAndUpdate(
+          kyc.userId,
+          {
+            'kycStatus.isComplete': true,
+            'kycStatus.state': KYCState.VERIFIED,
+            'kycStatus.lastUpdated': new Date()
+          },
+          { session }
+        );
 
         if (kyc.companyId) {
           await OnboardingProgressService.updateStep(kyc.companyId.toString(), 'kycApproved', kyc.userId?.toString());
         }
-      } catch (err) {
-        logger.error('Error updating onboarding progress/user status for KYC approval:', err);
-      }
+
+        return saved;
+      });
     } else if (!validatedData.verified) {
+      KYCStateMachine.validateTransition(kyc.state, KYCState.ACTION_REQUIRED);
       kyc.state = KYCState.ACTION_REQUIRED;
-      kyc.status = 'pending';
+      updatedKYC = await kyc.save();
+    } else {
+      updatedKYC = await kyc.save();
     }
 
-    const updatedKYC = await kyc.save();
+    if (allDocumentsVerified) {
+      try {
+        const user = await User.findById(kyc.userId).select('email name').lean();
+        const company = kyc.companyId ? await Company.findById(kyc.companyId).select('name').lean() : null;
+        if (user?.email) {
+          await queueKYCApprovedEmail(
+            user.email,
+            (user as any).name || 'User',
+            kyc.userId?.toString(),
+            kyc.companyId?.toString(),
+            {
+              companyName: (company as any)?.name || 'Your Company',
+              verifiedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            }
+          );
+          logger.info('KYC approval email queued', { userId: kyc.userId, email: user.email });
+        }
+      } catch (err) {
+        logger.error('Failed to queue KYC approval email', err);
+      }
+    }
 
     await createAuditLog(
       req.user._id,
@@ -481,11 +533,12 @@ export const rejectKYC = async (req: Request, res: Response, next: NextFunction)
       throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
     }
 
+    KYCStateMachine.validateTransition(kyc.state, KYCState.REJECTED);
+
     const updatedKYC = await KYC.findByIdAndUpdate(
       kycId,
       {
         $set: {
-          status: 'rejected',
           state: KYCState.REJECTED,
           rejectionReason: reason,
         },
@@ -501,6 +554,25 @@ export const rejectKYC = async (req: Request, res: Response, next: NextFunction)
       });
     } catch (err) {
       logger.error('Error updating user KYC status after rejection:', err);
+    }
+
+    try {
+      const user = await User.findById(kyc.userId).select('email name').lean();
+      if (user?.email) {
+        const resubmitLink = `${process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000'}/seller/kyc`;
+        const supportEmail = process.env.SUPPORT_EMAIL || 'support@shipcrowd.com';
+        await queueKYCRejectedEmail(
+          user.email,
+          (user as any).name || 'User',
+          reason,
+          kyc.userId?.toString(),
+          kyc.companyId?.toString(),
+          { resubmitLink, supportEmail }
+        );
+        logger.info('KYC rejection email queued', { userId: kyc.userId, email: user.email });
+      }
+    } catch (err) {
+      logger.error('Failed to queue KYC rejection email', err);
     }
 
     await createAuditLog(
@@ -715,7 +787,6 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
         kyc = new KYC({
           userId: user._id,
           companyId: user.companyId,
-          status: 'pending',
           documents: {},
           completionStatus: {
             personalKycComplete: false,
@@ -800,8 +871,8 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
         (kyc.documents.aadhaar ? isDocumentVerified(kyc.documents.aadhaar) : true);
 
       if (!isValid && kyc.state === KYCState.VERIFIED) {
+        KYCStateMachine.validateTransition(kyc.state, KYCState.ACTION_REQUIRED);
         kyc.state = KYCState.ACTION_REQUIRED;
-        kyc.status = 'pending';
         await User.findByIdAndUpdate(kyc.userId, {
           'kycStatus.isComplete': false,
           'kycStatus.state': KYCState.ACTION_REQUIRED,
@@ -1074,8 +1145,8 @@ export const verifyGstin = async (req: Request, res: Response, next: NextFunctio
       kyc.completionStatus.companyInfoComplete = gstinDoc ? isDocumentVerified(gstinDoc) : false;
 
       if (!isValid && kyc.state === KYCState.VERIFIED) {
+        KYCStateMachine.validateTransition(kyc.state, KYCState.ACTION_REQUIRED);
         kyc.state = KYCState.ACTION_REQUIRED;
-        kyc.status = 'pending';
         await User.findByIdAndUpdate(kyc.userId, {
           'kycStatus.isComplete': false,
           'kycStatus.state': KYCState.ACTION_REQUIRED,
@@ -1307,8 +1378,8 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       kyc.completionStatus.bankDetailsComplete = isDocumentVerified(kyc.documents.bankAccount);
 
       if (!isValid && kyc.state === KYCState.VERIFIED) {
+        KYCStateMachine.validateTransition(kyc.state, KYCState.ACTION_REQUIRED);
         kyc.state = KYCState.ACTION_REQUIRED;
-        kyc.status = 'pending';
         await User.findByIdAndUpdate(kyc.userId, {
           'kycStatus.isComplete': false,
           'kycStatus.state': KYCState.ACTION_REQUIRED,
@@ -1427,7 +1498,6 @@ export const updateAgreement = async (req: Request, res: Response, next: NextFun
       kyc = new KYC({
         userId: user._id,
         companyId: user.companyId,
-        status: 'pending',
         documents: {},
         completionStatus: {
           personalKycComplete: false,
@@ -1448,17 +1518,32 @@ export const updateAgreement = async (req: Request, res: Response, next: NextFun
       kyc.completionStatus.bankDetailsComplete &&
       kyc.completionStatus.agreementComplete;
 
-    // If all steps are complete, update the overall status
+    // If all steps are complete, update the overall status (optimistic lock to prevent race)
     if (allComplete) {
-      await withTransaction(async (session) => {
-        // ✅ FEATURE 4: Require admin approval instead of auto-verification
-        kyc.status = 'pending'; // Changed from 'verified' to 'pending'
-        kyc.state = KYCState.SUBMITTED;
-        kyc.submittedAt = new Date(); // Track submission time
-        await kyc.save({ session });
+      KYCStateMachine.validateTransition(kyc.state, KYCState.SUBMITTED);
+      const currentVersion = kyc.__v;
+      const submittedAt = new Date();
 
-        // ❌ DO NOT auto-update user KYC status - wait for admin approval
-        // User kycStatus will be updated when admin approves via approveKYC endpoint
+      await withTransaction(async (session) => {
+        const updated = await KYC.findOneAndUpdate(
+          { _id: kyc._id, __v: currentVersion },
+          {
+            $set: {
+              'completionStatus.agreementComplete': true,
+              state: KYCState.SUBMITTED,
+              submittedAt,
+            },
+            $inc: { __v: 1 },
+          },
+          { session, new: true }
+        );
+
+        if (!updated) {
+          throw new ConflictError('KYC modified by another request. Please try again.');
+        }
+
+        // Refresh in-memory doc for audit/success
+        Object.assign(kyc, updated.toObject?.() ?? updated);
       });
     } else {
       await kyc.save();
@@ -1559,8 +1644,8 @@ export const invalidateKYCDocument = async (req: Request, res: Response, next: N
     });
 
     refreshCompletionStatus(kyc, Boolean(kyc.documents?.gstin?.number));
+    KYCStateMachine.validateTransition(kyc.state, KYCState.ACTION_REQUIRED);
     kyc.state = KYCState.ACTION_REQUIRED;
-    kyc.status = 'pending';
 
     await kyc.save();
 
@@ -1728,8 +1813,8 @@ export const verifyAadhaar = async (req: Request, res: Response, next: NextFunct
       (kyc.documents.aadhaar ? isDocumentVerified(kyc.documents.aadhaar) : true);
 
     if (!isValid && kyc.state === KYCState.VERIFIED) {
+      KYCStateMachine.validateTransition(kyc.state, KYCState.ACTION_REQUIRED);
       kyc.state = KYCState.ACTION_REQUIRED;
-      kyc.status = 'pending';
       await User.findByIdAndUpdate(kyc.userId, {
         'kycStatus.isComplete': false,
         'kycStatus.state': KYCState.ACTION_REQUIRED,

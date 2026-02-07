@@ -38,9 +38,10 @@ export const createKycInputHash = (docType: KycDocumentType, input: Record<strin
       break;
     }
     case 'bankAccount': {
-      const accountNumber = typeof input === 'string' ? input : input.accountNumber || '';
-      const ifsc = typeof input === 'string' ? '' : input.ifsc || input.ifscCode || '';
-      normalized = `${normalizeDigits(accountNumber)}|${normalizeAlphaNumeric(ifsc)}`;
+      const data = typeof input === 'string' ? { accountNumber: input, ifsc: '' } : input;
+      const accountNumber = normalizeDigits(data.accountNumber || '');
+      const ifsc = normalizeAlphaNumeric(data.ifsc || data.ifscCode || '');
+      normalized = `acc:${accountNumber}|ifsc:${ifsc}`;
       break;
     }
     default:

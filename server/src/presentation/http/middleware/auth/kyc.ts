@@ -116,7 +116,6 @@ export const checkKYC = async (
                 await KYC.findByIdAndUpdate(kycRecord._id, {
                     $set: {
                         state: KYCState.EXPIRED,
-                        status: 'pending',
                     },
                 });
 
@@ -131,6 +130,9 @@ export const checkKYC = async (
                     ErrorCode.AUTH_KYC_NOT_VERIFIED
                 );
             }
+
+            // Store for finalKYCCheck (TOCTOU: re-verify state right before sensitive action)
+            (req as any).kycValidation = { kycId: kycRecord._id, verifiedAt: new Date() };
         }
 
         // KYC complete and verified for current company, proceed
@@ -138,6 +140,37 @@ export const checkKYC = async (
     } catch (error) {
         logger.error('KYC check middleware error:', error);
         // Pass error to global error handler
+        next(error);
+    }
+};
+
+/**
+ * Final KYC check (TOCTOU): Re-read KYC state immediately before sensitive action.
+ * Chain after checkKYC on sensitive routes to prevent auth bypass if KYC was revoked mid-request.
+ */
+export const finalKYCCheck = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const validation = (req as any).kycValidation;
+        if (!validation) {
+            next();
+            return;
+        }
+
+        const kyc = await KYC.findById(validation.kycId).select('state').lean();
+
+        if (!kyc || kyc.state !== KYCState.VERIFIED) {
+            throw new AuthorizationError(
+                'KYC status changed during request',
+                ErrorCode.AUTH_KYC_NOT_VERIFIED
+            );
+        }
+
+        next();
+    } catch (error) {
         next(error);
     }
 };
@@ -160,8 +193,13 @@ export const KYC_REQUIRED_ROUTES = [
 
     // Financial
     'POST /api/v1/wallet/withdraw',
+    'POST /api/v1/wallet/recharge',
     'POST /api/v1/payouts',
+    'POST /api/v1/commission/payouts',
     'PUT /api/v1/companies/:id/bank',
+
+    // Ratecards
+    'POST /api/v1/ratecards',
 
     // Warehouse
     'POST /api/v1/warehouses',

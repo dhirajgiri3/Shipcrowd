@@ -720,6 +720,159 @@ export const SUPPORT_PRIORITY_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RTO STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const RTO_STATUS_CONFIG: Record<string, StatusConfig> = {
+  initiated: {
+    label: 'Initiated',
+    color: 'info',
+    description: 'RTO Initiated',
+  },
+  in_transit: {
+    label: 'In Transit',
+    color: 'warning',
+    description: 'RTO In Transit',
+  },
+  delivered_to_warehouse: {
+    label: 'Delivered to Warehouse',
+    color: 'neutral',
+    description: 'RTO Delivered to Warehouse',
+  },
+  qc_pending: {
+    label: 'QC Pending',
+    color: 'warning',
+    description: 'Quality Check Pending',
+  },
+  qc_completed: {
+    label: 'QC Completed',
+    color: 'primary',
+    description: 'Quality Check Completed',
+  },
+  restocked: {
+    label: 'Restocked',
+    color: 'success',
+    description: 'Item Restocked',
+  },
+  disposed: {
+    label: 'Disposed',
+    color: 'error',
+    description: 'Item Disposed',
+  },
+  refurbishing: {
+    label: 'Refurbishing',
+    color: 'secondary',
+    description: 'Item Refurbishing',
+  },
+  claim_filed: {
+    label: 'Claim Filed',
+    color: 'pending',
+    description: 'Claim Filed',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHIPMENT STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SHIPMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'Shipment created, waiting for pickup',
+  },
+  created: {
+    label: 'Created',
+    color: 'info',
+    description: 'Shipment manifest created',
+  },
+  'in-transit': {
+    label: 'In Transit',
+    color: 'primary',
+    description: 'Shipment is on the way',
+  },
+  in_transit: {
+    label: 'In Transit',
+    color: 'primary',
+    description: 'Shipment is on the way',
+  },
+  shipped: {
+    label: 'Shipped',
+    color: 'primary',
+    description: 'Shipment has been shipped',
+  },
+  delivered: {
+    label: 'Delivered',
+    color: 'success',
+    description: 'Shipment delivered successfully',
+  },
+  rto: {
+    label: 'RTO',
+    color: 'error',
+    description: 'Return to Origin initiated',
+  },
+  ndr: {
+    label: 'NDR',
+    color: 'warning',
+    description: 'Non-Delivery Report',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    color: 'error',
+    description: 'Shipment cancelled',
+  },
+  lost: {
+    label: 'Lost',
+    color: 'error',
+    description: 'Shipment lost in transit',
+  },
+  damaged: {
+    label: 'Damaged',
+    color: 'error',
+    description: 'Shipment damaged',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAYMENT STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const PAYMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
+  paid: {
+    label: 'Paid',
+    color: 'success',
+    description: 'Payment successful',
+  },
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'Payment pending',
+  },
+  failed: {
+    label: 'Failed',
+    color: 'error',
+    description: 'Payment failed',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRANSACTION TYPE CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const TRANSACTION_TYPE_CONFIG: Record<string, StatusConfig> = {
+  credit: {
+    label: 'Credit',
+    color: 'success',
+    description: 'Amount credited',
+  },
+  debit: {
+    label: 'Debit',
+    color: 'error',
+    description: 'Amount debited',
+  },
+};
+
 /**
  * Get status configuration for a specific domain and status
  */
@@ -745,7 +898,11 @@ export function getStatusConfig(
     | 'warehouse'
     | 'inventory'
     | 'support_ticket'
-    | 'support_priority',
+    | 'support_priority'
+    | 'shipment'
+    | 'payment'
+    | 'rto'
+    | 'transaction_type',
   status: string
 ): StatusConfig | undefined {
   const configs: Record<string, StatusConfigMap> = {
@@ -770,6 +927,10 @@ export function getStatusConfig(
     inventory: INVENTORY_STATUS_CONFIG,
     support_ticket: SUPPORT_TICKET_STATUS_CONFIG,
     support_priority: SUPPORT_PRIORITY_CONFIG,
+    shipment: SHIPMENT_STATUS_CONFIG,
+    payment: PAYMENT_STATUS_CONFIG,
+    rto: RTO_STATUS_CONFIG,
+    transaction_type: TRANSACTION_TYPE_CONFIG,
   };
 
   const domainConfig = configs[domain];
@@ -828,4 +989,8 @@ export const STATUS_CONFIGS = {
   inventory: INVENTORY_STATUS_CONFIG,
   support_ticket: SUPPORT_TICKET_STATUS_CONFIG,
   support_priority: SUPPORT_PRIORITY_CONFIG,
+  shipment: SHIPMENT_STATUS_CONFIG,
+  payment: PAYMENT_STATUS_CONFIG,
+  rto: RTO_STATUS_CONFIG,
+  transaction_type: TRANSACTION_TYPE_CONFIG,
 } as const;

@@ -11,6 +11,7 @@ import { apiClient } from '@/src/core/api/http';
 import { handleApiError, showInfoToast } from '@/src/lib/error';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { getCourierLogo, isUsingMockData } from '@/src/constants';
 import {
     Search,
@@ -198,7 +199,7 @@ export function ShipmentsClient() {
         {
             header: 'Status',
             accessorKey: 'status',
-            cell: (row: Shipment) => <StatusBadge status={row.status} />
+            cell: (row: Shipment) => <StatusBadge domain="shipment" status={row.status} />
         },
         {
             header: 'Amount',
@@ -220,9 +221,9 @@ export function ShipmentsClient() {
             accessorKey: 'id',
             cell: (row: Shipment) => (
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedShipment(row)} className="hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
-                        <Eye className="w-4 h-4" />
-                    </Button>
+                    <ViewActionButton
+                        onClick={() => setSelectedShipment(row)}
+                    />
                     <Button variant="ghost" size="sm" className="hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
                         <FileText className="w-4 h-4" />
                     </Button>

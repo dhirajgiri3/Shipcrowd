@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { useWeightDisputes } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { useDebouncedValue } from '@/src/hooks/data';
 import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
 
@@ -164,6 +165,9 @@ export function WeightDisputesTable() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Detected
                             </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -304,12 +308,19 @@ export function WeightDisputesTable() {
 
                                         {/* Status */}
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <StatusBadge status={dispute.status} />
+                                            <StatusBadge domain="dispute" status={dispute.status} />
                                         </td>
 
                                         {/* Detected Date */}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {formatDate(dispute.detectedAt)}
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                            <ViewActionButton
+                                                onClick={() => router.push(`/seller/disputes/weight/${dispute._id}`)}
+                                            />
                                         </td>
                                     </tr>
                                 );

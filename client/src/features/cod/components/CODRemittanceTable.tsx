@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useCODRemittances } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
@@ -165,6 +166,9 @@ export function CODRemittanceTable() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 UTR
                             </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -180,7 +184,7 @@ export function CODRemittanceTable() {
                                 <tr
                                     key={remittance._id}
                                     className="hover:bg-[var(--bg-tertiary)]/30 cursor-pointer transition-colors"
-                                    onClick={() => router.push(`/seller/cod/remittance/${remittance._id}`)}
+                                    onClick={() => { }}
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-medium text-[var(--text-primary)]">
@@ -208,7 +212,7 @@ export function CODRemittanceTable() {
                                         {formatCurrency(remittance.finalPayable)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <StatusBadge status={remittance.status} />
+                                        <StatusBadge domain="remittance" status={remittance.status} />
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {remittance.payout?.utr ? (
@@ -225,6 +229,11 @@ export function CODRemittanceTable() {
                                                 Not yet processed
                                             </span>
                                         )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                        <ViewActionButton
+                                            onClick={() => router.push(`/seller/cod/remittance/${remittance._id}`)}
+                                        />
                                     </td>
                                 </tr>
                             ))

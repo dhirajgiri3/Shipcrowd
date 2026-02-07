@@ -10,11 +10,6 @@ import {
     CreditCard,
     Plus,
     Search,
-    Edit2,
-    Copy,
-    CheckCircle,
-    AlertCircle,
-    Package,
     Download,
     CheckSquare,
     Square,
@@ -23,10 +18,11 @@ import {
     TrendingUp,
     TrendingDown,
     Upload,
-    Tag,
-    Zap,
-    Lock,
-    Trash2
+    CheckCircle,
+    X,
+    Filter,
+    MoreVertical,
+    FileInput
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
@@ -35,9 +31,9 @@ import { useAdminRateCards, useCloneAdminRateCard, useDeleteAdminRateCard } from
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useBulkUpdateRateCards, useExportRateCards } from '@/src/hooks/shipping/use-bulk-rate-card-operations';
 import { UploadRateCardModal } from './UploadRateCardModal';
-
-const categories = ['all', 'lite', 'basic', 'advanced', 'pro', 'enterprise'];
-const couriers = ['All Couriers', 'Delhivery', 'Xpressbees', 'DTDC', 'Bluedart', 'Ecom Express'];
+import { RateCardItem } from './RateCardItem';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export function RatecardsClient() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -47,7 +43,7 @@ export function RatecardsClient() {
     const [showImportModal, setShowImportModal] = useState(false);
     const { addToast } = useToast();
 
-    // Integration: Fetch real rate cards (admin endpoint - all companies)
+    // Integration: Fetch real rate cards
     const { data: adminData, isLoading, isError, error, refetch } = useAdminRateCards({
         status: selectedStatus === 'all' ? undefined : selectedStatus,
         search: searchQuery || undefined,
@@ -58,7 +54,7 @@ export function RatecardsClient() {
     const { mutate: bulkUpdate, isPending: isBulkUpdating } = useBulkUpdateRateCards();
     const { mutate: exportCards, isPending: isExporting } = useExportRateCards();
 
-    // Single operations hooks (admin endpoints)
+    // Single operations hooks
     const { mutate: cloneCard, isPending: isCloning } = useCloneAdminRateCard();
     const { mutate: deleteCard, isPending: isDeleting } = useDeleteAdminRateCard();
 
@@ -80,13 +76,11 @@ export function RatecardsClient() {
             deleteCard(id, {
                 onSuccess: () => {
                     addToast(`Successfully deleted "${name}"`, 'success');
-                    // Also remove from selection if selected
                     if (selectedCards.includes(id)) {
                         setSelectedCards(prev => prev.filter(cardId => cardId !== id));
                     }
                 },
                 onError: (err) => {
-                    // This handles the 409 Conflict message clearly
                     addToast(`Failed to delete: ${err.message}`, 'error');
                 }
             });
@@ -110,14 +104,8 @@ export function RatecardsClient() {
     };
 
     const handleBulkActivate = () => {
-        if (selectedCards.length === 0) {
-            addToast('Please select at least one rate card', 'error');
-            return;
-        }
-        bulkUpdate({
-            rateCardIds: selectedCards,
-            operation: 'activate'
-        }, {
+        if (selectedCards.length === 0) return;
+        bulkUpdate({ rateCardIds: selectedCards, operation: 'activate' }, {
             onSuccess: () => {
                 setSelectedCards([]);
                 setShowBulkActions(false);
@@ -126,14 +114,8 @@ export function RatecardsClient() {
     };
 
     const handleBulkDeactivate = () => {
-        if (selectedCards.length === 0) {
-            addToast('Please select at least one rate card', 'error');
-            return;
-        }
-        bulkUpdate({
-            rateCardIds: selectedCards,
-            operation: 'deactivate'
-        }, {
+        if (selectedCards.length === 0) return;
+        bulkUpdate({ rateCardIds: selectedCards, operation: 'deactivate' }, {
             onSuccess: () => {
                 setSelectedCards([]);
                 setShowBulkActions(false);
@@ -142,20 +124,14 @@ export function RatecardsClient() {
     };
 
     const handleBulkPriceAdjustment = (type: 'increase' | 'decrease') => {
-        if (selectedCards.length === 0) {
-            addToast('Please select at least one rate card', 'error');
-            return;
-        }
-
+        if (selectedCards.length === 0) return;
         const value = prompt(`Enter ${type === 'increase' ? 'increase' : 'decrease'} percentage (e.g., 10 for 10%)`);
         if (!value) return;
-
         const percentage = parseFloat(value);
         if (isNaN(percentage) || percentage <= 0) {
             addToast('Please enter a valid percentage', 'error');
             return;
         }
-
         bulkUpdate({
             rateCardIds: selectedCards,
             operation: 'adjust_price',
@@ -169,15 +145,12 @@ export function RatecardsClient() {
         });
     };
 
-    const handleExport = () => {
-        exportCards();
-    };
-
-    // Handle error
     if (isError) {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-center">
-                <AlertCircle className="h-10 w-10 text-[var(--error)] mb-2" />
+                <div className="h-12 w-12 rounded-full bg-[var(--error-bg)] flex items-center justify-center mb-4">
+                    <X className="h-6 w-6 text-[var(--error)]" />
+                </div>
                 <h3 className="text-lg font-medium text-[var(--text-primary)]">Failed to load rate cards</h3>
                 <p className="text-[var(--text-secondary)] mb-4">{error?.message || 'An unexpected error occurred'}</p>
                 <Button onClick={() => window.location.reload()} variant="outline">Retry</Button>
@@ -196,43 +169,24 @@ export function RatecardsClient() {
     });
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
                         <CreditCard className="h-6 w-6 text-[var(--primary-blue)]" />
-                        Rate Cards
+                        Rate Cards Management
                     </h1>
                     <p className="text-sm mt-1 text-[var(--text-secondary)]">
-                        Manage pricing plans for courier services
+                        Configure and manage courier pricing rules
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={handleExport}
-                        disabled={isExporting}
-                    >
-                        <Download className="h-4 w-4 mr-2" />
-                        {isExporting ? 'Exporting...' : 'Export CSV'}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowImportModal(true)}
-                    >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import CSV
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowBulkActions(!showBulkActions)}
-                    >
-                        <CheckSquare className="h-4 w-4 mr-2" />
-                        Bulk Actions
+                    <Button variant="outline" onClick={() => setShowImportModal(true)}>
+                        <Upload className="h-4 w-4 mr-2" /> Import
                     </Button>
                     <Link href="/admin/ratecards/create">
-                        <Button>
+                        <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20">
                             <Plus className="h-4 w-4 mr-2" />
                             Create Rate Card
                         </Button>
@@ -240,276 +194,201 @@ export function RatecardsClient() {
                 </div>
             </div>
 
-            {/* Bulk Actions Bar */}
-            {showBulkActions && (
-                <Card className="bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleSelectAll}
-                                >
-                                    {selectedCards.length === filteredRateCards.length ? (
-                                        <CheckSquare className="h-4 w-4 mr-2" />
-                                    ) : (
-                                        <Square className="h-4 w-4 mr-2" />
-                                    )}
-                                    Select All ({selectedCards.length}/{filteredRateCards.length})
-                                </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleBulkActivate}
-                                    disabled={selectedCards.length === 0 || isBulkUpdating}
-                                >
-                                    <Power className="h-4 w-4 mr-2" />
-                                    Activate
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleBulkDeactivate}
-                                    disabled={selectedCards.length === 0 || isBulkUpdating}
-                                >
-                                    <PowerOff className="h-4 w-4 mr-2" />
-                                    Deactivate
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleBulkPriceAdjustment('increase')}
-                                    disabled={selectedCards.length === 0 || isBulkUpdating}
-                                >
-                                    <TrendingUp className="h-4 w-4 mr-2" />
-                                    Increase Price
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleBulkPriceAdjustment('decrease')}
-                                    disabled={selectedCards.length === 0 || isBulkUpdating}
-                                >
-                                    <TrendingDown className="h-4 w-4 mr-2" />
-                                    Decrease Price
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Total Rate Cards</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{rateCards.length}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
-                                <CreditCard className="h-5 w-5 text-[var(--primary-blue)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Active</p>
-                                <p className="text-2xl font-bold text-[var(--success)]">
-                                    {rateCards.filter(c => c.status === 'active').length}
-                                </p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
-                                <CheckCircle className="h-5 w-5 text-[var(--success)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Stats Overview */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                    title="Total Cards"
+                    value={rateCards.length}
+                    icon={CreditCard}
+                    iconColor="text-[var(--primary-blue)] bg-[var(--primary-blue-soft)]"
+                    variant="default"
+                />
+                <StatsCard
+                    title="Active Now"
+                    value={rateCards.filter(c => c.status === 'active').length}
+                    icon={CheckCircle}
+                    variant="success"
+                />
             </div>
 
-            {/* Filters */}
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex flex-col lg:flex-row gap-4">
+            {/* Control Bar */}
+            <Card className="border-[var(--border-subtle)] overflow-hidden">
+                <div className="p-1">
+                    <div className="flex flex-col lg:flex-row gap-3 p-2">
                         {/* Search */}
-                        <div className="flex-1">
-                            <Input
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                            <input
+                                type="text"
                                 placeholder="Search rate cards..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                icon={<Search className="h-4 w-4" />}
+                                className="w-full h-10 pl-9 pr-4 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] transition-all placeholder-[var(--text-muted)]"
                             />
                         </div>
 
                         {/* Status Filter */}
-                        <select
-                            value={selectedStatus}
-                            onChange={(e) => setSelectedStatus(e.target.value as any)}
-                            className="h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-active)]"
+                        <div className="relative min-w-[150px]">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                            <select
+                                value={selectedStatus}
+                                onChange={(e) => setSelectedStatus(e.target.value as any)}
+                                className="w-full h-10 pl-9 pr-8 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <MoreVertical className="h-4 w-4 text-[var(--text-muted)] opacity-50" />
+                            </div>
+                        </div>
+
+                        {/* Selection Mode Toggle & Bulk Actions Trigger */}
+                        <Button
+                            variant={showBulkActions ? "secondary" : "ghost"}
+                            className={cn(
+                                "gap-2",
+                                showBulkActions && "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
+                            )}
+                            onClick={() => setShowBulkActions(!showBulkActions)}
                         >
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+                            <CheckSquare className="h-4 w-4" />
+                            <span className="hidden sm:inline">Select & Edit</span>
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            onClick={() => exportCards()}
+                            disabled={isExporting}
+                            className="gap-2"
+                        >
+                            <Download className="h-4 w-4" />
+                            <span className="hidden sm:inline">Export</span>
+                        </Button>
                     </div>
-                </CardContent>
+
+                    {/* Bulk Actions Panel */}
+                    <AnimatePresence>
+                        {showBulkActions && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]"
+                            >
+                                <div className="p-3 flex items-center justify-between gap-4 overflow-x-auto">
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleSelectAll}
+                                            className="text-xs"
+                                        >
+                                            {selectedCards.length === filteredRateCards.length ? (
+                                                <CheckSquare className="h-3.5 w-3.5 mr-1.5" />
+                                            ) : (
+                                                <Square className="h-3.5 w-3.5 mr-1.5" />
+                                            )}
+                                            Select All ({selectedCards.length})
+                                        </Button>
+                                        <div className="h-4 w-px bg-[var(--border-default)]" />
+                                        <span className="text-xs text-[var(--text-secondary)]">
+                                            {selectedCards.length} Selected
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleBulkActivate}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            className="h-8 text-xs bg-white dark:bg-black"
+                                        >
+                                            <Power className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                                            Activate
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleBulkDeactivate}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            className="h-8 text-xs bg-white dark:bg-black"
+                                        >
+                                            <PowerOff className="h-3.5 w-3.5 mr-1.5 text-red-500" />
+                                            Deactivate
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleBulkPriceAdjustment('increase')}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            className="h-8 text-xs bg-white dark:bg-black"
+                                        >
+                                            <TrendingUp className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                                            Increase Price
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleBulkPriceAdjustment('decrease')}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            className="h-8 text-xs bg-white dark:bg-black"
+                                        >
+                                            <TrendingDown className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
+                                            Decrease Price
+                                        </Button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </Card>
 
             {/* Rate Cards Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredRateCards.map((card) => (
-                    <Card
-                        key={card._id}
-                        className={cn(
-                            "hover:shadow-lg transition-all cursor-pointer group",
-                            selectedCards.includes(card._id) && "ring-2 ring-[var(--primary-blue)]"
-                        )}
-                        onClick={() => addToast(`Opening ${card.name}...`, 'info')}
-                    >
-                        <CardContent className="p-5">
-                            <div className="space-y-4">
-                                {/* Header */}
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        {showBulkActions && (
-                                            <div
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleSelectCard(card._id);
-                                                }}
-                                                className="cursor-pointer"
-                                            >
-                                                {selectedCards.includes(card._id) ? (
-                                                    <CheckSquare className="h-5 w-5 text-[var(--primary-blue)]" />
-                                                ) : (
-                                                    <Square className="h-5 w-5 text-[var(--text-muted)]" />
-                                                )}
-                                            </div>
-                                        )}
-                                        <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center text-lg font-bold text-[var(--text-secondary)]">
-                                            RC
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">
-                                                {card.name}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                    <Badge variant={card.status === 'active' ? 'success' : 'neutral'}>
-                                        {card.status}
-                                    </Badge>
-                                </div>
-                                <div className="flex flex-wrap gap-2 mt-1 -mb-1">
-                                    {card.version && <Badge variant="outline" className="text-xs py-0 h-5 border-[var(--primary-blue)]/20 text-[var(--primary-blue)]"><Tag className="h-3 w-3 mr-1" /> {card.version}</Badge>}
-                                    {card.fuelSurcharge ? <Badge variant="warning" className="text-xs py-0 h-5"><Zap className="h-3 w-3 mr-1" /> Fuel: {card.fuelSurcharge}%</Badge> : null}
-                                    {card.minimumCall ? <Badge variant="secondary" className="text-xs py-0 h-5">Min: ₹{card.minimumCall}</Badge> : null}
-                                    {card.isLocked && <Badge variant="destructive" className="text-xs py-0 h-5"><Lock className="h-3 w-3 mr-1" /> Locked</Badge>}
-                                </div>
-
-                                {/* Zone Rules Summary */}
-                                <div className="bg-[var(--bg-secondary)] rounded-lg p-3">
-                                    <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Zone Rules</p>
-                                    <div className="flex flex-wrap gap-2 text-center">
-                                        {card.zoneRules && card.zoneRules.length > 0 ? (
-                                            card.zoneRules.slice(0, 5).map((rule, idx) => (
-                                                <div key={idx} className="bg-[var(--bg-primary)] px-2 py-1 rounded text-xs border border-[var(--border-subtle)]">
-                                                    <span className="font-semibold text-[var(--text-primary)]">
-                                                        {rule.zone || rule.zoneId}:
-                                                    </span> {rule.multiplier}x
-                                                    {rule.carrier ? <span className="opacity-75 text-[10px] ml-1">({rule.carrier})</span> : ''}
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <span className="text-xs text-[var(--text-muted)]">No specific zone rules</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Base Rates Summary */}
-                                <div className="space-y-2">
-                                    <p className="text-xs font-medium text-[var(--text-muted)]">Base Rates</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {card.baseRates && card.baseRates.map((rate, idx) => (
-                                            <Badge key={idx} variant={rate.carrier ? "outline" : "secondary"} className="text-xs">
-                                                {rate.carrier && rate.serviceType
-                                                    ? `${rate.carrier} - ${rate.serviceType}`
-                                                    : 'Generic Base Rate'}: ₹{rate.baseRate}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Weight Rules Summary */}
-                                <div className="space-y-2">
-                                    <p className="text-xs font-medium text-[var(--text-muted)]">Weight Rules</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Badge variant="outline" className="text-xs">
-                                            Total: {card.weightRules?.length || 0}
-                                        </Badge>
-                                        {card.weightRules?.some(r => !r.carrier) && (
-                                            <Badge variant="secondary" className="text-xs">
-                                                Generic: {card.weightRules?.filter(r => !r.carrier).length}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Footer */}
-                                <div className="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
-                                    <div className="flex items-center gap-4 text-xs text-[var(--text-muted)]">
-                                        <span className="flex items-center gap-1">
-                                            <Package className="h-3.5 w-3.5" />
-                                            Active
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        <Button variant="ghost" size="sm" onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleClone(card._id, card.name);
-                                        }} disabled={isCloning}>
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                        <Link href={`/admin/ratecards/${card._id}/edit`}>
-                                            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                        </Link>
-                                        <Button variant="ghost" size="sm" className="text-[var(--error)] hover:text-[var(--error)] hover:bg-[var(--error-bg)]" onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDelete(card._id, card.name);
-                                        }} disabled={isDeleting}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <AnimatePresence mode="popLayout">
+                    {filteredRateCards.map((card) => (
+                        <RateCardItem
+                            key={card._id}
+                            card={card}
+                            isSelected={selectedCards.includes(card._id)}
+                            onSelect={handleSelectCard}
+                            onClone={handleClone}
+                            onDelete={handleDelete}
+                            selectionMode={showBulkActions}
+                            isCloning={isCloning}
+                            isDeleting={isDeleting}
+                        />
+                    ))}
+                </AnimatePresence>
             </div>
 
             {/* Empty State */}
             {filteredRateCards.length === 0 && (
-                <Card>
-                    <CardContent className="py-12 text-center">
-                        <CreditCard className="h-12 w-12 mx-auto mb-4 text-[var(--text-muted)]" />
-                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No rate cards found</h3>
-                        <p className="mt-1 text-[var(--text-secondary)]">Try adjusting your filters or create a new rate card</p>
+                <div className="flex flex-col items-center justify-center py-20 text-center bg-[var(--bg-secondary)] rounded-2xl border-2 border-dashed border-[var(--border-subtle)]">
+                    <div className="h-16 w-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mb-4">
+                        <Search className="h-8 w-8 text-[var(--text-muted)]" />
+                    </div>
+                    <h3 className="text-lg font-medium text-[var(--text-primary)]">No rate cards found</h3>
+                    <p className="mt-1 text-[var(--text-secondary)] max-w-sm">
+                        {searchQuery
+                            ? `No results found for "${searchQuery}". Try a different search term.`
+                            : "Get started by creating a new rate card or importing an existing one."}
+                    </p>
+                    <div className="flex gap-3 mt-6">
+                        <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedStatus('all'); }}>
+                            Clear Filters
+                        </Button>
                         <Link href="/admin/ratecards/create">
-                            <Button className="mt-4">
+                            <Button>
                                 <Plus className="h-4 w-4 mr-2" />
-                                Create Rate Card
+                                Create New
                             </Button>
                         </Link>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             )}
 
             <UploadRateCardModal

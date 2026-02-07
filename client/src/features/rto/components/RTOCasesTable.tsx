@@ -18,8 +18,9 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from '@/src/components/ui/feedback/DropdownMenu';
-import { Loader2, MoreVertical, Eye, ClipboardCheck, Package, Copy } from 'lucide-react';
-import { RTOStatusBadge } from './RTOStatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { Loader2, MoreVertical, ClipboardCheck, Package, Copy } from 'lucide-react';
 import type { RTOEventDetail, RTOShipmentRef, RTOOrderRef, RTOWarehouseRef } from '@/src/types/api/rto.types';
 import { RTO_REASON_LABELS } from '@/src/types/api/rto.types';
 
@@ -94,7 +95,8 @@ export function RTOCasesTable({ data, loading, onRowClick }: RTOCasesTableProps)
                             <TableHead>ETA</TableHead>
                             <TableHead>Warehouse</TableHead>
                             <TableHead>Charges</TableHead>
-                            <TableHead className="w-[80px]">Actions</TableHead>
+                            <TableHead>Charges</TableHead>
+                            <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -132,7 +134,8 @@ export function RTOCasesTable({ data, loading, onRowClick }: RTOCasesTableProps)
                         <TableHead>ETA</TableHead>
                         <TableHead>Warehouse</TableHead>
                         <TableHead>Charges</TableHead>
-                        <TableHead className="w-[80px]">Actions</TableHead>
+                        <TableHead>Charges</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -166,7 +169,7 @@ export function RTOCasesTable({ data, loading, onRowClick }: RTOCasesTableProps)
                                     </span>
                                 </TableCell>
                                 <TableCell>
-                                    <RTOStatusBadge status={rto.returnStatus} size="sm" />
+                                    <StatusBadge domain="rto" status={rto.returnStatus} size="sm" />
                                 </TableCell>
                                 <TableCell>{formatDate(rto.triggeredAt)}</TableCell>
                                 <TableCell>{formatDate(rto.expectedReturnDate)}</TableCell>
@@ -177,54 +180,53 @@ export function RTOCasesTable({ data, loading, onRowClick }: RTOCasesTableProps)
                                     ₹{typeof rto.rtoCharges === 'number' ? rto.rtoCharges : 0}
                                 </TableCell>
                                 <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                <MoreVertical className="w-4 h-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    router.push(`/seller/rto/${rto._id}`);
-                                                }}
-                                            >
-                                                <Eye className="w-4 h-4 mr-2" />
-                                                View Details
-                                            </DropdownMenuItem>
-                                            {isQCPending && (
+                                    <div className="flex items-center gap-1">
+                                        <ViewActionButton
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.push(`/seller/rto/${rto._id}`);
+                                            }}
+                                        />
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                {isQCPending && (
+                                                    <DropdownMenuItem
+                                                        onClick={(e: React.MouseEvent) => {
+                                                            e.stopPropagation();
+                                                            router.push(`/seller/rto/${rto._id}/qc`);
+                                                        }}
+                                                    >
+                                                        <ClipboardCheck className="w-4 h-4 mr-2" />
+                                                        Record QC
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {canRestock && (
+                                                    <DropdownMenuItem
+                                                        onClick={(e: React.MouseEvent) => {
+                                                            e.stopPropagation();
+                                                            router.push(`/seller/rto/${rto._id}`);
+                                                        }}
+                                                    >
+                                                        <Package className="w-4 h-4 mr-2" />
+                                                        Restock
+                                                    </DropdownMenuItem>
+                                                )}
+                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        router.push(`/seller/rto/${rto._id}/qc`);
-                                                    }}
+                                                    onClick={(e: React.MouseEvent) => handleCopyAwb(e, awb)}
+                                                    disabled={!awb}
                                                 >
-                                                    <ClipboardCheck className="w-4 h-4 mr-2" />
-                                                    Record QC
+                                                    <Copy className="w-4 h-4 mr-2" />
+                                                    Copy AWB
                                                 </DropdownMenuItem>
-                                            )}
-                                            {canRestock && (
-                                                <DropdownMenuItem
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        router.push(`/seller/rto/${rto._id}`);
-                                                    }}
-                                                >
-                                                    <Package className="w-4 h-4 mr-2" />
-                                                    Restock
-                                                </DropdownMenuItem>
-                                            )}
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                                onClick={(e) => handleCopyAwb(e, awb)}
-                                                disabled={!awb}
-                                            >
-                                                <Copy className="w-4 h-4 mr-2" />
-                                                Copy AWB
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         );

@@ -301,7 +301,8 @@ export async function queueKYCApprovedEmail(
     to: string,
     name: string,
     userId?: string,
-    companyId?: string
+    companyId?: string,
+    templateData?: { companyName?: string; verifiedDate?: string }
 ): Promise<void> {
     const emailQueue = QueueManager.getEmailQueue();
 
@@ -312,6 +313,7 @@ export async function queueKYCApprovedEmail(
         template: 'kyc_approved',
         data: {
             name,
+            ...templateData,
         },
         priority: 2, // Medium priority
         userId,
@@ -329,7 +331,8 @@ export async function queueKYCRejectedEmail(
     name: string,
     reason: string,
     userId?: string,
-    companyId?: string
+    companyId?: string,
+    templateData?: { resubmitLink?: string; supportEmail?: string }
 ): Promise<void> {
     const emailQueue = QueueManager.getEmailQueue();
 
@@ -341,6 +344,7 @@ export async function queueKYCRejectedEmail(
         data: {
             name,
             reason,
+            ...templateData,
         },
         priority: 2, // Medium priority
         userId,

@@ -124,7 +124,7 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
                                             {formatCurrency(shipment.netAmount)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <StatusBadge status={shipment.status} />
+                                            <StatusBadge domain="shipment" status={shipment.status} />
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <button

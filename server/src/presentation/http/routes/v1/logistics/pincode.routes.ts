@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../../middleware';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/index';
 import * as pincodeController from '../../../controllers/logistics/pincode.controller';
 
 const router = Router();
@@ -21,7 +21,7 @@ router.get('/:pincode', pincodeController.getPincodeDetails);
  * Get all pincodes (paginated)
  * Requires KYC verification
  */
-router.get('/all', checkKYC, pincodeController.getAllPincodes);
+router.get('/all', requireAccess({ kyc: true }), pincodeController.getAllPincodes);
 
 /**
  * POST /api/v1/logistics/pincode/bulk-validate
@@ -39,6 +39,6 @@ router.get('/search', pincodeController.searchPincodes);
  * GET /api/v1/logistics/pincode/stats
  * Get cache statistics (admin only)
  */
-router.get('/stats', checkKYC, pincodeController.getCacheStats);
+router.get('/stats', requireAccess({ kyc: true }), pincodeController.getCacheStats);
 
 export default router;

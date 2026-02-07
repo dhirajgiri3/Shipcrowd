@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
@@ -33,6 +33,31 @@ import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, f
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { Loader } from '@/src/components/ui';
+
+/** Levenshtein-based similarity (0–1). Used to compare PAN name vs bank account holder name. */
+function calculateSimilarity(str1: string, str2: string): number {
+    const a = str1.trim().toLowerCase();
+    const b = str2.trim().toLowerCase();
+    if (a.length === 0 && b.length === 0) return 1;
+    if (a.length === 0 || b.length === 0) return 0;
+    const longer = a.length >= b.length ? a : b;
+    const shorter = a.length < b.length ? a : b;
+    const matrix: number[][] = [];
+    for (let i = 0; i <= longer.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= shorter.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= longer.length; i++) {
+        for (let j = 1; j <= shorter.length; j++) {
+            const cost = longer[i - 1] === shorter[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+    const distance = matrix[longer.length][shorter.length];
+    return (longer.length - distance) / longer.length;
+}
 
 // KYC Steps Configuration
 const kycSteps = [
@@ -67,6 +92,8 @@ export function KycClient() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [existingKYC, setExistingKYC] = useState<any>(null); // TODO: replace with proper KYC types
+    const submissionRef = useRef<AbortController | null>(null);
+    const verificationQueueRef = useRef<Promise<unknown> | null>(null);
 
     // Verification states
     const [panVerification, setPanVerification] = useState<VerificationStatus>({ state: 'not_started', loading: false });
@@ -203,6 +230,20 @@ export function KycClient() {
         setError(null);
     };
 
+    // Serialize verification calls (prevent concurrent PAN/Bank/GSTIN verification)
+    const queueVerification = useCallback(async (fn: () => Promise<unknown>): Promise<unknown> => {
+        if (verificationQueueRef.current) {
+            await verificationQueueRef.current;
+        }
+        const promise = fn();
+        verificationQueueRef.current = promise;
+        try {
+            return await promise;
+        } finally {
+            verificationQueueRef.current = null;
+        }
+    }, []);
+
     // PAN Verification
     const verifyPAN = useCallback(async () => {
         if (!isValidPAN(formData.pan) || formData.pan.length !== 10) {
@@ -210,10 +251,11 @@ export function KycClient() {
             return;
         }
 
-        setPanVerification({ state: 'pending_provider', loading: true });
+        return queueVerification(async () => {
+            setPanVerification({ state: 'pending_provider', loading: true });
 
-        try {
-            const response = await kycApi.verifyPAN({ pan: formData.pan });
+            try {
+                const response = await kycApi.verifyPAN({ pan: formData.pan });
             const isVerified = response.data?.verified;
             const panData = response.data?.data;
             const verificationState = response.data?.verification?.state || (isVerified ? 'verified' : 'soft_failed');
@@ -238,14 +280,15 @@ export function KycClient() {
                 });
             }
         } catch (err: any) {
-            handleApiError(err, 'PAN verification failed');
-            setPanVerification({
-                state: 'soft_failed',
-                loading: false,
-                error: err.message || 'Verification failed'
-            });
-        }
-    }, [formData.pan]);
+                handleApiError(err, 'PAN verification failed');
+                setPanVerification({
+                    state: 'soft_failed',
+                    loading: false,
+                    error: err.message || 'Verification failed'
+                });
+            }
+        });
+    }, [formData.pan, queueVerification]);
 
     // IFSC Lookup
     const lookupIFSC = useCallback(async () => {
@@ -284,10 +327,11 @@ export function KycClient() {
             return;
         }
 
-        setBankVerification({ state: 'pending_provider', loading: true });
+        return queueVerification(async () => {
+            setBankVerification({ state: 'pending_provider', loading: true });
 
-        try {
-            const response = await kycApi.verifyBankAccount({
+            try {
+                const response = await kycApi.verifyBankAccount({
                 accountNumber: formData.accountNumber,
                 ifsc: formData.ifscCode
             });
@@ -297,6 +341,23 @@ export function KycClient() {
             const verificationState = response.data?.verification?.state || (isVerified ? 'verified' : 'soft_failed');
 
             if (isVerified && bankData) {
+                const accountHolderName = (bankData.accountHolderNameClean || bankData.accountHolderName || '').trim();
+                const panName = (panVerification.data?.name as string | undefined)?.trim();
+                if (panName && accountHolderName) {
+                    const similarity = calculateSimilarity(panName, accountHolderName);
+                    if (similarity < 0.7) {
+                        setBankVerification({
+                            state: 'soft_failed',
+                            loading: false,
+                            error: `Account holder name (${bankData.accountHolderNameClean || bankData.accountHolderName}) does not match PAN name (${panVerification.data?.name})`,
+                            data: {
+                                accountHolderName: bankData.accountHolderNameClean || bankData.accountHolderName || '',
+                                bankName: bankData.bankName || ''
+                            }
+                        });
+                        return;
+                    }
+                }
                 setBankVerification({
                     state: verificationState,
                     loading: false,
@@ -338,13 +399,14 @@ export function KycClient() {
             }
         } catch (err: any) {
             handleApiError(err, 'Bank verification failed');
-            setBankVerification({
-                state: 'soft_failed',
-                loading: false,
-                error: err.message || 'Verification failed'
-            });
-        }
-    }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode, ifscData?.bank, ifscData?.branch, lookupIFSC]);
+                setBankVerification({
+                    state: 'soft_failed',
+                    loading: false,
+                    error: err.message || 'Verification failed'
+                });
+            }
+        });
+    }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode, ifscData?.bank, ifscData?.branch, lookupIFSC, queueVerification, panVerification.data?.name]);
 
     // GSTIN Verification
     const verifyGSTIN = useCallback(async () => {
@@ -355,10 +417,11 @@ export function KycClient() {
             return;
         }
 
-        setGstinVerification({ state: 'pending_provider', loading: true });
+        return queueVerification(async () => {
+            setGstinVerification({ state: 'pending_provider', loading: true });
 
-        try {
-            const response = await kycApi.verifyGSTIN({ gstin: formData.gstin });
+            try {
+                const response = await kycApi.verifyGSTIN({ gstin: formData.gstin });
             const isVerified = response.data?.verified;
             const businessData = response.data?.businessInfo;
             const verificationState = response.data?.verification?.state || (isVerified ? 'verified' : 'soft_failed');
@@ -385,13 +448,14 @@ export function KycClient() {
             }
         } catch (err: any) {
             handleApiError(err, 'GSTIN verification failed');
-            setGstinVerification({
-                state: 'soft_failed',
-                loading: false,
-                error: err.message || 'Verification failed'
-            });
-        }
-    }, [formData.gstin]);
+                setGstinVerification({
+                    state: 'soft_failed',
+                    loading: false,
+                    error: err.message || 'Verification failed'
+                });
+            }
+        });
+    }, [formData.gstin, queueVerification]);
 
     const invalidateDocument = useCallback(async (documentType: 'pan' | 'bankAccount' | 'gstin') => {
         try {
@@ -482,35 +546,70 @@ export function KycClient() {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
     };
 
-    // Submit KYC
+    // Submit KYC (with AbortController to prevent double submission)
     const handleSubmit = async () => {
         if (!validateCurrentStep()) return;
 
+        if (submissionRef.current) {
+            submissionRef.current.abort();
+        }
+        submissionRef.current = new AbortController();
         setIsSubmitting(true);
         setError(null);
 
         try {
-            // First update agreement status if not already done
-            await kycApi.updateAgreement(true);
-
-            await kycApi.submitKYC({
-                pan: formData.pan,
-                bankAccount: {
-                    accountNumber: formData.accountNumber,
-                    ifsc: formData.ifscCode,
-                    bankName: ifscData?.bank
+            const signal = submissionRef.current.signal;
+            await kycApi.updateAgreement(true, { signal });
+            await kycApi.submitKYC(
+                {
+                    pan: formData.pan,
+                    bankAccount: {
+                        accountNumber: formData.accountNumber,
+                        ifsc: formData.ifscCode,
+                        bankName: ifscData?.bank
+                    },
+                    gstin: formData.gstin || undefined
                 },
-                gstin: formData.gstin || undefined
-            });
+                { signal }
+            );
 
             showSuccessToast('KYC submitted successfully!');
             router.push(getDefaultRedirectForUser(user) || '/seller');
         } catch (err: any) {
+            if (err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') return;
             handleApiError(err, 'Failed to submit KYC');
-            setError(err.message || 'Failed to submit KYC');
+            setError(err?.message || 'Failed to submit KYC');
         } finally {
             setIsSubmitting(false);
+            submissionRef.current = null;
         }
+    };
+
+    // Expiry warning for verified documents (≤30 days; ≤7 days = urgent)
+    const ExpiryWarning = ({ expiresAt }: { expiresAt: string | null | undefined }) => {
+        if (!expiresAt) return null;
+        const daysUntilExpiry = Math.ceil(
+            (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        if (daysUntilExpiry > 30) return null;
+        const isUrgent = daysUntilExpiry <= 7;
+        return (
+            <div
+                className={cn(
+                    'flex items-center gap-2 p-3 rounded-lg mb-4',
+                    isUrgent
+                        ? 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800'
+                        : 'bg-yellow-50 text-yellow-800 border border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-800'
+                )}
+            >
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm font-medium">
+                    {isUrgent
+                        ? `Document expires in ${daysUntilExpiry} days. Re-verify immediately.`
+                        : `Document expires in ${daysUntilExpiry} days. Please re-verify soon.`}
+                </span>
+            </div>
+        );
     };
 
     // Render verification badge - Updated design
@@ -808,6 +907,9 @@ export function KycClient() {
                                                     )}
                                                 </div>
 
+                                                {panVerification.state === 'verified' && (
+                                                    <ExpiryWarning expiresAt={panVerification.expiresAt} />
+                                                )}
                                                 {panVerification.error && (
                                                     <motion.div
                                                         initial={{ opacity: 0, height: 0 }}
@@ -949,6 +1051,9 @@ export function KycClient() {
                                                 </div>
                                             </div>
 
+                                            {bankVerification.state === 'verified' && (
+                                                <ExpiryWarning expiresAt={bankVerification.expiresAt} />
+                                            )}
                                             {bankVerification.error && (
                                                 <motion.div
                                                     initial={{ opacity: 0, height: 0 }}
@@ -1011,13 +1116,16 @@ export function KycClient() {
                                                             Verify Now
                                                         </LoadingButton>
                                                     ) : gstinVerification.state === 'verified' ? (
-                                                        <Button
-                                                            variant="outline"
-                                                            onClick={() => invalidateDocument('gstin')}
-                                                            className="h-9 px-4 text-xs"
-                                                        >
-                                                            Change GSTIN
-                                                        </Button>
+                                                        <>
+                                                            <ExpiryWarning expiresAt={gstinVerification.expiresAt} />
+                                                            <Button
+                                                                variant="outline"
+                                                                onClick={() => invalidateDocument('gstin')}
+                                                                className="h-9 px-4 text-xs"
+                                                            >
+                                                                Change GSTIN
+                                                            </Button>
+                                                        </>
                                                     ) : null}
                                                 </div>
 

@@ -171,8 +171,8 @@ class KYCApiService {
         return response.data?.data ?? response.data;
     }
 
-    async submitKYC(data: SubmitKYCRequest): Promise<{ message: string; kyc: KYCData }> {
-        const response = await apiClient.post('/kyc', data);
+    async submitKYC(data: SubmitKYCRequest, options?: { signal?: AbortSignal }): Promise<{ message: string; kyc: KYCData }> {
+        const response = await apiClient.post('/kyc', data, { signal: options?.signal });
         return response.data;
     }
 
@@ -246,8 +246,8 @@ class KYCApiService {
         return response.data;
     }
 
-    async updateAgreement(agreed: boolean): Promise<{ message: string; kycComplete: boolean }> {
-        const response = await apiClient.post('/kyc/agreement', { agreed });
+    async updateAgreement(agreed: boolean, options?: { signal?: AbortSignal }): Promise<{ message: string; kycComplete: boolean }> {
+        const response = await apiClient.post('/kyc/agreement', { agreed }, { signal: options?.signal });
         return response.data;
     }
 
