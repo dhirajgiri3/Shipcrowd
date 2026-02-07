@@ -1,15 +1,12 @@
 import { AdminLayoutClient } from './components/AdminLayoutClient';
+import { DateRangeProvider } from '@/src/lib/data';
 
 /**
  * Admin Dashboard Layout (Server Component)
- * 
+ *
  * This is a Server Component that wraps the client-side layout.
- * Benefits:
- * - Faster initial page load
- * - Smaller JavaScript bundle
- * - Better SEO
- * - Server-side data fetching capability
- * 
+ * DateRangeProvider allows the dashboard and date picker to share range state.
+ *
  * All interactive logic is in components/AdminLayoutClient.tsx
  */
 export default function AdminLayout({
@@ -17,5 +14,9 @@ export default function AdminLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return <AdminLayoutClient>{children}</AdminLayoutClient>;
+    return (
+        <DateRangeProvider>
+            <AdminLayoutClient>{children}</AdminLayoutClient>
+        </DateRangeProvider>
+    );
 }

@@ -10,33 +10,26 @@ import {
     LayoutDashboard, RefreshCcw, Box, Loader2, ArrowRight
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
-import { StatsCard } from '@/src/components/ui/dashboard/StatsCard'; // Reusable component
-import { DataTable } from '@/src/components/ui/data/DataTable';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { OrderTable } from './OrderTable'; // New component
 import { useAdminOrders, useGetCourierRates, useShipOrder } from '@/src/core/api/hooks/admin';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
 import { showSuccessToast, showErrorToast } from '@/src/lib/error';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { Badge } from '@/src/components/ui/core/Badge';
-import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-    DropdownMenuItem
-} from '@/src/components/ui/feedback/DropdownMenu';
-import { format } from 'date-fns';
 import { Modal } from '@/src/components/ui/feedback/Modal';
-import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { DateRange } from '@/src/lib/data';
 
 // Tabs configuration
 const ORDER_TABS = [
-    { id: 'all', label: 'All Orders', icon: Package },
-    { id: 'new', label: 'New', icon: AlertCircle },
-    { id: 'ready', label: 'Ready for Ship', icon: Clock },
-    { id: 'shipped', label: 'Shipped', icon: Truck },
-    { id: 'delivered', label: 'Delivered', icon: CheckCircle },
-    { id: 'rto', label: 'RTO', icon: XCircle },
-    { id: 'cancelled', label: 'Cancelled', icon: XCircle },
+    { id: 'all', label: 'All' },
+    { id: 'new', label: 'New' },
+    { id: 'ready', label: 'Ready' },
+    { id: 'shipped', label: 'Shipped' },
+    { id: 'delivered', label: 'Delivered' },
+    { id: 'rto', label: 'RTO' },
+    { id: 'cancelled', label: 'Cancelled' },
 ];
 
 export default function OrdersClient() {
@@ -111,11 +104,11 @@ export default function OrdersClient() {
 
     const orders = ordersResponse?.data || [];
     const pagination = ordersResponse?.pagination;
-    const stats = ordersResponse?.stats || {}; // Faceted stats from server
+    const stats = ordersResponse?.stats || {};
 
     // -- Event Handlers --
     const handleTabChange = (newStatus: string) => {
-        updateUrl({ status: newStatus, page: 1 }); // Reset to page 1 on tab change
+        updateUrl({ status: newStatus, page: 1 });
     };
 
     const handleSort = (key: string) => {
@@ -126,6 +119,14 @@ export default function OrdersClient() {
 
     const handlePageChange = (newPage: number) => {
         updateUrl({ page: newPage });
+    };
+
+    const handleDateRangeChange = (range: DateRange) => {
+        updateUrl({
+            startDate: range.from.toISOString(),
+            endDate: range.to.toISOString(),
+            page: 1
+        });
     };
 
     const handleRefresh = () => {
@@ -139,18 +140,16 @@ export default function OrdersClient() {
         setCourierRates([]);
         setIsShipModalOpen(true);
 
-        // Calculate total weight from order products
         const totalWeight = order.products.reduce((sum, product) => {
             const productWeight = product.weight || 0;
             return sum + (productWeight * product.quantity);
         }, 0);
 
-        // Fetch courier rates
         try {
             const result = await getCourierRatesMutation.mutateAsync({
                 fromPincode: order.customerInfo.address.postalCode,
                 toPincode: order.customerInfo.address.postalCode,
-                weight: totalWeight || 500, // Use calculated weight or default to 500g if not available
+                weight: totalWeight || 500,
                 paymentMode: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid'
             });
             setCourierRates(result.data);
@@ -181,318 +180,138 @@ export default function OrdersClient() {
         }
     };
 
-
-    // -- Table Columns --
-    const columns = useMemo(() => [
-        {
-            header: 'Order ID',
-            accessorKey: 'orderNumber', // Sortable
-            cell: (row: Order) => (
-                <div>
-                    <div className="font-medium text-[var(--text-primary)]">{row.orderNumber}</div>
-                    <div className="text-xs text-[var(--text-tertiary)]">{format(new Date(row.createdAt), 'MMM d, h:mm a')}</div>
-                </div>
-            )
-        },
-        {
-            header: 'Customer',
-            accessorKey: 'customer', // Mapped to customerInfo.name in backend
-            cell: (row: Order) => (
-                <div>
-                    <div className="text-[var(--text-primary)] font-medium">{row.customerInfo?.name}</div>
-                    <div className="text-xs text-[var(--text-tertiary)]">{row.customerInfo?.phone}</div>
-                </div>
-            )
-        },
-        {
-            header: 'Product',
-            accessorKey: 'items', // Mapped
-            cell: (row: Order) => (
-                <div className="max-w-[200px]">
-                    <div className="text-[var(--text-secondary)] truncate">
-                        {row.products?.[0]?.name}
-                    </div>
-                    {row.products?.length > 1 && (
-                        <div className="text-xs text-[var(--text-tertiary)]">
-                            +{row.products.length - 1} more items
-                        </div>
-                    )}
-                </div>
-            )
-        },
-        {
-            header: 'Amount',
-            accessorKey: 'amount', // Mapped to totals.total
-            cell: (row: Order) => (
-                <div className="font-medium text-[var(--text-primary)]">
-                    {formatCurrency(row.totals?.total || 0)}
-                    <div className="flex items-center gap-1 mt-0.5">
-                        <span className={cn(
-                            "w-1.5 h-1.5 rounded-full",
-                            row.paymentMethod === 'cod' ? "bg-[var(--warning)]" : "bg-[var(--success)]"
-                        )} />
-                        <span className="text-xs text-[var(--text-secondary)] capitalize">{row.paymentMethod}</span>
-                    </div>
-                </div>
-            )
-        },
-        {
-            header: 'Status',
-            accessorKey: 'status',
-            cell: (row: Order) => {
-                const statusColors: Record<string, string> = {
-                    new: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                    ready: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                    shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-                    delivered: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                    cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                    rto: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                };
-                return (
-                    <Badge className={statusColors[row.currentStatus] || 'bg-gray-100 text-gray-700'}>
-                        {row.currentStatus}
-                    </Badge>
-                );
-            }
-        },
-        {
-            header: 'Actions',
-            accessorKey: 'actions',
-            width: 'w-[50px]',
-            cell: (row: Order) => {
-                if (status === 'new' || status === 'ready') {
-                    return (
-                        <div className="flex items-center gap-2">
-                            <Tooltip content="Ship Order">
-                                <Button
-                                    size="sm"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleShipNow(row);
-                                    }}
-                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white h-8 px-3 text-xs shadow-custom"
-                                >
-                                    <Truck className="h-3 w-3 mr-1.5" />
-                                    Ship
-                                </Button>
-                            </Tooltip>
-                        </div>
-                    )
-                }
-                return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[var(--bg-tertiary)]">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[160px]">
-                            <DropdownMenuItem onClick={() => router.push(`/admin/orders/${row.orderNumber}`)}>
-                                View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
-                                Delete Order
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                );
-            }
-        }
-    ], [router, order, sort, status]);
+    const isExporting = false; // Placeholder for now
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-            {/* Header Area */}
+        <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
+            {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-1 bg-[var(--primary-blue-soft)] w-fit px-3 py-1 rounded-full">
-                        <LayoutDashboard className="w-3.5 h-3.5" />
-                        <span>Order Command Center</span>
-                    </div>
-                    <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-                        Order Management
-                    </h1>
-                    <p className="text-sm text-[var(--text-secondary)] mt-1">
-                        Monitor, fulfil and track orders across all your sellers in real-time.
-                    </p>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Order Management</h1>
+                    <p className="text-[var(--text-secondary)] mt-1">Monitor, fulfil and track orders across all your sellers in real-time.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" onClick={handleRefresh} disabled={isFetching} className="bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                        Sync Orders
-                    </Button>
-                    <Button variant="outline" className="bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                        <Download className="w-4 h-4 mr-2" />
+                    <button
+                        onClick={handleRefresh}
+                        disabled={isFetching}
+                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
+                    >
+                        <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
+                        Refresh Data
+                    </button>
+                    <button
+                        disabled={isExporting}
+                        className="px-4 py-2 bg-primary-blue text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium shadow-md shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        <Download size={16} />
                         Export Data
-                    </Button>
+                    </button>
                 </div>
             </div>
 
-            {/* Quick Stats - Using Reusable StatsCard */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="h-[120px]">
-                    <StatsCard
-                        title="Total Orders"
-                        value={stats['all'] || pagination?.total || 0}
-                        icon={Package}
-                        variant="default"
-                        iconColor="text-blue-500 bg-blue-500"
-                        trend={{ value: 12, label: 'vs last week', positive: true }}
-                    />
-                </div>
-                <div className="h-[120px]">
-                    <StatsCard
-                        title="Pending Shipments"
-                        value={(stats['new'] || 0) + (stats['ready'] || 0)}
-                        icon={Clock}
-                        variant="warning"
-                        trend={{ value: 5, label: 'vs yesterday', positive: false }}
-                    />
-                </div>
-                <div className="h-[120px]">
-                    <StatsCard
-                        title="RTO Rate"
-                        value="2.4%"
-                        icon={XCircle}
-                        variant="critical"
-                        description="Calculated from last 30 days"
-                    />
-                </div>
-                <div className="h-[120px]">
-                    <StatsCard
-                        title="Delivered Today"
-                        value={stats['delivered'] || 0} // This might need a specific 'today' endpoint, simplified for now
-                        icon={CheckCircle}
-                        variant="success"
-                        trend={{ value: 8, label: 'vs yesterday', positive: true }}
-                    />
-                </div>
+            {/* Stats Grid - Bento Style */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                    title="Total Orders"
+                    value={stats['all'] || pagination?.total || 0}
+                    icon={Package}
+                    variant="default"
+                    trend={{ value: 12, label: 'vs last week', positive: true }}
+                />
+                <StatsCard
+                    title="Pending Shipments"
+                    value={(stats['new'] || 0) + (stats['ready'] || 0) + (stats['pending'] || 0)}
+                    icon={Clock}
+                    variant="warning"
+                    trend={{ value: 5, label: 'vs yesterday', positive: false }}
+                />
+                <StatsCard
+                    title="RTO Rate"
+                    value="2.4%"
+                    icon={XCircle}
+                    variant="critical"
+                    description="Calculated from last 30 days"
+                />
+                <StatsCard
+                    title="Delivered Today"
+                    value={stats['delivered'] || 0}
+                    icon={CheckCircle}
+                    variant="success"
+                    trend={{ value: 8, label: 'vs yesterday', positive: true }}
+                />
             </div>
 
-            {/* Main Content Area */}
-            <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] shadow-sm">
+            {/* Controls & Filters - Matched with Sellers Page */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-default)]">
+                {/* Search */}
+                <div className="relative w-full md:w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search by Order ID, Customer, Phone..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-muted)] text-[var(--text-primary)]"
+                    />
+                </div>
 
-                {/* Toolbar */}
-                <div className="p-4 border-b border-[var(--border-subtle)] space-y-4">
-                    {/* Tabs */}
-                    <div className="flex overflow-x-auto pb-2 scrollbar-hide gap-1">
+                <div className="flex items-center gap-4">
+                    {/* Date Picker Integrated */}
+                    <div className="hidden md:block">
+                        <DateRangePicker onRangeChange={handleDateRangeChange} className="border-none shadow-none bg-transparent hover:bg-[var(--bg-tertiary)]" />
+                    </div>
+
+                    {/* Filter Tabs */}
+                    <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide max-w-[500px]">
                         {ORDER_TABS.map((tab) => {
                             const isActive = status === tab.id;
-                            // Calculate count: if 'all', use total, else use stat for that status
                             const count = tab.id === 'all' ? (pagination?.total || 0) : (stats[tab.id] || 0);
 
                             return (
                                 <button
                                     key={tab.id}
                                     onClick={() => handleTabChange(tab.id)}
-                                    className={`
-                                        flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-                                        ${isActive
-                                            ? 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]'
-                                            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'
-                                        }
-                                    `}
+                                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${isActive
+                                        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
+                                        : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                                        }`}
                                 >
-                                    <tab.icon className={`w-4 h-4 ${isActive ? 'text-[var(--primary-blue)]' : ''}`} />
                                     {tab.label}
-                                    <span className={`
-                                        ml-1 px-1.5 py-0.5 rounded-md text-xs
-                                        ${isActive ? 'bg-[var(--primary-blue)]/10' : 'bg-[var(--bg-tertiary)]'}
-                                    `}>
-                                        {count}
-                                    </span>
+                                    {count > 0 && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[var(--bg-secondary)] text-[var(--text-primary)]' : 'bg-[var(--bg-primary)]/50'}`}>
+                                            {count}
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })}
                     </div>
-
-                    {/* Filters & Search */}
-                    <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
-                        <div className="relative w-full sm:w-[350px]">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <Input
-                                placeholder="Search by Order ID, Customer, Phone..."
-                                className="pl-9 bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] transition-all h-10 rounded-xl"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Button variant="outline" className="w-full sm:w-auto bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                                <Filter className="w-4 h-4 mr-2" />
-                                Filters
-                            </Button>
-                            <Button variant="outline" className="w-full sm:w-auto bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                                <CalendarIcon className="w-4 h-4 mr-2" />
-                                Date
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Data Table */}
-                <div className="p-4 relative min-h-[400px]">
-                    <AnimatePresence mode="wait">
-                        {isLoading ? (
-                            <motion.div
-                                key="loading"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 flex flex-col items-center justify-center p-8"
-                            >
-                                <Loader2 className="h-10 w-10 animate-spin text-[var(--primary-blue)] mb-4" />
-                                <p className="text-sm text-[var(--text-muted)]">Loading orders...</p>
-                            </motion.div>
-                        ) : orders.length === 0 ? (
-                            <motion.div
-                                key="empty"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
-                            >
-                                <div className="h-20 w-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mb-4">
-                                    <Box className="h-10 w-10 text-[var(--text-muted)] opacity-50" />
-                                </div>
-                                <h3 className="text-lg font-bold text-[var(--text-primary)]">No orders found</h3>
-                                <p className="text-[var(--text-muted)] max-w-sm mx-auto mt-1 mb-6">
-                                    We couldn't find any orders matching your search filters for this category.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => { setSearchTerm(''); handleTabChange('all'); }}
-                                    className="border-[var(--border-default)]"
-                                >
-                                    Clear Filters
-                                </Button>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="table"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                            >
-                                <DataTable
-                                    columns={columns}
-                                    data={orders}
-                                    isLoading={isLoading}
-                                    sortBy={sort}
-                                    sortOrder={order}
-                                    onSort={handleSort}
-                                    pagination={{
-                                        currentPage: page,
-                                        totalPages: pagination?.pages || 1,
-                                        totalItems: pagination?.total || 0,
-                                        onPageChange: handlePageChange
-                                    }}
-                                />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
                 </div>
             </div>
+
+            {/* Main Content Table - Using New OrderTable */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+            >
+                <OrderTable
+                    data={orders}
+                    isLoading={isLoading}
+                    onRefresh={refetch}
+                    pagination={{
+                        total: pagination?.total || 0,
+                        page: page,
+                        limit: limit,
+                        totalPages: pagination?.pages || 1
+                    }}
+                    onPageChange={handlePageChange}
+                    onSort={handleSort}
+                    sortBy={sort}
+                    sortOrder={order}
+                    onShip={handleShipNow}
+                />
+            </motion.div>
 
             {/* Ship Modal with Premium Styling */}
             <Modal

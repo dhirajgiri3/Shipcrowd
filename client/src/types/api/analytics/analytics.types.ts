@@ -287,6 +287,54 @@ export interface DashboardMetrics {
     };
 }
 
+// ==================== Admin Dashboard ====================
+
+/** Response from GET /analytics/dashboard/admin (multi-company, admin only) */
+export interface AdminDashboardCompanyStat {
+    companyId: string;
+    companyName?: string;
+    totalOrders: number;
+    totalRevenue: number;
+    pendingOrders: number;
+    deliveredOrders: number;
+}
+
+export interface AdminDashboardRevenueGraphPoint {
+    _id: string; // date string YYYY-MM-DD
+    orders: number;
+    revenue: number;
+}
+
+export interface AdminDashboardDateRange {
+    startDate: Date | string;
+    endDate: Date | string;
+}
+
+export interface AdminDashboard {
+    totalOrders: number;
+    totalRevenue: number;
+    totalShipments: number;
+    globalSuccessRate: number;
+    /** Number of orders that reached a delivery outcome (delivered + shipped + rto). Used to show N/A when 0. */
+    attemptedDeliveries?: number;
+    /** True when success rate is computed from delivery outcomes; false when no attempts in period. */
+    successRateBasedOnAttempts?: boolean;
+    ndrCases: number;
+    pendingOrders: number;
+    deliveredOrders: number;
+    /** Total users with role seller (from User collection). */
+    totalRegisteredSellers: number;
+    companiesStats: AdminDashboardCompanyStat[];
+    revenueGraph: AdminDashboardRevenueGraphPoint[];
+    dateRange: AdminDashboardDateRange;
+}
+
+/** Filters for admin dashboard (query params) */
+export interface AdminDashboardFilters {
+    startDate?: string;
+    endDate?: string;
+}
+
 // ==================== API Response Types ====================
 
 export interface AnalyticsResponse<T> {

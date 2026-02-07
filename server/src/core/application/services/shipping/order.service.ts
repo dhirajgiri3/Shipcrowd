@@ -114,14 +114,17 @@ export class OrderService extends CachedService {
      * 
      * All in a single DB round-trip.
      */
-    async listOrdersWithStats(companyId: string, queryParams: any, pagination: { page: number; limit: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) {
+    async listOrdersWithStats(companyId: string | null, queryParams: any, pagination: { page: number; limit: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) {
         const { page, limit, sortBy = 'createdAt', sortOrder = 'desc' } = pagination;
 
         // 1. Build Match Stage (Base Filters)
         const matchStage: any = {
-            companyId: new mongoose.Types.ObjectId(companyId),
             isDeleted: false
         };
+
+        if (companyId) {
+            matchStage.companyId = new mongoose.Types.ObjectId(companyId);
+        }
 
         // Text Search
         if (queryParams.search) {
@@ -223,7 +226,7 @@ export class OrderService extends CachedService {
         });
 
         // Ensure all statuses have a key
-        const allStatuses = ['new', 'ready', 'shipped', 'delivered', 'rto', 'cancelled'];
+        const allStatuses = ['new', 'ready', 'shipped', 'delivered', 'rto', 'cancelled', 'pending'];
         allStatuses.forEach(s => {
             if (!stats[s]) stats[s] = 0;
         });

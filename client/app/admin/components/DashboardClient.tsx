@@ -2,34 +2,25 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/ui/core/Button';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
 import {
-    Activity,
-    AlertTriangle,
     ArrowUpRight,
-    Box,
     BrainCircuit,
-    CheckCircle2,
     DollarSign,
     Package,
-    Server,
     Settings,
     TrendingUp,
-    Truck,
     Users,
-    Wallet,
-    X,
-    Zap
+    Zap,
 } from 'lucide-react';
 
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
-    LazyBarChart as BarChart,
-    LazyBar as Bar,
     LazyPieChart as RechartsPieChart,
     LazyPie as Pie,
     LazyXAxis as XAxis,
@@ -37,15 +28,15 @@ import {
     LazyCartesianGrid as CartesianGrid,
     LazyTooltip as Tooltip,
     LazyResponsiveContainer as ResponsiveContainer,
-    LazyCell as Cell
+    LazyCell as Cell,
 } from '@/src/components/features/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { cn } from '@/src/lib/utils';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { TopSellers } from '@/src/components/admin/TopSellers';
-import { useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
-import { useUserList } from '@/src/core/api/hooks/admin/useUserManagement';
+import { useAdminDashboard } from '@/src/core/api/hooks/analytics/useAnalytics';
+import { useDateRange } from '@/src/lib/data';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
 
 
 // --- ANIMATION VARIANTS ---
@@ -67,40 +58,22 @@ const itemVariants = {
     }
 };
 
-const aiInsights = [
-    {
-        id: 1,
-        title: "Growth Opportunity",
-        description: "High demand detected in Tier-2 cities. Recommend activating 'Express' logistics for Nagpur region.",
-        type: "opportunity",
-        impact: "+12% Revenue",
-        icon: TrendingUp,
-        color: "emerald"
-    },
-    {
-        id: 2,
-        title: "SLA Breach Risk",
-        description: "Weather alert in North India may delay Delhivery shipments by 24h.",
-        type: "risk",
-        impact: "High Impact",
-        icon: AlertTriangle,
-        color: "amber"
-    },
-    {
-        id: 3,
-        title: "Inventory Optimization",
-        description: "Seller 'TechGadgets' has 3 slow-moving SKUs. Recommend markdown campaign.",
-        type: "optimization",
-        impact: "Cost Saving",
-        icon: Box,
-        color: "blue"
-    }
-];
-
 // --- COMPONENTS ---
 
-// 1. Stat Card - Clean & Professional
-function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data }: any) {
+interface StatCardProps {
+    title: string;
+    value: number;
+    subtext: string;
+    icon: React.ComponentType<{ className?: string }>;
+    trend?: 'up' | 'down' | 'stable';
+    trendValue?: string;
+    color: 'blue' | 'emerald' | 'violet' | 'amber';
+    data: Array<{ value: number }>;
+    /** When set, shown instead of numeric value (e.g. "N/A") */
+    valueLabel?: string;
+}
+
+function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data, valueLabel }: StatCardProps) {
     return (
         <motion.div
             variants={itemVariants}
@@ -133,7 +106,7 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
                 <p className="text-sm font-medium text-[var(--text-secondary)]">{title}</p>
                 <div className="flex items-baseline gap-2 mt-1">
                     <h3 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-                        <AnimatedNumber value={value} />
+                        {valueLabel != null ? valueLabel : <AnimatedNumber value={value} />}
                     </h3>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-1">{subtext}</p>
@@ -170,85 +143,102 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
     );
 }
 
-// 2. AI Insight Card
-function AIInsightCard({ insight }: { insight: any }) {
-    return (
-        <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 transition-colors cursor-pointer"
-        >
-            <div className="flex gap-4">
-                <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
-                    insight.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
-                        insight.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20" :
-                            "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20"
-                )}>
-                    <insight.icon className="w-5 h-5" />
-                </div>
-                <div>
-                    <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        {insight.title}
-                        <span className={cn(
-                            "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
-                            insight.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                insight.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                    "bg-[var(--info-bg)] text-[var(--info)]"
-                        )}>
-                            {insight.impact}
-                        </span>
-                    </h4>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                        {insight.description}
-                    </p>
-                </div>
-            </div>
-        </motion.div>
-    );
-}
-
 export function DashboardClient() {
     const { user } = useAuth();
-    const { addToast } = useToast();
     const [currentTime, setCurrentTime] = useState(new Date());
+    const { dateRange } = useDateRange();
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
     }, []);
 
-    // --- REAL API HOOKS ---
-    const { data: metricsData, isLoading: metricsLoading } = useDashboardMetrics();
-    const { data: userStatsData, isLoading: userStatsLoading } = useUserList({
-        limit: 0,
-        role: 'seller'
-    });
+    // Date range for admin dashboard API (ISO date strings)
+    const adminFilters = useMemo(() => ({
+        startDate: dateRange.from.toISOString().split('T')[0],
+        endDate: dateRange.to.toISOString().split('T')[0],
+    }), [dateRange.from, dateRange.to]);
+
+    // --- API HOOKS ---
+    const { data: adminData, isLoading: adminLoading, error: adminError, refetch: refetchAdmin } = useAdminDashboard(adminFilters);
 
     // --- DATA TRANSFORMATION ---
 
-    // Revenue & Order Trend Data
     const revenueTrendData = useMemo(() => {
-        if (!metricsData?.weeklyTrend) return [];
-        return metricsData.weeklyTrend.map(day => ({
-            name: new Date(day._id).toLocaleDateString('en-US', { weekday: 'short' }),
-            revenue: day.revenue || 0,
-            orders: day.orders || 0
-        })).slice(-7); // Last 7 data points
-    }, [metricsData]);
+        if (!adminData?.revenueGraph?.length) return [];
+        return adminData.revenueGraph.map((point) => ({
+            name: new Date(point._id).toLocaleDateString('en-US', { weekday: 'short' }),
+            revenue: point.revenue ?? 0,
+            orders: point.orders ?? 0,
+        }));
+    }, [adminData]);
 
-    // Order Status Distribution
     const orderStatusData = useMemo(() => {
-        if (!metricsData) return [];
+        if (!adminData) return [];
+        const { totalOrders, pendingOrders, deliveredOrders } = adminData;
+        const other = Math.max(0, totalOrders - (pendingOrders ?? 0) - (deliveredOrders ?? 0));
         return [
-            { name: 'Delivered', value: metricsData.delivered || 0, color: 'var(--success)' },
-            { name: 'In Transit', value: metricsData.inTransit || 0, color: 'var(--primary-blue)' },
-            { name: 'Pending', value: (metricsData.pendingPickup || 0) + (metricsData.readyToShip || 0), color: 'var(--warning)' },
-            { name: 'RTO/NDR', value: (metricsData.rto || 0) + (metricsData.ndr || 0), color: 'var(--error)' }
-        ].filter(item => item.value > 0);
-    }, [metricsData]);
+            { name: 'Delivered', value: deliveredOrders ?? 0, color: 'var(--success)' },
+            { name: 'Pending', value: pendingOrders ?? 0, color: 'var(--warning)' },
+            ...(other > 0 ? [{ name: 'In Transit / Other', value: other, color: 'var(--primary-blue)' }] : []),
+        ].filter((item) => item.value > 0);
+    }, [adminData]);
 
-    // Active Sellers Count
-    const activeSellersCount = userStatsData?.stats?.sellers || 0;
+    const activeSellersCount = adminData?.totalRegisteredSellers ?? 0;
+
+    const topSellersData = useMemo(() => {
+        if (!adminData?.companiesStats?.length) return [];
+        return adminData.companiesStats.map((c) => ({
+            companyId: String(c.companyId),
+            companyName: c.companyName ?? 'Unknown',
+            totalOrders: c.totalOrders ?? 0,
+            totalRevenue: c.totalRevenue ?? 0,
+            pendingOrders: c.pendingOrders ?? 0,
+            deliveredOrders: c.deliveredOrders ?? 0,
+        }));
+    }, [adminData]);
+
+    const successRateSparklineData = useMemo(() => {
+        if (!adminData?.revenueGraph?.length) return [];
+        return adminData.revenueGraph.map((d) => ({ value: d.orders }));
+    }, [adminData]);
+
+    const isLoading = adminLoading;
+    const isError = !!adminError;
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen space-y-8 pb-10">
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <Skeleton className="h-12 w-64" />
+                    <div className="flex gap-3">
+                        <Skeleton className="h-10 w-40" />
+                        <Skeleton className="h-10 w-24" />
+                    </div>
+                </header>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-40 rounded-2xl" />
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <Skeleton className="h-[350px] lg:col-span-2 rounded-3xl" />
+                    <Skeleton className="h-[350px] rounded-3xl" />
+                </div>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8">
+                <p className="text-[var(--text-secondary)]">Failed to load dashboard data.</p>
+                <Button onClick={() => refetchAdmin()} variant="outline">
+                    Retry
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen space-y-8 pb-10">
@@ -299,23 +289,19 @@ export function DashboardClient() {
             >
                 <StatCard
                     title="Total Revenue"
-                    value={metricsData?.totalRevenue || 0}
-                    subtext="vs last period"
+                    value={adminData?.totalRevenue ?? 0}
+                    subtext="Selected period"
                     icon={DollarSign}
-                    trend={metricsData?.deltas?.revenue ? (metricsData.deltas.revenue >= 0 ? 'up' : 'down') : 'stable'}
-                    trendValue={metricsData?.deltas?.revenue ? `${metricsData.deltas.revenue > 0 ? '+' : ''}${metricsData.deltas.revenue.toFixed(1)}%` : '0%'}
                     color="emerald"
-                    data={revenueTrendData.map(d => ({ value: d.revenue }))}
+                    data={revenueTrendData.map((d) => ({ value: d.revenue }))}
                 />
                 <StatCard
                     title="Total Orders"
-                    value={metricsData?.totalOrders || 0}
-                    subtext="vs last period"
+                    value={adminData?.totalOrders ?? 0}
+                    subtext="Selected period"
                     icon={Package}
-                    trend={metricsData?.deltas?.orders ? (metricsData.deltas.orders >= 0 ? 'up' : 'down') : 'stable'}
-                    trendValue={metricsData?.deltas?.orders ? `${metricsData.deltas.orders > 0 ? '+' : ''}${metricsData.deltas.orders.toFixed(1)}%` : '0%'}
                     color="blue"
-                    data={revenueTrendData.map(d => ({ value: d.orders }))}
+                    data={revenueTrendData.map((d) => ({ value: d.orders }))}
                 />
                 <StatCard
                     title="Active Sellers"
@@ -329,13 +315,14 @@ export function DashboardClient() {
                 />
                 <StatCard
                     title="Success Rate"
-                    value={metricsData?.successRate || 0}
-                    subtext="Delivery Performance"
+                    value={adminData?.globalSuccessRate ?? 0}
+                    subtext={adminData?.successRateBasedOnAttempts ? 'Delivery Performance' : 'No delivery outcomes in period'}
                     icon={Zap}
-                    trend={metricsData?.successRate && metricsData.successRate >= 95 ? 'up' : 'stable'}
-                    trendValue={metricsData?.successRate ? `${metricsData.successRate.toFixed(1)}%` : '0%'}
+                    trend={adminData?.successRateBasedOnAttempts ? ((adminData?.globalSuccessRate ?? 0) >= 95 ? 'up' : 'stable') : undefined}
+                    trendValue={adminData?.successRateBasedOnAttempts && adminData?.globalSuccessRate != null ? `${Number(adminData.globalSuccessRate).toFixed(1)}%` : undefined}
                     color="amber"
-                    data={metricsData?.weeklyTrend?.map(d => ({ value: 98 })) || []}
+                    data={successRateSparklineData}
+                    valueLabel={adminData?.successRateBasedOnAttempts ? undefined : 'N/A'}
                 />
             </motion.section>
 
@@ -352,16 +339,9 @@ export function DashboardClient() {
                         transition={{ delay: 0.2 }}
                         className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
                     >
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Revenue Analytics</h3>
-                                <p className="text-sm text-[var(--text-secondary)]">Income vs Orders Overview</p>
-                            </div>
-                            <div className="flex gap-2">
-                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">Daily</button>
-                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--primary-blue)] text-white">Weekly</button>
-                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">Monthly</button>
-                            </div>
+                        <div className="mb-6">
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Revenue Analytics</h3>
+                            <p className="text-sm text-[var(--text-secondary)]">Income vs orders (selected date range)</p>
                         </div>
                         <div className="h-[350px] w-full">
                             {revenueTrendData.length > 0 ? (
@@ -397,114 +377,32 @@ export function DashboardClient() {
                         </div>
                     </motion.div>
 
-                    {/* Live Operations Feed */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden flex flex-col h-[400px]"
-                    >
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-[var(--primary-blue)]" />
-                                    Live Operations
-                                </h3>
-                                <p className="text-sm text-[var(--text-secondary)]">Real-time platform activity</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="relative flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--success)]"></span>
-                                </span>
-                                <span className="text-xs font-bold text-[var(--success)] uppercase tracking-wide">Live</span>
-                            </div>
-                        </div>
-
-                        {/* Scrolling Activity Feed */}
-                        <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-                            {[
-                                { action: 'Order Placed', details: 'Order #ORD-2024-892 placed by Rahul Kumar', time: 'Just now', icon: Package, color: 'blue' },
-                                { action: 'Payment Received', details: '₹1,299 received via UPI for #ORD-890', time: '2 min ago', icon: Wallet, color: 'emerald' },
-                                { action: 'Seller Verified', details: 'Kyra Fashion KYC approved automatically', time: '5 min ago', icon: CheckCircle2, color: 'violet' },
-                                { action: 'Shipment Created', details: 'AWB generated for 12 orders (Batch #B-102)', time: '12 min ago', icon: Truck, color: 'amber' },
-                                { action: 'High Value Order', details: '₹45,000 order detected from Bangalore', time: '18 min ago', icon: AlertTriangle, color: 'rose' },
-                                { action: 'New Seller Signup', details: 'TechStore India started onboarding', time: '25 min ago', icon: Users, color: 'blue' },
-                                { action: 'RTO Initiated', details: 'Shipment #SHP-992 marked as RTO (Customer Refused)', time: '32 min ago', icon: X, color: 'red' },
-                                { action: 'Order Delivered', details: 'Successfully delivered to Mumbai Hub', time: '40 min ago', icon: CheckCircle2, color: 'emerald' },
-                                { action: 'Stock Alert', details: 'Low inventory warning for SKU-902', time: '45 min ago', icon: Box, color: 'amber' },
-                                { action: 'System Backup', details: 'Daily database backup completed', time: '1 hr ago', icon: Server, color: 'slate' },
-                            ].map((item, i) => (
-                                <div key={i} className="flex gap-4 p-3 rounded-2xl hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)] group">
-                                    <div className={cn(
-                                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-current opacity-80",
-                                        item.color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20" :
-                                            item.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
-                                                item.color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border-[var(--primary-blue)]/20" :
-                                                    item.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20" :
-                                                        item.color === 'rose' || item.color === 'red' ? "bg-[var(--error-bg)] text-[var(--error)] border-[var(--error)]/20" :
-                                                            "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
-                                    )}>
-                                        <item.icon className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-0.5">
-                                            <p className="text-sm font-bold text-[var(--text-primary)]">{item.action}</p>
-                                            <span className="text-[10px] font-medium text-[var(--text-muted)] bg-[var(--bg-secondary)] px-2 py-0.5 rounded-full group-hover:bg-white/50">{item.time}</span>
-                                        </div>
-                                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed truncate">{item.details}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-
                     {/* Top Sellers Table */}
-                    <TopSellers data={userStatsData?.users?.slice(0, 5).map(user => ({
-                        companyId: user._id,
-                        companyName: user.companyName || user.name,
-                        totalOrders: user.totalOrders || 0,
-                        totalRevenue: 0, // Not available in list view yet
-                        pendingOrders: 0, // Not available in list view yet
-                        deliveredOrders: 0 // Not available in list view yet
-                    }))} />
+                    <TopSellers data={topSellersData} />
 
                 </div>
 
                 {/* RIGHT COLUMN (1/3) */}
                 <div className="space-y-8">
 
-                    {/* AI Smart Insights Widget */}
+                    {/* AI Insights - Placeholder (no backend yet) */}
                     <div className="p-6 rounded-3xl bg-gradient-to-br from-[var(--bg-primary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary-blue)]/10 blur-3xl rounded-full pointer-events-none" />
-
-                        <div className="flex items-center gap-3 mb-6 relative z-10">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center shadow-lg shadow-[var(--primary-blue)]/30">
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center">
                                 <BrainCircuit className="w-6 h-6" />
                             </div>
                             <div>
                                 <h3 className="font-bold text-[var(--text-primary)]">AI Insights</h3>
-                                <p className="text-xs text-[var(--primary-blue)] font-semibold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary-blue)] animate-pulse" />
-                                    Analyzing Live Data...
-                                </p>
+                                <p className="text-xs text-[var(--text-muted)]">Coming soon</p>
                             </div>
                         </div>
-
-                        <div className="space-y-4 relative z-10">
-                            {aiInsights.map((insight) => (
-                                <AIInsightCard key={insight.id} insight={insight} />
-                            ))}
-                        </div>
-
-                        <button className="w-full mt-6 py-3 rounded-xl border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] transition-colors">
-                            View All Predictions
-                        </button>
                     </div>
 
                     {/* Order Status Distribution (Donut Chart) */}
                     <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
-                        <h3 className="font-bold text-[var(--text-primary)] mb-6">Order Status</h3>
+                        <h3 className="font-bold text-[var(--text-primary)] mb-2">Order Status</h3>
+                        <p className="text-xs text-[var(--text-muted)] mb-4">Delivered, Pending, and In transit / Other (selected period)</p>
                         <div className="h-[250px] relative">
                             {orderStatusData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
@@ -517,95 +415,71 @@ export function DashboardClient() {
                                             outerRadius={80}
                                             paddingAngle={5}
                                             dataKey="value"
+                                            animationDuration={600}
+                                            animationBegin={150}
+                                            isAnimationActive
                                         >
                                             {orderStatusData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
+                                            contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                                            formatter={(value: number, name: string, props: { payload: { value: number; name: string; color: string } }) => {
+                                                const total = (adminData?.totalOrders ?? 0) || 1;
+                                                const pct = ((value / total) * 100).toFixed(1);
+                                                return [`${value.toLocaleString()} (${pct}%)`, name];
+                                            }}
                                             itemStyle={{ color: 'var(--text-primary)' }}
+                                            labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}
                                         />
                                     </RechartsPieChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex items-center justify-center text-[var(--text-muted)]">
-                                    No status data
+                                <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                                    <p className="text-sm text-[var(--text-muted)]">No orders in period</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-1">Select a date range with orders to see distribution</p>
                                 </div>
                             )}
-                            {/* Center Text */}
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-3xl font-bold text-[var(--text-primary)]">
-                                    <AnimatedNumber value={metricsData?.totalOrders || 0} />
-                                </span>
-                                <span className="text-xs text-[var(--text-secondary)] font-medium uppercase tracking-wide">Orders</span>
-                            </div>
+                            {/* Center Text (only when we have data) */}
+                            {orderStatusData.length > 0 && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-3xl font-bold text-[var(--text-primary)]">
+                                        <AnimatedNumber value={adminData?.totalOrders ?? 0} />
+                                    </span>
+                                    <span className="text-xs text-[var(--text-secondary)] font-medium uppercase tracking-wide">Orders</span>
+                                </div>
+                            )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                            {orderStatusData.map((status) => (
-                                <div key={status.name} className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }} />
-                                    <span className="text-xs font-medium text-[var(--text-secondary)]">{status.name}</span>
+                        {orderStatusData.length > 0 && (
+                            <>
+                                <div className="grid grid-cols-2 gap-3 mt-4">
+                                    {orderStatusData.map((status) => {
+                                        const total = adminData?.totalOrders ?? 0;
+                                        const pct = total > 0 ? ((status.value / total) * 100).toFixed(1) : '0';
+                                        return (
+                                            <div key={status.name} className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
+                                                <span className="text-xs font-medium text-[var(--text-secondary)]">
+                                                    {status.name} — {status.value.toLocaleString()} ({pct}%)
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* System Health Compact */}
-                    <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden relative">
-                        <div className="relative z-10">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                                    <Server className="w-4 h-4 text-[var(--success)]" />
-                                    System Status
-                                </h3>
-                                <div className="px-2 py-0.5 rounded-full bg-[var(--success-bg)] text-[var(--success)] text-[10px] font-bold uppercase border border-[var(--success)]/20">
-                                    Healthy
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
-                                        <span>API Latency</span>
-                                        <span className="text-[var(--success)] font-medium">45ms</span>
-                                    </div>
-                                    <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: "25%" }}
-                                            className="h-full bg-[var(--success)]"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
-                                        <span>Error Rate</span>
-                                        <span className="text-[var(--success)] font-medium">0.01%</span>
-                                    </div>
-                                    <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: "2%" }}
-                                            className="h-full bg-[var(--success)]"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
-                                        <span>Database Load</span>
-                                        <span className="text-[var(--primary-blue)] font-medium">32%</span>
-                                    </div>
-                                    <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: "32%" }}
-                                            className="h-full bg-[var(--primary-blue)]"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                {(() => {
+                                    const delivered = orderStatusData.find((s) => s.name === 'Delivered')?.value ?? 0;
+                                    const pending = orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0;
+                                    const total = adminData?.totalOrders ?? 0;
+                                    const hint = total > 0 && delivered >= pending && delivered > 0
+                                        ? 'Most orders delivered'
+                                        : total > 0 && pending > delivered
+                                            ? 'High pending share'
+                                            : null;
+                                    return hint ? <p className="text-xs text-[var(--text-muted)] mt-3 italic">{hint}</p> : null;
+                                })()}
+                            </>
+                        )}
                     </div>
 
                 </div>

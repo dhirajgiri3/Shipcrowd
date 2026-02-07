@@ -56,7 +56,8 @@ export const sendPaginated = <T>(
     res: Response,
     data: T[],
     pagination: PaginationMeta,
-    message?: string
+    message?: string,
+    extras?: { stats?: Record<string, number> }
 ): Response<PaginatedResponse<T>> => {
     const response: PaginatedResponse<T> = {
         success: true,
@@ -64,6 +65,7 @@ export const sendPaginated = <T>(
         pagination,
         message,
         timestamp: new Date().toISOString(),
+        ...extras
     };
 
     return res.status(200).json(response);

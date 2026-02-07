@@ -112,8 +112,13 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
 export const getOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
+
+        // Only require company context if not an admin or if specific company is requested
+        // If admin and no companyId in token, we fetch all (companyId = null)
+        if (!auth.isAdmin && !auth.companyId) {
+            requireCompanyContext(auth);
+        }
 
         const { page, limit } = parsePagination(req.query as Record<string, any>);
         const sortBy = req.query.sortBy as string || 'createdAt';
@@ -129,20 +134,23 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
             phone: req.query.phone
         };
 
+        // If admin with no companyId, pass null to service to fetch all
+        const serviceCompanyId = auth.companyId || null;
+
         // Use the new Faceted Search service method
         const result = await OrderService.getInstance().listOrdersWithStats(
-            auth.companyId,
+            serviceCompanyId,
             queryParams,
             { page, limit, sortBy, sortOrder }
         );
 
         sendPaginated(res, result.orders, {
-            currentPage: result.page,
-            totalPages: result.pages,
-            totalItems: result.total,
-            itemsPerPage: limit,
-            hasNextPage: result.page < result.pages,
-            hasPrevPage: result.page > 1
+            page: result.page,
+            pages: result.pages,
+            total: result.total,
+            limit: limit,
+            hasNext: result.page < result.pages,
+            hasPrev: result.page > 1
         }, 'Orders retrieved successfully', {
             stats: result.stats // Attach stats to response metadata
         });

@@ -59,4 +59,5 @@ export interface ErrorResponse extends ApiResponse<never> {
  */
 export interface PaginatedResponse<T = any> extends SuccessResponse<T[]> {
     pagination: PaginationMeta;
+    stats?: Record<string, number>;
 }

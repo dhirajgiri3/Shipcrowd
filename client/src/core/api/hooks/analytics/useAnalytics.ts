@@ -22,7 +22,10 @@ import type {
     AnalyticsFilters,
     ExportRequest,
     ExportResponse,
+    AdminDashboard,
+    AdminDashboardFilters,
 } from '@/src/types/api/analytics';
+import { QUERY_CONFIG } from '../../config/query-client';
 
 // Legacy analytics interface (keep for backward compatibility)
 export interface AnalyticsData {
@@ -65,7 +68,7 @@ export const useAnalytics = (
 };
 
 /**
- * Get comprehensive dashboard metrics
+ * Get comprehensive dashboard metrics (seller/company-scoped)
  */
 export function useDashboardMetrics(
     filters?: AnalyticsFilters,
@@ -83,6 +86,31 @@ export function useDashboardMetrics(
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         refetchInterval: 60 * 1000, // Refetch every minute
+        ...options,
+    });
+}
+
+/**
+ * Get admin dashboard analytics (multi-company, admin only).
+ * Uses GET /analytics/dashboard/admin with optional startDate/endDate.
+ */
+export function useAdminDashboard(
+    filters?: AdminDashboardFilters,
+    options?: UseQueryOptions<AdminDashboard, ApiError>
+) {
+    return useQuery<AdminDashboard, ApiError>({
+        queryKey: queryKeys.analytics.adminDashboard(filters),
+        queryFn: async () => {
+            const { data } = await apiClient.get<AnalyticsResponse<AdminDashboard>>(
+                '/analytics/dashboard/admin',
+                { params: filters }
+            );
+            return data.data;
+        },
+        staleTime: CACHE_TIMES.SHORT.staleTime,
+        gcTime: CACHE_TIMES.SHORT.gcTime,
+        retry: RETRY_CONFIG.DEFAULT,
+        refetchInterval: QUERY_CONFIG.refetchInterval.adminDashboard,
         ...options,
     });
 }

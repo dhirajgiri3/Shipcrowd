@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Order, Company, Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Company, Shipment, User } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
@@ -355,7 +355,9 @@ export const getSellerDashboard = async (
 };
 
 /**
- * Get admin dashboard analytics (multi-company)
+ * Get admin dashboard analytics (multi-company).
+ * Single Order aggregation via $facet for global stats, top companies, and revenue graph.
+ * Shipment stats and seller count run in parallel with Promise.all.
  * @route GET /api/v1/analytics/dashboard/admin
  */
 export const getAdminDashboard = async (
@@ -364,14 +366,12 @@ export const getAdminDashboard = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, { requireCompany: false });
+        guardChecks(req, { requireCompany: false });
 
-        // Admin role check
         if (!isPlatformAdmin(req.user ?? {})) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
-        // Date filters
         const startDate = req.query.startDate
             ? new Date(req.query.startDate as string)
             : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -379,141 +379,116 @@ export const getAdminDashboard = async (
             ? new Date(req.query.endDate as string)
             : new Date();
 
-        // Global order stats
-        const globalOrderStats = await Order.aggregate([
-            {
-                $match: {
-                    isDeleted: false,
-                    createdAt: { $gte: startDate, $lte: endDate },
+        const orderMatch = { isDeleted: false, createdAt: { $gte: startDate, $lte: endDate } };
+
+        const [orderFacetResult, shipmentStats, totalRegisteredSellers] = await Promise.all([
+            Order.aggregate([
+                { $match: orderMatch },
+                {
+                    $facet: {
+                        globalStats: [
+                            {
+                                $group: {
+                                    _id: '$currentStatus',
+                                    count: { $sum: 1 },
+                                    totalValue: { $sum: '$totals.total' },
+                                },
+                            },
+                        ],
+                        companiesStats: [
+                            {
+                                $group: {
+                                    _id: '$companyId',
+                                    totalOrders: { $sum: 1 },
+                                    totalRevenue: { $sum: '$totals.total' },
+                                    pendingOrders: { $sum: { $cond: [{ $eq: ['$currentStatus', 'pending'] }, 1, 0] } },
+                                    deliveredOrders: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
+                                },
+                            },
+                            {
+                                $lookup: {
+                                    from: 'companies',
+                                    localField: '_id',
+                                    foreignField: '_id',
+                                    as: 'company',
+                                },
+                            },
+                            { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
+                            {
+                                $project: {
+                                    companyId: '$_id',
+                                    companyName: '$company.name',
+                                    totalOrders: 1,
+                                    totalRevenue: 1,
+                                    pendingOrders: 1,
+                                    deliveredOrders: 1,
+                                },
+                            },
+                            { $sort: { totalRevenue: -1 } },
+                            { $limit: 10 },
+                        ],
+                        revenueGraph: [
+                            {
+                                $group: {
+                                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                                    orders: { $sum: 1 },
+                                    revenue: { $sum: '$totals.total' },
+                                },
+                            },
+                            { $sort: { _id: 1 } },
+                        ],
+                    },
                 },
-            },
-            {
-                $group: {
-                    _id: '$currentStatus',
-                    count: { $sum: 1 },
-                    totalValue: { $sum: '$totals.total' },
-                },
-            },
+            ]).then(([row]) => row),
+            Shipment.aggregate([
+                { $match: { isDeleted: false, createdAt: { $gte: startDate, $lte: endDate } } },
+                { $group: { _id: '$currentStatus', count: { $sum: 1 } } },
+            ]),
+            User.countDocuments({ role: 'seller' }),
         ]);
 
         const statusCounts: Record<string, number> = {};
         let totalOrders = 0;
         let totalRevenue = 0;
-
-        globalOrderStats.forEach(stat => {
+        for (const stat of orderFacetResult.globalStats) {
             statusCounts[stat._id] = stat.count;
             totalOrders += stat.count;
             totalRevenue += stat.totalValue;
-        });
-
-        // Global shipment stats
-        const shipmentStats = await Shipment.aggregate([
-            {
-                $match: {
-                    isDeleted: false,
-                    createdAt: { $gte: startDate, $lte: endDate },
-                },
-            },
-            {
-                $group: {
-                    _id: '$currentStatus',
-                    count: { $sum: 1 },
-                },
-            },
-        ]);
+        }
 
         let totalShipments = 0;
         let ndrCases = 0;
-        shipmentStats.forEach(stat => {
+        for (const stat of shipmentStats) {
             totalShipments += stat.count;
             if (stat._id === 'ndr') ndrCases = stat.count;
-        });
+        }
 
-        // Calculate global success rate
         const deliveredCount = statusCounts['delivered'] || 0;
         const shippedCount = statusCounts['shipped'] || 0;
         const rtoCount = statusCounts['rto'] || 0;
         const attemptedDeliveries = deliveredCount + shippedCount + rtoCount;
-        const globalSuccessRate = attemptedDeliveries > 0
-            ? ((deliveredCount / attemptedDeliveries) * 100).toFixed(1)
-            : '0.0';
+        const globalSuccessRate =
+            attemptedDeliveries > 0 ? ((deliveredCount / attemptedDeliveries) * 100).toFixed(1) : '0.0';
 
-        // Per-company statistics
-        const companiesStats = await Order.aggregate([
+        sendSuccess(
+            res,
             {
-                $match: {
-                    isDeleted: false,
-                    createdAt: { $gte: startDate, $lte: endDate },
-                },
+                totalOrders,
+                totalRevenue,
+                totalShipments,
+                globalSuccessRate: parseFloat(globalSuccessRate),
+                attemptedDeliveries,
+                successRateBasedOnAttempts: attemptedDeliveries > 0,
+                ndrCases,
+                pendingOrders: statusCounts['pending'] || 0,
+                deliveredOrders: statusCounts['delivered'] || 0,
+                totalRegisteredSellers: totalRegisteredSellers ?? 0,
+                companiesStats: orderFacetResult.companiesStats,
+                revenueGraph: orderFacetResult.revenueGraph,
+                dateRange: { startDate, endDate },
             },
-            {
-                $group: {
-                    _id: '$companyId',
-                    totalOrders: { $sum: 1 },
-                    totalRevenue: { $sum: '$totals.total' },
-                    pendingOrders: {
-                        $sum: { $cond: [{ $eq: ['$currentStatus', 'pending'] }, 1, 0] },
-                    },
-                    deliveredOrders: {
-                        $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] },
-                    },
-                },
-            },
-            {
-                $lookup: {
-                    from: 'companies',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'company',
-                },
-            },
-            {
-                $unwind: { path: '$company', preserveNullAndEmptyArrays: true },
-            },
-            {
-                $project: {
-                    companyId: '$_id',
-                    companyName: '$company.name',
-                    totalOrders: 1,
-                    totalRevenue: 1,
-                    pendingOrders: 1,
-                    deliveredOrders: 1,
-                },
-            },
-            { $sort: { totalRevenue: -1 } },
-            { $limit: 10 },
-        ]);
-
-        // Revenue graph (last 7 days)
-        const revenueGraph = await Order.aggregate([
-            {
-                $match: {
-                    isDeleted: false,
-                    createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-                },
-            },
-            {
-                $group: {
-                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                    orders: { $sum: 1 },
-                    revenue: { $sum: '$totals.total' },
-                },
-            },
-            { $sort: { _id: 1 } },
-        ]);
-
-        sendSuccess(res, {
-            totalOrders,
-            totalRevenue,
-            totalShipments,
-            globalSuccessRate: parseFloat(globalSuccessRate),
-            ndrCases,
-            pendingOrders: statusCounts['pending'] || 0,
-            deliveredOrders: statusCounts['delivered'] || 0,
-            companiesStats,
-            revenueGraph,
-            dateRange: { startDate, endDate },
-        }, 'Admin dashboard data retrieved successfully');
+            'Admin dashboard data retrieved successfully'
+        );
     } catch (error) {
         logger.error('Error fetching admin dashboard:', error);
         next(error);

@@ -354,6 +354,7 @@ export const queryKeys = {
   analytics: {
     all: () => ['analytics'],
     dashboard: (filters?: DateRangeParams) => ['analytics', 'dashboard', filters],
+    adminDashboard: (filters?: DateRangeParams) => ['analytics', 'dashboard', 'admin', filters],
     orders: (period: string) => ['analytics', 'orders', period],
     shipments: (period: string) => ['analytics', 'shipments', period],
     revenue: (period: string) => ['analytics', 'revenue', period],

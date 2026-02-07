@@ -358,6 +358,7 @@ OrderSchema.index({ fulfillmentType: 1 }); // For FBA/MFN filtering
 // Analytics indexes (Week 9)
 OrderSchema.index({ companyId: 1, createdAt: -1, paymentMethod: 1 }); // Revenue analytics by payment method over time
 OrderSchema.index({ 'customerInfo.phone': 1, companyId: 1, createdAt: -1 }); // Customer lifetime value and repeat purchase tracking
+OrderSchema.index({ isDeleted: 1, createdAt: -1 }); // Admin dashboard global aggregations
 
 // Pre-save hook to ensure the first status is added to history
 OrderSchema.pre('save', function (next) {
