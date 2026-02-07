@@ -177,6 +177,7 @@ export interface GetOrdersResponse {
     hasNext?: boolean;
     hasPrev?: boolean;
   };
+  stats?: Record<string, number>; // Faceted search stats
   timestamp: string;
 }
 

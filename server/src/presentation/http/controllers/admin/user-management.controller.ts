@@ -153,11 +153,11 @@ class UserManagementController {
 
             const { id: targetUserId } = req.params;
 
-            const user = await UserManagementService.getUserDetails(targetUserId);
+            const result = await UserManagementService.getUserDetails(targetUserId);
 
             res.status(200).json({
                 success: true,
-                data: { user },
+                data: result, // { user, stats }
             });
         } catch (error) {
             next(error);
@@ -213,12 +213,12 @@ class UserManagementController {
      */
     async suspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { userId, isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
 
-            // Only super_admin can suspend users
-            if (!isSuperAdmin) {
+            // Allow admin and super_admin to suspend users (typically sellers)
+            if (!isAdmin) {
                 throw new ValidationError(
-                    'Super admin access required',
+                    'Admin access required',
                     ErrorCode.AUTHZ_FORBIDDEN
                 );
             }
@@ -260,12 +260,12 @@ class UserManagementController {
      */
     async unsuspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { userId, isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
 
-            // Only super_admin can unsuspend users
-            if (!isSuperAdmin) {
+            // Allow admin and super_admin to unsuspend users
+            if (!isAdmin) {
                 throw new ValidationError(
-                    'Super admin access required',
+                    'Admin access required',
                     ErrorCode.AUTHZ_FORBIDDEN
                 );
             }

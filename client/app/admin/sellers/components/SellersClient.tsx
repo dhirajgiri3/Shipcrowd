@@ -1,11 +1,11 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // Correct import path for admin hook
 import { useSellerHealth } from '@/src/core/api/hooks/admin/useSellerHealth';
 import { SellerTable } from './SellerTable';
-import { BentoSummaryCard } from './BentoSummaryCard';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import {
     Users,
     Activity,
@@ -26,13 +26,10 @@ const SellersClient = () => {
 
     // Debounce search query
     const [debouncedSearch] = React.useMemo(() => {
-        // Simple manual debounce since we couldn't easily verify the hook import path without more tools
-        // In a real scenario, use useDebounce hook
-        // For now, let's rely on the effect below or a custom hook
         return [searchQuery];
     }, [searchQuery]);
 
-    // Use a custom debounce implementation since we are in a rush
+    // Use a custom debounce implementation
     const [debouncedValue, setDebouncedValue] = useState(searchQuery);
 
     React.useEffect(() => {
@@ -47,24 +44,44 @@ const SellersClient = () => {
     }, [searchQuery]);
 
 
+    const [sortBy, setSortBy] = useState<string>('companyName');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
     // Query hook
     const {
         data: healthData,
-        isLoading,
+        isLoading: isHealthLoading,
         isError,
         refetch,
         isFetching
     } = useSellerHealth({
-        status: statusFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter as any,
         search: debouncedValue,
         page,
-        limit
+        limit,
+        sortBy,
+        sortOrder,
     });
 
     // Reset pagination when filter changes
     React.useEffect(() => {
         setPage(1);
     }, [statusFilter]);
+
+    // Refresh data when filters change
+    useEffect(() => {
+        refetch();
+    }, [statusFilter, debouncedValue, page, sortBy, sortOrder, refetch]);
+
+    const handleSort = (key: string) => {
+        if (sortBy === key) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(key);
+            setSortOrder('asc'); // Default to asc for new key
+        }
+        setPage(1); // Reset to first page on sort change
+    };
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= (healthData?.pagination?.totalPages || 1)) {
@@ -142,7 +159,7 @@ const SellersClient = () => {
 
             {/* Stats Grid - Bento Style */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <BentoSummaryCard
+                <StatsCard
                     title="Total Sellers"
                     value={totalSellers}
                     icon={Users}
@@ -150,7 +167,7 @@ const SellersClient = () => {
                     trend={{ value: 12, label: "this week", positive: true }}
                     delay={0}
                 />
-                <BentoSummaryCard
+                <StatsCard
                     title="Healthy Sellers"
                     value={healthySellers}
                     icon={Shield}
@@ -158,15 +175,21 @@ const SellersClient = () => {
                     description={`${((healthySellers / (totalSellers || 1)) * 100).toFixed(0)}% of total base`}
                     delay={1}
                 />
-                <BentoSummaryCard
+                <StatsCard
                     title="Critical Risk"
                     value={criticalRisk}
                     icon={AlertTriangle}
                     iconColor="bg-red-500 text-white"
-                    trend={{ value: 5, label: "vs last week", positive: false }}
+                    trend={healthData?.summary?.trends?.criticalRisk ? {
+                        value: healthData.summary.trends.criticalRisk.value,
+                        label: healthData.summary.trends.criticalRisk.label,
+                        // If risk INCREASED (isIncrease=true), it's BAD (positive=false)
+                        // If risk DECREASED (isIncrease=false), it's GOOD (positive=true)
+                        positive: !healthData.summary.trends.criticalRisk.isIncrease
+                    } : undefined}
                     delay={2}
                 />
-                <BentoSummaryCard
+                <StatsCard
                     title="Avg Health Score"
                     value={`${avgHealth.toFixed(0)}%`}
                     icon={TrendingUp}
@@ -215,10 +238,13 @@ const SellersClient = () => {
             >
                 <SellerTable
                     data={healthData?.sellers || []}
-                    isLoading={isLoading || isFetching}
+                    isLoading={isHealthLoading}
                     onRefresh={refetch}
                     pagination={healthData?.pagination}
-                    onPageChange={handlePageChange}
+                    onPageChange={setPage}
+                    onSort={handleSort}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
                 />
             </motion.div>
         </div>

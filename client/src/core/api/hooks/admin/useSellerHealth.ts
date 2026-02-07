@@ -16,7 +16,7 @@ export const useSellerHealth = (filters?: HealthFilters) => {
     return useQuery({
         queryKey: ['admin', 'seller-health', filters],
         queryFn: () => sellerHealthApi.getSellerHealth(filters),
-        ...CACHE_TIMES.MEDIUM,
+        ...CACHE_TIMES.REALTIME,
         retry: RETRY_CONFIG.DEFAULT,
     });
 };
@@ -29,7 +29,7 @@ export const useSellerHealthDetails = (sellerId: string) => {
         queryKey: ['admin', 'seller-health', sellerId],
         queryFn: () => sellerHealthApi.getSellerHealthDetails(sellerId),
         enabled: !!sellerId,
-        ...CACHE_TIMES.SHORT,
+        ...CACHE_TIMES.REALTIME,
         retry: RETRY_CONFIG.DEFAULT,
     });
 };

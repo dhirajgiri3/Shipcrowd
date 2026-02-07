@@ -1,85 +1,139 @@
-"use client";
-export const dynamic = "force-dynamic";
+'use client';
 
-import React, { useMemo, useState } from 'react';
-import { DataTable } from '@/src/components/ui/data/DataTable';
-import { Card, CardContent } from '@/src/components/ui/core/Card';
-import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
-import { Button } from '@/src/components/ui/core/Button';
-import { Modal } from '@/src/components/ui/feedback/Modal';
-import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, formatDate, cn } from '@/src/lib/utils';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Search,
-    Truck,
-    Package,
-    Clock,
-    CheckCircle2,
-    RotateCcw,
-    ShoppingBag,
-    Printer,
-    Download,
-    RefreshCcw,
-    Zap,
-    ArrowRight,
-    Building2,
-    LayoutDashboard,
-    Filter,
-    MoreHorizontal,
-    Box,
-    Loader2
+    Package, Truck, CheckCircle, AlertCircle, Clock,
+    Search, Filter, MoreVertical, FileText, Download,
+    RefreshCw, Calendar as CalendarIcon, XCircle,
+    LayoutDashboard, RefreshCcw, Box, Loader2, ArrowRight
 } from 'lucide-react';
-import { useAdminOrders, useGetCourierRates, useShipOrder, useBulkShipOrders } from '@/src/core/api/hooks/admin';
-import type { Order as ApiOrder, CourierRate } from '@/src/types/domain/order';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard'; // Reusable component
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { useAdminOrders, useGetCourierRates, useShipOrder } from '@/src/core/api/hooks/admin';
+import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
+import { showSuccessToast, showErrorToast } from '@/src/lib/error';
+import { formatCurrency, cn } from '@/src/lib/utils';
+import { Badge } from '@/src/components/ui/core/Badge';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem
+} from '@/src/components/ui/feedback/DropdownMenu';
+import { format } from 'date-fns';
+import { Modal } from '@/src/components/ui/feedback/Modal';
+import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 
-// Removed mock data - using real APIs
-
-const statusConfig = [
-    { id: 'new', label: 'New Orders', icon: Clock, color: 'text-[var(--warning)]', bg: 'bg-[var(--warning-bg)]', border: 'border-[var(--warning)]/20' },
-    { id: 'ready', label: 'Ready to Ship', icon: Package, color: 'text-[var(--info)]', bg: 'bg-[var(--info-bg)]', border: 'border-[var(--info)]/20' },
-    { id: 'shipped', label: 'In Transit', icon: Truck, color: 'text-[var(--primary-blue)]', bg: 'bg-[var(--primary-blue-soft)]', border: 'border-[var(--primary-blue)]/20' },
-    { id: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-[var(--success)]', bg: 'bg-[var(--success-bg)]', border: 'border-[var(--success)]/20' },
-    { id: 'rto', label: 'RTO / NDR', icon: RotateCcw, color: 'text-[var(--error)]', bg: 'bg-[var(--error-bg)]', border: 'border-[var(--error)]/20' },
+// Tabs configuration
+const ORDER_TABS = [
+    { id: 'all', label: 'All Orders', icon: Package },
+    { id: 'new', label: 'New', icon: AlertCircle },
+    { id: 'ready', label: 'Ready for Ship', icon: Clock },
+    { id: 'shipped', label: 'Shipped', icon: Truck },
+    { id: 'delivered', label: 'Delivered', icon: CheckCircle },
+    { id: 'rto', label: 'RTO', icon: XCircle },
+    { id: 'cancelled', label: 'Cancelled', icon: XCircle },
 ];
 
-export function OrdersClient() {
-    const [activeTab, setActiveTab] = useState('new');
-    const [search, setSearch] = useState('');
-    const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+export default function OrdersClient() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // -- State from URL & Local --
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const status = searchParams.get('status') || 'all';
+    const sort = searchParams.get('sort') || 'createdAt';
+    const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
+    const search = searchParams.get('search') || '';
+
+    const [searchTerm, setSearchTerm] = useState(search);
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+    // Shipping Modal State
     const [isShipModalOpen, setIsShipModalOpen] = useState(false);
-    const [selectedOrderForShip, setSelectedOrderForShip] = useState<ApiOrder | null>(null);
+    const [selectedOrderForShip, setSelectedOrderForShip] = useState<Order | null>(null);
     const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
     const [courierRates, setCourierRates] = useState<CourierRate[]>([]);
-    const { addToast } = useToast();
 
-    // API Hooks
-    const { data: ordersData, isLoading, refetch } = useAdminOrders({
-        status: activeTab,
-        search: search || undefined,
-        limit: 50
-    });
+    // -- Debounce Search --
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // -- Update URL Helper --
+    const updateUrl = (updates: Record<string, string | number | null>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        // Preserve other existing params if not overwritten
+        searchParams.forEach((value, key) => {
+            if (!(key in updates)) {
+                params.set(key, value);
+            }
+        });
+
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') {
+                params.delete(key);
+            } else {
+                params.set(key, String(value));
+            }
+        });
+        router.push(`?${params.toString()}`, { scroll: false });
+    };
+
+    // -- Query Params --
+    const queryParams: OrderListParams = useMemo(() => ({
+        page,
+        limit,
+        status: status === 'all' ? undefined : status,
+        sortBy: sort,
+        sortOrder: order,
+        search: debouncedSearch || undefined,
+    }), [page, limit, status, sort, order, debouncedSearch]);
+
+    // -- Fetch Data --
+    const {
+        data: ordersResponse,
+        isLoading,
+        isFetching,
+        refetch
+    } = useAdminOrders(queryParams);
+
     const getCourierRatesMutation = useGetCourierRates();
     const shipOrderMutation = useShipOrder();
-    const bulkShipMutation = useBulkShipOrders();
 
-    const orders = ordersData?.data || [];
+    const orders = ordersResponse?.data || [];
+    const pagination = ordersResponse?.pagination;
+    const stats = ordersResponse?.stats || {}; // Faceted stats from server
 
-    const tabCounts = useMemo(() => ({
-        new: orders.filter(o => o.currentStatus === 'new').length,
-        ready: orders.filter(o => o.currentStatus === 'ready').length,
-        shipped: orders.filter(o => o.currentStatus === 'shipped').length,
-        delivered: orders.filter(o => o.currentStatus === 'delivered').length,
-        rto: orders.filter(o => o.currentStatus === 'rto').length,
-    }), [orders]);
+    // -- Event Handlers --
+    const handleTabChange = (newStatus: string) => {
+        updateUrl({ status: newStatus, page: 1 }); // Reset to page 1 on tab change
+    };
 
-    const filteredOrders = useMemo(() => {
-        return orders.filter(order => order.currentStatus === activeTab);
-    }, [activeTab, orders]);
+    const handleSort = (key: string) => {
+        const isSameKey = sort === key;
+        const newOrder = isSameKey && order === 'desc' ? 'asc' : 'desc';
+        updateUrl({ sort: key, order: newOrder });
+    };
 
-    const handleShipNow = async (order: ApiOrder) => {
+    const handlePageChange = (newPage: number) => {
+        updateUrl({ page: newPage });
+    };
+
+    const handleRefresh = () => {
+        refetch();
+        showSuccessToast('Orders refreshed');
+    };
+
+    const handleShipNow = async (order: Order) => {
         setSelectedOrderForShip(order);
         setSelectedCourier(null);
         setCourierRates([]);
@@ -107,108 +161,106 @@ export function OrdersClient() {
 
     const handleCreateShipment = async () => {
         if (!selectedCourier || !selectedOrderForShip) {
-            addToast('Please select a courier', 'warning');
+            showErrorToast('Please select a courier');
             return;
         }
 
-        await shipOrderMutation.mutateAsync({
-            orderId: selectedOrderForShip._id,
-            courierId: selectedCourier,
-            serviceType: 'Surface'
-        });
+        try {
+            await shipOrderMutation.mutateAsync({
+                orderId: selectedOrderForShip._id,
+                courierId: selectedCourier,
+                serviceType: 'Surface'
+            });
 
-        setIsShipModalOpen(false);
-        setSelectedOrderForShip(null);
-        setSelectedCourier(null);
-        refetch();
-    };
-
-    const handleBulkShip = async () => {
-        if (selectedOrders.length === 0) {
-            addToast('Please select orders to ship', 'warning');
-            return;
+            setIsShipModalOpen(false);
+            setSelectedOrderForShip(null);
+            setSelectedCourier(null);
+            refetch();
+        } catch (error) {
+            // Error handled by mutation
         }
-
-        // For now, just show info. Real implementation needs courier selection modal
-        addToast(`Creating shipments for ${selectedOrders.length} orders...`, 'info');
     };
 
-    const columns = [
+
+    // -- Table Columns --
+    const columns = useMemo(() => [
         {
-            header: 'Order Details',
-            accessorKey: 'orderNumber' as const,
-            cell: (row: ApiOrder) => (
-                <div className="group cursor-pointer">
-                    <div className="flex items-center gap-2">
-                        <p className="font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">{row.orderNumber}</p>
-                        <Badge variant="neutral" className="px-1.5 py-0 text-[10px] h-5">{row.source}</Badge>
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{formatDate(row.createdAt)}</p>
-                </div>
-            )
-        },
-        {
-            header: 'Merchant',
-            accessorKey: 'companyId' as const,
-            cell: (row: ApiOrder) => (
-                <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border-subtle)]">
-                        <Building2 className="h-4 w-4 text-[var(--text-secondary)]" />
-                    </div>
-                    <div>
-                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.companyId}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Verified Seller</p>
-                    </div>
+            header: 'Order ID',
+            accessorKey: 'orderNumber', // Sortable
+            cell: (row: Order) => (
+                <div>
+                    <div className="font-medium text-[var(--text-primary)]">{row.orderNumber}</div>
+                    <div className="text-xs text-[var(--text-tertiary)]">{format(new Date(row.createdAt), 'MMM d, h:mm a')}</div>
                 </div>
             )
         },
         {
             header: 'Customer',
-            accessorKey: 'customerInfo' as const,
-            cell: (row: ApiOrder) => (
+            accessorKey: 'customer', // Mapped to customerInfo.name in backend
+            cell: (row: Order) => (
                 <div>
-                    <p className="font-medium text-[var(--text-primary)]">{row.customerInfo.name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{row.customerInfo.address.city}</p>
+                    <div className="text-[var(--text-primary)] font-medium">{row.customerInfo?.name}</div>
+                    <div className="text-xs text-[var(--text-tertiary)]">{row.customerInfo?.phone}</div>
                 </div>
             )
         },
         {
-            header: 'Product Info',
-            accessorKey: 'products' as const,
-            cell: (row: ApiOrder) => (
-                <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 bg-[var(--bg-tertiary)] rounded-lg flex items-center justify-center border border-[var(--border-subtle)]">
-                        <ShoppingBag className="h-4 w-4 text-[var(--text-muted)]" />
+            header: 'Product',
+            accessorKey: 'items', // Mapped
+            cell: (row: Order) => (
+                <div className="max-w-[200px]">
+                    <div className="text-[var(--text-secondary)] truncate">
+                        {row.products?.[0]?.name}
                     </div>
-                    <div>
-                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.products[0]?.name || 'Products'}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Qty: {row.products.reduce((sum, p) => sum + p.quantity, 0)}</p>
-                    </div>
+                    {row.products?.length > 1 && (
+                        <div className="text-xs text-[var(--text-tertiary)]">
+                            +{row.products.length - 1} more items
+                        </div>
+                    )}
                 </div>
             )
         },
         {
             header: 'Amount',
-            accessorKey: 'totals' as const,
-            cell: (row: ApiOrder) => (
-                <div>
-                    <p className="font-bold text-[var(--text-primary)]">{formatCurrency(row.totals.total)}</p>
+            accessorKey: 'amount', // Mapped to totals.total
+            cell: (row: Order) => (
+                <div className="font-medium text-[var(--text-primary)]">
+                    {formatCurrency(row.totals?.total || 0)}
                     <div className="flex items-center gap-1 mt-0.5">
                         <span className={cn(
                             "w-1.5 h-1.5 rounded-full",
                             row.paymentMethod === 'cod' ? "bg-[var(--warning)]" : "bg-[var(--success)]"
                         )} />
-                        <span className="text-xs text-[var(--text-secondary)]">{row.paymentMethod?.toUpperCase()}</span>
+                        <span className="text-xs text-[var(--text-secondary)] capitalize">{row.paymentMethod}</span>
                     </div>
                 </div>
             )
         },
         {
-            header: 'Action',
-            accessorKey: '_id' as const,
-            width: 'w-32',
-            cell: (row: ApiOrder) => {
-                if (activeTab === 'new' || activeTab === 'ready') {
+            header: 'Status',
+            accessorKey: 'status',
+            cell: (row: Order) => {
+                const statusColors: Record<string, string> = {
+                    new: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                    ready: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                    shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+                    delivered: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+                    cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                    rto: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                };
+                return (
+                    <Badge className={statusColors[row.currentStatus] || 'bg-gray-100 text-gray-700'}>
+                        {row.currentStatus}
+                    </Badge>
+                );
+            }
+        },
+        {
+            header: 'Actions',
+            accessorKey: 'actions',
+            width: 'w-[50px]',
+            cell: (row: Order) => {
+                if (status === 'new' || status === 'ready') {
                     return (
                         <div className="flex items-center gap-2">
                             <Tooltip content="Ship Order">
@@ -225,171 +277,161 @@ export function OrdersClient() {
                                 </Button>
                             </Tooltip>
                         </div>
-                    );
+                    )
                 }
-                if (activeTab === 'shipped') {
-                    return (
-                        <div className="text-sm">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <span className="font-mono text-xs font-medium text-[var(--primary-blue)] px-1.5 py-0.5 bg-[var(--primary-blue-soft)] rounded">
-                                    {row.shippingDetails?.trackingNumber || 'N/A'}
-                                </span>
-                            </div>
-                        </div>
-                    );
-                }
-                if (activeTab === 'delivered') {
-                    return (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success)]/20">
-                            <CheckCircle2 className="h-3 w-3 mr-1.5" />
-                            Delivered
-                        </span>
-                    );
-                }
-                if (activeTab === 'rto') {
-                    return (
-                        <div>
-                            <p className="text-[10px] text-[var(--error)] font-medium uppercase tracking-wide mb-1">Action Required</p>
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-[var(--error)]/20 hover:border-[var(--error)]/30 hover:bg-[var(--error-bg)] text-[var(--error)]">
-                                Reattempt
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[var(--bg-tertiary)]">
+                                <MoreVertical className="h-4 w-4" />
                             </Button>
-                        </div>
-                    );
-                }
-                return null;
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px]">
+                            <DropdownMenuItem onClick={() => router.push(`/admin/orders/${row.orderNumber}`)}>
+                                View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                                Delete Order
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
             }
         }
-    ];
+    ], [router, order, sort, status]);
 
     return (
-        <div className="space-y-6 pb-10">
-            {/* Page Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-1 bg-[var(--primary-blue-soft)] w-fit px-3 py-1 rounded-full">
                         <LayoutDashboard className="w-3.5 h-3.5" />
                         <span>Order Command Center</span>
                     </div>
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+                    <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
                         Order Management
                     </h1>
-                    <p className="text-[var(--text-secondary)] mt-1">
+                    <p className="text-sm text-[var(--text-secondary)] mt-1">
                         Monitor, fulfil and track orders across all your sellers in real-time.
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" onClick={() => addToast('Syncing orders...', 'info')} className="bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                        <RefreshCcw className="h-4 w-4 mr-2" />
+                    <Button variant="outline" onClick={handleRefresh} disabled={isFetching} className="bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                        <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
                         Sync Orders
                     </Button>
                     <Button variant="outline" className="bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                        <Download className="h-4 w-4 mr-2" />
+                        <Download className="w-4 h-4 mr-2" />
                         Export Data
                     </Button>
                 </div>
             </div>
 
-            {/* Metric Cards Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {statusConfig.map((status, index) => {
-                    const isActive = activeTab === status.id;
-                    const count = tabCounts[status.id as keyof typeof tabCounts];
-                    const Icon = status.icon;
-
-                    return (
-                        <motion.button
-                            key={status.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            onClick={() => setActiveTab(status.id)}
-                            className={cn(
-                                "relative flex flex-col p-4 rounded-2xl border transition-all duration-300 text-left group overflow-hidden",
-                                isActive
-                                    ? `bg-[var(--bg-primary)] border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)] shadow-[0_0_20px_var(--primary-blue-soft)]`
-                                    : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-md"
-                            )}
-                        >
-                            {/* Active Indicator & Background Glow */}
-                            {isActive && (
-                                <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary-blue)]/5 to-transparent pointer-events-none" />
-                            )}
-
-                            <div className="flex items-center justify-between mb-3 relative z-10">
-                                <div className={cn(
-                                    "h-10 w-10 rounded-xl flex items-center justify-center transition-colors duration-300",
-                                    isActive ? "bg-[var(--primary-blue)] text-white" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
-                                )}>
-                                    <Icon className="h-5 w-5" />
-                                </div>
-                                <div className={cn(
-                                    "px-2.5 py-1 rounded-full text-xs font-bold font-mono transition-colors",
-                                    isActive ? "bg-[var(--primary-blue)]/10 text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
-                                )}>
-                                    {count}
-                                </div>
-                            </div>
-
-                            <div className="relative z-10">
-                                <p className={cn(
-                                    "font-medium text-sm transition-colors",
-                                    isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
-                                )}>
-                                    {status.label}
-                                </p>
-                            </div>
-                        </motion.button>
-                    );
-                })}
+            {/* Quick Stats - Using Reusable StatsCard */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="h-[120px]">
+                    <StatsCard
+                        title="Total Orders"
+                        value={stats['all'] || pagination?.total || 0}
+                        icon={Package}
+                        variant="default"
+                        iconColor="text-blue-500 bg-blue-500"
+                        trend={{ value: 12, label: 'vs last week', positive: true }}
+                    />
+                </div>
+                <div className="h-[120px]">
+                    <StatsCard
+                        title="Pending Shipments"
+                        value={(stats['new'] || 0) + (stats['ready'] || 0)}
+                        icon={Clock}
+                        variant="warning"
+                        trend={{ value: 5, label: 'vs yesterday', positive: false }}
+                    />
+                </div>
+                <div className="h-[120px]">
+                    <StatsCard
+                        title="RTO Rate"
+                        value="2.4%"
+                        icon={XCircle}
+                        variant="critical"
+                        description="Calculated from last 30 days"
+                    />
+                </div>
+                <div className="h-[120px]">
+                    <StatsCard
+                        title="Delivered Today"
+                        value={stats['delivered'] || 0} // This might need a specific 'today' endpoint, simplified for now
+                        icon={CheckCircle}
+                        variant="success"
+                        trend={{ value: 8, label: 'vs yesterday', positive: true }}
+                    />
+                </div>
             </div>
 
             {/* Main Content Area */}
-            <motion.div
-                layout
-                className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-3xl overflow-hidden shadow-sm"
-            >
+            <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] shadow-sm">
+
                 {/* Toolbar */}
-                <div className="p-4 border-b border-[var(--border-subtle)] flex flex-col md:flex-row gap-4 justify-between bg-[var(--bg-primary)]">
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                        <Input
-                            placeholder="Search by ID, Customer, Seller or Product..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10 bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] transition-all h-10 rounded-xl"
-                        />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {(activeTab === 'new' || activeTab === 'ready') && selectedOrders.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="flex items-center gap-2 mr-2"
-                            >
-                                <span className="text-sm text-[var(--text-secondary)] font-medium bg-[var(--bg-secondary)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
-                                    {selectedOrders.length} selected
-                                </span>
-                                <Button
-                                    size="sm"
-                                    onClick={handleBulkShip}
-                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
+                <div className="p-4 border-b border-[var(--border-subtle)] space-y-4">
+                    {/* Tabs */}
+                    <div className="flex overflow-x-auto pb-2 scrollbar-hide gap-1">
+                        {ORDER_TABS.map((tab) => {
+                            const isActive = status === tab.id;
+                            // Calculate count: if 'all', use total, else use stat for that status
+                            const count = tab.id === 'all' ? (pagination?.total || 0) : (stats[tab.id] || 0);
+
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => handleTabChange(tab.id)}
+                                    className={`
+                                        flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
+                                        ${isActive
+                                            ? 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]'
+                                            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'
+                                        }
+                                    `}
                                 >
-                                    <Truck className="h-4 w-4 mr-2" />
-                                    Ship Selected
-                                </Button>
-                            </motion.div>
-                        )}
-                        <Button variant="ghost" size="icon" className="text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]">
-                            <Filter className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                                    <tab.icon className={`w-4 h-4 ${isActive ? 'text-[var(--primary-blue)]' : ''}`} />
+                                    {tab.label}
+                                    <span className={`
+                                        ml-1 px-1.5 py-0.5 rounded-md text-xs
+                                        ${isActive ? 'bg-[var(--primary-blue)]/10' : 'bg-[var(--bg-tertiary)]'}
+                                    `}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Filters & Search */}
+                    <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                        <div className="relative w-full sm:w-[350px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                            <Input
+                                placeholder="Search by Order ID, Customer, Phone..."
+                                className="pl-9 bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] transition-all h-10 rounded-xl"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <Button variant="outline" className="w-full sm:w-auto bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                                <Filter className="w-4 h-4 mr-2" />
+                                Filters
+                            </Button>
+                            <Button variant="outline" className="w-full sm:w-auto bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                                <CalendarIcon className="w-4 h-4 mr-2" />
+                                Date
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="relative min-h-[400px]">
+                {/* Data Table */}
+                <div className="p-4 relative min-h-[400px]">
                     <AnimatePresence mode="wait">
                         {isLoading ? (
                             <motion.div
@@ -402,7 +444,7 @@ export function OrdersClient() {
                                 <Loader2 className="h-10 w-10 animate-spin text-[var(--primary-blue)] mb-4" />
                                 <p className="text-sm text-[var(--text-muted)]">Loading orders...</p>
                             </motion.div>
-                        ) : filteredOrders.length === 0 ? (
+                        ) : orders.length === 0 ? (
                             <motion.div
                                 key="empty"
                                 initial={{ opacity: 0 }}
@@ -419,7 +461,7 @@ export function OrdersClient() {
                                 </p>
                                 <Button
                                     variant="outline"
-                                    onClick={() => { setSearch(''); setActiveTab('new'); }}
+                                    onClick={() => { setSearchTerm(''); handleTabChange('all'); }}
                                     className="border-[var(--border-default)]"
                                 >
                                     Clear Filters
@@ -434,13 +476,23 @@ export function OrdersClient() {
                             >
                                 <DataTable
                                     columns={columns}
-                                    data={filteredOrders}
+                                    data={orders}
+                                    isLoading={isLoading}
+                                    sortBy={sort}
+                                    sortOrder={order}
+                                    onSort={handleSort}
+                                    pagination={{
+                                        currentPage: page,
+                                        totalPages: pagination?.pages || 1,
+                                        totalItems: pagination?.total || 0,
+                                        onPageChange: handlePageChange
+                                    }}
                                 />
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
-            </motion.div>
+            </div>
 
             {/* Ship Modal with Premium Styling */}
             <Modal

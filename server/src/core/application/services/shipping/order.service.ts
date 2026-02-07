@@ -105,6 +105,139 @@ export class OrderService extends CachedService {
     }
 
     /**
+     * List Orders with Stats (Faceted Search)
+     * 
+     * Efficiently fetches:
+     * 1. Paginated order list (filtered & sorted)
+     * 2. Status counts (based on current filters, for tabs)
+     * 3. Total count (for pagination)
+     * 
+     * All in a single DB round-trip.
+     */
+    async listOrdersWithStats(companyId: string, queryParams: any, pagination: { page: number; limit: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) {
+        const { page, limit, sortBy = 'createdAt', sortOrder = 'desc' } = pagination;
+
+        // 1. Build Match Stage (Base Filters)
+        const matchStage: any = {
+            companyId: new mongoose.Types.ObjectId(companyId),
+            isDeleted: false
+        };
+
+        // Text Search
+        if (queryParams.search) {
+            const searchRegex = { $regex: queryParams.search, $options: 'i' };
+            matchStage.$or = [
+                { orderNumber: searchRegex },
+                { 'customerInfo.name': searchRegex },
+                { 'customerInfo.phone': searchRegex },
+                { 'products.name': searchRegex }
+            ];
+        }
+
+        // Date Range
+        if (queryParams.startDate || queryParams.endDate) {
+            matchStage.createdAt = {};
+            if (queryParams.startDate) matchStage.createdAt.$gte = new Date(queryParams.startDate);
+            if (queryParams.endDate) matchStage.createdAt.$lte = new Date(queryParams.endDate);
+        }
+
+        // Warehouse Filter
+        if (queryParams.warehouse) {
+            matchStage.warehouseId = new mongoose.Types.ObjectId(queryParams.warehouse);
+        }
+
+        // 2. Build Sort Stage
+        // Map frontend sort keys to DB paths
+        const sortMapping: Record<string, string> = {
+            'orderNumber': 'orderNumber',
+            'createdAt': 'createdAt',
+            'customer': 'customerInfo.name',
+            'amount': 'totals.total',
+            'status': 'currentStatus',
+            'items': 'products.length' // Approximate, or sum quantity
+        };
+        const dbSortKey = sortMapping[sortBy] || 'createdAt';
+        const sortStage: any = { [dbSortKey]: sortOrder === 'asc' ? 1 : -1 };
+
+        // 3. Status Filter (Only applies to the 'orders' facet, NOT the 'stats' facet)
+        // We want stats to show counts for ALL statuses given the current search/date filters
+        const statusMatch = queryParams.status && queryParams.status !== 'all'
+            ? { currentStatus: queryParams.status }
+            : {};
+
+        // 4. Aggregation Pipeline
+        const pipeline = [
+            { $match: matchStage },
+            {
+                $facet: {
+                    // Facet 1: The Paginated List
+                    orders: [
+                        { $match: statusMatch }, // Apply status filter only here
+                        { $sort: sortStage },
+                        { $skip: (page - 1) * limit },
+                        { $limit: limit },
+                        // Populate equivalent (using $lookup would be expensive, usually better to secondary fetch or simple lookup)
+                        // For simplicity/performance in aggregation, we often stick to what's in the doc or do simple lookups.
+                        // But Mongoose `lean()` + `populate()` is easier. 
+                        // Since we are using aggregate, we must manual lookup if we need joined data.
+                        // Order model has `warehouseId` ref.
+                        {
+                            $lookup: {
+                                from: 'warehouses', // collection name
+                                localField: 'warehouseId',
+                                foreignField: '_id',
+                                as: 'warehouse'
+                            }
+                        },
+                        { $unwind: { path: '$warehouse', preserveNullAndEmptyArrays: true } },
+                        // Project only needed fields if necessary, or keep all
+                    ],
+                    // Facet 2: Status Counts (for Tabs)
+                    stats: [
+                        { $group: { _id: '$currentStatus', count: { $sum: 1 } } }
+                    ],
+                    // Facet 3: Total Count (for Pagination of the list)
+                    total: [
+                        { $match: statusMatch },
+                        { $count: 'count' }
+                    ]
+                }
+            }
+        ];
+
+        // 5. Execute
+        const [result] = await Order.aggregate(pipeline);
+
+        // 6. Format Result
+        const orders = result.orders.map((o: any) => ({
+            ...o,
+            warehouseId: o.warehouse, // mapping back to match populate structure roughly
+            id: o._id
+        }));
+
+        const total = result.total[0]?.count || 0;
+
+        const stats: Record<string, number> = {};
+        result.stats.forEach((s: any) => {
+            stats[s._id] = s.count;
+        });
+
+        // Ensure all statuses have a key
+        const allStatuses = ['new', 'ready', 'shipped', 'delivered', 'rto', 'cancelled'];
+        allStatuses.forEach(s => {
+            if (!stats[s]) stats[s] = 0;
+        });
+
+        return {
+            orders,
+            total,
+            stats,
+            page,
+            pages: Math.ceil(total / limit)
+        };
+    }
+
+    /**
      * List Orders with Caching (Tier 3)
      */
     async listOrders(companyId: string, queryParams: any, pagination: { page: number; limit: number }) {

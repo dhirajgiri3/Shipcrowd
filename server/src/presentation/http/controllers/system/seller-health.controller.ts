@@ -16,18 +16,19 @@ import { Parser } from 'json2csv';
 const calculateHealthScore = (metrics: any) => {
     let score = 100;
 
-    // RTO Impact (Heavy penalty)
-    if (metrics.rtoRate > 30) score -= 30;
-    else if (metrics.rtoRate > 20) score -= 20;
-    else if (metrics.rtoRate > 10) score -= 10;
+    // RTO Impact (Heavy penalty: 2 points per %)
+    if (metrics.rtoRate > 0) score -= (metrics.rtoRate * 2);
 
-    // Dispute Impact
+    // NDR Impact (Standard penalty: 1 point per %)
+    if (metrics.ndrRate > 0) score -= (metrics.ndrRate * 1);
+
+    // Dispute Impact (5 points per dispute)
     if (metrics.unresolvedDisputes > 0) score -= (metrics.unresolvedDisputes * 5);
 
     // Order Volume Bonus (Small bonus for consistency)
     if (metrics.orderVolume > 100) score += 5;
 
-    // Cap score
+    // Cap score between 0 and 100
     return Math.max(0, Math.min(100, Math.round(score)));
 };
 
@@ -42,8 +43,9 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
         const status = req.query.status as string || 'all';
         const sortBy = req.query.sortBy as string || 'healthScore';
         const sortOrder = req.query.sortOrder as string === 'asc' ? 1 : -1;
-
         const skip = (page - 1) * limit;
+
+
 
         // 1. Fetch Candidate Sellers
         const sellerPipeline: any[] = [
@@ -62,7 +64,9 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
                     _id: 1,
                     email: 1,
                     companyName: '$company.name',
-                    companyId: '$company._id'
+                    companyId: '$company._id',
+                    isSuspended: 1,
+                    isActive: 1
                 }
             }
         ];
@@ -81,6 +85,27 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
 
         if (!isAdmin && userCompanyId) {
             sellerPipeline.unshift({ $match: { _id: new mongoose.Types.ObjectId((req.user as any)._id) } });
+        }
+
+        // OPTIMIZATION: If sorting by DB fields, apply sort/skip/limit HERE
+        // Default sort is now companyName (Alphabetical)
+        const isDbSort = ['companyName', 'email'].includes(sortBy);
+        // Default to companyName asc if not specified or if sorting by DB field
+        const effectiveSortBy = sortBy === 'healthScore' && !req.query.sortBy ? 'companyName' : sortBy;
+        const effectiveSortOrder = !req.query.sortOrder && effectiveSortBy === 'companyName' ? 1 : sortOrder;
+
+        let totalSellersCount = 0;
+
+        if (isDbSort || effectiveSortBy === 'companyName') {
+            // Count total matching docs first
+            const countPipeline = [...sellerPipeline, { $count: 'total' }];
+            const countRes = await User.aggregate(countPipeline);
+            totalSellersCount = countRes.length > 0 ? countRes[0].total : 0;
+
+            // Apply sort/pagination
+            sellerPipeline.push({ $sort: { [effectiveSortBy]: effectiveSortOrder } });
+            sellerPipeline.push({ $skip: skip });
+            sellerPipeline.push({ $limit: limit });
         }
 
         const candidateSellers = await User.aggregate(sellerPipeline);
@@ -108,21 +133,52 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
                     }
                 }
             ]),
-            // Shipment Metrics: RTO & NDR
+            // Shipment Metrics: RTO & NDR (Current & Past for Trend)
             Shipment.aggregate([
                 { $match: { companyId: { $in: companyIds } } },
                 {
                     $group: {
                         _id: '$companyId',
                         totalShipments: { $sum: 1 },
+                        pastTotalShipments: { $sum: { $cond: [{ $lt: ['$createdAt', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] }, 1, 0] } },
+
                         rtoCount: {
                             $sum: {
-                                $cond: [{ $in: ['$status', ['rto', 'returned']] }, 1, 0]
+                                $cond: [{ $in: ['$currentStatus', ['rto', 'returned', 'rto_initiated', 'rto_delivered', 'rto_acknowledged']] }, 1, 0]
                             }
-                        }, // Check status or rtoDetails
+                        },
+                        pastRtoCount: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $in: ['$currentStatus', ['rto', 'returned', 'rto_initiated', 'rto_delivered', 'rto_acknowledged']] },
+                                            { $lt: ['$rtoDetails.rtoInitiatedDate', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] } // Only count if RTO happened > 7 days ago
+                                        ]
+                                    },
+                                    1,
+                                    0
+                                ]
+                            }
+                        },
+
                         ndrCount: {
                             $sum: {
                                 $cond: [{ $gt: ['$ndrDetails.ndrAttempts', 0] }, 1, 0]
+                            }
+                        },
+                        pastNdrCount: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $gt: ['$ndrDetails.ndrAttempts', 0] },
+                                            { $lt: ['$ndrDetails.ndrDate', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] }
+                                        ]
+                                    },
+                                    1,
+                                    0
+                                ]
                             }
                         }
                     }
@@ -145,6 +201,8 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
             ])
         ]);
 
+
+
         // 3. Map Results
         const statsMap = new Map();
 
@@ -154,8 +212,11 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
                 orderVolume: 0,
                 revenue: 0,
                 totalShipments: 0,
+                pastTotalShipments: 0,
                 rtoCount: 0,
+                pastRtoCount: 0,
                 ndrCount: 0,
+                pastNdrCount: 0,
                 unresolvedDisputes: 0
             });
         });
@@ -167,22 +228,51 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
         });
         shipmentStats.forEach(stat => {
             const curr = statsMap.get(stat._id.toString()) || {};
-            statsMap.set(stat._id.toString(), { ...curr, totalShipments: stat.totalShipments, rtoCount: stat.rtoCount, ndrCount: stat.ndrCount });
+            statsMap.set(stat._id.toString(), {
+                ...curr,
+                totalShipments: stat.totalShipments,
+                pastTotalShipments: stat.pastTotalShipments,
+                rtoCount: stat.rtoCount,
+                pastRtoCount: stat.pastRtoCount,
+                ndrCount: stat.ndrCount,
+                pastNdrCount: stat.pastNdrCount
+            });
         });
         disputeStats.forEach(stat => {
             const curr = statsMap.get(stat._id.toString()) || {};
             statsMap.set(stat._id.toString(), { ...curr, unresolvedDisputes: stat.count });
         });
 
-        // 4. Construct Final Array with Scores
+        // 4. Construct Final Array with Scores & Past Status
+        let pastCriticalCount = 0;
+
         let resultSellers = candidateSellers.map(seller => {
             const stats = statsMap.get(seller.companyId.toString());
 
+            // --- CURRENT METRICS ---
             const rtoRate = stats.totalShipments > 0 ? (stats.rtoCount / stats.totalShipments) * 100 : 0;
             const ndrRate = stats.totalShipments > 0 ? (stats.ndrCount / stats.totalShipments) * 100 : 0;
 
-            const healthScore = calculateHealthScore({ ...stats, rtoRate });
-            const sellerStatus = healthScore > 80 ? 'excellent' : healthScore > 50 ? 'warning' : 'critical';
+            const healthScore = calculateHealthScore({ ...stats, rtoRate, ndrRate });
+
+            // Strict Status Logic (Current)
+            let sellerStatus = 'excellent';
+            if (healthScore < 50) sellerStatus = 'critical';
+            else if (healthScore < 80) sellerStatus = 'warning';
+
+            if (rtoRate > 30 || ndrRate > 20) sellerStatus = 'critical';
+            else if (rtoRate > 15 || ndrRate > 10) sellerStatus = 'warning';
+
+            // --- PAST METRICS (For Trend) ---
+            const pastRtoRate = stats.pastTotalShipments > 0 ? (stats.pastRtoCount / stats.pastTotalShipments) * 100 : 0;
+            const pastNdrRate = stats.pastTotalShipments > 0 ? (stats.pastNdrCount / stats.pastTotalShipments) * 100 : 0;
+
+            // Strict Status Logic (Past) - checking if they WERE critical last week
+            let isPastCritical = false;
+            // Simple approximation: If they crossed thresholds back then
+            if (pastRtoRate > 30 || pastNdrRate > 20) isPastCritical = true;
+
+            if (isPastCritical) pastCriticalCount++;
 
             return {
                 sellerId: seller._id.toString(),
@@ -190,15 +280,17 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
                 email: seller.email,
                 healthScore,
                 status: sellerStatus,
+                isSuspended: seller.isSuspended || false,
+                isActive: seller.isActive !== undefined ? seller.isActive : true,
                 metrics: {
                     revenue: stats.revenue,
-                    revenueGrowth: 0, // Requires historical data comparison (out of scope for quick fix)
+                    revenueGrowth: 0,
                     orderVolume: stats.orderVolume,
                     volumeGrowth: 0,
                     rtoRate: parseFloat(rtoRate.toFixed(2)),
                     ndrRate: parseFloat(ndrRate.toFixed(2)),
-                    avgDeliveryTime: 0, // Requires complex diff calculation
-                    customerSatisfaction: 4.5, // Placeholder
+                    avgDeliveryTime: 0,
+                    customerSatisfaction: 4.5,
                     unresolvedDisputes: stats.unresolvedDisputes
                 },
                 lastUpdated: new Date().toISOString()
@@ -210,41 +302,82 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
             resultSellers = resultSellers.filter(s => s.status === status);
         }
 
-        // 6. Apply Sorting
-        resultSellers.sort((a: any, b: any) => {
-            let valA = a[sortBy];
-            let valB = b[sortBy];
+        // 6. Apply Sorting for Computed Fields (if NOT DB sort)
+        let paginatedSellers = resultSellers;
+        let total = totalSellersCount;
 
-            if (sortBy === 'orderVolume') valA = a.metrics.orderVolume;
-            if (sortBy === 'revenue') valA = a.metrics.revenue;
+        if (!isDbSort && effectiveSortBy !== 'companyName') {
+            // If sorting by computed field (healthScore, revenue), we fetch all candidates, calculate metrics, and then sort/slice in memory.
+            resultSellers.sort((a: any, b: any) => {
+                let valA = a[effectiveSortBy];
+                let valB = b[effectiveSortBy];
 
-            if (sortBy === 'orderVolume') valB = b.metrics.orderVolume;
-            if (sortBy === 'revenue') valB = b.metrics.revenue;
+                if (effectiveSortBy === 'orderVolume') valA = a.metrics.orderVolume;
+                if (effectiveSortBy === 'revenue') valA = a.metrics.revenue;
 
-            if (valA < valB) return -1 * sortOrder;
-            if (valA > valB) return 1 * sortOrder;
-            return 0;
-        });
+                if (effectiveSortBy === 'orderVolume') valB = b.metrics.orderVolume;
+                if (effectiveSortBy === 'revenue') valB = b.metrics.revenue;
+                if (effectiveSortBy === 'healthScore') {
+                    valA = a.healthScore;
+                    valB = b.healthScore;
+                }
 
-        // 7. Pagination & Summary
-        const total = resultSellers.length;
+                if (valA < valB) return -1 * effectiveSortOrder;
+                if (valA > valB) return 1 * effectiveSortOrder;
+                return 0;
+            });
+
+            total = resultSellers.length;
+            const start = (page - 1) * limit;
+            paginatedSellers = resultSellers.slice(start, start + limit);
+        } else {
+            // Already sorted and limited by DB aggregation
+            paginatedSellers = resultSellers;
+        }
+
+
         const totalPages = Math.ceil(total / limit);
-        const paginatedSellers = resultSellers.slice(skip, skip + limit);
 
+        const currentCriticalCount = resultSellers.filter(s => s.status === 'critical').length;
         const byStatus = {
             excellent: resultSellers.filter(s => s.status === 'excellent').length,
             good: resultSellers.filter(s => s.status === 'good').length,
             warning: resultSellers.filter(s => s.status === 'warning').length,
-            critical: resultSellers.filter(s => s.status === 'critical').length,
+            critical: currentCriticalCount,
         };
+
         const avgHealthScore = total > 0
             ? resultSellers.reduce((acc, curr) => acc + curr.healthScore, 0) / total
             : 0;
 
+        // Calculate Trend Percentage
+        let criticalTrendValue = 0;
+        let criticalTrendPositive = false; // "Positive" here means BAD (increase in risk)
+
+        if (pastCriticalCount > 0) {
+            const diff = currentCriticalCount - pastCriticalCount;
+            criticalTrendValue = Math.round((Math.abs(diff) / pastCriticalCount) * 100);
+            criticalTrendPositive = diff > 0; // If count increased, it's a "positive" number trend, but semantically bad
+        } else if (currentCriticalCount > 0) {
+            criticalTrendValue = 100; // From 0 to something is 100% increase (effectively infinite but capped)
+            criticalTrendPositive = true;
+        }
+
         const responseData = {
             sellers: paginatedSellers,
             pagination: { total, page, limit, totalPages },
-            summary: { total, byStatus, avgHealthScore }
+            summary: {
+                total,
+                byStatus,
+                avgHealthScore,
+                trends: {
+                    criticalRisk: {
+                        value: criticalTrendValue,
+                        isIncrease: criticalTrendPositive, // True if risk INCREASED (bad)
+                        label: 'vs last week'
+                    }
+                }
+            }
         };
 
         sendSuccess(res, responseData, 'Seller health metrics retrieved successfully');
@@ -321,7 +454,7 @@ export const exportSellers = async (req: Request, res: Response, next: NextFunct
                     $group: {
                         _id: '$companyId',
                         totalShipments: { $sum: 1 },
-                        rtoCount: { $sum: { $cond: [{ $in: ['$status', ['rto', 'returned']] }, 1, 0] } },
+                        rtoCount: { $sum: { $cond: [{ $in: ['$currentStatus', ['rto', 'returned', 'rto_initiated', 'rto_delivered', 'rto_acknowledged']] }, 1, 0] } },
                         ndrCount: { $sum: { $cond: [{ $gt: ['$ndrDetails.ndrAttempts', 0] }, 1, 0] } }
                     }
                 }
@@ -355,8 +488,18 @@ export const exportSellers = async (req: Request, res: Response, next: NextFunct
         let resultSellers = candidateSellers.map(seller => {
             const stats = statsMap.get(seller.companyId.toString());
             const rtoRate = stats.totalShipments > 0 ? (stats.rtoCount / stats.totalShipments) * 100 : 0;
-            const healthScore = calculateHealthScore({ ...stats, rtoRate });
-            const sellerStatus = healthScore > 80 ? 'excellent' : healthScore > 50 ? 'warning' : 'critical';
+            // Cap score
+            const healthScore = calculateHealthScore({ ...stats, rtoRate, ndrRate: stats.totalShipments > 0 ? (stats.ndrCount / stats.totalShipments) * 100 : 0 });
+
+            // Determine Status (Strict alignment with Frontend "Risk" logic)
+            let sellerStatus = 'excellent';
+            if (healthScore < 50) sellerStatus = 'critical';
+            else if (healthScore < 80) sellerStatus = 'warning';
+
+            // FORCE Critical/Warning based on specific risk metrics
+            const ndrRate = stats.totalShipments > 0 ? (stats.ndrCount / stats.totalShipments) * 100 : 0;
+            if (rtoRate > 30 || ndrRate > 20) sellerStatus = 'critical';
+            else if (rtoRate > 15 || ndrRate > 10) sellerStatus = 'warning';
 
             return {
                 companyName: seller.companyName,
@@ -367,7 +510,7 @@ export const exportSellers = async (req: Request, res: Response, next: NextFunct
                     revenue: stats.revenue,
                     orderVolume: stats.orderVolume,
                     rtoRate: parseFloat(rtoRate.toFixed(2)),
-                    ndrRate: stats.totalShipments > 0 ? parseFloat(((stats.ndrCount / stats.totalShipments) * 100).toFixed(2)) : 0,
+                    ndrRate: parseFloat(ndrRate.toFixed(2)),
                     avgDeliveryTime: 0,
                     lastUpdated: new Date().toISOString()
                 }

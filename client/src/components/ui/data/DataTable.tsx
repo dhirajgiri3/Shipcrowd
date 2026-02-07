@@ -1,19 +1,9 @@
 'use client';
 import React, { useState } from 'react';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
-import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
-
-// Since we cannot rely on shadcn's table being present, I will create a simple Tailwind Table implementation inside this file
-// or better, I will implement the logic directly if I don't use tanstack table, 
-// BUT the prompt asked for "Product Ready", "Visual Polish". 
-// A custom manual table component is safer than assuming Tanstack table is installed if I can't check package.json.
-// However, standard Next.js stacks usually have it. 
-// Given the timeline (1 hour), I'll build a custom simple robust table component without heavy externaldeps if unsure.
-// Wait, prompt says "Tech Stack: ... React 19". It doesn't explicitly list tanstack table.
-// I'll stick to a pure React implementation for the DataTable to avoid dependency issues.
 
 interface DataTableProps<T> {
     columns: {
@@ -27,6 +17,16 @@ interface DataTableProps<T> {
     onSearch?: (value: string) => void;
     isLoading?: boolean;
     onRowClick?: (row: T) => void;
+    // Server-side props
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    onSort?: (key: string) => void;
+    pagination?: {
+        currentPage: number;
+        totalPages: number;
+        totalItems: number;
+        onPageChange: (page: number) => void;
+    };
 }
 
 export const DataTable = React.memo(DataTableComponent) as typeof DataTableComponent;
@@ -37,37 +37,69 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
     searchKey,
     onSearch,
     isLoading,
-    onRowClick
+    onRowClick,
+    sortBy,
+    sortOrder,
+    onSort,
+    pagination
 }: DataTableProps<T>) {
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
+    // Client-side state fallback
+    const [localSortConfig, setLocalSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+    const [localCurrentPage, setLocalCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
-    // Helper to get unique key for each row (supports both id and _id)
+    // Determine current sort state
+    const currentSortKey = sortBy || localSortConfig?.key;
+    const currentSortDirection = sortOrder || localSortConfig?.direction;
+
+    // Helper to get unique key for each row
     const getRowKey = (row: T, index: number): string | number => {
         return (row as any).id ?? (row as any)._id ?? index;
     };
 
-    const sortedData = [...data].sort((a, b) => {
-        if (!sortConfig) return 0;
-        const aValue = a[sortConfig.key as keyof T];
-        const bValue = b[sortConfig.key as keyof T];
+    // Client-side sorting logic (only if onSort is NOT provided)
+    const processedData = React.useMemo(() => {
+        if (onSort) return data; // Server-side sorting, data is already sorted
 
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-    });
-
-    const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-    const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-    const handleSort = (key: string) => {
-        let direction: 'asc' | 'desc' = 'asc';
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
+        let sorted = [...data];
+        if (localSortConfig) {
+            sorted.sort((a, b) => {
+                const aValue = a[localSortConfig.key as keyof T];
+                const bValue = b[localSortConfig.key as keyof T];
+                if (aValue < bValue) return localSortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return localSortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
         }
-        setSortConfig({ key, direction });
+        return sorted;
+    }, [data, localSortConfig, onSort]);
+
+    // Client-side pagination logic (only if pagination prop is NOT provided)
+    const displayData = React.useMemo(() => {
+        if (pagination) return processedData; // Server-side pagination
+
+        const start = (localCurrentPage - 1) * itemsPerPage;
+        return processedData.slice(start, start + itemsPerPage);
+    }, [processedData, localCurrentPage, pagination]);
+
+    const handleHeaderClick = (key: string) => {
+        if (onSort) {
+            onSort(key); // Trigger server-side sort
+        } else {
+            // Client-side sort toggle
+            let direction: 'asc' | 'desc' = 'asc';
+            if (localSortConfig && localSortConfig.key === key && localSortConfig.direction === 'asc') {
+                direction = 'desc';
+            }
+            setLocalSortConfig({ key, direction });
+        }
     };
+
+    // Pagination helpers
+    const currentPage = pagination?.currentPage || localCurrentPage;
+    const totalPages = pagination?.totalPages || Math.ceil(processedData.length / itemsPerPage);
+    const totalItems = pagination?.totalItems || data.length;
+    const handlePageChange = pagination?.onPageChange || setLocalCurrentPage;
 
     return (
         <div className="space-y-4">
@@ -76,24 +108,37 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
                     <table className="w-full text-sm text-left">
                         <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                             <tr>
-                                {columns.map((col, idx) => (
-                                    <th
-                                        key={idx}
-                                        className={cn(
-                                            "px-5 py-3 font-medium text-[var(--text-muted)] whitespace-nowrap",
-                                            col.width,
-                                            typeof col.accessorKey === 'string' ? "cursor-pointer hover:bg-[var(--bg-hover)] transition-colors" : ""
-                                        )}
-                                        onClick={() => typeof col.accessorKey === 'string' && handleSort(col.accessorKey as string)}
-                                    >
-                                        <div className="flex items-center space-x-1">
-                                            <span>{col.header}</span>
-                                            {typeof col.accessorKey === 'string' && (
-                                                <ArrowUpDown className="w-3 h-3 text-[var(--text-muted)]" />
+                                {columns.map((col, idx) => {
+                                    const isSortable = typeof col.accessorKey === 'string';
+                                    const isSorted = currentSortKey === col.accessorKey;
+
+                                    return (
+                                        <th
+                                            key={idx}
+                                            className={cn(
+                                                "px-5 py-3 font-medium text-[var(--text-muted)] whitespace-nowrap select-none",
+                                                col.width,
+                                                isSortable ? "cursor-pointer hover:bg-[var(--bg-hover)] transition-colors group" : ""
                                             )}
-                                        </div>
-                                    </th>
-                                ))}
+                                            onClick={() => isSortable && handleHeaderClick(col.accessorKey as string)}
+                                        >
+                                            <div className="flex items-center space-x-1">
+                                                <span className={isSorted ? "text-[var(--primary-blue)]" : ""}>{col.header}</span>
+                                                {isSortable && (
+                                                    <span className="flex flex-col justify-center h-3 w-3">
+                                                        {isSorted ? (
+                                                            currentSortDirection === 'asc' ?
+                                                                <ArrowUp className="w-3 h-3 text-[var(--primary-blue)]" /> :
+                                                                <ArrowDown className="w-3 h-3 text-[var(--primary-blue)]" />
+                                                        ) : (
+                                                            <ArrowUpDown className="w-3 h-3 text-[var(--text-muted)] opacity-0 group-hover:opacity-50 transition-opacity" />
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </th>
+                                    );
+                                })}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -101,21 +146,21 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
                                 <tr>
                                     <td colSpan={columns.length} className="p-0">
                                         <TableSkeleton
-                                            rows={5}
+                                            rows={pagination ? 10 : 5}
                                             columns={columns.length}
                                             showHeader={false}
                                         />
                                     </td>
                                 </tr>
-                            ) : paginatedData.length > 0 ? (
-                                paginatedData.map((row, idx) => (
+                            ) : displayData.length > 0 ? (
+                                displayData.map((row, idx) => (
                                     <tr
                                         key={getRowKey(row, idx)}
                                         className={`hover:bg-[var(--bg-hover)] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                                         onClick={() => onRowClick?.(row)}
                                     >
-                                        {columns.map((col, idx) => (
-                                            <td key={idx} className="px-5 py-3 text-[var(--text-primary)]">
+                                        {columns.map((col, colIdx) => (
+                                            <td key={colIdx} className="px-5 py-3 text-[var(--text-primary)]">
                                                 {col.cell ? col.cell(row) : ((row as any)[col.accessorKey as string] as React.ReactNode)}
                                             </td>
                                         ))}
@@ -134,34 +179,36 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-2">
-                <p className="text-sm text-[var(--text-muted)]">
-                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(currentPage * itemsPerPage, data.length)}</span> of{' '}
-                    <span className="font-medium">{data.length}</span> results
-                </p>
-                <div className="flex items-center space-x-2">
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <span className="text-sm font-medium text-[var(--text-primary)]">
-                        Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </Button>
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between px-2">
+                    <p className="text-sm text-[var(--text-muted)]">
+                        Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                        <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
+                        <span className="font-medium">{totalItems}</span> results
+                    </p>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                            disabled={currentPage === 1 || isLoading}
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-sm font-medium text-[var(--text-primary)]">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                            disabled={currentPage === totalPages || isLoading}
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

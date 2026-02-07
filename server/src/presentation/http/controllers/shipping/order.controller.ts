@@ -115,48 +115,37 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
         const auth = guardChecks(req);
         requireCompanyContext(auth);
 
-        const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
+        const { page, limit } = parsePagination(req.query as Record<string, any>);
+        const sortBy = req.query.sortBy as string || 'createdAt';
+        const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
 
-        const filter: Record<string, any> = { companyId: auth.companyId, isDeleted: false };
+        // Extract filters
+        const queryParams = {
+            status: req.query.status,
+            search: req.query.search,
+            startDate: req.query.startDate,
+            endDate: req.query.endDate,
+            warehouse: req.query.warehouse,
+            phone: req.query.phone
+        };
 
-        if (req.query.status) {
-            const statuses = (req.query.status as string).split(',');
-            if (statuses.length > 1) {
-                filter.currentStatus = { $in: statuses };
-            } else {
-                filter.currentStatus = req.query.status;
-            }
-        }
-        if (req.query.phone) filter['customerInfo.phone'] = { $regex: req.query.phone, $options: 'i' };
-        if (req.query.warehouse) filter.warehouseId = new mongoose.Types.ObjectId(req.query.warehouse as string);
+        // Use the new Faceted Search service method
+        const result = await OrderService.getInstance().listOrdersWithStats(
+            auth.companyId,
+            queryParams,
+            { page, limit, sortBy, sortOrder }
+        );
 
-        if (req.query.startDate || req.query.endDate) {
-            filter.createdAt = {};
-            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate as string);
-            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate as string);
-        }
-
-        if (req.query.search) {
-            const searchRegex = { $regex: req.query.search, $options: 'i' };
-            filter.$or = [
-                { orderNumber: searchRegex },
-                { 'customerInfo.name': searchRegex },
-                { 'customerInfo.phone': searchRegex },
-            ];
-        }
-
-        const [orders, total] = await Promise.all([
-            Order.find(filter)
-                .populate('warehouseId', 'name address')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            Order.countDocuments(filter),
-        ]);
-
-        const pagination = calculatePagination(total, page, limit);
-        sendPaginated(res, orders, pagination, 'Orders retrieved successfully');
+        sendPaginated(res, result.orders, {
+            currentPage: result.page,
+            totalPages: result.pages,
+            totalItems: result.total,
+            itemsPerPage: limit,
+            hasNextPage: result.page < result.pages,
+            hasPrevPage: result.page > 1
+        }, 'Orders retrieved successfully', {
+            stats: result.stats // Attach stats to response metadata
+        });
     } catch (error) {
         logger.error('Error fetching orders:', error);
         next(error);

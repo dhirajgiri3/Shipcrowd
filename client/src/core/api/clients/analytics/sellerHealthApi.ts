@@ -30,6 +30,8 @@ export interface SellerHealth {
         performance: 'improving' | 'declining' | 'stable';
     };
     alerts: string[];
+    isSuspended: boolean;
+    isActive: boolean;
     lastUpdated: string;
 }
 
@@ -55,6 +57,13 @@ export interface SellerHealthResponse {
         total: number;
         byStatus: Record<string, number>;
         avgHealthScore: number;
+        trends?: {
+            criticalRisk: {
+                value: number;
+                isIncrease: boolean;
+                label: string;
+            };
+        };
     };
 }
 

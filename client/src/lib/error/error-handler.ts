@@ -149,3 +149,10 @@ export function dismissToast(toastId: string | number) {
 export function dismissAllToasts() {
     toast.dismiss();
 }
+
+/**
+ * Show error toast (Simple wrapper)
+ */
+export function showErrorToast(message: string) {
+    toast.error(message, { id: message });
+}

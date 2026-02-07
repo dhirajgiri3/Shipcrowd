@@ -85,7 +85,7 @@ router.post(
 router.post(
     '/:id/suspend',
     authenticate,
-    requireAccess({ roles: ['super_admin'] }),
+    requireAccess({ roles: ['super_admin', 'admin'] }),
     asyncHandler(userManagementController.suspendUser)
 );
 
@@ -98,7 +98,7 @@ router.post(
 router.post(
     '/:id/unsuspend',
     authenticate,
-    requireAccess({ roles: ['super_admin'] }),
+    requireAccess({ roles: ['super_admin', 'admin'] }),
     asyncHandler(userManagementController.unsuspendUser)
 );
 

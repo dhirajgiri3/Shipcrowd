@@ -148,10 +148,10 @@ export function useUserDetails(userId: string | null, options?: UseQueryOptions<
         queryKey: ['admin', 'users', userId],
         queryFn: async () => {
             if (!userId) return null;
-            const response = await apiClient.get<ApiResponse<{ user: any }>>(
+            const response = await apiClient.get<ApiResponse<{ user: any; stats?: any }>>(
                 `/admin/users/${userId}`
             );
-            return response.data.data.user;
+            return response.data.data; // Returns { user, stats }
         },
         enabled: !!userId,
         ...CACHE_TIMES.MEDIUM,

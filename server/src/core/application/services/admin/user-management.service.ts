@@ -11,6 +11,8 @@
 import mongoose from 'mongoose';
 import User from '../../../../infrastructure/database/mongoose/models/iam/users/user.model';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
+import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
+import Dispute from '../../../../infrastructure/database/mongoose/models/crm/disputes/dispute.model';
 import { AuthorizationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
@@ -331,7 +333,7 @@ class UserManagementService {
         }
 
         const user = await User.findById(userId)
-            .populate('companyId', 'name status wallet')
+            .populate('companyId')
             .select('-password -security')
             .lean();
 
@@ -339,7 +341,73 @@ class UserManagementService {
             throw new NotFoundError('User not found', ErrorCode.RES_NOT_FOUND);
         }
 
-        return user;
+        let stats = null;
+
+        // If user is a seller (has company), fetch aggregations
+        if (user.companyId) {
+            const cid = user.companyId._id;
+
+            const [
+                totalOrders,
+                revenueData,
+                totalShipments,
+                rtoShipments,
+                ndrShipments,
+                openDisputes,
+                walletBalance
+            ] = await Promise.all([
+                Order.countDocuments({ companyId: cid }),
+                Order.aggregate([
+                    { $match: { companyId: cid, status: { $nin: ['cancelled', 'voided'] } } },
+                    { $group: { _id: null, total: { $sum: '$totals.total' } } }
+                ]),
+                Shipment.countDocuments({ companyId: cid }),
+                Shipment.countDocuments({
+                    companyId: cid,
+                    currentStatus: { $in: ['rto', 'returned', 'rto_initiated', 'rto_delivered', 'rto_acknowledged'] }
+                }),
+                Shipment.countDocuments({
+                    companyId: cid,
+                    'ndrDetails.ndrAttempts': { $gt: 0 }
+                }),
+                Dispute.countDocuments({
+                    companyId: cid,
+                    status: { $in: ['open', 'investigation', 'decision'] }
+                }),
+                // Access wallet from company doc directly if not populated, but we populated it
+                Promise.resolve((user.companyId as any).wallet?.balance || 0)
+            ]);
+
+            const revenue = revenueData.length > 0 ? revenueData[0].total : 0;
+            const rtoRate = totalShipments > 0 ? (rtoShipments / totalShipments) * 100 : 0;
+            const ndrRate = totalShipments > 0 ? (ndrShipments / totalShipments) * 100 : 0;
+
+            logger.info(`Fetched seller stats for ${user.email} (Company: ${cid}):`, {
+                revenue, totalOrders, totalShipments, rtoShipments, openDisputes
+            });
+
+            stats = {
+                orders: {
+                    total: totalOrders,
+                    revenue: revenue
+                },
+                shipments: {
+                    total: totalShipments,
+                    rto: rtoShipments,
+                    rtoRate: parseFloat(rtoRate.toFixed(2)),
+                    ndr: ndrShipments,
+                    ndrRate: parseFloat(ndrRate.toFixed(2))
+                },
+                disputes: {
+                    open: openDisputes
+                },
+                wallet: {
+                    balance: walletBalance
+                }
+            };
+        }
+
+        return { user, stats };
     }
 
 

@@ -61,13 +61,13 @@ export function AuthGuard({
 
       // ✅ FIX: Role hierarchy - super_admin has all admin privileges
       const isSuperAdmin = user.role === 'super_admin';
-      const isAdminAccessingSeller = (user.role === 'admin' || isSuperAdmin) && allowedRoles.includes('seller');
 
       // Super admin can access any admin or seller route
       const hasRequiredRole = allowedRoles.includes(user.role) ||
         (isSuperAdmin && allowedRoles.includes('admin'));
 
-      if (!hasRequiredRole && !isAdminAccessingSeller) {
+      // Check role-based access
+      if (!hasRequiredRole) {
         const destination = getDefaultRedirectForUser(user);
         if (pathname !== destination && !pathname.startsWith(`${destination}/`)) {
           router.replace(destination);
