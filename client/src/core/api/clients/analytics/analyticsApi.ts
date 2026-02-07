@@ -16,6 +16,8 @@ export interface DeliveryPerformanceData {
     delivered: number;
     rto: number;
     ndr: number;
+    tat?: number; // Turnaround Time
+    revenue?: number; // Revenue for the day
 }
 
 export interface ZoneDistribution {

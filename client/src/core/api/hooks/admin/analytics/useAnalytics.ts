@@ -5,10 +5,11 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { analyticsApi, DateRange } from '../../../clients/analytics/analyticsApi'; // Adjust path
-import { queryKeys } from '../../../config/query-keys'; // Adjust path
-import { QUERY_CONFIG } from '../../../config/query-client'; // Adjust path
-import { RETRY_CONFIG } from '../../../config/cache.config'; // Adjust path
+import { analyticsApi, DateRange } from '../../../clients/analytics/analyticsApi';
+import { profitApi } from '../../../clients/finance/profitApi';
+import { queryKeys } from '../../../config/query-keys';
+import { QUERY_CONFIG } from '../../../config/query-client';
+import { RETRY_CONFIG } from '../../../config/cache.config';
 
 // ==========================================
 // DATA LAYER (API Hooks)
@@ -33,6 +34,18 @@ export const useZoneDistribution = () => {
     return useQuery({
         queryKey: queryKeys.analytics.geographic(),
         queryFn: () => analyticsApi.getZoneDistribution(),
+        staleTime: QUERY_CONFIG.staleTime.analytics,
+        retry: RETRY_CONFIG.DEFAULT,
+    });
+};
+
+/**
+ * Hook to fetch profit stats
+ */
+export const useProfitStats = (startDate: string, endDate: string) => {
+    return useQuery({
+        queryKey: ['admin', 'profit', 'stats', startDate, endDate],
+        queryFn: () => profitApi.getProfitData({ dateFrom: startDate, dateTo: endDate }),
         staleTime: QUERY_CONFIG.staleTime.analytics,
         retry: RETRY_CONFIG.DEFAULT,
     });
@@ -73,9 +86,16 @@ export function useAnalyticsPage() {
     // Use co-located data hooks
     const { data: deliveryData, isLoading: isLoadingDelivery } = useDeliveryPerformance({ startDate, endDate });
     const { data: zoneData, isLoading: isLoadingZones } = useZoneDistribution();
+    const { data: profitData, isLoading: isLoadingProfit } = useProfitStats(startDate, endDate);
 
     const deliveryPerformanceData = deliveryData?.data || [];
     const zoneDistribution = zoneData?.data || [];
+    const profitStats = profitData?.stats || {
+        totalProfit: 0,
+        totalCharged: 0,
+        totalShipments: 0,
+        avgMargin: 0
+    };
 
     const handleDateRangeChange = (value: string) => {
         setDateRange(value);
@@ -86,7 +106,9 @@ export function useAnalyticsPage() {
         handleDateRangeChange,
         deliveryPerformanceData,
         zoneDistribution,
+        profitStats,
         isLoadingDelivery,
         isLoadingZones,
+        isLoadingProfit,
     };
 }
