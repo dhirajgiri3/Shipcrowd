@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
@@ -160,9 +161,9 @@ export function ShipmentsClient() {
             accessorKey: 'id',
             cell: (row: Shipment) => (
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedShipment(row)}>
-                        <Eye className="w-4 h-4" />
-                    </Button>
+                    <ViewActionButton
+                        onClick={() => setSelectedShipment(row)}
+                    />
                     <Button variant="ghost" size="sm">
                         <FileText className="w-4 h-4" />
                     </Button>

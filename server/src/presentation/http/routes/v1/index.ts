@@ -103,6 +103,7 @@ import impersonationRoutes from './admin/impersonation.routes';
 import featureFlagRoutes from './admin/feature-flag.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
 import disputeMetricsRoutes from './admin/dispute-metrics.routes';
+import adminRatecardRoutes from './admin/admin-ratecard.routes';
 
 // ============================================================================
 // 10. WEBHOOKS
@@ -213,6 +214,7 @@ router.use('/admin/impersonation', impersonationRoutes);
 router.use('/admin/feature-flags', featureFlagRoutes);
 router.use('/admin/sku-weight-profiles', skuWeightProfileRoutes);
 router.use('/admin/disputes/weight', disputeMetricsRoutes);
+router.use('/admin/ratecards', adminRatecardRoutes);
 
 // 10. Webhooks
 router.use('/webhooks/velocity', velocityWebhookRoutes);

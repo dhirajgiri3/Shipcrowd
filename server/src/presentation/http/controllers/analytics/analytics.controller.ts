@@ -373,12 +373,25 @@ export const getAdminDashboard = async (
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
-        const startDate = req.query.startDate
-            ? new Date(req.query.startDate as string)
+        // Parse dates; treat date-only YYYY-MM-DD endDate as end-of-day for inclusive range
+        const rawStart = req.query.startDate as string | undefined;
+        const rawEnd = req.query.endDate as string | undefined;
+        const startDate = rawStart
+            ? new Date(rawStart)
             : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const endDate = req.query.endDate
-            ? new Date(req.query.endDate as string)
-            : new Date();
+        let endDate: Date;
+        if (rawEnd) {
+            const d = new Date(rawEnd);
+            // If endDate is date-only (no time part), set to end of that day (23:59:59.999)
+            if (/^\d{4}-\d{2}-\d{2}$/.test(rawEnd.trim())) {
+                endDate = new Date(d);
+                endDate.setUTCHours(23, 59, 59, 999);
+            } else {
+                endDate = d;
+            }
+        } else {
+            endDate = new Date();
+        }
 
         const orderMatch = { isDeleted: false, createdAt: { $gte: startDate, $lte: endDate } };
         const periodMs = endDate.getTime() - startDate.getTime();
@@ -466,7 +479,8 @@ export const getAdminDashboard = async (
         let totalOrders = 0;
         let totalRevenue = 0;
         for (const stat of orderFacetResult.globalStats) {
-            statusCounts[stat._id] = stat.count;
+            const key = (stat._id ?? '').toString().toLowerCase();
+            statusCounts[key] = (statusCounts[key] || 0) + stat.count;
             totalOrders += stat.count;
             totalRevenue += stat.totalValue;
         }
@@ -491,7 +505,8 @@ export const getAdminDashboard = async (
         let prevTotalOrders = 0;
         let prevTotalRevenue = 0;
         for (const stat of previousFacetResult) {
-            prevStatusCounts[stat._id] = stat.count;
+            const key = (stat._id ?? '').toString().toLowerCase();
+            prevStatusCounts[key] = (prevStatusCounts[key] || 0) + stat.count;
             prevTotalOrders += stat.count;
             prevTotalRevenue += stat.totalValue;
         }

@@ -67,6 +67,17 @@ export const requireCompanyContext = (auth: { companyId: string }): void => {
 };
 
 /**
+ * Require platform admin access (admin or super_admin role).
+ * Call after guardChecks for admin-only endpoints.
+ * Throws AuthenticationError if user is not an admin or super_admin.
+ */
+export const requirePlatformAdmin = (auth: { isAdmin: boolean }): void => {
+    if (!auth.isAdmin) {
+        throw new AuthenticationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
+    }
+};
+
+/**
  * Validate MongoDB ObjectId format
  */
 export const isValidObjectId = (id: string): boolean => {
@@ -219,6 +230,7 @@ export const validateStatusTransition = (
 export default {
     guardChecks,
     requireCompanyContext,
+    requirePlatformAdmin,
     isValidObjectId,
     validateObjectId,
     handleZodError,

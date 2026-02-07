@@ -158,6 +158,31 @@ export const NDR_STATUS_CONFIG: Record<NDRStatus, StatusConfig> = {
     color: 'error',
     description: 'Failed, converting to RTO',
   },
+  detected: {
+    label: 'Detected',
+    color: 'warning',
+    description: 'Issue detected',
+  },
+  in_resolution: {
+    label: 'In Resolution',
+    color: 'info',
+    description: 'Resolution in progress',
+  },
+  rto_triggered: {
+    label: 'RTO Triggered',
+    color: 'error',
+    description: 'RTO process started',
+  },
+  action_required: {
+    label: 'Action Required',
+    color: 'error',
+    description: 'Action required by seller',
+  },
+  pending_seller: {
+    label: 'Pending Seller',
+    color: 'warning',
+    description: 'Waiting for seller response',
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -408,6 +433,97 @@ export const COURIER_STATUS_CONFIG: Record<string, StatusConfig> = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// COMMISSION STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const COMMISSION_STATUS_CONFIG: Record<string, StatusConfig> = {
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'Commission pending approval'
+  },
+  approved: {
+    label: 'Approved',
+    color: 'success',
+    description: 'Commission approved'
+  },
+  rejected: {
+    label: 'Rejected',
+    color: 'error',
+    description: 'Commission rejected'
+  },
+  paid: {
+    label: 'Paid',
+    color: 'info',
+    description: 'Commission paid to sales rep'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KYC STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const KYC_STATUS_CONFIG: Record<string, StatusConfig> = {
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'Awaiting verification'
+  },
+  verified: {
+    label: 'Verified',
+    color: 'success',
+    description: 'KYC verified successfully'
+  },
+  rejected: {
+    label: 'Rejected',
+    color: 'error',
+    description: 'KYC rejected'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ORDER STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ORDER_STATUS_CONFIG: Record<string, StatusConfig> = {
+  new: {
+    label: 'New',
+    color: 'info',
+    description: 'Order placed'
+  },
+  ready: {
+    label: 'Ready',
+    color: 'pending',
+    description: 'Ready for pickup'
+  },
+  shipped: {
+    label: 'Shipped',
+    color: 'primary',
+    description: 'Order shipped'
+  },
+  delivered: {
+    label: 'Delivered',
+    color: 'success',
+    description: 'Order delivered'
+  },
+  rto: {
+    label: 'RTO',
+    color: 'error',
+    description: 'Returned to origin'
+  },
+  cancelled: {
+    label: 'Cancelled',
+    color: 'error',
+    description: 'Order cancelled'
+  },
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'Order pending'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -421,13 +537,16 @@ type StatusConfigMap =
   | typeof WEBHOOK_STATUS_CONFIG
   | typeof COMPANY_STATUS_CONFIG
   | typeof COUPON_STATUS_CONFIG
-  | typeof COURIER_STATUS_CONFIG;
+  | typeof COURIER_STATUS_CONFIG
+  | typeof KYC_STATUS_CONFIG
+  | typeof ORDER_STATUS_CONFIG
+  | typeof COMMISSION_STATUS_CONFIG;
 
 /**
  * Get status configuration for a specific domain and status
  */
 export function getStatusConfig(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier',
+  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier' | 'kyc' | 'order' | 'commission',
   status: string
 ): StatusConfig | undefined {
   const configs: Record<string, StatusConfigMap> = {
@@ -441,6 +560,9 @@ export function getStatusConfig(
     company: COMPANY_STATUS_CONFIG,
     coupon: COUPON_STATUS_CONFIG,
     courier: COURIER_STATUS_CONFIG,
+    kyc: KYC_STATUS_CONFIG,
+    order: ORDER_STATUS_CONFIG,
+    commission: COMMISSION_STATUS_CONFIG,
   };
 
   const config = configs[domain];
@@ -451,7 +573,7 @@ export function getStatusConfig(
  * Get CSS color class for a status
  */
 export function getStatusColorClass(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier',
+  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier' | 'kyc' | 'order' | 'commission',
   status: string
 ): string {
   const config = getStatusConfig(domain, status);
@@ -462,7 +584,7 @@ export function getStatusColorClass(
  * Get status label for a status
  */
 export function getStatusLabel(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier',
+  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier' | 'kyc' | 'order' | 'commission',
   status: string
 ): string {
   const config = getStatusConfig(domain, status);
@@ -484,4 +606,7 @@ export const STATUS_CONFIGS = {
   company: COMPANY_STATUS_CONFIG,
   coupon: COUPON_STATUS_CONFIG,
   courier: COURIER_STATUS_CONFIG,
+  kyc: KYC_STATUS_CONFIG,
+  order: ORDER_STATUS_CONFIG,
+  commission: COMMISSION_STATUS_CONFIG,
 } as const;

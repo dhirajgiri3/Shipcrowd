@@ -137,11 +137,18 @@ export class OrderService extends CachedService {
             ];
         }
 
-        // Date Range
+        // Date Range (endDate as date-only YYYY-MM-DD is treated as end-of-day for inclusive range)
         if (queryParams.startDate || queryParams.endDate) {
             matchStage.createdAt = {};
             if (queryParams.startDate) matchStage.createdAt.$gte = new Date(queryParams.startDate);
-            if (queryParams.endDate) matchStage.createdAt.$lte = new Date(queryParams.endDate);
+            if (queryParams.endDate) {
+                const endRaw = String(queryParams.endDate).trim();
+                const endD = new Date(queryParams.endDate);
+                if (/^\d{4}-\d{2}-\d{2}$/.test(endRaw)) {
+                    endD.setUTCHours(23, 59, 59, 999);
+                }
+                matchStage.createdAt.$lte = endD;
+            }
         }
 
         // Warehouse Filter

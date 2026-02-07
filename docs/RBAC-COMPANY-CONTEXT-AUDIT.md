@@ -22,7 +22,7 @@ This document records the systematic audit for **requireCompanyContext** (backen
 | **cod-analytics.controller** | getForecast, getHealthMetrics, getCarrierPerformance |
 | **early-cod.controller** | checkEligibility, enroll, createEarlyBatch, getEnrollment |
 | **shipment.controller** | createShipment, getShipmentById, trackShipment, updateShipmentStatus, deleteShipment, recommendCourier *(getShipments uses requireCompany: false and returns empty when no company)* |
-| **ratecard.controller** | All handlers (createRateCard, getRateCards, getRateCardById, updateRateCard, calculateRate, compareCarrierRates, getRateCardAnalytics, getRateCardRevenueSeries, exportRateCards, bulkUpdateRateCards, importRateCards, calculateSmartRates, previewPrice, cloneRateCard, deleteRateCard, previewRateCardSelection, simulateRateCardChange, getApplicableRateCards) |
+| **ratecard.controller** | All handlers (createRateCard, getRateCards, getRateCardById, updateRateCard, calculateRate, compareCarrierRates, getRateCardAnalytics, getRateCardRevenueSeries, exportRateCards, bulkUpdateRateCards, importRateCards, calculateSmartRates, previewPrice, cloneRateCard, deleteRateCard, previewRateCardSelection, simulateRateCardChange, getApplicableRateCards) - **Seller-scoped only, requires company** |
 | **warehouse.controller** | createWarehouse, getWarehouses, getWarehouseById, updateWarehouse, deleteWarehouse, importWarehouses *(admin may pass params.companyId; requireCompanyContext only when no param)* |
 | **support.controller** | createTicket, getTickets, getTicketById, updateTicket, addNote, getMetrics |
 | **invoice.controller** | createInvoice, listInvoices, createCreditNote, getGSTSummary, exportGSTR |
@@ -70,6 +70,7 @@ This document records the systematic audit for **requireCompanyContext** (backen
 - **user-management.controller**, **feature-flag.controller**, **impersonation.controller**: Platform-level; use `guardChecks(req, { requireCompany: false })`.
 - **weight-disputes**: resolveDispute, getDisputeAnalytics, batchOperation are admin-only and may operate across companies; no requireCompanyContext.
 - **audit-log.middleware**: Logs with `req.user.companyId` when present; does not throw when missing (audit can be null company).
+- **admin-ratecard.controller**: NEW - Platform-wide rate card management for admins; uses `guardChecks(req, { requireCompany: false })` + `requirePlatformAdmin(auth)`. All endpoints support viewing/managing rate cards across all companies.
 
 ### Controllers / code still using req.user (by design or equivalent)
 
@@ -137,3 +138,65 @@ These use `req.user._id` / `req.user.companyId` but are either per-user (no comp
 3. **Frontend hooks:** For any hook calling `/finance/`, `/analytics/` (company-scoped), or orders/shipments, ensure `enabled` includes `hasCompanyContext`.
 
 Last audit: 2026-02-06. Full coverage: zone, onboarding, return (logistics), woocommerce, flipkart, amazon, shopify, product-mapping (all three), commission (sales-representative, payout, commission-transaction, commission-rule, commission-analytics), logistics/dispute, notification, notification-template, seller-health, promo-code, crm (sales-rep, leads, dispute), identity (profile, consent). No remaining req.user.companyId company-scoped handlers.
+
+## Recent Fixes
+
+### Rate Card Admin Access Fix (2026-02-07)
+
+**Issue**: Admin users without a company were unable to access the admin rate cards page (`/admin/ratecards`), resulting in 401 errors with message "User is not associated with any company".
+
+**Root Cause**: The admin page was using seller-scoped rate card endpoints (`/api/v1/ratecards`) which require `companyId` via `requireCompanyContext(auth)`. Admins without a company cannot pass this check.
+
+**Solution**: Implemented separate admin endpoints following the established pattern in the codebase.
+
+**Changes Made**:
+
+1. **Backend - New Admin Controller** ([server/src/presentation/http/controllers/admin/admin-ratecard.controller.ts](server/src/presentation/http/controllers/admin/admin-ratecard.controller.ts)):
+   - `getAdminRateCards`: List all rate cards across all companies (with filters)
+   - `getAdminRateCardById`: Get any rate card by ID
+   - `createAdminRateCard`: Create rate card for any company
+   - `updateAdminRateCard`: Update any rate card
+   - `deleteAdminRateCard`: Delete any rate card
+   - `cloneAdminRateCard`: Clone any rate card
+   - `getAdminRateCardStats`: Platform-wide statistics
+   - All endpoints use `guardChecks(req, { requireCompany: false })` + `requirePlatformAdmin(auth)`
+
+2. **Backend - New Helper** ([server/src/shared/helpers/controller.helpers.ts](server/src/shared/helpers/controller.helpers.ts)):
+   - Added `requirePlatformAdmin(auth)` helper to verify admin/super_admin role
+
+3. **Backend - Admin Routes** ([server/src/presentation/http/routes/v1/admin/admin-ratecard.routes.ts](server/src/presentation/http/routes/v1/admin/admin-ratecard.routes.ts)):
+   - Registered all admin rate card endpoints at `/api/v1/admin/ratecards`
+   - Integrated into main router at [server/src/presentation/http/routes/v1/index.ts](server/src/presentation/http/routes/v1/index.ts)
+
+4. **Backend - Seller Endpoints Unchanged** ([server/src/presentation/http/controllers/shipping/ratecard.controller.ts](server/src/presentation/http/controllers/shipping/ratecard.controller.ts)):
+   - Seller endpoints at `/api/v1/ratecards` remain company-scoped (require `companyId`)
+   - No changes to seller rate card business logic
+
+5. **Frontend - Admin Hooks** ([client/src/core/api/hooks/admin/useAdminRateCards.ts](client/src/core/api/hooks/admin/useAdminRateCards.ts)):
+   - `useAdminRateCards`: List all rate cards with filters
+   - `useAdminRateCard`: Get single rate card
+   - `useAdminRateCardStats`: Get platform stats
+   - `useCreateAdminRateCard`, `useUpdateAdminRateCard`, `useDeleteAdminRateCard`, `useCloneAdminRateCard`
+
+6. **Frontend - Admin Component** ([client/app/admin/ratecards/components/RatecardsClient.tsx](client/app/admin/ratecards/components/RatecardsClient.tsx)):
+   - Updated to use admin hooks instead of seller hooks
+   - Now calls `/api/v1/admin/ratecards` for platform-wide view
+
+**Architecture Pattern**:
+```
+Seller:  /api/v1/ratecards        → Company-scoped (requires companyId)
+Admin:   /api/v1/admin/ratecards  → Platform-wide (admin/super_admin only)
+```
+
+**Benefits**:
+- ✅ Clear separation of concerns (admin vs seller logic)
+- ✅ Explicit RBAC at route level
+- ✅ Admin can view/manage rate cards across all companies
+- ✅ Seller endpoints remain secure and isolated
+- ✅ Follows established codebase patterns (e.g., `/admin/users`, `/admin/feature-flags`)
+- ✅ Easier to audit and maintain
+
+**Testing**:
+- Admin without company can now access `/admin/ratecards` successfully
+- Seller rate card access remains unchanged and secure
+- No 401 errors for admin users

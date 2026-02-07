@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import {
     PackageX,
     Search,
@@ -54,23 +56,7 @@ export function ReturnsClient() {
 
     const returns = returnsData?.returns || [];
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'requested':
-                return <Badge variant="warning" className="gap-1"><Clock className="h-3 w-3" />Requested</Badge>;
-            case 'approved':
-                return <Badge variant="info" className="gap-1"><CheckCircle className="h-3 w-3" />Approved</Badge>;
-            case 'in_transit':
-                return <Badge variant="default" className="gap-1 bg-[var(--primary-blue)] text-white"><RefreshCw className="h-3 w-3" />In Transit</Badge>;
-            case 'rejected':
-                return <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" />Rejected</Badge>;
-            case 'delivered':
-            case 'completed':
-                return <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" />Completed</Badge>;
-            default:
-                return <Badge variant="neutral">{status.replace('_', ' ')}</Badge>;
-        }
-    };
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -234,20 +220,16 @@ export function ReturnsClient() {
                                             <span className="text-sm font-medium text-[var(--text-primary)]">{formatCurrency(item.refundAmount || 0)}</span>
                                         </td>
                                         <td className="p-4 text-center">
-                                            {getStatusBadge(item.status)}
+                                            <StatusBadge domain="return" status={item.status} />
                                         </td>
                                         <td className="p-4 text-right">
                                             <span className="text-xs text-[var(--text-muted)]">{formatDate(item.createdAt)}</span>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
+                                            <ViewActionButton
                                                 onClick={() => addToast('Details view coming soon', 'info')}
                                                 className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
+                                            />
                                         </td>
                                     </tr>
                                 ))}

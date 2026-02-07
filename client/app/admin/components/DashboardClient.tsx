@@ -13,6 +13,8 @@ import {
     AlertTriangle,
     ArrowUpRight,
     BrainCircuit,
+    CheckCircle2,
+    Clock,
     DollarSign,
     Package,
     PackageX,
@@ -22,6 +24,7 @@ import {
     Shield,
     ShoppingCart,
     Target,
+    Truck,
     TrendingDown,
     Users,
     X,
@@ -82,6 +85,9 @@ const itemVariants = {
         opacity: 1
     }
 };
+
+/** Sleek donut palette (order: Pending, Delivered, RTO, In Transit) — indigo, teal, slate, violet */
+const ORDER_PIPELINE_DONUT_PALETTE = ['#6366f1', '#0d9488', '#64748b', '#a78bfa'];
 
 // --- COMPONENTS ---
 
@@ -260,17 +266,20 @@ export function DashboardClient() {
         [router]
     );
 
+    /** Order status breakdown: Pending primary, Delivered secondary, then RTO and In Transit. */
     const orderStatusData = useMemo(() => {
         if (!adminData) return [];
         const { totalOrders, pendingOrders, deliveredOrders, rtoCount } = adminData;
+        const delivered = deliveredOrders ?? 0;
+        const pending = pendingOrders ?? 0;
         const rto = rtoCount ?? 0;
-        const other = Math.max(0, totalOrders - (pendingOrders ?? 0) - (deliveredOrders ?? 0) - rto);
+        const other = Math.max(0, (totalOrders ?? 0) - pending - delivered - rto);
         return [
-            { name: 'Delivered', value: deliveredOrders ?? 0, color: 'var(--success)' },
-            { name: 'Pending', value: pendingOrders ?? 0, color: 'var(--warning)' },
-            ...(rto > 0 ? [{ name: 'RTO', value: rto, color: 'var(--error)' }] : []),
-            ...(other > 0 ? [{ name: 'In Transit / Other', value: other, color: 'var(--primary-blue)' }] : []),
-        ].filter((item) => item.value > 0);
+            { name: 'Pending', value: pending, color: 'var(--warning)' },
+            { name: 'Delivered', value: delivered, color: 'var(--success)' },
+            { name: 'RTO', value: rto, color: 'var(--error)' },
+            { name: 'In Transit / Other', value: other, color: 'var(--primary-blue)' },
+        ];
     }, [adminData]);
 
     const activeSellersCount = adminData?.totalRegisteredSellers ?? 0;
@@ -295,6 +304,31 @@ export function DashboardClient() {
         if (pending > delivered) return 'High pending share';
         return null;
     }, [orderStatusData, adminData?.totalOrders]);
+
+    /** Order status segments with percentage and orders URL filter for drill-down. All four statuses for accurate display. */
+    const orderStatusSegments = useMemo(() => {
+        const total = adminData?.totalOrders ?? 0;
+        if (!orderStatusData.length) return [];
+        return orderStatusData.map((s) => ({
+            ...s,
+            pct: total > 0 ? (s.value / total) * 100 : 0,
+            statusKey: s.name === 'Delivered' ? 'delivered' : s.name === 'Pending' ? 'pending' : s.name === 'RTO' ? 'rto' : 'shipped',
+        }));
+    }, [orderStatusData, adminData?.totalOrders]);
+
+    /** Date range query params for drill-down links (align orders list with dashboard period) */
+    const orderDrillDownParams = useMemo(() => {
+        const start = adminFilters.startDate ?? '';
+        const end = adminFilters.endDate ?? '';
+        if (!start || !end) return '';
+        return `&startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`;
+    }, [adminFilters.startDate, adminFilters.endDate]);
+
+    /** Segments with value > 0 for donut and stacked bar (avoid zero-width slices) */
+    const orderStatusSegmentsWithVolume = useMemo(
+        () => orderStatusSegments.filter((s) => s.value > 0),
+        [orderStatusSegments]
+    );
 
     const criticalInsight = useMemo(
         () => adminInsights.find((i) => i.priority === 'high'),
@@ -847,81 +881,159 @@ export function DashboardClient() {
                         )}
                     </section>
 
-                    {/* Order Status Distribution (Donut Chart) */}
-                    <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
-                        <h3 className="font-bold text-[var(--text-primary)] mb-2">Order Status</h3>
-                        <p className="text-xs text-[var(--text-muted)] mb-4">Delivered, Pending, and In transit / Other (selected period)</p>
-                        <div className="h-[250px] relative">
-                            {orderStatusData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <RechartsPieChart>
-                                        <Pie
-                                            data={orderStatusData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                            animationDuration={600}
-                                            animationBegin={150}
-                                            isAnimationActive
-                                        >
-                                            {orderStatusData.map((entry) => (
-                                                <Cell key={entry.name} fill={entry.color} strokeWidth={0} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                                            formatter={(value, name) => {
-                                                const total = (adminData?.totalOrders ?? 0) || 1;
-                                                const num = Number(value);
-                                                const pct = ((num / total) * 100).toFixed(1);
-                                                return [`${num.toLocaleString()} (${pct}%)`, name];
-                                            }}
-                                            itemStyle={{ color: 'var(--text-primary)' }}
-                                            labelStyle={{ color: 'var(--text-secondary)', fontWeight: 600 }}
-                                        />
-                                    </RechartsPieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                                    <p className="text-sm text-[var(--text-muted)]">No orders in period</p>
-                                    <p className="text-xs text-[var(--text-muted)] mt-1">Select a date range with orders to see distribution</p>
+                    {/* Order pipeline — Pending primary, Delivered secondary; relaxed spacing & responsive */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        className="relative rounded-3xl overflow-hidden border border-[var(--border-subtle)] flex flex-col min-h-[400px] max-h-[480px] bg-[var(--bg-primary)] shadow-sm"
+                        aria-labelledby="order-status-heading"
+                    >
+                        {/* Ambient blobs — kept subtle */}
+                        <div className="absolute inset-0 pointer-events-none opacity-[0.5]" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -5%, var(--primary-blue) 0%, transparent 50%)' }} />
+                        <div className="absolute bottom-0 right-0 w-48 h-32 pointer-events-none opacity-[0.35]" style={{ background: 'radial-gradient(circle at 100% 100%, var(--success) 0%, transparent 55%)' }} />
+
+                        <div className="relative z-10 flex flex-col h-full overflow-hidden">
+                            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-[var(--border-subtle)] shrink-0">
+                                <h3 id="order-status-heading" className="font-bold text-[var(--text-primary)] text-lg">Order pipeline</h3>
+                                <p className="text-xs text-[var(--text-secondary)] font-medium mt-1">Outcome mix · click to drill into orders</p>
+                            </div>
+
+                            {adminData && adminData.totalOrders === 0 ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
+                                    <Package className="w-10 h-10 text-[var(--text-secondary)] mb-3 opacity-80" aria-hidden />
+                                    <p className="text-sm font-semibold text-[var(--text-secondary)]">No orders in period</p>
+                                    <p className="text-xs text-[var(--text-secondary)] mt-1">Select a date range with orders</p>
                                 </div>
-                            )}
-                            {/* Center Text (only when we have data) */}
-                            {orderStatusData.length > 0 && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-3xl font-bold text-[var(--text-primary)]">
-                                        <AnimatedNumber value={adminData?.totalOrders ?? 0} />
-                                    </span>
-                                    <span className="text-xs text-[var(--text-secondary)] font-medium uppercase tracking-wide">Orders</span>
-                                </div>
-                            )}
-                        </div>
-                        {orderStatusData.length > 0 && (
-                            <>
-                                <div className="grid grid-cols-2 gap-3 mt-4">
-                                    {orderStatusData.map((status) => {
+                            ) : adminData ? (
+                                <div className="flex-1 overflow-auto px-4 sm:px-6 py-5 sm:py-6">
+                                    {/* Hero: Pending primary, Delivered secondary */}
+                                    {(() => {
                                         const total = adminData?.totalOrders ?? 0;
-                                        const pct = total > 0 ? ((status.value / total) * 100).toFixed(1) : '0';
+                                        const pending = orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0;
+                                        const delivered = orderStatusData.find((s) => s.name === 'Delivered')?.value ?? 0;
+                                        const pendingPct = total > 0 ? (pending / total) * 100 : 0;
+                                        const deliveredPct = total > 0 ? (delivered / total) * 100 : 0;
                                         return (
-                                            <div key={status.name} className="flex items-center gap-2">
-                                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
-                                                <span className="text-xs font-medium text-[var(--text-secondary)]">
-                                                    {status.name} — {status.value.toLocaleString()} ({pct}%)
+                                            <div className="flex flex-wrap items-baseline gap-4 sm:gap-5 mb-4 sm:mb-5">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tabular-nums"><AnimatedNumber value={pending} /></span>
+                                                    <span className="text-sm font-medium text-[var(--text-secondary)]">pending</span>
+                                                </div>
+                                                <span className="text-[var(--text-muted)]">·</span>
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tabular-nums"><AnimatedNumber value={delivered} /></span>
+                                                    <span className="text-sm font-medium text-[var(--text-secondary)]">delivered</span>
+                                                </div>
+                                                <span className="text-xs text-[var(--text-muted)]">
+                                                    {total > 0 && (
+                                                        <span className="tabular-nums">{pendingPct.toFixed(1)}% pending · {deliveredPct.toFixed(1)}% delivered</span>
+                                                    )}
                                                 </span>
                                             </div>
                                         );
-                                    })}
+                                    })()}
+
+                                    {/* Donut — medium, centered */}
+                                    <div className="flex justify-center my-4 sm:my-6">
+                                        <div className="relative w-[160px] h-[160px] sm:w-[180px] sm:h-[180px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <RechartsPieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                                                    <defs>
+                                                        {orderStatusSegmentsWithVolume.map((seg, i) => {
+                                                            const fullIndex = orderStatusSegments.findIndex((s) => s.name === seg.name);
+                                                            const donutColor = ORDER_PIPELINE_DONUT_PALETTE[fullIndex] ?? ORDER_PIPELINE_DONUT_PALETTE[i];
+                                                            return (
+                                                                <linearGradient key={seg.name} id={`order-donut-grad-${i}`} x1="0" y1="0" x2="1" y2="1">
+                                                                    <stop offset="0%" stopColor={donutColor} stopOpacity={1} />
+                                                                    <stop offset="100%" stopColor={donutColor} stopOpacity={0.7} />
+                                                                </linearGradient>
+                                                            );
+                                                        })}
+                                                    </defs>
+                                                    <Pie
+                                                        data={orderStatusSegmentsWithVolume}
+                                                        dataKey="value"
+                                                        nameKey="name"
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius={52}
+                                                        outerRadius={72}
+                                                        paddingAngle={3}
+                                                        stroke="var(--bg-primary)"
+                                                        strokeWidth={4}
+                                                        animationDuration={800}
+                                                        animationBegin={200}
+                                                        onClick={(data: { name: string }) => {
+                                                            const seg = orderStatusSegments.find((s) => s.name === data.name);
+                                                            if (seg) router.push(`/admin/orders?status=${seg.statusKey}&page=1${orderDrillDownParams}`);
+                                                        }}
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
+                                                        {orderStatusSegmentsWithVolume.map((seg, i) => (
+                                                            <Cell key={seg.name} fill={`url(#order-donut-grad-${i})`} className="cursor-pointer hover:opacity-90 transition-opacity" />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                                                        formatter={(value, name, props) => {
+                                                            const num = typeof value === 'number' ? value : Number(value);
+                                                            const pct = (props?.payload as { pct?: number } | undefined)?.pct ?? 0;
+                                                            return [`${num.toLocaleString()} (${pct.toFixed(1)}%)`, String(name)];
+                                                        }}
+                                                    />
+                                                </RechartsPieChart>
+                                            </ResponsiveContainer>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" aria-hidden>
+                                                <span className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tabular-nums">
+                                                    <AnimatedNumber value={adminData?.totalOrders ? Math.round(((orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0) / adminData.totalOrders) * 100) : 0} />
+                                                    %
+                                                </span>
+                                                <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mt-0.5">Pending</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 4 status cards — below donut, 2 columns × 2 rows */}
+                                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                        {orderStatusSegments.map((seg, i) => {
+                                            const Icon = seg.name === 'Delivered' ? CheckCircle2 : seg.name === 'Pending' ? Clock : seg.name === 'RTO' ? RotateCcw : Truck;
+                                            const isPrimary = seg.name === 'Pending';
+                                            return (
+                                                <Link
+                                                    key={seg.name}
+                                                    href={`/admin/orders?status=${seg.statusKey}&page=1${orderDrillDownParams}`}
+                                                    className={cn(
+                                                        'group flex items-center gap-3 p-3 sm:p-4 rounded-xl border transition-all duration-200',
+                                                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-1',
+                                                        'hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] hover:border-[var(--border-default)]',
+                                                        isPrimary && 'ring-1 ring-[var(--warning)]/30 bg-[var(--warning)]/5'
+                                                    )}
+                                                    style={{ borderLeftWidth: '4px', borderLeftColor: seg.color }}
+                                                >
+                                                    <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${seg.color}20`, color: seg.color }}>
+                                                        <Icon className="w-5 h-5" strokeWidth={2.25} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className={cn('text-xs font-semibold text-[var(--text-primary)] truncate', isPrimary && 'font-bold')}>{seg.name}</p>
+                                                        <p className={cn('tabular-nums text-[var(--text-primary)]', isPrimary ? 'text-lg font-bold' : 'text-sm font-bold')}><AnimatedNumber value={seg.value} /></p>
+                                                        <p className="text-xs text-[var(--text-secondary)]">{seg.pct.toFixed(1)}%</p>
+                                                        <div className="mt-2 h-1.5 rounded-full bg-[var(--bg-secondary)] overflow-hidden">
+                                                            <motion.div className="h-full rounded-full" style={{ backgroundColor: seg.color }} initial={{ width: 0 }} animate={{ width: `${seg.pct}%` }} transition={{ duration: 0.5, delay: i * 0.05 }} />
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {orderStatusHint != null && (
+                                        <p className="text-xs text-[var(--text-secondary)] mt-3 sm:mt-4 italic">{orderStatusHint}</p>
+                                    )}
                                 </div>
-                                {orderStatusHint != null && (
-                                    <p className="text-xs text-[var(--text-muted)] mt-3 italic">{orderStatusHint}</p>
-                                )}
-                            </>
-                        )}
-                    </div>
+                            ) : null}
+                        </div>
+                    </motion.section>
 
                 </div>
             </div>

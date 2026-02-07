@@ -31,7 +31,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
-import { useRateCards, useCloneRateCard, useDeleteRateCard } from '@/src/core/api/hooks/logistics/useRateCards';
+import { useAdminRateCards, useCloneAdminRateCard, useDeleteAdminRateCard } from '@/src/core/api/hooks/admin/useAdminRateCards';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useBulkUpdateRateCards, useExportRateCards } from '@/src/hooks/shipping/use-bulk-rate-card-operations';
 import { UploadRateCardModal } from './UploadRateCardModal';
@@ -47,16 +47,20 @@ export function RatecardsClient() {
     const [showImportModal, setShowImportModal] = useState(false);
     const { addToast } = useToast();
 
-    // Integration: Fetch real rate cards
-    const { data: rateCards = [], isLoading, isError, error, refetch } = useRateCards();
+    // Integration: Fetch real rate cards (admin endpoint - all companies)
+    const { data: adminData, isLoading, isError, error, refetch } = useAdminRateCards({
+        status: selectedStatus === 'all' ? undefined : selectedStatus,
+        search: searchQuery || undefined,
+    });
+    const rateCards = adminData?.rateCards || [];
 
     // Bulk operations hooks
     const { mutate: bulkUpdate, isPending: isBulkUpdating } = useBulkUpdateRateCards();
     const { mutate: exportCards, isPending: isExporting } = useExportRateCards();
 
-    // Single operations hooks
-    const { mutate: cloneCard, isPending: isCloning } = useCloneRateCard();
-    const { mutate: deleteCard, isPending: isDeleting } = useDeleteRateCard();
+    // Single operations hooks (admin endpoints)
+    const { mutate: cloneCard, isPending: isCloning } = useCloneAdminRateCard();
+    const { mutate: deleteCard, isPending: isDeleting } = useDeleteAdminRateCard();
 
     const handleClone = (id: string, name: string) => {
         if (confirm(`Are you sure you want to clone "${name}"?`)) {

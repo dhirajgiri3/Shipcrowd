@@ -22,6 +22,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { useCommissionPage } from '@/src/core/api/hooks/admin/commission/useCommission';
 import {
     DropdownMenu,
@@ -230,9 +232,11 @@ export function CommissionListClient() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <Badge variant={getStatusColor(transaction.status)} className="capitalize">
-                                                        {transaction.status}
-                                                    </Badge>
+                                                    <StatusBadge
+                                                        domain="commission"
+                                                        status={transaction.status}
+                                                        size="sm"
+                                                    />
                                                 </td>
                                                 <td className="px-4 py-3 text-right text-[var(--text-secondary)]">
                                                     {formatCurrency(transaction.amount)}
@@ -244,30 +248,30 @@ export function CommissionListClient() {
                                                     {transaction.createdAt ? format(new Date(transaction.createdAt), 'MMM d, yyyy') : '-'}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                                <MoreVertical className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            <DropdownMenuItem onClick={() => router.push(`/admin/commission/${transaction._id}`)}>
-                                                                View Details
-                                                            </DropdownMenuItem>
-                                                            {transaction.status === 'pending' && (
-                                                                <>
-                                                                    <DropdownMenuSeparator />
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <ViewActionButton
+                                                            onClick={() => router.push(`/admin/commission/${transaction._id}`)}
+                                                        />
+
+                                                        {transaction.status === 'pending' && (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                        <MoreVertical className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                                     <DropdownMenuItem className="text-[var(--success)]">
                                                                         Approve
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem className="text-[var(--error)]">
                                                                         Reject
                                                                     </DropdownMenuItem>
-                                                                </>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

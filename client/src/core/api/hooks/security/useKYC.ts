@@ -7,10 +7,14 @@ import { handleApiError, showSuccessToast } from '@/src/lib/error';
 // KYC Types
 import { KYCData } from '../../clients/auth/kycApi';
 
+
 export interface KYCFilters {
-    status?: 'pending' | 'verified' | 'rejected';
+    status?: 'pending' | 'verified' | 'rejected' | 'all';
     page?: number;
     limit?: number;
+    search?: string;
+    startDate?: Date | string;
+    endDate?: Date | string;
 }
 
 export interface KYCsResponse {
@@ -20,6 +24,12 @@ export interface KYCsResponse {
         page: number;
         limit: number;
         pages: number;
+    };
+    stats: {
+        total: number;
+        pending: number;
+        verified: number;
+        rejected: number;
     };
 }
 
@@ -34,7 +44,12 @@ export const useAllKYCs = (
         queryKey: queryKeys.kyc.list(filters),
         queryFn: async () => {
             const response = await apiClient.get('/kyc/all', { params: filters });
-            return response.data;
+            return response.data.data; // Response interceptor handles .data unwrapping if needed, but controller sends { data: ... } usually. 
+            // Wait, responseHelper sends { status: 'success', data: { kycs: [], pagination: {}, stats: {} } }
+            // So response.data is the full object.
+            // If apiClient intercepts and returns response.data, then we might need to adjust. 
+            // Looking at existing code: `return response.data;` was used.
+            // Let's stick to that for now.
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,

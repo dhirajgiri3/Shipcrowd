@@ -1,136 +1,132 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Shield, Search, CheckCircle2, XCircle, Clock,
+    FileText, User, Building2, Calendar, MoreHorizontal,
+    ExternalLink, RefreshCw, Filter, Download
+} from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 import { formatDate, cn } from '@/src/lib/utils';
-import {
-    Shield,
-    Search,
-    Users,
-    CheckCircle2,
-    XCircle,
-    Clock,
-    AlertTriangle,
-    Download,
-    Eye,
-    FileText,
-    TrendingUp,
-    Filter,
-    MoreHorizontal,
-    ChevronDown,
-    Building2,
-    Calendar,
-    ArrowUpRight
-} from 'lucide-react';
-import { useAllKYCs, useVerifyKYC, useRejectKYC } from '@/src/core/api/hooks/security/useKYC';
+import { useAllKYCs, useVerifyKYC, useRejectKYC, KYCFilters } from '@/src/core/api/hooks/security/useKYC';
+import { DateRange } from '@/src/lib/data';
 
-
-const statusFilters = [
+// --- CONSTANTS ---
+const STATUS_TABS = [
     { id: 'all', label: 'All Requests' },
-    { id: 'verified', label: 'Verified', color: 'bg-[var(--success)]' },
-    { id: 'pending', label: 'Pending Review', color: 'bg-[var(--warning)]' },
-    { id: 'rejected', label: 'Rejected', color: 'bg-[var(--error)]' },
+    { id: 'verified', label: 'Verified' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'rejected', label: 'Rejected' },
 ];
 
-// --- COMPONENTS ---
-
-function StatsCard({ title, value, icon: Icon, color, trend }: any) {
-    return (
-        <motion.div
-            whileHover={{ y: -5 }}
-            className="p-6 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:shadow-lg transition-all group"
-        >
-            <div className="flex items-center justify-between mb-4">
-                <div className={cn(
-                    "p-3 rounded-xl",
-                    color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
-                        color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                            color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                "bg-[var(--error-bg)] text-[var(--error)]"
-                )}>
-                    <Icon className="w-6 h-6" />
-                </div>
-                {trend && (
-                    <span className={cn(
-                        "text-xs font-bold px-2 py-1 rounded-full",
-                        color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
-                            color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                    "bg-[var(--error-bg)] text-[var(--error)]"
-                    )}>
-                        {trend}
-                    </span>
-                )}
-            </div>
-            <div>
-                <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
-                <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide mt-1">{title}</p>
-            </div>
-        </motion.div>
-    );
-}
-
 export function KycClient() {
-    const [activeFilter, setActiveFilter] = useState('all');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedRequest, setSelectedRequest] = useState<any>(null);
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { addToast } = useToast();
 
-    // API Hooks
-    const { data, isLoading } = useAllKYCs({
-        status: activeFilter !== 'all' ? activeFilter as any : undefined,
-        limit: 50 // Fetch more for client-side filtering if needed, or rely on activeFilter
-    });
+    // -- State from URL & Local --
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const status = (searchParams.get('status') as KYCFilters['status']) || 'all';
+    const search = searchParams.get('search') || '';
+    const startDate = searchParams.get('startDate') || '';
+    const endDate = searchParams.get('endDate') || '';
+
+    const [searchTerm, setSearchTerm] = useState(search);
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+    const [selectedRequest, setSelectedRequest] = useState<any>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [isRejecting, setIsRejecting] = useState(false);
+
+    // -- Debounce Search --
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // -- URL Helper --
+    const updateUrl = (updates: Record<string, string | number | null>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') {
+                params.delete(key);
+            } else {
+                params.set(key, String(value));
+            }
+        });
+        router.push(`?${params.toString()}`, { scroll: false });
+    };
+
+    // -- API Params --
+    const queryParams: KYCFilters = useMemo(() => ({
+        page,
+        limit,
+        status: status === 'all' ? undefined : status,
+        search: debouncedSearch || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+    }), [page, limit, status, debouncedSearch, startDate, endDate]);
+
+    // -- API Hooks --
+    const { data, isLoading, refetch, isFetching } = useAllKYCs(queryParams);
     const verifyKYC = useVerifyKYC();
     const rejectKYC = useRejectKYC();
 
-    // Derived Data
     const kycs = data?.kycs || [];
+    const pagination = data?.pagination;
+    const stats = data?.stats || { total: 0, pending: 0, verified: 0, rejected: 0 };
 
-    // Client-side search (since backend search might not be comprehensive for joined fields yet)
-    const filteredData = kycs.filter((item: any) => {
-        // Handle potentially missing populated fields gracefully
-        const name = item.userId?.name || item.name || 'Unknown User';
-        const email = item.userId?.email || item.email || '';
-        const company = item.companyId?.name || item.companyName || '';
-
-        const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            company.toLowerCase().includes(searchQuery.toLowerCase());
-
-        return matchesSearch;
-    });
-
-    const stats = {
-        total: data?.pagination?.total || 0,
-        verified: kycs.filter(k => k.status === 'verified').length,
-        pending: kycs.filter(k => k.status === 'pending').length,
-        rejected: kycs.filter(k => k.status === 'rejected').length
+    // -- Handlers --
+    const handleTabChange = (newStatus: string) => {
+        updateUrl({ status: newStatus, page: 1 });
     };
 
-    // Actions
+    const handlePageChange = (newPage: number) => {
+        updateUrl({ page: newPage });
+    };
+
+    const handleDateRangeChange = (range: DateRange) => {
+        updateUrl({
+            startDate: range.from?.toISOString() || '',
+            endDate: range.to?.toISOString() || '',
+            page: 1
+        });
+    };
+
+    const handleRefresh = () => {
+        refetch();
+        addToast('Refreshed', 'success', { description: 'KYC data updated' });
+    };
+
     const handleViewDetails = (item: any) => {
         setSelectedRequest(item);
         setIsDetailOpen(true);
+        setIsRejecting(false);
+        setRejectionReason('');
     };
 
     const handleApprove = async () => {
         if (!selectedRequest) return;
         try {
-            // Verify PAN by default or iterate through all docs
-            // For this UI, we treat it as "Approve KYC" which usually means verifying pending docs
             await verifyKYC.mutateAsync({
                 kycId: selectedRequest._id,
-                documentType: 'pan' // Defaulting to PAN for now, ideal would be per-doc or full approval
+                documentType: 'pan' // Defaulting to PAN as primary
             });
-            // Also enable GST if present
             if (selectedRequest.documents?.gstin) {
                 await verifyKYC.mutateAsync({
                     kycId: selectedRequest._id,
@@ -138,237 +134,306 @@ export function KycClient() {
                 });
             }
             setIsDetailOpen(false);
-        } catch (error) {
-            // Error handled by hook
-        }
+        } catch (error) { }
     };
 
     const handleReject = async () => {
         if (!selectedRequest) return;
+        if (!isRejecting) {
+            setIsRejecting(true);
+            return;
+        }
+        if (!rejectionReason) {
+            addToast('Error', 'error', { description: 'Please provide a rejection reason' });
+            return;
+        }
+
         try {
             await rejectKYC.mutateAsync({
                 kycId: selectedRequest._id,
-                reason: 'Documents invalid or unclear' // Should capture this from input ideally
+                reason: rejectionReason
             });
             setIsDetailOpen(false);
-        } catch (error) {
-            // Error handled by hook
-        }
+        } catch (error) { }
     };
 
-    return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    // -- Columns for DataTable --
+    const columns = [
+        {
+            header: 'User',
+            accessorKey: 'userId',
+            cell: (row: any) => (
                 <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] shadow-lg shadow-blue-500/20">
-                        <Shield className="h-6 w-6" />
+                    <div className="h-9 w-9 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--text-secondary)] font-medium text-xs">
+                        {(row.userId?.name || row.userId?.email || 'U').substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">KYC Verification</h1>
-                        <p className="text-[var(--text-muted)] text-sm">Review and approve document submissions</p>
+                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.userId?.name || 'Unknown'}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{row.userId?.email}</p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                        <Download className="w-4 h-4 mr-2" /> Export Report
+            )
+        },
+        {
+            header: 'Company',
+            accessorKey: 'companyId',
+            cell: (row: any) => (
+                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <Building2 className="w-4 h-4 text-[var(--text-muted)]" />
+                    {row.companyId?.name || 'N/A'}
+                </div>
+            )
+        },
+        {
+            header: 'Status',
+            accessorKey: 'status',
+            cell: (row: any) => (
+                <StatusBadge
+                    domain="kyc"
+                    status={row.status}
+                    className="capitalize"
+                />
+            )
+        },
+        {
+            header: 'Submitted',
+            accessorKey: 'createdAt',
+            cell: (row: any) => (
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                    <Clock className="w-3.5 h-3.5" />
+                    {formatDate(row.createdAt)}
+                </div>
+            )
+        },
+        {
+            header: 'Documents',
+            accessorKey: 'documents',
+            cell: (row: any) => (
+                <div className="flex gap-1">
+                    {row.documents?.pan && <Badge variant="outline" size="sm" className="text-[10px]">PAN</Badge>}
+                    {row.documents?.gstin && <Badge variant="outline" size="sm" className="text-[10px]">GST</Badge>}
+                    {row.documents?.bankAccount && <Badge variant="outline" size="sm" className="text-[10px]">Bank</Badge>}
+                </div>
+            )
+        },
+        {
+            header: '',
+            accessorKey: 'actions',
+            width: 'w-10',
+            cell: (row: any) => (
+                <ViewActionButton
+                    onClick={() => handleViewDetails(row)}
+                />
+            )
+        }
+    ];
+
+    return (
+        <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">KYC Management</h1>
+                    <p className="text-[var(--text-secondary)] mt-1">Verify identities and approve merchant documentation.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        onClick={handleRefresh}
+                        disabled={isFetching}
+                        className="bg-[var(--bg-primary)]"
+                    >
+                        <RefreshCw className={cn("w-4 h-4 mr-2", isFetching && "animate-spin")} />
+                        Refresh
                     </Button>
                 </div>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard title="Total Requests" value={stats.total} icon={FileText} color="blue" />
-                <StatsCard title="Verified" value={stats.verified} icon={CheckCircle2} color="emerald" />
-                <StatsCard title="Pending Review" value={stats.pending} icon={Clock} color="amber" />
-                <StatsCard title="Rejected" value={stats.rejected} icon={XCircle} color="rose" />
+                <StatsCard
+                    title="Total Requests"
+                    value={stats.total}
+                    icon={FileText}
+                    iconColor="bg-blue-500 text-white"
+                />
+                <StatsCard
+                    title="Verified Merchants"
+                    value={stats.verified}
+                    icon={CheckCircle2}
+                    iconColor="bg-emerald-500 text-white"
+                />
+                <StatsCard
+                    title="Pending Review"
+                    value={stats.pending}
+                    icon={Clock}
+                    iconColor="bg-amber-500 text-white"
+                    variant={stats.pending > 0 ? "warning" : "default"}
+                />
+                <StatsCard
+                    title="Rejected"
+                    value={stats.rejected}
+                    icon={XCircle}
+                    iconColor="bg-red-500 text-white"
+                />
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex flex-col lg:flex-row gap-6">
-
-                {/* Left: Filters & List */}
-                <div className="flex-1 space-y-4">
-
-                    {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row gap-4 justify-between bg-[var(--bg-primary)] p-2 rounded-2xl border border-[var(--border-subtle)]">
-                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                            {statusFilters.map(filter => (
-                                <button
-                                    key={filter.id}
-                                    onClick={() => setActiveFilter(filter.id)}
-                                    className={cn(
-                                        "px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2",
-                                        activeFilter === filter.id
-                                            ? "bg-[var(--bg-secondary)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]"
-                                            : "text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-secondary)]"
-                                    )}
-                                >
-                                    {activeFilter === filter.id && (
-                                        <span className={cn("w-2 h-2 rounded-full", filter.color || 'bg-[var(--text-muted)]')} />
-                                    )}
-                                    {filter.label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="relative w-full md:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <input
-                                type="text"
-                                placeholder="Search requests..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 rounded-xl bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] focus:ring-0 text-sm transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    {/* List Cards */}
-                    <div className="grid gap-3">
-                        {isLoading ? (
-                            <div className="py-20 flex flex-col items-center justify-center">
-                                <div className="w-8 h-8 border-2 border-[var(--primary-blue-light)] border-t-[var(--primary-blue)] rounded-full animate-spin mb-4" />
-                                <p className="text-sm text-[var(--text-tertiary)]">Loading KYC requests...</p>
-                            </div>
-                        ) : filteredData.length === 0 ? (
-                            <div className="text-center py-10 text-[var(--text-muted)]">No KYC requests found</div>
-                        ) : (
-                            <AnimatePresence>
-                                {filteredData.map((item: any) => (
-                                    <motion.div
-                                        layout
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        key={item._id}
-                                        onClick={() => handleViewDetails(item)}
-                                        className="group relative p-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-md cursor-pointer transition-all"
-                                    >
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center font-bold text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                                                    {(item.userId?.name || item.name || 'KD').substring(0, 2).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-[var(--text-primary)]">{item.userId?.name || item.name || 'Unknown User'}</h4>
-                                                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1">
-                                                        <span>{item._id.substring(0, 8)}...</span>
-                                                        <span>•</span>
-                                                        <span>{item.companyId?.name || item.companyName || 'No Company'}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex flex-col items-end">
-                                                    <span className={cn(
-                                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold capitalize",
-                                                        item.status === 'verified' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                                            item.status === 'pending' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                                                "bg-[var(--error-bg)] text-[var(--error)]"
-                                                    )}>
-                                                        {item.status === 'verified' && <CheckCircle2 className="w-3 h-3" />}
-                                                        {item.status === 'pending' && <Clock className="w-3 h-3" />}
-                                                        {item.status === 'rejected' && <XCircle className="w-3 h-3" />}
-                                                        {item.status}
-                                                    </span>
-                                                    <span className="text-[10px] text-[var(--text-muted)] mt-1">
-                                                        Updated {formatDate(item.updatedAt)}
-                                                    </span>
-                                                </div>
-                                                <ChevronDown className="-rotate-90 w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] transition-colors" />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        )}
-                    </div>
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-default)]">
+                <div className="relative w-full md:w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search by Name, Email, Company..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-muted)] text-[var(--text-primary)]"
+                    />
                 </div>
 
-                {/* Right: Details Panel (Desktop) / Modal (Mobile) - For now simplified to Modal */}
+                <div className="flex items-center gap-4">
+                    <div className="hidden md:block">
+                        <DateRangePicker onRangeChange={handleDateRangeChange} />
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide">
+                        {STATUS_TABS.map((tab) => {
+                            const isActive = status === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => handleTabChange(tab.id)}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap",
+                                        isActive
+                                            ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm"
+                                            : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                                    )}
+                                >
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
+
+            {/* Data Table */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+            >
+                <DataTable
+                    columns={columns}
+                    data={kycs}
+                    isLoading={isLoading}
+                    onRowClick={handleViewDetails}
+                    pagination={{
+                        currentPage: pagination?.page || 1,
+                        totalPages: pagination?.pages || 1,
+                        totalItems: pagination?.total || 0,
+                        onPageChange: handlePageChange
+                    }}
+                />
+            </motion.div>
 
             {/* Detail Modal */}
             <Modal
                 isOpen={isDetailOpen}
                 onClose={() => setIsDetailOpen(false)}
-                title="Application Details"
+                title="KYC Application Details"
             >
                 {selectedRequest && (
                     <div className="space-y-6">
-                        {/* Header */}
-                        <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-between">
+                        {/* Header Info */}
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-[var(--primary-blue)] text-white flex items-center justify-center font-bold">
-                                    {(selectedRequest.userId?.name || 'KD').substring(0, 2)}
+                                <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue)] text-white flex items-center justify-center font-bold">
+                                    {(selectedRequest.userId?.name || 'U').substring(0, 2)}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-[var(--text-primary)]">{selectedRequest.userId?.name || 'Unknown User'}</h3>
-                                    <p className="text-xs text-[var(--text-muted)]">{selectedRequest.userId?.email || ''}</p>
+                                    <h3 className="font-bold text-[var(--text-primary)]">{selectedRequest.userId?.name}</h3>
+                                    <p className="text-xs text-[var(--text-muted)]">{selectedRequest.userId?.email}</p>
                                 </div>
                             </div>
-                            <div className="text-xs font-bold px-2 py-1 rounded bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]">
-                                {selectedRequest.status.toUpperCase()}
+                            <StatusBadge domain="kyc" status={selectedRequest.status} className="capitalize" />
+                        </div>
+
+                        {/* Documents */}
+                        <div>
+                            <h4 className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-bold mb-3">Submitted Documents</h4>
+                            <div className="space-y-2">
+                                <DocumentItem
+                                    icon={FileText}
+                                    label="PAN Card"
+                                    value={selectedRequest.documents?.pan?.number || 'Not Submitted'}
+                                    verified={selectedRequest.documents?.pan?.verified}
+                                />
+                                <DocumentItem
+                                    icon={Building2}
+                                    label="GST Certificate"
+                                    value={selectedRequest.documents?.gstin?.number || 'Not Submitted'}
+                                    verified={selectedRequest.documents?.gstin?.verified}
+                                />
+                                <DocumentItem
+                                    icon={User}
+                                    label="Aadhaar Card"
+                                    value={selectedRequest.documents?.aadhaar?.number || 'Not Submitted'}
+                                    verified={selectedRequest.documents?.aadhaar?.verified}
+                                />
                             </div>
                         </div>
 
-                        {/* Documents Grid */}
-                        <div>
-                            <h4 className="text-sm font-bold text-[var(--text-secondary)] mb-3">Submitted Documents</h4>
-                            <div className="grid gap-2">
-                                {/* PAN Card */}
-                                {selectedRequest.documents?.pan && (
-                                    <DocumentItem
-                                        label="PAN Card"
-                                        value={selectedRequest.documents.pan.number}
-                                        isVerified={selectedRequest.documents.pan.verified}
+                        {/* Rejection UI */}
+                        <AnimatePresence>
+                            {isRejecting && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    <label className="text-sm font-medium text-[var(--text-primary)] mb-1 block">Reason for Rejection</label>
+                                    <textarea
+                                        value={rejectionReason}
+                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                        placeholder="Please explain why the KYC is being rejected..."
+                                        className="w-full p-3 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-tertiary)] text-sm focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent outline-none h-24 resize-none"
                                     />
-                                )}
-                                {/* GSTIN */}
-                                {selectedRequest.documents?.gstin && (
-                                    <DocumentItem
-                                        label="GST Certificate"
-                                        value={selectedRequest.documents.gstin.number}
-                                        isVerified={selectedRequest.documents.gstin.verified}
-                                    />
-                                )}
-                                {/* Bank Account */}
-                                {selectedRequest.documents?.bankAccount && (
-                                    <DocumentItem
-                                        label="Bank Account"
-                                        value={selectedRequest.documents.bankAccount.accountNumber}
-                                        isVerified={selectedRequest.documents.bankAccount.verified}
-                                    />
-                                )}
-                                {/* Aadhaar */}
-                                {selectedRequest.documents?.aadhaar && (
-                                    <DocumentItem
-                                        label="Aadhaar Card"
-                                        value={selectedRequest.documents.aadhaar.number}
-                                        isVerified={selectedRequest.documents.aadhaar.verified}
-                                    />
-                                )}
-                            </div>
-                        </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Actions */}
-                        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[var(--border-subtle)]">
-                            <Button
-                                variant="outline"
-                                className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)]"
-                                onClick={handleReject}
-                                disabled={rejectKYC.isPending}
-                            >
-                                <XCircle className="w-4 h-4 mr-2" /> Reject
-                            </Button>
-                            <Button
-                                className="bg-[var(--success)] hover:bg-[var(--success)]/90 text-white"
-                                onClick={handleApprove}
-                                disabled={verifyKYC.isPending}
-                            >
-                                <CheckCircle2 className="w-4 h-4 mr-2" /> Approve
-                            </Button>
+                        <div className="flex gap-3 pt-4 border-t border-[var(--border-subtle)]">
+                            {selectedRequest.status !== 'rejected' && (
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-900/30 dark:hover:bg-red-900/20"
+                                    onClick={handleReject}
+                                    disabled={rejectKYC.isPending || verifyKYC.isPending}
+                                >
+                                    {isRejecting ? 'Confirm Rejection' : 'Reject Application'}
+                                </Button>
+                            )}
+                            {isRejecting && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setIsRejecting(false)}
+                                >
+                                    Cancel
+                                </Button>
+                            )}
+                            {selectedRequest.status !== 'verified' && !isRejecting && (
+                                <Button
+                                    className="flex-1 bg-[var(--success)] hover:bg-[var(--success)]/90 text-white"
+                                    onClick={handleApprove}
+                                    disabled={verifyKYC.isPending || rejectKYC.isPending}
+                                >
+                                    Approve & Verify
+                                </Button>
+                            )}
                         </div>
                     </div>
                 )}
@@ -377,25 +442,23 @@ export function KycClient() {
     );
 }
 
-function DocumentItem({ label, value, isVerified }: { label: string, value: string, isVerified: boolean }) {
+function DocumentItem({ icon: Icon, label, value, verified }: any) {
     return (
-        <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer group">
+        <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
             <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-[var(--info-bg)] text-[var(--info)]">
-                    <FileText className="w-4 h-4" />
+                <div className="p-2 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                    <Icon className="w-4 h-4" />
                 </div>
                 <div>
-                    <span className="text-sm font-medium text-[var(--text-primary)] block">{label}</span>
-                    <span className="text-xs text-[var(--text-muted)] font-mono">{value}</span>
+                    <p className="text-xs text-[var(--text-muted)] font-medium">{label}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)] font-mono">{value}</p>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
-                {isVerified ? (
-                    <Badge variant="success" size="sm">Verified</Badge>
-                ) : (
-                    <Badge variant="warning" size="sm">Pending</Badge>
-                )}
-            </div>
+            {verified ? (
+                <StatusBadge domain="kyc" status="verified" size="sm" className="h-6" />
+            ) : (
+                <StatusBadge domain="kyc" status="pending" size="sm" className="h-6" />
+            )}
         </div>
-    )
+    );
 }

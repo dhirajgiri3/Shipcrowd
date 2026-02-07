@@ -30,6 +30,7 @@ import {
 } from '@/src/core/api/hooks/admin/companies/useCompanies';
 import { Company } from '@/src/core/api/clients/general/companyApi';
 import { Button } from '@/src/components/ui/core/Button';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { Input } from '@/src/components/ui/core/Input';
 import { Card } from '@/src/components/ui/core/Card';
 import { DataTable } from '@/src/components/ui/data/DataTable';
@@ -165,9 +166,9 @@ export function CompaniesClient() {
             accessorKey: '_id' as const,
             cell: (row: Company) => (
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleViewCompany(row)}>
-                        View
-                    </Button>
+                    <ViewActionButton
+                        onClick={() => handleViewCompany(row)}
+                    />
                     <Button variant="ghost" size="sm" onClick={(e) => handleInviteClick(row, e)}>
                         <Mail className="w-4 h-4" />
                     </Button>

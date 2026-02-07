@@ -22,6 +22,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { HealthGauge } from '@/src/components/ui/visualizations/HealthGauge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { SuspendUserModal } from './SuspendUserModal';
 import { UnsuspendUserModal } from './UnsuspendUserModal';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
@@ -167,9 +169,12 @@ export function SellerTable({
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-medium text-[var(--text-primary)] line-clamp-1">{seller.companyName}</div>
                                                         {seller.isSuspended && (
-                                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 uppercase tracking-wide">
-                                                                Suspended
-                                                            </span>
+                                                            <StatusBadge
+                                                                domain="company"
+                                                                status="suspended"
+                                                                size="sm"
+                                                                className="uppercase tracking-wide text-[10px] px-1.5 py-0.5"
+                                                            />
                                                         )}
                                                     </div>
                                                     <div className="text-xs text-[var(--text-tertiary)]">{seller.email}</div>
@@ -236,12 +241,11 @@ export function SellerTable({
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <button
+                                            <ViewActionButton
                                                 onClick={() => handleViewDetails(seller.sellerId)}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--primary-blue)] bg-[var(--primary-blue-soft)] hover:bg-[var(--primary-blue)] hover:text-white transition-colors border border-[var(--primary-blue)]/20"
-                                            >
-                                                <ExternalLink size={14} /> View Details
-                                            </button>
+                                                variant="primary"
+                                                className="w-full justify-center"
+                                            />
                                         </TableCell>
                                         <TableCell>
                                             <div className="relative">

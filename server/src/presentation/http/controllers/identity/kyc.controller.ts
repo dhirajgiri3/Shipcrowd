@@ -524,6 +524,10 @@ export const rejectKYC = async (req: Request, res: Response, next: NextFunction)
  * Get all KYCs (admin only)
  * @route GET /kyc/all
  */
+/**
+ * Get all KYCs with advanced filtering, search, and stats (admin only)
+ * @route GET /kyc/all
+ */
 export const getAllKYCs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
@@ -539,28 +543,122 @@ export const getAllKYCs = async (req: Request, res: Response, next: NextFunction
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    // Filtering
-    const filter: any = {};
-    if (req.query.status) {
-      filter.status = req.query.status;
-    }
-    if (req.query.companyId) {
-      filter.companyId = req.query.companyId;
+    // Filters
+    const status = req.query.status as string;
+    const search = req.query.search as string;
+    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : null;
+    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : null;
+
+    // Base Match Stage
+    const matchStage: any = {};
+
+    if (status && status !== 'all') {
+      matchStage.status = status;
     }
 
-    // Get KYCs with user and company info
-    const kycs = await KYC.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name email')
-      .populate('companyId', 'name');
+    if (startDate || endDate) {
+      matchStage.createdAt = {};
+      if (startDate) matchStage.createdAt.$gte = startDate;
+      if (endDate) matchStage.createdAt.$lte = endDate;
+    }
 
-    // Get total count
-    const total = await KYC.countDocuments(filter);
+    // Aggregation Pipeline
+    const pipeline: any[] = [
+      { $match: matchStage },
+      // Lookup User
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      // Lookup Company
+      {
+        $lookup: {
+          from: 'companies',
+          localField: 'companyId',
+          foreignField: '_id',
+          as: 'company'
+        }
+      },
+      { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
+    ];
+
+    // Search Stage (if applicable)
+    if (search) {
+      const searchRegex = { $regex: search, $options: 'i' };
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'user.name': searchRegex },
+            { 'user.email': searchRegex },
+            { 'company.name': searchRegex },
+            { status: searchRegex }
+          ]
+        }
+      });
+    }
+
+    // Facet for Data and Stats
+    pipeline.push({
+      $facet: {
+        // Paginated Data
+        data: [
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              status: 1,
+              createdAt: 1,
+              updatedAt: 1,
+              documents: 1,
+              userId: { _id: '$user._id', name: '$user.name', email: '$user.email' },
+              companyId: { _id: '$company._id', name: '$company.name' },
+              completionStatus: 1
+            }
+          }
+        ],
+        // Total Count (for pagination)
+        totalCount: [{ $count: 'count' }],
+        // Global Stats (independent of pagination but respecting filters)
+        stats: [
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+              verified: { $sum: { $cond: [{ $eq: ['$status', 'verified'] }, 1, 0] } },
+              rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } }
+            }
+          }
+        ]
+      }
+    });
+
+    const results = await KYC.aggregate(pipeline);
+
+    const data = results[0].data;
+    const total = results[0].totalCount[0]?.count || 0;
+    const stats = results[0].stats[0] || { total: 0, pending: 0, verified: 0, rejected: 0 };
 
     const pagination = calculatePagination(total, page, limit);
-    sendPaginated(res, kycs, pagination, 'KYCs retrieved successfully');
+
+    sendSuccess(res, {
+      kycs: data,
+      pagination,
+      stats: {
+        total: stats.total,
+        pending: stats.pending,
+        verified: stats.verified,
+        rejected: stats.rejected
+      }
+    }, 'KYCs retrieved successfully');
+
   } catch (error) {
     logger.error('Error fetching KYCs:', error);
     next(error);

@@ -19,10 +19,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Badge } from '@/src/components/ui/core/Badge';
+import { badgeVariants } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '@/src/components/ui/core/Button';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 
@@ -79,15 +81,7 @@ export function OrderTable({
         setActiveDropdown(null);
     };
 
-    const statusColors: Record<string, string> = {
-        new: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-        ready: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-        shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-        delivered: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-        cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-        rto: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-        pending: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-    };
+
 
     if (isLoading && data.length === 0) {
         return <TableSkeleton rows={10} columns={6} />;
@@ -184,13 +178,18 @@ export function OrderTable({
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <Badge className={statusColors[order.currentStatus] || 'bg-gray-100 text-gray-700'}>
-                                            {order.currentStatus}
-                                        </Badge>
+                                        <StatusBadge
+                                            domain="order"
+                                            status={order.currentStatus}
+                                        />
                                     </TableCell>
                                     <TableCell onClick={(e) => e.stopPropagation()}>
-                                        <div className="flex justify-center relative">
-                                            {['new', 'ready'].includes(order.currentStatus) ? (
+                                        <div className="flex justify-center items-center gap-2 relative">
+                                            <ViewActionButton
+                                                onClick={() => handleViewDetails(order.orderNumber)}
+                                            />
+
+                                            {['new', 'ready'].includes(order.currentStatus) && (
                                                 <Tooltip content="Ship Order">
                                                     <Button
                                                         size="sm"
@@ -204,7 +203,9 @@ export function OrderTable({
                                                         Ship
                                                     </Button>
                                                 </Tooltip>
-                                            ) : (
+                                            )}
+
+                                            {!['new', 'ready'].includes(order.currentStatus) && (
                                                 <>
                                                     <button
                                                         onClick={(e) => toggleDropdown(order._id, e)}
@@ -222,13 +223,6 @@ export function OrderTable({
                                                             />
                                                             <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
                                                                 <div className="py-1">
-                                                                    <button
-                                                                        className="w-full text-left px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] flex items-center gap-2"
-                                                                        onClick={() => handleViewDetails(order.orderNumber)}
-                                                                    >
-                                                                        <Eye size={14} /> View Details
-                                                                    </button>
-                                                                    <div className="h-px bg-[var(--border-subtle)] my-1" />
                                                                     <button
                                                                         className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
                                                                         onClick={(e) => {

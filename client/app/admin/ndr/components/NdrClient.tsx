@@ -18,6 +18,7 @@ import {
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/lib/utils';
@@ -248,9 +249,7 @@ export function NdrClient() {
                                                     Fix Now
                                                 </Button>
                                             ) : (
-                                                <Badge variant="secondary" className="px-3 py-1.5 min-w-[120px] justify-center">
-                                                    {ndr.status.replace('_', ' ')}
-                                                </Badge>
+                                                <StatusBadge domain="ndr" status={ndr.status} className="px-3 py-1.5 min-w-[120px] justify-center" />
                                             )}
                                         </div>
 

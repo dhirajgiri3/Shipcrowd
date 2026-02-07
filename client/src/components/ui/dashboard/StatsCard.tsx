@@ -130,9 +130,11 @@ export function StatsCard({
                         <Icon className={`w-5 h-5`} />
                     </div>
                     {trend && (
-                        <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${trend.positive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+                        <div
+                            className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${trend.positive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}
+                            title={trend.label}
+                        >
                             {trend.positive ? '+' : ''}{trend.value}%
-                            <span className="hidden group-hover:inline ml-1 transition-all">{trend.label}</span>
                         </div>
                     )}
                 </div>
