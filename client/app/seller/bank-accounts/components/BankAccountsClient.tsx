@@ -17,6 +17,7 @@ import {
 } from "@/src/components/ui/feedback/Dialog";
 import { useBankAccounts, useAddBankAccount, useDeleteBankAccount } from "@/src/core/api/hooks/seller/useBankAccounts";
 import { useForm } from "react-hook-form";
+import { ConfirmDialog } from "@/src/components/ui/feedback/ConfirmDialog";
 
 interface BankAccountForm {
     bankName: string;
@@ -27,6 +28,7 @@ interface BankAccountForm {
 
 export function BankAccountsClient() {
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     // API Hooks
     const { data, isLoading } = useBankAccounts();
@@ -48,9 +50,7 @@ export function BankAccountsClient() {
     };
 
     const handleDelete = (id: string) => {
-        if (confirm("Are you sure you want to remove this bank account?")) {
-            deleteAccount(id);
-        }
+        setDeleteTarget(id);
     };
 
     return (
@@ -225,6 +225,20 @@ export function BankAccountsClient() {
                     ))}
                 </div>
             )}
+
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title="Remove bank account"
+                description="Are you sure you want to remove this bank account?"
+                confirmText="Remove"
+                confirmVariant="danger"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={() => {
+                    if (!deleteTarget) return;
+                    deleteAccount(deleteTarget);
+                    setDeleteTarget(null);
+                }}
+            />
         </div>
     );
 }

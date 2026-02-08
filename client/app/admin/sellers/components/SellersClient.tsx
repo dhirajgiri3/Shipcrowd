@@ -18,6 +18,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 
 const SellersClient = () => {
     const [statusFilter, setStatusFilter] = useState<'all' | 'excellent' | 'warning' | 'critical'>('all');
@@ -91,6 +92,7 @@ const SellersClient = () => {
     };
 
     const [isExporting, setIsExporting] = useState(false);
+    const { addToast } = useToast();
 
     const handleExport = async () => {
         try {
@@ -114,7 +116,7 @@ const SellersClient = () => {
             document.body.removeChild(a);
         } catch (error) {
             console.error('Export failed:', error);
-            alert('Failed to export sellers. Please try again.');
+            addToast('Failed to export sellers. Please try again.', 'error');
         } finally {
             setIsExporting(false);
         }

@@ -443,11 +443,9 @@ export function useCommissionPage() {
 
     const handleBulkApprove = () => {
         if (selectedIds.size === 0) return;
-        if (confirm(`Approve ${selectedIds.size} transactions?`)) {
-            bulkApprove({ transactionIds: Array.from(selectedIds) }, {
-                onSuccess: () => setSelectedIds(new Set())
-            });
-        }
+        bulkApprove({ transactionIds: Array.from(selectedIds) }, {
+            onSuccess: () => setSelectedIds(new Set())
+        });
     };
 
     const handleBulkReject = () => {

@@ -19,6 +19,41 @@ const router = express.Router();
 router.get('/stats', authenticate, asyncHandler(adminRatecardController.getAdminRateCardStats));
 
 /**
+ * @route GET /api/v1/admin/ratecards/assignments
+ * @desc Get rate card assignments (stub)
+ * @access Admin, Super Admin
+ */
+router.get('/assignments', authenticate, asyncHandler(adminRatecardController.getAdminRateCardAssignments));
+
+/**
+ * @route POST /api/v1/admin/ratecards/assign
+ * @desc Assign rate card (stub)
+ * @access Admin, Super Admin
+ */
+router.post('/assign', authenticate, csrfProtection, asyncHandler(adminRatecardController.assignAdminRateCard));
+
+/**
+ * @route DELETE /api/v1/admin/ratecards/unassign/:id
+ * @desc Unassign rate card (stub)
+ * @access Admin, Super Admin
+ */
+router.delete('/unassign/:id', authenticate, csrfProtection, asyncHandler(adminRatecardController.unassignAdminRateCard));
+
+/**
+ * @route POST /api/v1/admin/ratecards/bulk-assign
+ * @desc Bulk assign rate cards (stub)
+ * @access Admin, Super Admin
+ */
+router.post('/bulk-assign', authenticate, csrfProtection, asyncHandler(adminRatecardController.bulkAssignAdminRateCards));
+
+/**
+ * @route GET /api/v1/admin/ratecards/couriers
+ * @desc Get available couriers (stub)
+ * @access Admin, Super Admin
+ */
+router.get('/couriers', authenticate, asyncHandler(adminRatecardController.getAdminRateCardCouriers));
+
+/**
  * @route GET /api/v1/admin/ratecards
  * @desc Get all rate cards (platform-wide)
  * @access Admin, Super Admin

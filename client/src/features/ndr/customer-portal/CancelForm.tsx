@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNDRCustomerPortal } from '@/src/core/api/hooks/ndr/useNDRCustomerPortal';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 
 interface Props {
     token: string;
@@ -10,6 +11,7 @@ interface Props {
 const CancelForm: React.FC<Props> = ({ token, totalAmount, onSuccess }) => {
     const { cancelOrder, loading, error } = useNDRCustomerPortal();
     const [reason, setReason] = useState<string>('');
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const reasons = [
         "Changed my mind",
@@ -23,17 +25,7 @@ const CancelForm: React.FC<Props> = ({ token, totalAmount, onSuccess }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!reason) return;
-
-        // Confirmation is imp implicitly handled by the explicit action of clicking "Cancel Order"
-        // but adding a confirm dialog is good practice.
-        if (!window.confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
-            return;
-        }
-
-        const success = await cancelOrder(token, reason);
-        if (success) {
-            onSuccess();
-        }
+        setShowConfirm(true);
     };
 
     return (
@@ -67,6 +59,23 @@ const CancelForm: React.FC<Props> = ({ token, totalAmount, onSuccess }) => {
                     {loading ? 'Cancelling...' : `Cancel Order (₹${totalAmount})`}
                 </button>
             </div>
+
+            <ConfirmDialog
+                open={showConfirm}
+                title="Cancel order"
+                description="Are you sure you want to cancel this order? This action cannot be undone."
+                confirmText="Cancel order"
+                confirmVariant="danger"
+                onCancel={() => setShowConfirm(false)}
+                onConfirm={async () => {
+                    const success = await cancelOrder(token, reason);
+                    if (success) {
+                        onSuccess();
+                    }
+                    setShowConfirm(false);
+                }}
+                isLoading={loading}
+            />
         </form>
     );
 };

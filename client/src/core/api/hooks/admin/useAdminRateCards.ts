@@ -78,8 +78,8 @@ export interface CreateAdminRateCardPayload {
     codPercentage?: number;
     codMinimumCharge?: number;
     baseRates: Array<{
-        carrier: string;
-        serviceType: string;
+        carrier?: string | null;
+        serviceType?: string | null;
         basePrice: number;
         minWeight: number;
         maxWeight: number;
@@ -88,13 +88,13 @@ export interface CreateAdminRateCardPayload {
         minWeight: number;
         maxWeight: number;
         pricePerKg: number;
-        carrier?: string;
-        serviceType?: string;
+        carrier?: string | null;
+        serviceType?: string | null;
     }>;
     zoneRules?: Array<{
         zoneId: string;
-        carrier: string;
-        serviceType: string;
+        carrier?: string | null;
+        serviceType?: string | null;
         additionalPrice: number;
         transitDays?: number;
     }>;
@@ -160,6 +160,7 @@ export const useAdminRateCards = (
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
+        placeholderData: (previousData) => previousData,
         ...options,
     });
 };
@@ -175,7 +176,7 @@ export const useAdminRateCard = (
         queryKey: ['admin', 'ratecards', 'detail', rateCardId],
         queryFn: async () => {
             const response = await apiClient.get(`/admin/ratecards/${rateCardId}`);
-            return response.data.rateCard;
+            return response.data.data.rateCard;
         },
         enabled: !!rateCardId,
         ...CACHE_TIMES.MEDIUM,
@@ -194,7 +195,7 @@ export const useAdminRateCardStats = (
         queryKey: ['admin', 'ratecards', 'stats'],
         queryFn: async () => {
             const response = await apiClient.get('/admin/ratecards/stats');
-            return response.data;
+            return response.data.data;
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
@@ -213,7 +214,7 @@ export const useCreateAdminRateCard = (
     return useMutation<AdminRateCard, ApiError, CreateAdminRateCardPayload>({
         mutationFn: async (data) => {
             const response = await apiClient.post('/admin/ratecards', data);
-            return response.data.rateCard;
+            return response.data.data.rateCard;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
@@ -237,7 +238,7 @@ export const useUpdateAdminRateCard = (
     return useMutation<AdminRateCard, ApiError, { id: string; data: UpdateAdminRateCardPayload }>({
         mutationFn: async ({ id, data }) => {
             const response = await apiClient.patch(`/admin/ratecards/${id}`, data);
-            return response.data.rateCard;
+            return response.data.data.rateCard;
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
@@ -286,7 +287,7 @@ export const useCloneAdminRateCard = (
     return useMutation<AdminRateCard, ApiError, string>({
         mutationFn: async (rateCardId) => {
             const response = await apiClient.post(`/admin/ratecards/${rateCardId}/clone`);
-            return response.data.rateCard;
+            return response.data.data.rateCard;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });

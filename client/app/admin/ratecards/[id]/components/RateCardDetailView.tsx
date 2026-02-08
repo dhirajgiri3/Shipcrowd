@@ -201,8 +201,8 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                {(historyData as any)?.data?.length ? (
-                                    (historyData as any).data.map((log: any) => (
+                                {historyData?.items?.length ? (
+                                    historyData.items.map((log: any) => (
                                         <div key={log.id} className="p-3 rounded-lg bg-[var(--bg-secondary)]">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm font-medium text-[var(--text-primary)]">{log.action}</p>

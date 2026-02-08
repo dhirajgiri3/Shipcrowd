@@ -37,9 +37,11 @@ import { formatCurrency } from '@/src/lib/utils';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/feedback/Dialog';
 import { Label } from '@/src/components/ui/core/Label';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 
 export function CommissionListClient() {
     const router = useRouter();
+    const [showApproveDialog, setShowApproveDialog] = React.useState(false);
 
     const {
         searchQuery,
@@ -150,7 +152,7 @@ export function CommissionListClient() {
                             <Button
                                 size="sm"
                                 className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
-                                onClick={handleBulkApprove}
+                                onClick={() => setShowApproveDialog(true)}
                                 disabled={isApproving}
                             >
                                 {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
@@ -314,7 +316,19 @@ export function CommissionListClient() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <ConfirmDialog
+                open={showApproveDialog}
+                title="Approve transactions"
+                description={`Approve ${selectedIds.size} transactions?`}
+                confirmText="Approve"
+                onCancel={() => setShowApproveDialog(false)}
+                onConfirm={() => {
+                    handleBulkApprove();
+                    setShowApproveDialog(false);
+                }}
+                isLoading={isApproving}
+            />
         </div>
     );
 }
-

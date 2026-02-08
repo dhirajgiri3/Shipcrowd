@@ -6,12 +6,14 @@ import { codDiscrepancyApi, CODDiscrepancy } from '@/src/core/api/clients/financ
 import { Card } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button'; // Assuming Button exists
 import { Badge } from '@/src/components/ui/core/Badge'; // Assuming Badge exists
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { Loader2, Filter, CheckCircle, AlertTriangle, FileText, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CODDiscrepancyPage() {
     const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState<string>('');
+    const [resolveTarget, setResolveTarget] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     // Fetch Discrepancies
@@ -34,9 +36,7 @@ export default function CODDiscrepancyPage() {
     });
 
     const handleQuickResolve = (id: string) => {
-        if (confirm('Are you sure you want to accept the courier amount? This will close the discrepancy.')) {
-            resolveMutation.mutate({ id, method: 'merchant_writeoff' }); // Or auto_accept depending on logic
-        }
+        setResolveTarget(id);
     };
 
     if (isLoading) {
@@ -137,6 +137,19 @@ export default function CODDiscrepancyPage() {
                     Next
                 </Button>
             </div>
+
+            <ConfirmDialog
+                open={!!resolveTarget}
+                title="Accept courier amount"
+                description="Are you sure you want to accept the courier amount? This will close the discrepancy."
+                confirmText="Accept"
+                onCancel={() => setResolveTarget(null)}
+                onConfirm={() => {
+                    if (!resolveTarget) return;
+                    resolveMutation.mutate({ id: resolveTarget, method: 'merchant_writeoff' });
+                    setResolveTarget(null);
+                }}
+            />
         </div>
     );
 }

@@ -22,6 +22,7 @@ import { Badge } from '@/src/components/ui/core/Badge';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { DateRange } from '@/src/lib/data';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 
 // Tabs configuration
 const ORDER_TABS = [
@@ -201,14 +202,10 @@ export default function OrdersClient() {
         }
     };
 
-    const handleDeleteOrder = async (orderId: string) => {
-        if (confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
-            try {
-                await deleteOrderMutation.mutateAsync(orderId);
-            } catch (error) {
-                // Error handled by mutation
-            }
-        }
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+    const handleDeleteOrder = (orderId: string) => {
+        setDeleteTarget(orderId);
     };
 
     const handleExport = () => {
@@ -496,6 +493,23 @@ export default function OrdersClient() {
                     </div>
                 )}
             </Modal>
+
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title="Delete order"
+                description="Are you sure you want to delete this order? This action cannot be undone."
+                confirmText="Delete"
+                confirmVariant="danger"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={async () => {
+                    if (!deleteTarget) return;
+                    try {
+                        await deleteOrderMutation.mutateAsync(deleteTarget);
+                    } finally {
+                        setDeleteTarget(null);
+                    }
+                }}
+            />
         </div>
     );
 }

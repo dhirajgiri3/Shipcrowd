@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
@@ -25,32 +25,60 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAdminRateCards, useAdminRateCardStats, useCloneAdminRateCard, useDeleteAdminRateCard } from '@/src/core/api/hooks/admin/useAdminRateCards';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useBulkUpdateRateCards, useExportRateCards } from '@/src/hooks/shipping/use-bulk-rate-card-operations';
 import { UploadRateCardModal } from './UploadRateCardModal';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EnhancedRateCardItem } from './EnhancedRateCardItem';
+import { RateCardItem } from './RateCardItem';
 import { BulkActionsPanel } from './BulkActionsPanel';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { useDebouncedValue } from '@/src/hooks/data';
+import { rateCardCategories } from './ratecardWizard.utils';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/src/components/ui/feedback/Dialog';
 
 export function RatecardsClient() {
-    const [searchQuery, setSearchQuery] = useState('');
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const search = searchParams.get('search') || '';
+    const [searchInput, setSearchInput] = useState(search);
+    const debouncedSearch = useDebouncedValue(searchInput, 400);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive' | 'draft' | 'expired'>('all');
     const [selectedCourier, setSelectedCourier] = useState<string>('all');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [showBulkActions, setShowBulkActions] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+    const [cloneTarget, setCloneTarget] = useState<{ id: string; name: string } | null>(null);
     const { addToast } = useToast();
     const { user } = useAuth();
     const hasCompanyContext = !!user?.companyId;
 
+    useEffect(() => {
+        if (debouncedSearch === search) return;
+        const params = new URLSearchParams(searchParams.toString());
+        if (!debouncedSearch) {
+            params.delete('search');
+        } else {
+            params.set('search', debouncedSearch);
+        }
+        router.push(`?${params.toString()}`, { scroll: false });
+    }, [debouncedSearch, search, searchParams, router]);
+
     // Integration: Fetch real rate cards
     const { data: adminData, isLoading, isError, error, refetch } = useAdminRateCards({
         status: selectedStatus === 'all' ? undefined : selectedStatus,
-        search: searchQuery || undefined,
+        search: debouncedSearch || undefined,
         carrier: selectedCourier === 'all' ? undefined : selectedCourier,
         category: selectedCategory === 'all' ? undefined : selectedCategory,
     });
@@ -65,33 +93,37 @@ export function RatecardsClient() {
     const { mutate: cloneCard, isPending: isCloning } = useCloneAdminRateCard();
     const { mutate: deleteCard, isPending: isDeleting } = useDeleteAdminRateCard();
 
-    const handleClone = (id: string, name: string) => {
-        if (confirm(`Are you sure you want to clone "${name}"?`)) {
-            cloneCard(id, {
-                onSuccess: (newCard) => {
-                    addToast(`Successfully cloned "${name}" as "${newCard.name}"`, 'success');
-                },
-                onError: (err) => {
-                    addToast(`Failed to clone: ${err.message}`, 'error');
-                }
+    const filteredRateCards = useMemo(() => {
+        if (!debouncedSearch) return rateCards;
+        const term = debouncedSearch.toLowerCase();
+        return rateCards.filter(card => card.name.toLowerCase().includes(term));
+    }, [rateCards, debouncedSearch]);
+
+    const courierOptions = useMemo(() => {
+        const carriers = new Set<string>();
+        rateCards.forEach(card => {
+            card.baseRates?.forEach((rate: any) => {
+                if (rate?.carrier) carriers.add(rate.carrier);
             });
-        }
+        });
+        return Array.from(carriers);
+    }, [rateCards]);
+
+    const categoryOptions = useMemo(() => {
+        const categories = new Set<string>();
+        rateCardCategories.forEach(category => categories.add(category));
+        rateCards.forEach(card => {
+            if (card.rateCardCategory) categories.add(card.rateCardCategory);
+        });
+        return Array.from(categories).filter(Boolean);
+    }, [rateCards]);
+
+    const handleClone = (id: string, name: string) => {
+        setCloneTarget({ id, name });
     };
 
     const handleDelete = (id: string, name: string) => {
-        if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
-            deleteCard(id, {
-                onSuccess: () => {
-                    addToast(`Successfully deleted "${name}"`, 'success');
-                    if (selectedCards.includes(id)) {
-                        setSelectedCards(prev => prev.filter(cardId => cardId !== id));
-                    }
-                },
-                onError: (err) => {
-                    addToast(`Failed to delete: ${err.message}`, 'error');
-                }
-            });
-        }
+        setDeleteTarget({ id, name });
     };
 
     const handleSelectAll = () => {
@@ -132,10 +164,7 @@ export function RatecardsClient() {
 
     const handleBulkPriceAdjustment = (type: 'increase' | 'decrease', rawValue?: number) => {
         if (selectedCards.length === 0) return;
-        const percentage = typeof rawValue === 'number'
-            ? rawValue
-            : parseFloat(prompt(`Enter ${type === 'increase' ? 'increase' : 'decrease'} percentage (e.g., 10 for 10%)`) || '');
-        if (isNaN(percentage) || percentage <= 0) {
+        if (typeof rawValue !== 'number' || Number.isNaN(rawValue) || rawValue <= 0) {
             addToast('Please enter a valid percentage', 'error');
             return;
         }
@@ -143,7 +172,7 @@ export function RatecardsClient() {
             rateCardIds: selectedCards,
             operation: 'adjust_price',
             adjustmentType: 'percentage',
-            adjustmentValue: type === 'increase' ? percentage : -percentage
+            adjustmentValue: type === 'increase' ? rawValue : -rawValue
         }, {
             onSuccess: () => {
                 setSelectedCards([]);
@@ -165,32 +194,9 @@ export function RatecardsClient() {
         );
     }
 
-    if (isLoading) {
+    if (isLoading && !adminData) {
         return <Loader centered size="lg" message="Loading rate cards..." />;
     }
-
-    const filteredRateCards = rateCards.filter(card => {
-        const matchesSearch = card.name.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesSearch;
-    });
-
-    const courierOptions = useMemo(() => {
-        const carriers = new Set<string>();
-        rateCards.forEach(card => {
-            card.baseRates?.forEach((rate: any) => {
-                if (rate?.carrier) carriers.add(rate.carrier);
-            });
-        });
-        return Array.from(carriers);
-    }, [rateCards]);
-
-    const categoryOptions = useMemo(() => {
-        const categories = new Set<string>();
-        rateCards.forEach(card => {
-            if (card.rateCardCategory) categories.add(card.rateCardCategory);
-        });
-        return Array.from(categories);
-    }, [rateCards]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -259,9 +265,9 @@ export function RatecardsClient() {
                             <input
                                 type="text"
                                 placeholder="Search rate cards..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-10 pl-9 pr-4 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] transition-all placeholder-[var(--text-muted)]"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                className="w-full h-10 pl-9 pr-4 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border border-[var(--border-default)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)]/20 transition-all placeholder-[var(--text-muted)]"
                             />
                         </div>
 
@@ -309,7 +315,9 @@ export function RatecardsClient() {
                             >
                                 <option value="all">All Categories</option>
                                 {categoryOptions.map(category => (
-                                    <option key={category} value={category}>{category}</option>
+                                    <option key={category} value={category}>
+                                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                                    </option>
                                 ))}
                             </select>
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -433,10 +441,10 @@ export function RatecardsClient() {
             )}
 
             {/* Rate Cards Grid */}
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2">
                 <AnimatePresence mode="popLayout">
                     {filteredRateCards.map((card) => (
-                        <EnhancedRateCardItem
+                        <RateCardItem
                             key={card._id}
                             card={card}
                             isSelected={selectedCards.includes(card._id)}
@@ -459,12 +467,12 @@ export function RatecardsClient() {
                     </div>
                     <h3 className="text-lg font-medium text-[var(--text-primary)]">No rate cards found</h3>
                     <p className="mt-1 text-[var(--text-secondary)] max-w-sm">
-                        {searchQuery
-                            ? `No results found for "${searchQuery}". Try a different search term.`
+                        {searchInput
+                            ? `No results found for "${searchInput}". Try a different search term.`
                             : "Get started by creating a new rate card or importing an existing one."}
                     </p>
                     <div className="flex gap-3 mt-6">
-                        <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedStatus('all'); }}>
+                        <Button variant="outline" onClick={() => { setSearchInput(''); setSelectedStatus('all'); }}>
                             Clear Filters
                         </Button>
                         <Link href="/admin/ratecards/create">
@@ -482,6 +490,80 @@ export function RatecardsClient() {
                 onClose={() => setShowImportModal(false)}
                 onSuccess={() => refetch()}
             />
+
+            <Dialog open={!!cloneTarget} onOpenChange={(open) => !open && setCloneTarget(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Clone rate card</DialogTitle>
+                        <DialogDescription>
+                            {cloneTarget
+                                ? `Create a copy of "${cloneTarget.name}"?`
+                                : 'Create a copy of this rate card?'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCloneTarget(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                if (!cloneTarget) return;
+                                cloneCard(cloneTarget.id, {
+                                    onSuccess: (newCard) => {
+                                        addToast(`Successfully cloned "${cloneTarget.name}" as "${newCard.name}"`, 'success');
+                                        setCloneTarget(null);
+                                    },
+                                    onError: (err) => {
+                                        addToast(`Failed to clone: ${err.message}`, 'error');
+                                    }
+                                });
+                            }}
+                            disabled={isCloning}
+                        >
+                            Clone
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Delete rate card</DialogTitle>
+                        <DialogDescription>
+                            {deleteTarget
+                                ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.`
+                                : 'Are you sure you want to delete this rate card?'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={() => {
+                                if (!deleteTarget) return;
+                                deleteCard(deleteTarget.id, {
+                                    onSuccess: () => {
+                                        addToast(`Successfully deleted "${deleteTarget.name}"`, 'success');
+                                        if (selectedCards.includes(deleteTarget.id)) {
+                                            setSelectedCards(prev => prev.filter(cardId => cardId !== deleteTarget.id));
+                                        }
+                                        setDeleteTarget(null);
+                                    },
+                                    onError: (err) => {
+                                        addToast(`Failed to delete: ${err.message}`, 'error');
+                                    }
+                                });
+                            }}
+                            disabled={isDeleting}
+                        >
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

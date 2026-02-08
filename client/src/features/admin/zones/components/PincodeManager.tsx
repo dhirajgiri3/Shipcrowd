@@ -17,6 +17,7 @@ import { useAddPincodesToZone, useRemovePincodesFromZone } from '@/src/core/api/
 import type { ShippingZone as Zone } from '@/src/types/api/logistics';
 import { Search, Plus, Trash2 } from 'lucide-react';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 interface PincodeManagerProps {
     zoneId: string;
     pincodes: string[];
@@ -29,6 +30,7 @@ export function PincodeManager({ zoneId, pincodes }: PincodeManagerProps) {
     const [showAddPincodesDialog, setShowAddPincodesDialog] = useState(false);
     const [pincodeSearch, setPincodeSearch] = useState('');
     const [selectedPincodes, setSelectedPincodes] = useState<string[]>([]);
+    const [showRemoveDialog, setShowRemoveDialog] = useState(false);
     const [newPincodes, setNewPincodes] = useState('');
 
     const handleAddPincodes = () => {
@@ -57,18 +59,7 @@ export function PincodeManager({ zoneId, pincodes }: PincodeManagerProps) {
         if (selectedPincodes.length === 0) {
                         return;
         }
-
-        if (confirm(`Remove ${selectedPincodes.length} selected pincodes?`)) {
-            removePincodes(
-                { id: zoneId, data: { pincodes: selectedPincodes } },
-                {
-                    onSuccess: () => {
-                        setSelectedPincodes([]);
-                        showSuccessToast('Pincodes removed successfully');
-                    },
-                }
-            );
-        }
+        setShowRemoveDialog(true);
     };
 
     const togglePincodeSelection = (pincode: string) => {
@@ -158,6 +149,27 @@ export function PincodeManager({ zoneId, pincodes }: PincodeManagerProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <ConfirmDialog
+                open={showRemoveDialog}
+                title="Remove pincodes"
+                description={`Remove ${selectedPincodes.length} selected pincodes?`}
+                confirmText="Remove"
+                confirmVariant="danger"
+                onCancel={() => setShowRemoveDialog(false)}
+                onConfirm={() => {
+                    removePincodes(
+                        { id: zoneId, data: { pincodes: selectedPincodes } },
+                        {
+                            onSuccess: () => {
+                                setSelectedPincodes([]);
+                                showSuccessToast('Pincodes removed successfully');
+                            },
+                        }
+                    );
+                    setShowRemoveDialog(false);
+                }}
+            />
         </Card>
     );
 }

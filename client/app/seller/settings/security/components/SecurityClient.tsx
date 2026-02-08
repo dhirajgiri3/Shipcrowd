@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/src/features/auth';
 import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { Button, Input, Card } from '@/src/components/ui';
-import { showSuccessToast, handleApiError } from '@/src/lib/error';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
+import { showSuccessToast, showErrorToast, handleApiError } from '@/src/lib/error';
 import { Shield, Lock, Smartphone, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 // import { formatDistanceToNow } from 'date-fns';
 
@@ -18,6 +19,8 @@ export function SecurityClient() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
+    const [showRevokeAllDialog, setShowRevokeAllDialog] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [passwordStrength, setPasswordStrength] = useState<any>(null);
 
@@ -53,7 +56,8 @@ export function SecurityClient() {
         try {
             await loadSessions();
         } catch (error) {
-                    } finally {
+            handleApiError(error, 'Failed to load sessions');
+        } finally {
             setIsLoadingSessions(false);
         }
     };
@@ -63,15 +67,18 @@ export function SecurityClient() {
 
         // Validation
         if (newPassword !== confirmPassword) {
-                        return;
+            showErrorToast('Passwords do not match');
+            return;
         }
 
         if (newPassword.length < 8) {
-                        return;
+            showErrorToast('Password must be at least 8 characters');
+            return;
         }
 
         if (passwordStrength && passwordStrength.score < 2) {
-                        return;
+            showErrorToast('Password is too weak');
+            return;
         }
 
         setIsChangingPassword(true);
@@ -86,48 +93,25 @@ export function SecurityClient() {
                 setConfirmPassword('');
                 setPasswordStrength(null);
             } else {
-                const errorMsg = result.error?.message || result.error || 'Failed to change password';
-                            }
+                const errorMsg =
+                    typeof result.error === 'string'
+                        ? result.error
+                        : result.error?.message || 'Failed to change password';
+                showErrorToast(errorMsg);
+            }
         } catch (error: any) {
-                    } finally {
+            handleApiError(error, 'Failed to change password');
+        } finally {
             setIsChangingPassword(false);
         }
     };
 
     const handleRevokeSession = async (sessionId: string) => {
-        if (!confirm('Are you sure you want to revoke this session? You will be logged out from that device.')) {
-            return;
-        }
-
-        setRevokingSessionId(sessionId);
-        try {
-            const result = await revokeSession(sessionId);
-            if (result.success) {
-                showSuccessToast(result.message || 'Session revoked successfully');
-            } else {
-                            }
-        } catch (error) {
-                    } finally {
-            setRevokingSessionId(null);
-        }
+        setRevokeTarget(sessionId);
     };
 
     const handleRevokeAllSessions = async () => {
-        if (!confirm('Are you sure you want to sign out from all other devices? This will revoke all sessions except your current one.')) {
-            return;
-        }
-
-        setIsRevokingAll(true);
-        try {
-            const result = await revokeAllSessions();
-            if (result.success) {
-                showSuccessToast(result.message || `Revoked ${result.revokedCount} sessions`);
-            } else {
-                            }
-        } catch (error) {
-                    } finally {
-            setIsRevokingAll(false);
-        }
+        setShowRevokeAllDialog(true);
     };
 
     const getDeviceIcon = (type: string) => {
@@ -424,6 +408,49 @@ export function SecurityClient() {
                     </div>
                 </div>
             </Card>
+
+            <ConfirmDialog
+                open={!!revokeTarget}
+                title="Revoke session"
+                description="Are you sure you want to revoke this session? You will be logged out from that device."
+                confirmText="Revoke"
+                confirmVariant="danger"
+                onCancel={() => setRevokeTarget(null)}
+                onConfirm={async () => {
+                    if (!revokeTarget) return;
+                    setRevokingSessionId(revokeTarget);
+                    try {
+                        const result = await revokeSession(revokeTarget);
+                        if (result.success) {
+                            showSuccessToast(result.message || 'Session revoked successfully');
+                        }
+                    } finally {
+                        setRevokingSessionId(null);
+                        setRevokeTarget(null);
+                    }
+                }}
+            />
+
+            <ConfirmDialog
+                open={showRevokeAllDialog}
+                title="Revoke all other sessions"
+                description="Are you sure you want to sign out from all other devices? This will revoke all sessions except your current one."
+                confirmText="Revoke all"
+                confirmVariant="danger"
+                onCancel={() => setShowRevokeAllDialog(false)}
+                onConfirm={async () => {
+                    setIsRevokingAll(true);
+                    try {
+                        const result = await revokeAllSessions();
+                        if (result.success) {
+                            showSuccessToast(result.message || `Revoked ${result.revokedCount} sessions`);
+                        }
+                    } finally {
+                        setIsRevokingAll(false);
+                        setShowRevokeAllDialog(false);
+                    }
+                }}
+            />
         </div>
     );
 }

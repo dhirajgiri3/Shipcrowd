@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { authApi } from '@/src/core/api/clients/auth/authApi';
 import { useAuth } from '@/src/features/auth';
 import { Button, Card } from '@/src/components/ui';
+import { PromptDialog } from '@/src/components/ui/feedback/PromptDialog';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { AlertTriangle, Trash2, UserX, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -14,18 +15,19 @@ export function AccountClient() {
     const router = useRouter();
     const [isDeactivating, setIsDeactivating] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+    const [deactivateReason, setDeactivateReason] = useState('');
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [deleteReason, setDeleteReason] = useState('');
 
     const handleDeactivate = async () => {
-        const confirmed = confirm(
-            'Are you sure you want to deactivate your account? You can reactivate it anytime by logging in again.'
-        );
-        if (!confirmed) return;
+        setShowDeactivateDialog(true);
+    };
 
-        const reason = prompt('Why are you deactivating? (optional)');
-
+    const confirmDeactivate = async () => {
         setIsDeactivating(true);
         try {
-            await authApi.deactivateAccount(reason || undefined);
+            await authApi.deactivateAccount(deactivateReason || undefined);
             showSuccessToast('Account deactivated successfully');
             await logout();
             router.push('/');
@@ -37,23 +39,15 @@ export function AccountClient() {
     };
 
     const handleScheduleDeletion = async () => {
-        const confirmed = confirm(
-            '⚠️ WARNING: This will schedule your account for permanent deletion in 30 days.\n\nYou can cancel within 30 days. After that, all your data will be permanently deleted.\n\nAre you absolutely sure?'
-        );
-        if (!confirmed) return;
+        setShowDeleteDialog(true);
+    };
 
-        const reason = prompt('Why are you leaving? (optional - helps us improve)');
-
+    const confirmScheduleDeletion = async () => {
         setIsDeleting(true);
         try {
-            const result = await authApi.scheduleAccountDeletion(reason || undefined);
+            const result = await authApi.scheduleAccountDeletion(deleteReason || undefined);
             const deletionDate = new Date(result.data?.scheduledDeletionDate).toLocaleDateString();
             showSuccessToast(`Account deletion scheduled for ${deletionDate}`);
-
-            // Show info about cancellation
-            setTimeout(() => {
-                alert(`Your account will be deleted on ${deletionDate}.\n\nYou can cancel this by logging in before that date.`);
-            }, 1000);
         } catch (error: any) {
             handleApiError(error, 'Failed to schedule deletion');
         } finally {
@@ -183,6 +177,52 @@ export function AccountClient() {
                     </p>
                 </Card>
             </div>
+
+            <PromptDialog
+                open={showDeactivateDialog}
+                title="Deactivate account"
+                description="Are you sure you want to deactivate your account? You can reactivate it anytime by logging in again."
+                label="Reason (optional)"
+                placeholder="Why are you deactivating?"
+                value={deactivateReason}
+                onChange={setDeactivateReason}
+                confirmText="Deactivate"
+                confirmVariant="danger"
+                multiline
+                onCancel={() => {
+                    setShowDeactivateDialog(false);
+                    setDeactivateReason('');
+                }}
+                onConfirm={async () => {
+                    await confirmDeactivate();
+                    setShowDeactivateDialog(false);
+                    setDeactivateReason('');
+                }}
+                isLoading={isDeactivating}
+            />
+
+            <PromptDialog
+                open={showDeleteDialog}
+                title="Schedule account deletion"
+                description="This will schedule your account for permanent deletion in 30 days. You can cancel within 30 days. After that, all your data will be permanently deleted."
+                label="Reason (optional)"
+                placeholder="Why are you leaving? (optional)"
+                value={deleteReason}
+                onChange={setDeleteReason}
+                confirmText="Schedule deletion"
+                confirmVariant="danger"
+                multiline
+                onCancel={() => {
+                    setShowDeleteDialog(false);
+                    setDeleteReason('');
+                }}
+                onConfirm={async () => {
+                    await confirmScheduleDeletion();
+                    setShowDeleteDialog(false);
+                    setDeleteReason('');
+                }}
+                isLoading={isDeleting}
+            />
         </div>
     );
 }

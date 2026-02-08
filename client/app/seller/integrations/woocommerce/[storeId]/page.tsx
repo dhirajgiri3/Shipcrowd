@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { useIntegration, useSyncLogs, useDeleteIntegration } from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from '@/src/lib/utils';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 
 export const dynamic = "force-dynamic";
 
@@ -32,23 +33,14 @@ export default function WooCommerceStorePage() {
     const router = useRouter();
     const { addToast } = useToast();
     const storeId = params.storeId as string;
+    const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
     const { data: store, isLoading: isStoreLoading } = useIntegration(storeId, 'WOOCOMMERCE');
     const { data: logs, isLoading: isLogsLoading } = useSyncLogs(storeId, 'WOOCOMMERCE');
     const { mutate: disconnectStore, isPending: isDisconnecting } = useDeleteIntegration();
 
     const handleDisconnect = () => {
-        if (window.confirm('Are you sure you want to disconnect this store? This will stop all syncs.')) {
-            disconnectStore({ integrationId: storeId, type: 'WOOCOMMERCE' }, {
-                onSuccess: () => {
-                    addToast('Store disconnected successfully', 'success');
-                    router.push('/seller/integrations');
-                },
-                onError: (error: any) => {
-                    addToast(error.message || 'Failed to disconnect store', 'error');
-                }
-            });
-        }
+        setShowDisconnectDialog(true);
     };
 
     if (isStoreLoading) {
@@ -290,5 +282,26 @@ export default function WooCommerceStorePage() {
                 </CardContent>
             </Card>
         </div>
+
+        <ConfirmDialog
+            open={showDisconnectDialog}
+            title="Disconnect store"
+            description="Are you sure you want to disconnect this store? This will stop all syncs."
+            confirmText="Disconnect"
+            confirmVariant="danger"
+            onCancel={() => setShowDisconnectDialog(false)}
+            onConfirm={() => {
+                disconnectStore({ integrationId: storeId, type: 'WOOCOMMERCE' }, {
+                    onSuccess: () => {
+                        addToast('Store disconnected successfully', 'success');
+                        router.push('/seller/integrations');
+                    },
+                    onError: (error: any) => {
+                        addToast(error.message || 'Failed to disconnect store', 'error');
+                    }
+                });
+                setShowDisconnectDialog(false);
+            }}
+        />
     );
 }

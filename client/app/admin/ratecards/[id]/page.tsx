@@ -1,5 +1,6 @@
 import { RateCardDetailView } from './components/RateCardDetailView';
 
-export default function RateCardDetailsPage({ params }: { params: { id: string } }) {
-    return <RateCardDetailView rateCardId={params.id} />;
+export default async function RateCardDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    return <RateCardDetailView rateCardId={id} />;
 }

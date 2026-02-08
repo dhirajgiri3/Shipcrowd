@@ -31,13 +31,13 @@ const weightRuleSchema = z.object({
     minWeight: z.number().min(0),
     maxWeight: z.number().min(0),
     pricePerKg: z.number().min(0),
-    carrier: z.string().optional(),
-    serviceType: z.string().optional(),
+    carrier: z.string().optional().nullable(),
+    serviceType: z.string().optional().nullable(),
 });
 
 const baseRateSchema = z.object({
-    carrier: z.string().min(1),
-    serviceType: z.string().min(1),
+    carrier: z.string().optional().nullable(),
+    serviceType: z.string().optional().nullable(),
     basePrice: z.number().min(0),
     minWeight: z.number().min(0),
     maxWeight: z.number().min(0),
@@ -45,8 +45,8 @@ const baseRateSchema = z.object({
 
 const zoneRuleSchema = z.object({
     zoneId: z.string(),
-    carrier: z.string().min(1),
-    serviceType: z.string().min(1),
+    carrier: z.string().optional().nullable(),
+    serviceType: z.string().optional().nullable(),
     additionalPrice: z.number(),
     transitDays: z.number().optional(),
 });
@@ -54,6 +54,14 @@ const zoneRuleSchema = z.object({
 const createAdminRateCardSchema = z.object({
     name: z.string().min(2),
     companyId: z.string().min(1), // Admin must specify company
+    rateCardCategory: z.string().optional(),
+    shipmentType: z.enum(['forward', 'reverse']).optional(),
+    gst: z.number().min(0).optional(),
+    minimumFare: z.number().min(0).optional(),
+    minimumFareCalculatedOn: z.enum(['freight', 'freight_overhead']).optional(),
+    zoneBType: z.enum(['state', 'region']).optional(),
+    codPercentage: z.number().min(0).optional(),
+    codMinimumCharge: z.number().min(0).optional(),
     baseRates: z.array(baseRateSchema).min(1),
     weightRules: z.array(weightRuleSchema).optional(),
     zoneRules: z.array(zoneRuleSchema).optional(),
@@ -557,8 +565,7 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
                     $match: {
                         isDeleted: false,
                         createdAt: { $gte: thirtyDaysAgo },
-                        'pricingDetails.totalPrice': { $exists: true },
-                        'pricingDetails.rateCardId': { $exists: true }
+                        'pricingDetails.totalPrice': { $exists: true }
                     }
                 },
                 { $group: { _id: null, revenue30d: { $sum: '$pricingDetails.totalPrice' } } }
@@ -581,6 +588,110 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
         sendSuccess(res, stats, 'Rate card statistics retrieved successfully');
     } catch (error) {
         logger.error('Error fetching admin rate card stats:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get rate card assignments (stub until assignment model is implemented)
+ *
+ * @route GET /api/v1/admin/ratecards/assignments
+ * @access Admin, Super Admin
+ */
+export const getAdminRateCardAssignments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        sendSuccess(res, { assignments: [], total: 0 }, 'Rate card assignments retrieved');
+    } catch (error) {
+        logger.error('Error fetching admin rate card assignments:', error);
+        next(error);
+    }
+};
+
+/**
+ * Assign rate card to a company (stub)
+ *
+ * @route POST /api/v1/admin/ratecards/assign
+ * @access Admin, Super Admin
+ */
+export const assignAdminRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const { rateCardId, sellerId, priority } = req.body || {};
+
+        const assignment = {
+            id: new mongoose.Types.ObjectId().toString(),
+            rateCardId,
+            rateCardName: 'N/A',
+            sellerId,
+            sellerName: 'N/A',
+            priority: Number(priority) || 1,
+            assignedAt: new Date().toISOString(),
+            assignedBy: auth.userId,
+            isActive: true,
+        };
+
+        sendCreated(res, assignment, 'Rate card assigned (stub)');
+    } catch (error) {
+        logger.error('Error assigning admin rate card:', error);
+        next(error);
+    }
+};
+
+/**
+ * Unassign rate card (stub)
+ *
+ * @route DELETE /api/v1/admin/ratecards/unassign/:id
+ * @access Admin, Super Admin
+ */
+export const unassignAdminRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        sendSuccess(res, { id: req.params.id }, 'Rate card unassigned (stub)');
+    } catch (error) {
+        logger.error('Error unassigning admin rate card:', error);
+        next(error);
+    }
+};
+
+/**
+ * Bulk assign rate cards (stub)
+ *
+ * @route POST /api/v1/admin/ratecards/bulk-assign
+ * @access Admin, Super Admin
+ */
+export const bulkAssignAdminRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        sendSuccess(res, { assignments: req.body?.assignments || [] }, 'Rate cards bulk assigned (stub)');
+    } catch (error) {
+        logger.error('Error bulk assigning admin rate cards:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get available couriers (stub)
+ *
+ * @route GET /api/v1/admin/ratecards/couriers
+ * @access Admin, Super Admin
+ */
+export const getAdminRateCardCouriers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        sendSuccess(res, { couriers: [] }, 'Available couriers retrieved');
+    } catch (error) {
+        logger.error('Error fetching admin rate card couriers:', error);
         next(error);
     }
 };
@@ -647,6 +758,11 @@ export default {
     getAdminRateCardAnalytics,
     getAdminRateCardRevenueSeries,
     getAdminRateCardHistory,
+    getAdminRateCardAssignments,
+    assignAdminRateCard,
+    unassignAdminRateCard,
+    bulkAssignAdminRateCards,
+    getAdminRateCardCouriers,
     createAdminRateCard,
     updateAdminRateCard,
     deleteAdminRateCard,

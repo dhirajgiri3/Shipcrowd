@@ -42,6 +42,8 @@ export type { AvatarProps } from './core/Avatar';
 export { Alert } from './feedback/Alert';
 export { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './feedback/Dialog';
 export { Modal } from './feedback/Modal';
+export { ConfirmDialog } from './feedback/ConfirmDialog';
+export { PromptDialog } from './feedback/PromptDialog';
 export { useToast } from './feedback/Toast';
 export { Toaster } from './feedback/Toaster';
 export { Tooltip } from './feedback/Tooltip';

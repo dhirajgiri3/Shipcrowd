@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { cn, formatDate } from '@/src/lib/utils';
 import {
     useUserList,
@@ -92,6 +93,7 @@ export function UserManagementClient() {
     const promoteUser = usePromoteUser();
     const demoteUser = useDemoteUser();
     const impersonateUser = useImpersonateUser();
+    const [impersonateTarget, setImpersonateTarget] = useState<{ id: string; name: string } | null>(null);
 
     const handlePromote = async (userId: string, reason?: string) => {
         try {
@@ -116,16 +118,7 @@ export function UserManagementClient() {
     };
 
     const handleImpersonate = async (userId: string, userName: string) => {
-        if (!window.confirm(`Are you sure you want to login as ${userName}? You will be logged out of your current session.`)) {
-            return;
-        }
-
-        try {
-            await impersonateUser.mutateAsync({ userId });
-            // Redirect is handled in hook onSuccess
-        } catch (error: any) {
-            addToast(error.response?.data?.message || 'Failed to impersonate user', 'error');
-        }
+        setImpersonateTarget({ id: userId, name: userName });
     };
 
     return (
@@ -348,6 +341,29 @@ export function UserManagementClient() {
                     />
                 )}
             </AnimatePresence>
+
+            <ConfirmDialog
+                open={!!impersonateTarget}
+                title="Login as user"
+                description={
+                    impersonateTarget
+                        ? `Are you sure you want to login as ${impersonateTarget.name}? You will be logged out of your current session.`
+                        : undefined
+                }
+                confirmText="Continue"
+                confirmVariant="danger"
+                onCancel={() => setImpersonateTarget(null)}
+                onConfirm={async () => {
+                    if (!impersonateTarget) return;
+                    try {
+                        await impersonateUser.mutateAsync({ userId: impersonateTarget.id });
+                    } catch (error: any) {
+                        addToast(error.response?.data?.message || 'Failed to impersonate user', 'error');
+                    } finally {
+                        setImpersonateTarget(null);
+                    }
+                }}
+            />
         </div>
     );
 }

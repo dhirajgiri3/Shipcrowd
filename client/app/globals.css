@@ -334,7 +334,31 @@ body {
    /* Clean Focus */
    .focus-ring {
       outline: none;
-      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary-blue);
+      box-shadow: none;
+   }
+
+   /* Remove all focus outlines and rings */
+   *:focus,
+   *:focus-visible {
+      outline: none !important;
+      box-shadow: none !important;
+   }
+
+   *:focus-within {
+      outline: none !important;
+      box-shadow: none !important;
+   }
+
+   input:focus,
+   textarea:focus,
+   select:focus,
+   button:focus,
+   input:focus-visible,
+   textarea:focus-visible,
+   select:focus-visible,
+   button:focus-visible {
+      outline: none !important;
+      box-shadow: none !important;
    }
 
    /* Card Styles - Theme Aware - REMOVED per user request to prefer utility classes */

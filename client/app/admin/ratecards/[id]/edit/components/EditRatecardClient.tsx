@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CreditCard } from 'lucide-react';
@@ -21,18 +21,24 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
     const router = useRouter();
     const { data: rateCard, isLoading } = useAdminRateCard(rateCardId);
     const { mutate: updateRateCard, isPending } = useUpdateAdminRateCard();
-    const [initialData, setInitialData] = useState<RateCardFormData>(initialRateCardFormData);
 
-    useEffect(() => {
-        if (!rateCard) return;
+    // Derive initial data directly from rateCard
+    const initialData = useMemo<RateCardFormData>(() => {
+        if (!rateCard) return initialRateCardFormData;
+
         const baseRate = rateCard.baseRates?.[0];
         const weightRule = rateCard.weightRules?.[0];
         const multipliers = rateCard.zoneMultipliers || { zoneA: 1 };
         const basePrice = baseRate?.basePrice || 0;
-        const additionalWeight = 500;
-        const additionalZoneA = weightRule?.pricePerKg ? (weightRule.pricePerKg / 1000) * additionalWeight : 0;
 
-        setInitialData({
+        // Calculate additional weight/price from weight rules if available
+        // Default to 500g logic if not explicitly found
+        const additionalWeight = 500; // Fixed as per previous logic, or assert from weightRules[0].minWeight/maxWeight difference
+        const additionalZoneA = weightRule?.pricePerKg
+            ? (weightRule.pricePerKg / 1000) * additionalWeight
+            : 0;
+
+        return {
             ...initialRateCardFormData,
             courierProviderId: baseRate?.carrier || '',
             courierServiceId: baseRate?.serviceType || '',
@@ -54,7 +60,7 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
             additionalZoneA: String(additionalZoneA || ''),
             codPercentage: String(rateCard.codPercentage || 2.5),
             codMinimumCharge: String(rateCard.codMinimumCharge || 25),
-        });
+        };
     }, [rateCard]);
 
     const handleSubmit = async (formData: RateCardFormData) => {
@@ -109,7 +115,9 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
                 </div>
             </div>
 
+            {/* Key prop ensures component remounts when ID changes or data loads */}
             <RateCardWizard
+                key={rateCard?._id || 'loading'}
                 initialData={initialData}
                 onSubmit={handleSubmit}
                 onSaveDraft={(draftData) => handleSubmit({ ...draftData, status: 'draft' })}

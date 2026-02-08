@@ -18,6 +18,7 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useNDRCase, useEscalateNDR } from '@/src/core/api/hooks';
 import { TakeActionModal } from '@/src/features/ndr/components/TakeActionModal';
+import { PromptDialog } from '@/src/components/ui/feedback/PromptDialog';
 import { CommunicationHistory } from '@/src/features/ndr/components/CommunicationHistory';
 import { NDRTimeline } from '@/src/features/ndr/components/NDRTimeline';
 import { formatDate } from '@/src/lib/utils';
@@ -50,6 +51,8 @@ export default function NDRDetailPage() {
 
     const [showActionModal, setShowActionModal] = useState(false);
     const [selectedAction, setSelectedAction] = useState<NDRAction | undefined>();
+    const [showEscalateDialog, setShowEscalateDialog] = useState(false);
+    const [escalationReason, setEscalationReason] = useState('');
 
     const { data: ndrCase, isLoading } = useNDRCase(caseId);
     const escalate = useEscalateNDR();
@@ -60,10 +63,7 @@ export default function NDRDetailPage() {
     };
 
     const handleEscalate = async () => {
-        const reason = prompt('Please provide escalation reason:');
-        if (reason) {
-            await escalate.mutateAsync({ caseId, reason });
-        }
+        setShowEscalateDialog(true);
     };
 
     if (isLoading) {
@@ -331,6 +331,30 @@ export default function NDRDetailPage() {
                     setSelectedAction(undefined);
                 }}
                 defaultAction={selectedAction}
+            />
+
+            <PromptDialog
+                open={showEscalateDialog}
+                title="Escalate case"
+                description="Please provide an escalation reason."
+                label="Escalation reason"
+                placeholder="Enter reason"
+                value={escalationReason}
+                onChange={setEscalationReason}
+                confirmText="Escalate"
+                confirmVariant="danger"
+                multiline
+                required
+                onCancel={() => {
+                    setShowEscalateDialog(false);
+                    setEscalationReason('');
+                }}
+                onConfirm={async () => {
+                    if (!escalationReason.trim()) return;
+                    await escalate.mutateAsync({ caseId, reason: escalationReason });
+                    setEscalationReason('');
+                    setShowEscalateDialog(false);
+                }}
             />
         </div>
     );

@@ -8,11 +8,13 @@ import type { ZoneType } from '@/src/types/api/logistics';
 import { ZoneStatsCards, ZoneFilters, ZoneListTable, ZonesSkeleton } from '@/src/features/admin/zones';
 import { Plus } from 'lucide-react';
 import { showSuccessToast } from '@/src/lib/error';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 export function ZonesClient() {
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState<ZoneType | 'all'>('all');
     const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const [page, setPage] = useState(1);
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
     const filters = {
         search: search || undefined,
@@ -26,10 +28,7 @@ export function ZonesClient() {
     const { mutate: deleteZone } = useDeleteZone();
 
     const handleDelete = (id: string, name: string) => {
-        if (confirm(`Are you sure you want to delete zone "${name}"? This action cannot be undone.`)) {
-            deleteZone(id);
-            showSuccessToast('Zone deleted successfully');
-        }
+        setDeleteTarget({ id, name });
     };
 
     return (
@@ -74,6 +73,21 @@ export function ZonesClient() {
                     setPage={setPage}
                 />
             </Suspense>
+
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title="Delete zone"
+                description={deleteTarget ? `Are you sure you want to delete zone "${deleteTarget.name}"? This action cannot be undone.` : undefined}
+                confirmText="Delete"
+                confirmVariant="danger"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={() => {
+                    if (!deleteTarget) return;
+                    deleteZone(deleteTarget.id);
+                    showSuccessToast('Zone deleted successfully');
+                    setDeleteTarget(null);
+                }}
+            />
         </div>
     );
 }

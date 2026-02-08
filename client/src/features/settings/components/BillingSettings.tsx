@@ -6,6 +6,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import {
     CreditCard,
@@ -25,6 +26,7 @@ export function BillingSettings() {
         ifscCode: '',
         accountHolderName: ''
     });
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     const { addToast } = useToast();
 
@@ -53,12 +55,7 @@ export function BillingSettings() {
     };
 
     const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to remove this bank account?')) {
-            deleteAccountMutation.mutate(id, {
-                onSuccess: () => addToast('Bank account removed', 'success'),
-                onError: () => addToast('Failed to remove account', 'error')
-            });
-        }
+        setDeleteTarget(id);
     };
 
     const handleSetDefault = (id: string) => {
@@ -223,5 +220,22 @@ export function BillingSettings() {
                 </div>
             </CardContent>
         </Card>
+
+        <ConfirmDialog
+            open={!!deleteTarget}
+            title="Remove bank account"
+            description="Are you sure you want to remove this bank account?"
+            confirmText="Remove"
+            confirmVariant="danger"
+            onCancel={() => setDeleteTarget(null)}
+            onConfirm={() => {
+                if (!deleteTarget) return;
+                deleteAccountMutation.mutate(deleteTarget, {
+                    onSuccess: () => addToast('Bank account removed', 'success'),
+                    onError: () => addToast('Failed to remove account', 'error')
+                });
+                setDeleteTarget(null);
+            }}
+        />
     );
 }

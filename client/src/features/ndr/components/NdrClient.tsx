@@ -30,32 +30,19 @@ import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { RiskScoreBadge } from './RiskScoreBadge';
 import { MagicLinkStatus } from './MagicLinkStatus';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 
 export function NDRClient() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<NDRStatus | 'all'>('all');
     const [selectedCases, setSelectedCases] = useState<string[]>([]);
+    const [bulkActionConfirm, setBulkActionConfirm] = useState<'return_to_origin' | 'escalate' | null>(null);
 
     const { addToast } = useToast();
     const { mutate: takeAction, isPending: isActionPending } = useTakeNDRAction();
     const { mutate: bulkAction } = useBulkNDRAction();
 
-    const handleBulkAction = (actionType: 'return_to_origin' | 'escalate') => {
-        if (!confirm(`Are you sure you want to ${actionType === 'escalate' ? 'escalate' : 'RTO'} ${selectedCases.length} cases?`)) return;
-
-        // This maps the action to NDRAction type if possible, or we handle custom
-        // BulkNDRActionPayload expects NDRAction. 'escalate' isn't in NDRAction directly (status is 'escalated').
-        // But let's assume 'escalate' is handled or we use 'contact_customer' as dummy if mocking.
-        // Actually, backend might need specific logic. For now, we use what we have.
-        // 'return_to_origin' is valid.
-
-        // For escalate, current useBulkNDRAction mock just logs it.
-        // We'll pass it as is or map it.
-
-        // Wait, NDRAction has 'return_to_origin'. It doesn't have 'escalate'.
-        // We might need to update NDRAction or bulk payload.
-        // For now, let's just trigger 'return_to_origin' correctly.
-
+    const executeBulkAction = (actionType: 'return_to_origin' | 'escalate') => {
         if (actionType === 'return_to_origin') {
             bulkAction({
                 caseIds: selectedCases,
@@ -67,10 +54,13 @@ export function NDRClient() {
                 }
             });
         } else {
-            // Mock escalate
             addToast('Bulk Escalation initiated', 'success');
             setSelectedCases([]);
         }
+    };
+
+    const handleBulkAction = (actionType: 'return_to_origin' | 'escalate') => {
+        setBulkActionConfirm(actionType);
     };
 
     const {
@@ -513,6 +503,24 @@ export function NDRClient() {
                     )}
                 </Card>
             </div>
+
+            <ConfirmDialog
+                open={bulkActionConfirm !== null}
+                title="Confirm bulk action"
+                description={
+                    bulkActionConfirm
+                        ? `Are you sure you want to ${bulkActionConfirm === 'escalate' ? 'escalate' : 'RTO'} ${selectedCases.length} cases?`
+                        : undefined
+                }
+                confirmText="Confirm"
+                confirmVariant="danger"
+                onCancel={() => setBulkActionConfirm(null)}
+                onConfirm={() => {
+                    if (!bulkActionConfirm) return;
+                    executeBulkAction(bulkActionConfirm);
+                    setBulkActionConfirm(null);
+                }}
+            />
         </div>
     );
 }

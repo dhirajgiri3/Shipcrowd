@@ -30,6 +30,7 @@ import {
     BarChart3,
 } from 'lucide-react';
 import { Loader, CardSkeleton } from '@/src/components/ui';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { handleApiError } from '@/src/lib/error';
 import type {
     NotificationRule,
@@ -198,6 +199,7 @@ interface RuleCardProps {
 function RuleCard({ rule, onEdit }: RuleCardProps) {
     const { mutate: toggleRule, isPending: isToggling } = useToggleRule();
     const { mutate: deleteRule, isPending: isDeleting } = useDeleteRule();
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const handleToggle = () => {
         toggleRule({
@@ -207,9 +209,7 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
     };
 
     const handleDelete = () => {
-        if (window.confirm(`Delete rule "${rule.name}"?`)) {
-            deleteRule(rule.ruleId);
-        }
+        setShowDeleteDialog(true);
     };
 
     const trigger = triggerOptions.find(t => t.value === rule.trigger);
@@ -337,6 +337,18 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                     )}
                 </div>
             )}
+            <ConfirmDialog
+                open={showDeleteDialog}
+                title="Delete rule"
+                description={`Delete rule "${rule.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                confirmVariant="danger"
+                onCancel={() => setShowDeleteDialog(false)}
+                onConfirm={() => {
+                    deleteRule(rule.ruleId);
+                    setShowDeleteDialog(false);
+                }}
+            />
         </div>
     );
 }

@@ -5,8 +5,17 @@ import { useParams, useRouter } from 'next/navigation';
 import { Check, Loader2, Upload, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
 import { Label } from '@/src/components/ui/core/Label';
 import { Textarea } from '@/src/components/ui/core/Textarea';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/src/components/ui/feedback/Dialog';
 import { useRTODetails, usePerformRTOQC, useUploadRTOQCPhotos } from '@/src/core/api/hooks/rto/useRTOManagement';
 import type { RTOOrderRef, RTOShipmentRef } from '@/src/types/api/rto.types';
 
@@ -52,6 +61,9 @@ export function RTOQCPage() {
     const [condition, setCondition] = useState('');
     const [damageTypes, setDamageTypes] = useState<string[]>([]);
     const [photos, setPhotos] = useState<{ url: string; label?: string }[]>([]);
+    const [showPhotoDialog, setShowPhotoDialog] = useState(false);
+    const [photoUrl, setPhotoUrl] = useState('');
+    const [photoLabel, setPhotoLabel] = useState('');
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { data: rto, isLoading } = useRTODetails(rtoId);
@@ -87,11 +99,7 @@ export function RTOQCPage() {
     };
 
     const addPhoto = () => {
-        const url = window.prompt('Enter image URL (e.g. from upload):');
-        if (url?.trim()) {
-            const label = window.prompt('Label for this photo (optional):', `Photo ${photos.length + 1}`);
-            setPhotos((prev) => [...prev, { url: url.trim(), label: label?.trim() || undefined }]);
-        }
+        setShowPhotoDialog(true);
     };
 
     const removePhoto = (index: number) => {
@@ -313,6 +321,58 @@ export function RTOQCPage() {
                     )}
                 </Button>
             </div>
+
+            <Dialog open={showPhotoDialog} onOpenChange={setShowPhotoDialog}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Add photo</DialogTitle>
+                        <DialogDescription>Provide an image URL and an optional label.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <div>
+                            <Label htmlFor="photoUrl">Image URL</Label>
+                            <Input
+                                id="photoUrl"
+                                placeholder="https://..."
+                                value={photoUrl}
+                                onChange={(e) => setPhotoUrl(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="photoLabel">Label (optional)</Label>
+                            <Input
+                                id="photoLabel"
+                                placeholder={`Photo ${photos.length + 1}`}
+                                value={photoLabel}
+                                onChange={(e) => setPhotoLabel(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowPhotoDialog(false);
+                                setPhotoUrl('');
+                                setPhotoLabel('');
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                if (!photoUrl.trim()) return;
+                                setPhotos((prev) => [...prev, { url: photoUrl.trim(), label: photoLabel.trim() || undefined }]);
+                                setShowPhotoDialog(false);
+                                setPhotoUrl('');
+                                setPhotoLabel('');
+                            }}
+                        >
+                            Add Photo
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

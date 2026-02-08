@@ -11,6 +11,7 @@ import {
     CardSkeleton,
     Loader
 } from '@/src/components/ui';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
     MapPin,
@@ -32,6 +33,7 @@ import { useWarehouses, useCreateWarehouse, useDeleteWarehouse, useUpdateWarehou
 export function PickupAddressesClient() {
     const [showAddForm, setShowAddForm] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const { addToast } = useToast();
 
     // Queries
@@ -73,9 +75,7 @@ export function PickupAddressesClient() {
     };
 
     const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to delete this address?')) {
-            deleteWarehouse.mutate(id);
-        }
+        setDeleteTarget(id);
     };
 
     const handleSave = async () => {
@@ -380,6 +380,20 @@ export function PickupAddressesClient() {
                     </CardContent>
                 </Card>
             )}
+
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title="Delete address"
+                description="Are you sure you want to delete this address?"
+                confirmText="Delete"
+                confirmVariant="danger"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={() => {
+                    if (!deleteTarget) return;
+                    deleteWarehouse.mutate(deleteTarget);
+                    setDeleteTarget(null);
+                }}
+            />
         </div>
     );
 }

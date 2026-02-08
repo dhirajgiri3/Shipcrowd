@@ -5,6 +5,14 @@ import { arrayLimit } from '../../../../../../../shared/utils/arrayValidators';
 export interface IRateCard extends Document {
   name: string;
   companyId: mongoose.Types.ObjectId;
+  rateCardCategory?: string;
+  shipmentType?: 'forward' | 'reverse';
+  gst?: number;
+  minimumFare?: number;
+  minimumFareCalculatedOn?: 'freight' | 'freight_overhead';
+  zoneBType?: 'state' | 'region';
+  codPercentage?: number;
+  codMinimumCharge?: number;
   baseRates: Array<{
     carrier: string;
     serviceType: string;
@@ -88,6 +96,38 @@ const RateCardSchema = new Schema<IRateCard>(
       type: Schema.Types.ObjectId,
       ref: 'Company',
       required: true,
+    },
+    rateCardCategory: {
+      type: String,
+      default: '',
+    },
+    shipmentType: {
+      type: String,
+      enum: ['forward', 'reverse'],
+    },
+    gst: {
+      type: Number,
+      min: 0,
+    },
+    minimumFare: {
+      type: Number,
+      min: 0,
+    },
+    minimumFareCalculatedOn: {
+      type: String,
+      enum: ['freight', 'freight_overhead'],
+    },
+    zoneBType: {
+      type: String,
+      enum: ['state', 'region'],
+    },
+    codPercentage: {
+      type: Number,
+      min: 0,
+    },
+    codMinimumCharge: {
+      type: Number,
+      min: 0,
     },
     baseRates: {
       type: [

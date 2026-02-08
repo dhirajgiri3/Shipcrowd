@@ -34,6 +34,7 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { Loader, CardSkeleton } from '@/src/components/ui';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import type {
     CommunicationTemplate,
     TemplateType,
@@ -206,11 +207,10 @@ interface TemplateCardProps {
 function TemplateCard({ template, onEdit }: TemplateCardProps) {
     const { mutate: deleteTemplate, isPending: isDeleting } = useDeleteTemplate();
     const { mutate: testTemplate, isPending: isTesting } = useTestTemplate();
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const handleDelete = () => {
-        if (window.confirm(`Delete template "${template.name}"?`)) {
-            deleteTemplate(template.templateId);
-        }
+        setShowDeleteDialog(true);
     };
 
     const handleTest = () => {
@@ -293,6 +293,19 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
                     {isDeleting ? <Loader variant="dots" size="sm" /> : <Trash2 className="w-4 h-4" />}
                 </button>
             </div>
+
+            <ConfirmDialog
+                open={showDeleteDialog}
+                title="Delete template"
+                description={`Delete template "${template.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                confirmVariant="danger"
+                onCancel={() => setShowDeleteDialog(false)}
+                onConfirm={() => {
+                    deleteTemplate(template.templateId);
+                    setShowDeleteDialog(false);
+                }}
+            />
         </div>
     );
 }

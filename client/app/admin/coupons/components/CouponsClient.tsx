@@ -28,12 +28,14 @@ import { useAdminCoupons, useCreateCoupon, useUpdateCoupon, useDeleteCoupon } fr
 import { PromoCode } from '@/src/types/domain/promotion';
 import { format } from 'date-fns';
 import { CouponForm } from './CouponForm';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 
 export function CouponsClient() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'expired'>('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCoupon, setEditingCoupon] = useState<PromoCode | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     const { addToast } = useToast();
 
@@ -46,9 +48,7 @@ export function CouponsClient() {
     const deleteMutation = useDeleteCoupon();
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this coupon?')) {
-            deleteMutation.mutate(id);
-        }
+        setDeleteTarget(id);
     };
 
     const handleEdit = (coupon: PromoCode) => {
@@ -328,6 +328,20 @@ export function CouponsClient() {
                     isSubmitting={createMutation.isPending || updateMutation.isPending}
                 />
             </Modal>
+
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title="Delete coupon"
+                description="Are you sure you want to delete this coupon? This action cannot be undone."
+                confirmText="Delete"
+                confirmVariant="danger"
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={() => {
+                    if (!deleteTarget) return;
+                    deleteMutation.mutate(deleteTarget);
+                    setDeleteTarget(null);
+                }}
+            />
         </div>
     );
 }

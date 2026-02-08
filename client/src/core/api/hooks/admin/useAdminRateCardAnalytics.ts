@@ -100,10 +100,13 @@ export const useAdminRateCardHistory = ({ rateCardId, page = 1, limit = 20 }: Hi
                 page: String(page),
                 limit: String(limit),
             });
-            const response = await apiClient.get<{ data: AdminRateCardHistoryItem[] }>(
+            const response = await apiClient.get<{ data: AdminRateCardHistoryItem[]; pagination: any }>(
                 `/admin/ratecards/${rateCardId}/history?${params.toString()}`
             );
-            return response.data;
+            return {
+                items: response.data.data || [],
+                pagination: response.data.pagination || {},
+            };
         },
         enabled: !!rateCardId,
     });
