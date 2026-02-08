@@ -5,6 +5,9 @@ export interface RateCardFormData {
     companyId: string;
     carrier: string;
     serviceType: string;
+    useAdvancedPricing: boolean;
+    advancedBaseRates: AdvancedBaseRate[];
+    advancedWeightRules: AdvancedWeightRule[];
     rateCardCategory: string;
     shipmentType: 'forward' | 'reverse';
     gst: string;
@@ -27,6 +30,22 @@ export interface RateCardFormData {
     effectiveEndDate: string;
 }
 
+export interface AdvancedBaseRate {
+    carrier: string;
+    serviceType: string;
+    basePrice: string;
+    minWeight: string;
+    maxWeight: string;
+}
+
+export interface AdvancedWeightRule {
+    carrier: string;
+    serviceType: string;
+    minWeight: string;
+    maxWeight: string;
+    pricePerKg: string;
+}
+
 export interface RateCardEditState {
     formData: RateCardFormData;
     warnings: string[];
@@ -38,6 +57,9 @@ export const initialRateCardFormData: RateCardFormData = {
     companyId: '',
     carrier: '',
     serviceType: '',
+    useAdvancedPricing: false,
+    advancedBaseRates: [],
+    advancedWeightRules: [],
     rateCardCategory: '',
     shipmentType: 'forward',
     gst: '',
@@ -90,12 +112,69 @@ const toDateInputValue = (value?: string) => {
     return date.toISOString().slice(0, 10);
 };
 
+const toNumber = (value: string, fallback?: number) => {
+    const parsed = parseFloat(value);
+    if (Number.isNaN(parsed)) return fallback;
+    return parsed;
+};
+
 export function buildRateCardPayload(formData: RateCardFormData, mode: 'create' | 'update' = 'create') {
     const basePrice = parseFloat(formData.basicZoneA) || 0;
     const multipliers = calculateMultipliers(formData);
     const addWeightGm = parseFloat(formData.additionalWeight) || 0;
     const addPriceA = parseFloat(formData.additionalZoneA) || 0;
     const pricePerKg = calculatePricePerKg(addWeightGm, addPriceA);
+
+    const defaultBaseRate = {
+        carrier: formData.isGeneric ? null : formData.carrier || null,
+        serviceType: formData.isGeneric ? null : formData.serviceType || null,
+        basePrice,
+        minWeight: 0,
+        maxWeight: formData.basicWeight ? parseFloat(formData.basicWeight) / 1000 : 0.5,
+    };
+
+    const advancedBaseRates = formData.advancedBaseRates
+        .map((rate) => {
+            const basePriceValue = toNumber(rate.basePrice);
+            const maxWeight = toNumber(rate.maxWeight);
+            if (basePriceValue === undefined || maxWeight === undefined) return null;
+            return {
+                carrier: rate.carrier?.trim() ? rate.carrier.trim() : null,
+                serviceType: rate.serviceType?.trim() ? rate.serviceType.trim() : null,
+                basePrice: basePriceValue,
+                minWeight: toNumber(rate.minWeight, 0) || 0,
+                maxWeight,
+            };
+        })
+        .filter(Boolean) as Array<{
+            carrier: string | null;
+            serviceType: string | null;
+            basePrice: number;
+            minWeight: number;
+            maxWeight: number;
+        }>;
+
+    const advancedWeightRules = formData.advancedWeightRules
+        .map((rule) => {
+            const pricePerKgValue = toNumber(rule.pricePerKg);
+            const minWeight = toNumber(rule.minWeight);
+            const maxWeight = toNumber(rule.maxWeight);
+            if (pricePerKgValue === undefined || minWeight === undefined || maxWeight === undefined) return null;
+            return {
+                minWeight,
+                maxWeight,
+                pricePerKg: pricePerKgValue,
+                carrier: rule.carrier?.trim() ? rule.carrier.trim() : null,
+                serviceType: rule.serviceType?.trim() ? rule.serviceType.trim() : null,
+            };
+        })
+        .filter(Boolean) as Array<{
+            minWeight: number;
+            maxWeight: number;
+            pricePerKg: number;
+            carrier: string | null;
+            serviceType: string | null;
+        }>;
 
     const payload: any = {
         name: formData.name.trim(),
@@ -104,15 +183,9 @@ export function buildRateCardPayload(formData: RateCardFormData, mode: 'create' 
         minimumFareCalculatedOn: formData.minimumFareCalculatedOn,
         zoneBType: formData.zoneBType,
         status: formData.status,
-        baseRates: [
-            {
-                carrier: formData.isGeneric ? null : formData.carrier || null,
-                serviceType: formData.isGeneric ? null : formData.serviceType || null,
-                basePrice,
-                minWeight: 0,
-                maxWeight: formData.basicWeight ? parseFloat(formData.basicWeight) / 1000 : 0.5,
-            },
-        ],
+        baseRates: formData.useAdvancedPricing && advancedBaseRates.length > 0
+            ? advancedBaseRates
+            : [defaultBaseRate],
     };
 
     if (mode === 'create' && formData.companyId) {
@@ -124,7 +197,9 @@ export function buildRateCardPayload(formData: RateCardFormData, mode: 'create' 
     if (formData.codPercentage) payload.codPercentage = parseFloat(formData.codPercentage);
     if (formData.codMinimumCharge) payload.codMinimumCharge = parseFloat(formData.codMinimumCharge);
 
-    if (addWeightGm > 0 && pricePerKg > 0) {
+    if (formData.useAdvancedPricing && advancedWeightRules.length > 0) {
+        payload.weightRules = advancedWeightRules;
+    } else if (addWeightGm > 0 && pricePerKg > 0) {
         payload.weightRules = [
             {
                 minWeight: formData.basicWeight ? parseFloat(formData.basicWeight) / 1000 : 0.5,
@@ -163,6 +238,98 @@ export function buildRateCardPayload(formData: RateCardFormData, mode: 'create' 
     return payload;
 }
 
+export function validateAdvancedSlabs(formData: RateCardFormData) {
+    if (!formData.useAdvancedPricing) {
+        return { baseRateErrors: [] as string[], weightRuleErrors: [] as string[], hasErrors: false };
+    }
+
+    const baseRateErrors: string[] = [];
+    const weightRuleErrors: string[] = [];
+
+    const normalizeKey = (carrier: string, serviceType: string) => {
+        const carrierKey = carrier?.trim().toLowerCase() || 'any';
+        const serviceKey = serviceType?.trim().toLowerCase() || 'any';
+        return `${carrierKey}:${serviceKey}`;
+    };
+
+    const checkOverlap = (
+        rules: Array<{ carrier: string; serviceType: string; minWeight: string; maxWeight: string }>,
+        label: string
+    ) => {
+        const grouped = new Map<string, Array<{ min: number; max: number }>>();
+        rules.forEach((rule) => {
+            const min = parseFloat(rule.minWeight);
+            const max = parseFloat(rule.maxWeight);
+            if (!Number.isFinite(min) || !Number.isFinite(max)) return;
+            const key = normalizeKey(rule.carrier, rule.serviceType);
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key)!.push({ min, max });
+        });
+
+        for (const [key, slabs] of grouped) {
+            const sorted = slabs.sort((a, b) => a.min - b.min);
+            for (let i = 1; i < sorted.length; i++) {
+                if (sorted[i].min < sorted[i - 1].max) {
+                    return `${label}: overlapping slabs for ${key}`;
+                }
+            }
+        }
+        return null;
+    };
+
+    formData.advancedBaseRates.forEach((rate, index) => {
+        const basePrice = parseFloat(rate.basePrice);
+        const maxWeight = parseFloat(rate.maxWeight);
+        const minWeight = rate.minWeight ? parseFloat(rate.minWeight) : 0;
+        if (!Number.isFinite(basePrice)) {
+            baseRateErrors.push(`Base rate ${index + 1}: base price is required.`);
+        }
+        if (!Number.isFinite(maxWeight) || maxWeight <= minWeight) {
+            baseRateErrors.push(`Base rate ${index + 1}: max weight must be greater than min weight.`);
+        }
+    });
+
+    formData.advancedWeightRules.forEach((rule, index) => {
+        const minWeight = parseFloat(rule.minWeight);
+        const maxWeight = parseFloat(rule.maxWeight);
+        const pricePerKg = parseFloat(rule.pricePerKg);
+        if (!Number.isFinite(minWeight) || !Number.isFinite(maxWeight) || maxWeight <= minWeight) {
+            weightRuleErrors.push(`Weight rule ${index + 1}: weight range is invalid.`);
+        }
+        if (!Number.isFinite(pricePerKg)) {
+            weightRuleErrors.push(`Weight rule ${index + 1}: price per kg is required.`);
+        }
+    });
+
+    const baseOverlap = checkOverlap(
+        formData.advancedBaseRates.map(rate => ({
+            carrier: rate.carrier,
+            serviceType: rate.serviceType,
+            minWeight: rate.minWeight,
+            maxWeight: rate.maxWeight
+        })),
+        'Base rates'
+    );
+    if (baseOverlap) baseRateErrors.push(baseOverlap);
+
+    const weightOverlap = checkOverlap(
+        formData.advancedWeightRules.map(rule => ({
+            carrier: rule.carrier,
+            serviceType: rule.serviceType,
+            minWeight: rule.minWeight,
+            maxWeight: rule.maxWeight
+        })),
+        'Weight rules'
+    );
+    if (weightOverlap) weightRuleErrors.push(weightOverlap);
+
+    return {
+        baseRateErrors,
+        weightRuleErrors,
+        hasErrors: baseRateErrors.length > 0 || weightRuleErrors.length > 0
+    };
+}
+
 export function mapAdminRateCardToFormState(rateCard: AdminRateCard): RateCardEditState {
     const baseRates = rateCard.baseRates || [];
     const weightRules = rateCard.weightRules || [];
@@ -172,12 +339,6 @@ export function mapAdminRateCardToFormState(rateCard: AdminRateCard): RateCardEd
     const warnings: string[] = [];
     const hasZoneRulesWithoutMultipliers = zoneRules.length > 0 && Object.keys(multipliers).length === 0;
 
-    if (baseRates.length > 1) {
-        warnings.push('This rate card has multiple base rate slabs. The editor only supports a single slab and will use the first match.');
-    }
-    if (weightRules.length > 1) {
-        warnings.push('This rate card has multiple weight rules. The editor only supports a single rule and will use the first match.');
-    }
     if (hasZoneRulesWithoutMultipliers) {
         warnings.push('This rate card uses zone rules without multipliers. Editing is disabled to prevent data loss.');
     }
@@ -203,12 +364,33 @@ export function mapAdminRateCardToFormState(rateCard: AdminRateCard): RateCardEd
         ? rateCard.companyId
         : rateCard.companyId?._id || '';
 
+    const useAdvancedPricing = baseRates.length > 1 || weightRules.length > 1;
+
+    const advancedBaseRates: AdvancedBaseRate[] = baseRates.map(rate => ({
+        carrier: rate.carrier || '',
+        serviceType: rate.serviceType || '',
+        basePrice: rate.basePrice !== undefined && rate.basePrice !== null ? String(rate.basePrice) : '',
+        minWeight: rate.minWeight !== undefined && rate.minWeight !== null ? String(rate.minWeight) : '',
+        maxWeight: rate.maxWeight !== undefined && rate.maxWeight !== null ? String(rate.maxWeight) : '',
+    }));
+
+    const advancedWeightRules: AdvancedWeightRule[] = weightRules.map(rule => ({
+        carrier: rule.carrier || '',
+        serviceType: rule.serviceType || '',
+        minWeight: rule.minWeight !== undefined && rule.minWeight !== null ? String(rule.minWeight) : '',
+        maxWeight: rule.maxWeight !== undefined && rule.maxWeight !== null ? String(rule.maxWeight) : '',
+        pricePerKg: rule.pricePerKg !== undefined && rule.pricePerKg !== null ? String(rule.pricePerKg) : '',
+    }));
+
     const formData: RateCardFormData = {
         ...initialRateCardFormData,
         name: rateCard.name || '',
         companyId,
         carrier,
         serviceType,
+        useAdvancedPricing,
+        advancedBaseRates,
+        advancedWeightRules,
         rateCardCategory: rateCard.rateCardCategory || '',
         shipmentType: rateCard.shipmentType || 'forward',
         gst: rateCard.gst !== undefined && rateCard.gst !== null ? String(rateCard.gst) : '',

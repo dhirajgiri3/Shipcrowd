@@ -101,23 +101,13 @@ export class CODRemittanceJob {
 
         for (const company of companies) {
             try {
-                // Check if they have eligible shipments for today
-                const eligible = await CODRemittanceService.getEligibleShipments(
+                await CODRemittanceService.createRemittanceBatch(
                     company._id.toString(),
-                    new Date()
+                    'scheduled',
+                    new Date(),
+                    undefined
                 );
-
-                if (eligible.summary.totalShipments > 0) {
-                    await CODRemittanceService.createRemittanceBatch(
-                        company._id.toString(),
-                        'scheduled',
-                        new Date(),
-                        undefined
-                    );
-                    created++;
-                } else {
-                    skipped++;
-                }
+                created++;
             } catch (error: any) {
                 if (error.code !== 'RES_REMITTANCE_NOT_FOUND') {
                     logger.error(`Failed to create batch for company ${company._id}:`, error);
@@ -155,7 +145,10 @@ export class CODRemittanceJob {
 
                 if (useRealAPI) {
                     // REAL API MODE - Call actual Velocity API
-                    settlementData = await this.fetchVelocitySettlement(remittance.remittanceId);
+                    settlementData = await this.fetchVelocitySettlement(
+                        remittance.remittanceId,
+                        remittance.companyId
+                    );
                 } else {
                     // MOCK MODE - Simulate settlement check
                     await MockDataService.simulateDelay(
@@ -198,7 +191,10 @@ export class CODRemittanceJob {
      * - This method is only called when FeatureFlagService.useRealVelocityAPI() === true
      * - On any error, the caller will log and continue without crashing the worker
      */
-    private static async fetchVelocitySettlement(remittanceId: string): Promise<{
+    private static async fetchVelocitySettlement(
+        remittanceId: string,
+        companyId: mongoose.Types.ObjectId
+    ): Promise<{
         status: string;
         settlementId?: string;
         utr?: string;
@@ -211,13 +207,7 @@ export class CODRemittanceJob {
                 '../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
             );
 
-            // Get company ID from remittance (need to fetch remittance to get companyId)
-            const remittance = await CODRemittance.findOne({ remittanceId }).select('companyId');
-            if (!remittance) {
-                throw new Error(`Remittance not found: ${remittanceId}`);
-            }
-
-            const velocityClient = new VelocityShipfastProvider(remittance.companyId);
+            const velocityClient = new VelocityShipfastProvider(companyId);
             const settlement = await velocityClient.getSettlementStatus(remittanceId);
 
             return {

@@ -5,7 +5,7 @@ import { RateCardFormData, zoneMappings } from '../../components/ratecardWizard.
 
 interface Step2ZonePricingProps {
     formData: RateCardFormData;
-    onChange: (field: keyof RateCardFormData, value: string | boolean) => void;
+    onChange: (field: keyof RateCardFormData, value: RateCardFormData[keyof RateCardFormData]) => void;
     multipliers: Record<string, number>;
     isReadOnly?: boolean;
 }

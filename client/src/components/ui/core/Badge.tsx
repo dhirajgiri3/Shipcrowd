@@ -54,7 +54,10 @@ const badgeVariants = cva(
 
 export interface BadgeProps
     extends HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> { }
+    VariantProps<typeof badgeVariants> {
+    // Custom props if needed, otherwise VariantProps covers it
+    asChild?: boolean;
+}
 
 const Badge = memo(function Badge({ className, variant, size, ...props }: BadgeProps) {
     return (

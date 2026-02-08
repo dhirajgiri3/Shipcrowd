@@ -8,7 +8,7 @@ import { Step2ZonePricing } from '../create/steps/Step2ZonePricing';
 import { Step3WeightRules } from '../create/steps/Step3WeightRules';
 import { Step4Overhead } from '../create/steps/Step4Overhead';
 import { Step5Review } from '../create/steps/Step5Review';
-import { RateCardFormData, calculateMultipliers } from './ratecardWizard.utils';
+import { RateCardFormData, calculateMultipliers, validateAdvancedSlabs } from './ratecardWizard.utils';
 
 interface RateCardWizardProps {
     initialData: RateCardFormData;
@@ -32,7 +32,7 @@ export function RateCardWizard({
         { id: 'zones', title: 'Zones', fields: ['basicWeight', 'basicZoneA'] },
         { id: 'weights', title: 'Weight', fields: ['additionalWeight', 'additionalZoneA'] },
         { id: 'overhead', title: 'Overhead', fields: ['codPercentage', 'codMinimumCharge'] },
-        { id: 'review', title: 'Review' },
+        { id: 'review', title: 'Review', fields: [] },
     ] as const), []);
 
     const {
@@ -62,20 +62,30 @@ export function RateCardWizard({
     });
 
     const multipliers = calculateMultipliers(formData);
+    const isAdvancedPricingValid = useMemo(() => {
+        if (!formData.useAdvancedPricing) return true;
+        if (!formData.advancedBaseRates.length || !formData.advancedWeightRules.length) return false;
+        const validation = validateAdvancedSlabs(formData);
+        return !validation.hasErrors;
+    }, [formData]);
     const stepCanProceed = (() => {
         if (currentStep === 0) {
             if (!formData.name.trim() || !formData.companyId.trim()) return false;
             if (!formData.rateCardCategory.trim()) return false;
+            if (formData.useAdvancedPricing) return true;
             if (formData.isGeneric) return true;
             return (
                 formData.carrier.trim().length > 0 &&
                 formData.serviceType.trim().length > 0
             );
         }
+        if (formData.useAdvancedPricing && currentStep >= 2) {
+            return canProceed && isAdvancedPricingValid;
+        }
         return canProceed;
     })();
 
-    const handleChange = (field: keyof RateCardFormData, value: string | boolean) => {
+    const handleChange = (field: keyof RateCardFormData, value: RateCardFormData[keyof RateCardFormData]) => {
         if (isReadOnly) return;
         setFieldValue(field, value as any);
     };

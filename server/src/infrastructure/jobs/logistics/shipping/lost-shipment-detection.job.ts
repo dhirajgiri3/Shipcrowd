@@ -119,6 +119,8 @@ export class LostShipmentDetectionJob {
         logger.info(`Found ${stuckShipments.length} potentially lost shipments`);
 
         const alerts: LostShipmentAlert[] = [];
+        const now = new Date();
+        const updateOps: any[] = [];
 
         for (const shipment of stuckShipments) {
             try {
@@ -126,16 +128,19 @@ export class LostShipmentDetectionJob {
                     (Date.now() - new Date(shipment.createdAt).getTime()) / (24 * 60 * 60 * 1000)
                 );
 
-                // Mark shipment as potentially lost
-                await Shipment.findByIdAndUpdate(shipment._id, {
-                    $set: {
-                        'flags.potentiallyLost': true,
-                        'flags.potentiallyLostAt': new Date(),
-                        'flags.daysStuck': daysStuck,
+                updateOps.push({
+                    updateOne: {
+                        filter: { _id: shipment._id },
+                        update: {
+                            $set: {
+                                'flags.potentiallyLost': true,
+                                'flags.potentiallyLostAt': now,
+                                'flags.daysStuck': daysStuck,
+                            },
+                        },
                     },
                 });
 
-                // Create alert
                 const alert: LostShipmentAlert = {
                     shipmentId: shipment._id.toString(),
                     awb: shipment.trackingNumber,
@@ -161,6 +166,10 @@ export class LostShipmentDetectionJob {
                     error: error.message,
                 });
             }
+        }
+
+        if (updateOps.length > 0) {
+            await Shipment.bulkWrite(updateOps);
         }
 
         // Send consolidated alert to ops team

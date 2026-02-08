@@ -22,27 +22,19 @@ export const walletReconciliationProcessor = async (job: Job) => {
 
     try {
         const companies = await Company.find({ isDeleted: false }).select('_id wallet.balance name');
-        let checkedCount = 0;
-        let mismatchCount = 0;
-
-        for (const company of companies) {
-            checkedCount++;
-            const companyId = company._id;
-            const storedBalance = company.wallet?.balance || 0;
-
-            // Aggregation: Calculate true balance from ledger
-            // Refinement 2: Filter by status='completed'
-            const aggregation = await WalletTransaction.aggregate([
+        const companyIds = companies.map((company) => company._id);
+        const aggregationResults = companyIds.length > 0
+            ? await WalletTransaction.aggregate([
                 {
                     $match: {
-                        company: companyId,
+                        company: { $in: companyIds },
                         status: 'completed',
                         isDeleted: false
                     }
                 },
                 {
                     $group: {
-                        _id: null,
+                        _id: '$company',
                         totalCredits: {
                             $sum: {
                                 $cond: [{ $in: ['$type', ['credit', 'refund']] }, '$amount', 0]
@@ -55,9 +47,20 @@ export const walletReconciliationProcessor = async (job: Job) => {
                         }
                     }
                 }
-            ]);
+            ])
+            : [];
+        const summaryByCompany = new Map(
+            aggregationResults.map((result) => [result._id.toString(), result])
+        );
+        let checkedCount = 0;
+        let mismatchCount = 0;
 
-            const result = aggregation[0] || { totalCredits: 0, totalDebits: 0 };
+        for (const company of companies) {
+            checkedCount++;
+            const companyId = company._id;
+            const storedBalance = company.wallet?.balance || 0;
+
+            const result = summaryByCompany.get(companyId.toString()) || { totalCredits: 0, totalDebits: 0 };
             const calculatedBalance = Math.round((result.totalCredits - result.totalDebits) * 100) / 100;
 
             // Compare with tolerance (floating point safety)

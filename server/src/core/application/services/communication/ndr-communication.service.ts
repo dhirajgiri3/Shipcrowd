@@ -4,7 +4,7 @@ import smsService from './sms.service';
 import { sendEmail } from './email.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError } from '../../../../shared/errors/app.error';
-import NotificationPreferenceService from './notification-preferences.service';
+import NotificationPreferenceService, { NotificationPreferences } from './notification-preferences.service';
 import NDRMagicLinkService from '../ndr/ndr-magic-link.service';
 
 /**
@@ -32,6 +32,148 @@ interface NDRCommunicationOptions {
 }
 
 class NDRCommunicationService {
+    private async sendNDRNotificationWithShipment(
+        options: NDRCommunicationOptions,
+        shipment: any,
+        preferences: NotificationPreferences | null
+    ) {
+        const { ndrEventId, shipmentId, channel, templateType, customMessage } = options;
+
+        const recipientName = shipment.deliveryDetails.recipientName;
+        const recipientPhone = shipment.deliveryDetails.recipientPhone;
+        const recipientEmail = shipment.deliveryDetails.recipientEmail;
+        const awb = shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber;
+        const ndrReason = shipment.ndrDetails?.ndrReason || 'Delivery attempt failed';
+
+        const magicLink = NDRMagicLinkService.generateMagicLink(ndrEventId);
+
+        const results: any = {
+            shipmentId,
+            awb,
+            channelsSent: [],
+            channelsSkipped: [],
+            success: false,
+        };
+
+        const canSendEmail = preferences
+            ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'email')
+            : true;
+        const canSendSms = preferences
+            ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'sms')
+            : true;
+        const canSendWhatsApp = preferences
+            ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'whatsapp')
+            : true;
+
+        // Send via WhatsApp
+        if ((channel === 'whatsapp' || channel === 'all') && canSendWhatsApp) {
+            try {
+                let whatsappSent = false;
+
+                if (templateType === 'ndr_alert') {
+                    whatsappSent = await WhatsAppService.sendWhatsAppMessage(
+                        recipientPhone,
+                        'NDR_ALERT',
+                        {
+                            '1': recipientName,
+                            '2': awb,
+                            '3': ndrReason,
+                            '4': magicLink
+                        }
+                    );
+                } else if (templateType === 'action_required') {
+                    whatsappSent = await WhatsAppService.sendWhatsAppMessage(
+                        recipientPhone,
+                        'NDR_ACTION',
+                        {
+                            '1': recipientName,
+                            '2': awb,
+                            '3': magicLink,
+                        }
+                    );
+                } else if (templateType === 'rto') {
+                    whatsappSent = await WhatsAppService.sendWhatsAppMessage(
+                        recipientPhone,
+                        'RTO_INITIATED',
+                        {
+                            '1': recipientName,
+                            '2': awb,
+                            '3': ndrReason,
+                        }
+                    );
+                }
+
+                if (whatsappSent) {
+                    results.channelsSent.push('whatsapp');
+                    results.success = true;
+                }
+            } catch (error: any) {
+                logger.error(`WhatsApp NDR send failed for ${awb}:`, error);
+            }
+        } else if (channel === 'whatsapp' || channel === 'all') {
+            results.channelsSkipped.push('whatsapp');
+        }
+
+        // Send via SMS
+        if ((channel === 'sms' || channel === 'all') && canSendSms) {
+            try {
+                let smsMessage = '';
+
+                if (templateType === 'ndr_alert') {
+                    smsMessage = `Hi ${recipientName}, delivery for ${awb} failed. Reason: ${ndrReason}. Update instructions: ${magicLink}`;
+                } else if (templateType === 'action_required') {
+                    smsMessage = `Hi ${recipientName}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${magicLink}`;
+                } else if (templateType === 'reattempt') {
+                    smsMessage = `Hi ${recipientName}, delivery for ${awb} rescheduled. Track: ${process.env.FRONTEND_URL}/track/${awb}`;
+                } else if (templateType === 'rto') {
+                    smsMessage = `Hi ${recipientName}, shipment ${awb} is being returned. Reason: ${ndrReason}. Contact support for details.`;
+                }
+
+                const smsSent = await smsService.sendSMS(recipientPhone, smsMessage);
+
+                if (smsSent) {
+                    results.channelsSent.push('sms');
+                    results.success = true;
+                }
+            } catch (error: any) {
+                logger.error(`SMS NDR send failed for ${awb}:`, error);
+            }
+        } else if (channel === 'sms' || channel === 'all') {
+            results.channelsSkipped.push('sms');
+        }
+
+        // Send via Email (fallback or all)
+        if ((channel === 'email' || channel === 'all') && recipientEmail && canSendEmail) {
+            try {
+                const htmlContent = this.generateEmailTemplate(templateType, {
+                    recipientName,
+                    awb,
+                    ndrReason,
+                    magicLink,
+                    customMessage,
+                });
+                const textContent = customMessage || `Update for shipment ${awb}`;
+
+                await sendEmail(
+                    [recipientEmail],
+                    `Delivery Update - ${awb}`,
+                    htmlContent,
+                    textContent
+                );
+
+                results.channelsSent.push('email');
+                results.success = true;
+            } catch (error: any) {
+                logger.error(`Email NDR send failed for ${awb}:`, error);
+            }
+        } else if ((channel === 'email' || channel === 'all') && recipientEmail) {
+            results.channelsSkipped.push('email');
+        }
+
+        logger.info(`NDR notification sent for ${awb}, channels: ${results.channelsSent.join(', ')}`);
+
+        return results;
+    }
     /**
      * Send NDR notification to buyer and optionally seller
      */
@@ -45,146 +187,11 @@ class NDRCommunicationService {
                 throw new NotFoundError('Shipment not found');
             }
 
-            const recipientName = shipment.deliveryDetails.recipientName;
-            const recipientPhone = shipment.deliveryDetails.recipientPhone;
-            const recipientEmail = shipment.deliveryDetails.recipientEmail;
-            const awb = shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber;
-            const ndrReason = shipment.ndrDetails?.ndrReason || 'Delivery attempt failed';
-
-            // Generate Magic Link
-            const magicLink = NDRMagicLinkService.generateMagicLink(ndrEventId);
-
-            const results: any = {
-                shipmentId,
-                awb,
-                channelsSent: [],
-                channelsSkipped: [],
-                success: false,
-            };
-
             const companyId = shipment.companyId?.toString();
             const preferences = companyId
                 ? await NotificationPreferenceService.getCompanyPreferences(companyId)
                 : null;
-            const canSendEmail = preferences
-                ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'email')
-                : true;
-            const canSendSms = preferences
-                ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'sms')
-                : true;
-            const canSendWhatsApp = preferences
-                ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'whatsapp')
-                : true;
-
-            // Send via WhatsApp
-            if ((channel === 'whatsapp' || channel === 'all') && canSendWhatsApp) {
-                try {
-                    let whatsappSent = false;
-
-                    if (templateType === 'ndr_alert') {
-                        whatsappSent = await WhatsAppService.sendWhatsAppMessage(
-                            recipientPhone,
-                            'NDR_ALERT',
-                            {
-                                '1': recipientName,
-                                '2': awb,
-                                '3': ndrReason,
-                                '4': magicLink // Replaced hardcoded AWB with magic link
-                            }
-                        );
-                    } else if (templateType === 'action_required') {
-                        whatsappSent = await WhatsAppService.sendWhatsAppMessage(
-                            recipientPhone,
-                            'NDR_ACTION',
-                            {
-                                '1': recipientName,
-                                '2': awb,
-                                '3': magicLink,
-                            }
-                        );
-                    } else if (templateType === 'rto') {
-                        whatsappSent = await WhatsAppService.sendWhatsAppMessage(
-                            recipientPhone,
-                            'RTO_INITIATED',
-                            {
-                                '1': recipientName,
-                                '2': awb,
-                                '3': ndrReason,
-                            }
-                        );
-                    }
-
-                    if (whatsappSent) {
-                        results.channelsSent.push('whatsapp');
-                        results.success = true;
-                    }
-                } catch (error: any) {
-                    logger.error(`WhatsApp NDR send failed for ${awb}:`, error);
-                }
-            } else if (channel === 'whatsapp' || channel === 'all') {
-                results.channelsSkipped.push('whatsapp');
-            }
-
-            // Send via SMS
-            if ((channel === 'sms' || channel === 'all') && canSendSms) {
-                try {
-                    let smsMessage = '';
-
-                    // Format SMS based on template type
-                    if (templateType === 'ndr_alert') {
-                        smsMessage = `Hi ${recipientName}, delivery for ${awb} failed. Reason: ${ndrReason}. Update instructions: ${magicLink}`;
-                    } else if (templateType === 'action_required') {
-                        smsMessage = `Hi ${recipientName}, action needed for ${awb}. Delivery failed: ${ndrReason}. Update address: ${magicLink}`;
-                    } else if (templateType === 'reattempt') {
-                        smsMessage = `Hi ${recipientName}, delivery for ${awb} rescheduled. Track: ${process.env.FRONTEND_URL}/track/${awb}`;
-                    } else if (templateType === 'rto') {
-                        smsMessage = `Hi ${recipientName}, shipment ${awb} is being returned. Reason: ${ndrReason}. Contact support for details.`;
-                    }
-
-                    const smsSent = await smsService.sendSMS(recipientPhone, smsMessage);
-
-                    if (smsSent) {
-                        results.channelsSent.push('sms');
-                        results.success = true;
-                    }
-                } catch (error: any) {
-                    logger.error(`SMS NDR send failed for ${awb}:`, error);
-                }
-            } else if (channel === 'sms' || channel === 'all') {
-                results.channelsSkipped.push('sms');
-            }
-
-            // Send via Email (fallback or all)
-            if ((channel === 'email' || channel === 'all') && recipientEmail && canSendEmail) {
-                try {
-                    const htmlContent = this.generateEmailTemplate(templateType, {
-                        recipientName,
-                        awb,
-                        ndrReason,
-                        magicLink,
-                        customMessage,
-                    });
-                    const textContent = customMessage || `Update for shipment ${awb}`;
-
-                    await sendEmail(
-                        [recipientEmail],
-                        `Delivery Update - ${awb}`,
-                        htmlContent,
-                        textContent
-                    );
-
-                    results.channelsSent.push('email');
-                    results.success = true;
-                } catch (error: any) {
-                    logger.error(`Email NDR send failed for ${awb}:`, error);
-                }
-            } else if ((channel === 'email' || channel === 'all') && recipientEmail) {
-                results.channelsSkipped.push('email');
-            }
-
-            logger.info(`NDR notification sent for ${awb}, channels: ${results.channelsSent.join(', ')}`);
-
-            return results;
+            return this.sendNDRNotificationWithShipment(options, shipment, preferences);
         } catch (error: any) {
             logger.error(`NDR notification failed for shipment ${shipmentId}:`, error);
             throw error;
@@ -335,14 +342,48 @@ class NDRCommunicationService {
     async sendBulkNotifications(ndrEvents: Array<{ ndrEventId: string; shipmentId: string }>, channel: 'whatsapp' | 'sms' | 'email' | 'all') {
         const results = [];
 
+        const shipmentIds = ndrEvents.map((event) => event.shipmentId);
+        const shipments = shipmentIds.length > 0
+            ? await Shipment.find({ _id: { $in: shipmentIds } }).lean()
+            : [];
+        const shipmentById = new Map(
+            shipments.map((shipment) => [shipment._id.toString(), shipment])
+        );
+
+        const companyIds = Array.from(
+            new Set(
+                shipments
+                    .map((shipment) => shipment.companyId?.toString())
+                    .filter(Boolean) as string[]
+            )
+        );
+        const preferencesByCompany = await NotificationPreferenceService.getPreferencesForCompanies(companyIds);
+
         for (const event of ndrEvents) {
             try {
-                const result = await this.sendNDRNotification({
-                    ndrEventId: event.ndrEventId,
-                    shipmentId: event.shipmentId,
-                    channel,
-                    templateType: 'ndr_alert',
-                });
+                const shipment = shipmentById.get(event.shipmentId);
+                if (!shipment) {
+                    results.push({
+                        shipmentId: event.shipmentId,
+                        success: false,
+                        error: 'Shipment not found',
+                    });
+                    continue;
+                }
+
+                const companyId = shipment.companyId?.toString();
+                const preferences = companyId ? preferencesByCompany.get(companyId) || null : null;
+
+                const result = await this.sendNDRNotificationWithShipment(
+                    {
+                        ndrEventId: event.ndrEventId,
+                        shipmentId: event.shipmentId,
+                        channel,
+                        templateType: 'ndr_alert',
+                    },
+                    shipment,
+                    preferences
+                );
                 results.push(result);
             } catch (error: any) {
                 logger.error(`Bulk NDR failed for ${event.shipmentId}:`, error);

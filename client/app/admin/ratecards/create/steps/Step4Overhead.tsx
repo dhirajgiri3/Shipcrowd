@@ -6,7 +6,7 @@ import { RateCardFormData } from '../../components/ratecardWizard.utils';
 
 interface Step4OverheadProps {
     formData: RateCardFormData;
-    onChange: (field: keyof RateCardFormData, value: string | boolean) => void;
+    onChange: (field: keyof RateCardFormData, value: RateCardFormData[keyof RateCardFormData]) => void;
     isReadOnly?: boolean;
 }
 

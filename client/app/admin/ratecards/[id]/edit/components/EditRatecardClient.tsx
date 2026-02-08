@@ -51,7 +51,7 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
             return;
         }
 
-        if (!formData.isGeneric && (!formData.carrier || !formData.serviceType)) {
+        if (!formData.useAdvancedPricing && !formData.isGeneric && (!formData.carrier || !formData.serviceType)) {
             addToast('Please select a courier and service', 'error');
             return;
         }

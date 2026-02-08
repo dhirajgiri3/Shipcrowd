@@ -9,7 +9,7 @@ import { RateCardFormData, shipmentTypes } from '../../components/ratecardWizard
 
 interface Step1BasicInfoProps {
     formData: RateCardFormData;
-    onChange: (field: keyof RateCardFormData, value: string | boolean) => void;
+    onChange: (field: keyof RateCardFormData, value: RateCardFormData[keyof RateCardFormData]) => void;
     categoryOptions?: string[];
     isReadOnly?: boolean;
 }
@@ -43,13 +43,31 @@ export function Step1BasicInfo({ formData, onChange, categoryOptions = [], isRea
                     id="isGeneric"
                     checked={formData.isGeneric}
                     onChange={(e) => onChange('isGeneric', e.target.checked)}
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || formData.useAdvancedPricing}
                     className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                 />
                 <label htmlFor="isGeneric" className="text-sm font-medium text-[var(--text-primary)]">
                     Generic Rate Card (applies to all couriers)
                 </label>
             </div>
+            <div className="flex items-center gap-2">
+                <input
+                    type="checkbox"
+                    id="useAdvancedPricing"
+                    checked={formData.useAdvancedPricing}
+                    onChange={(e) => onChange('useAdvancedPricing', e.target.checked)}
+                    disabled={isReadOnly}
+                    className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                />
+                <label htmlFor="useAdvancedPricing" className="text-sm font-medium text-[var(--text-primary)]">
+                    Advanced Pricing (multi-carrier slabs)
+                </label>
+            </div>
+            {formData.useAdvancedPricing && (
+                <p className="text-xs text-[var(--text-muted)]">
+                    Carrier and service selection is managed in the Advanced Slabs section. Basic courier fields are optional.
+                </p>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2 md:col-span-2">
@@ -98,7 +116,7 @@ export function Step1BasicInfo({ formData, onChange, categoryOptions = [], isRea
                     <Select
                         value={formData.carrier}
                         onChange={(e) => onChange('carrier', e.target.value)}
-                        disabled={isReadOnly || formData.isGeneric || couriersLoading}
+                        disabled={isReadOnly || formData.isGeneric || formData.useAdvancedPricing || couriersLoading}
                         options={[
                             { label: couriersLoading ? 'Loading couriers...' : 'Select Courier', value: '' },
                             ...courierOptions
@@ -110,7 +128,7 @@ export function Step1BasicInfo({ formData, onChange, categoryOptions = [], isRea
                     <Select
                         value={formData.serviceType}
                         onChange={(e) => onChange('serviceType', e.target.value)}
-                        disabled={isReadOnly || formData.isGeneric || !selectedCourier}
+                        disabled={isReadOnly || formData.isGeneric || formData.useAdvancedPricing || !selectedCourier}
                         options={[
                             { label: selectedCourier ? 'Select Service' : 'Select Courier First', value: '' },
                             ...serviceOptions

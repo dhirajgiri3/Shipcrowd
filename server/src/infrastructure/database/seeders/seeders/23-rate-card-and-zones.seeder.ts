@@ -140,22 +140,13 @@ function buildBaseRates(carrierIds: string[], basePrice: number) {
 }
 
 function buildWeightRules(baseRates: Array<{ carrier: string; serviceType: string; basePrice: number }>) {
-    return baseRates.flatMap((rate) => ([
-        {
-            minWeight: 0.5,
-            maxWeight: 10,
-            pricePerKg: Math.round(rate.basePrice * 0.7),
-            carrier: rate.carrier,
-            serviceType: rate.serviceType
-        },
-        {
-            minWeight: 10,
-            maxWeight: 50,
-            pricePerKg: Math.round(rate.basePrice * 0.55),
-            carrier: rate.carrier,
-            serviceType: rate.serviceType
-        }
-    ]));
+    return baseRates.map((rate) => ({
+        minWeight: 0.5,
+        maxWeight: 50,
+        pricePerKg: Math.round(rate.basePrice * 0.7),
+        carrier: rate.carrier,
+        serviceType: rate.serviceType
+    }));
 }
 
 function buildZoneRules(

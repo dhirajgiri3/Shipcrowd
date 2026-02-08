@@ -58,6 +58,29 @@ const getLocalMinutes = (date: Date, timeZone: string): number => {
 };
 
 export class NotificationPreferenceService {
+    private static buildPreferencesFromCompany(company: any | null): NotificationPreferences {
+        if (!company) {
+            return DEFAULT_PREFERENCES;
+        }
+
+        const prefs = company.settings?.notificationPreferences || {};
+        const timezone = prefs.quietHours?.timezone || company.settings?.timezone || DEFAULT_PREFERENCES.quietHours.timezone;
+
+        return {
+            channels: {
+                email: prefs.channels?.email ?? DEFAULT_PREFERENCES.channels.email,
+                sms: prefs.channels?.sms ?? DEFAULT_PREFERENCES.channels.sms,
+                whatsapp: prefs.channels?.whatsapp ?? DEFAULT_PREFERENCES.channels.whatsapp
+            },
+            quietHours: {
+                enabled: prefs.quietHours?.enabled ?? DEFAULT_PREFERENCES.quietHours.enabled,
+                start: prefs.quietHours?.start ?? DEFAULT_PREFERENCES.quietHours.start,
+                end: prefs.quietHours?.end ?? DEFAULT_PREFERENCES.quietHours.end,
+                timezone
+            }
+        };
+    }
+
     static shouldSendWithPreferences(
         preferences: NotificationPreferences,
         channel: NotificationChannel,
@@ -94,26 +117,7 @@ export class NotificationPreferenceService {
                 .select('settings.notificationPreferences settings.timezone')
                 .lean();
 
-            if (!company) {
-                return DEFAULT_PREFERENCES;
-            }
-
-            const prefs = company.settings?.notificationPreferences || {};
-            const timezone = prefs.quietHours?.timezone || company.settings?.timezone || DEFAULT_PREFERENCES.quietHours.timezone;
-
-            return {
-                channels: {
-                    email: prefs.channels?.email ?? DEFAULT_PREFERENCES.channels.email,
-                    sms: prefs.channels?.sms ?? DEFAULT_PREFERENCES.channels.sms,
-                    whatsapp: prefs.channels?.whatsapp ?? DEFAULT_PREFERENCES.channels.whatsapp
-                },
-                quietHours: {
-                    enabled: prefs.quietHours?.enabled ?? DEFAULT_PREFERENCES.quietHours.enabled,
-                    start: prefs.quietHours?.start ?? DEFAULT_PREFERENCES.quietHours.start,
-                    end: prefs.quietHours?.end ?? DEFAULT_PREFERENCES.quietHours.end,
-                    timezone
-                }
-            };
+            return this.buildPreferencesFromCompany(company);
         } catch (error) {
             logger.error('Failed to load notification preferences', {
                 companyId,
@@ -121,6 +125,26 @@ export class NotificationPreferenceService {
             });
             return DEFAULT_PREFERENCES;
         }
+    }
+
+    static async getPreferencesForCompanies(companyIds: string[]): Promise<Map<string, NotificationPreferences>> {
+        if (companyIds.length === 0) {
+            return new Map();
+        }
+
+        const companies = await Company.find({ _id: { $in: companyIds } })
+            .select('settings.notificationPreferences settings.timezone')
+            .lean();
+
+        const prefsByCompany = new Map<string, NotificationPreferences>();
+        for (const company of companies) {
+            prefsByCompany.set(
+                company._id.toString(),
+                this.buildPreferencesFromCompany(company)
+            );
+        }
+
+        return prefsByCompany;
     }
 
     static async shouldSend(

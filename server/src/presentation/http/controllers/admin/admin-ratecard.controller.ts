@@ -657,32 +657,25 @@ export const bulkUpdateAdminRateCards = async (req: Request, res: Response, next
             );
             updatedCount = rateCards.length;
         } else if (operation === 'adjust_price' && adjustmentType && adjustmentValue !== undefined) {
-            for (const card of rateCards) {
-                if (adjustmentType === 'percentage') {
-                    card.baseRates = card.baseRates.map(rate => ({
-                        ...rate,
-                        basePrice: rate.basePrice * (1 + adjustmentValue / 100)
-                    }));
-
-                    card.zoneRules = card.zoneRules.map(rule => ({
-                        ...rule,
-                        additionalPrice: rule.additionalPrice * (1 + adjustmentValue / 100)
-                    }));
-                } else {
-                    card.baseRates = card.baseRates.map(rate => ({
-                        ...rate,
-                        basePrice: rate.basePrice + adjustmentValue
-                    }));
-
-                    card.zoneRules = card.zoneRules.map(rule => ({
-                        ...rule,
-                        additionalPrice: rule.additionalPrice + adjustmentValue
-                    }));
+            const updateQuery = adjustmentType === 'percentage'
+                ? {
+                    $mul: {
+                        'baseRates.$[].basePrice': 1 + adjustmentValue / 100,
+                        'zoneRules.$[].additionalPrice': 1 + adjustmentValue / 100
+                    }
                 }
+                : {
+                    $inc: {
+                        'baseRates.$[].basePrice': adjustmentValue,
+                        'zoneRules.$[].additionalPrice': adjustmentValue
+                    }
+                };
 
-                await card.save();
-                updatedCount++;
-            }
+            await RateCard.updateMany(
+                { _id: { $in: rateCardIds.map(id => new mongoose.Types.ObjectId(id)) } },
+                updateQuery as any
+            );
+            updatedCount = rateCards.length;
         }
 
         await createAuditLog(

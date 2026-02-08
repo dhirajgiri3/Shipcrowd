@@ -77,6 +77,30 @@ export class InvoiceGenerationJob {
         logger.info(`Billing Period: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
         const companies = await Company.find({ isActive: true, isDeleted: false }).select('_id billingInfo');
+        const companyMap = new Map(companies.map(company => [company._id.toString(), company]));
+        const companyIds = companies.map(company => company._id);
+
+        const shipmentGroups = companyIds.length > 0
+            ? await Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: { $in: companyIds },
+                        currentStatus: 'delivered',
+                        actualDelivery: { $gte: startDate, $lte: endDate }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$companyId',
+                        shipmentIds: { $push: '$_id' }
+                    }
+                }
+            ])
+            : [];
+
+        const shipmentIdsByCompany = new Map(
+            shipmentGroups.map(group => [group._id.toString(), group.shipmentIds.map((id: any) => id.toString())])
+        );
 
         let created = 0;
         let skipped = 0;
@@ -84,28 +108,11 @@ export class InvoiceGenerationJob {
 
         for (const company of companies) {
             try {
-                // Find potential shipments first to avoid empty processing
-                const shipmentCount = await Shipment.countDocuments({
-                    companyId: company._id,
-                    currentStatus: 'delivered',
-                    // Assuming we bill based on delivery date or creation date?
-                    // Typically billing is on service completion (delivery)
-                    actualDelivery: { $gte: startDate, $lte: endDate }
-                });
-
-                if (shipmentCount === 0) {
+                const shipmentIds = shipmentIdsByCompany.get(company._id.toString());
+                if (!shipmentIds || shipmentIds.length === 0) {
                     skipped++;
                     continue;
                 }
-
-                // Get shipment IDs
-                const shipments = await Shipment.find({
-                    companyId: company._id,
-                    currentStatus: 'delivered',
-                    actualDelivery: { $gte: startDate, $lte: endDate }
-                }).select('_id');
-
-                const shipmentIds = shipments.map(s => (s as any)._id.toString());
 
                 // Create Invoice
                 // NOTE: Using hardcoded Shipcrowd GSTIN for now, should be from config

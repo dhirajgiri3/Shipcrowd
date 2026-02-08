@@ -27,6 +27,11 @@ export function Step5Review({ formData }: Step5ReviewProps) {
                     <div>Minimum Fare: ₹{formData.minimumFare || 0}</div>
                     <div>GST: {formData.gst || 0}%</div>
                     <div>Effective Dates: {formData.effectiveStartDate || '—'} {formData.effectiveEndDate ? `→ ${formData.effectiveEndDate}` : ''}</div>
+                    {formData.useAdvancedPricing && (
+                        <div>
+                            Advanced Slabs: {formData.advancedBaseRates.length} base rate{formData.advancedBaseRates.length === 1 ? '' : 's'} • {formData.advancedWeightRules.length} weight rule{formData.advancedWeightRules.length === 1 ? '' : 's'}
+                        </div>
+                    )}
                 </div>
             </div>
 
