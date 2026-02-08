@@ -3,6 +3,7 @@ import { apiClient } from '@/src/core/api/http';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
 interface BulkUpdateInput {
+    companyId: string;
     rateCardIds: string[];
     operation: 'activate' | 'deactivate' | 'adjust_price';
     adjustmentType?: 'percentage' | 'fixed';
@@ -15,7 +16,7 @@ export const useBulkUpdateRateCards = () => {
 
     return useMutation({
         mutationFn: async (data: BulkUpdateInput) => {
-            const response = await apiClient.post('/ratecards/bulk-update', data);
+            const response = await apiClient.post('/admin/ratecards/bulk-update', data);
             return response.data;
         },
         onSuccess: (data) => {
@@ -33,12 +34,11 @@ export const useExportRateCards = () => {
     const { addToast } = useToast();
 
     return useMutation({
-        mutationFn: async () => {
-            const response = await apiClient.get('/ratecards/export', {
+        mutationFn: async ({ companyId }: { companyId: string }) => {
+            const response = await apiClient.get(`/admin/ratecards/export?companyId=${companyId}`, {
                 responseType: 'blob'
             });
 
-            // Create download link
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;

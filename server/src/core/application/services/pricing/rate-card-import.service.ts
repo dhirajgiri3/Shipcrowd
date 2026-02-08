@@ -69,15 +69,30 @@ export default class RateCardImportService {
             let updatedCount = 0;
             const errors: any[] = [];
 
+            const companyObjectId = new mongoose.Types.ObjectId(companyId);
+            const rateCardNames = Array.from(groupedData.keys());
+            const existingRateCards = rateCardNames.length > 0
+                ? await RateCard.find({
+                    name: { $in: rateCardNames },
+                    companyId: companyObjectId,
+                    isDeleted: false,
+                }).session(session)
+                : [];
+            const existingRateCardMap = new Map(existingRateCards.map(card => [card.name, card]));
+
+            const zones = await Zone.find({ companyId: companyObjectId }).session(session).lean();
+            const zoneMap = new Map(
+                zones.map(z => [
+                    (z.standardZoneCode?.toUpperCase() || z.name.toUpperCase()),
+                    z._id,
+                ])
+            );
+
             // 3. Process Each Rate Card Group
             for (const [rateCardName, cardRows] of groupedData) {
                 try {
                     // Fetch or Instantiate
-                    let rateCard = await RateCard.findOne({
-                        name: rateCardName,
-                        companyId: new mongoose.Types.ObjectId(companyId),
-                        isDeleted: false
-                    }).session(session);
+                    let rateCard = existingRateCardMap.get(rateCardName);
 
                     if (rateCard && rateCard.isLocked) {
                         errors.push(`Rate Card '${rateCardName}' is locked and cannot be updated via bulk import.`);
@@ -89,7 +104,7 @@ export default class RateCardImportService {
                     if (isNew) {
                         rateCard = new RateCard({
                             name: rateCardName,
-                            companyId: new mongoose.Types.ObjectId(companyId),
+                            companyId: companyObjectId,
                             baseRates: [],
                             zoneRules: [],
                             status: cardRows[0].status || 'draft',
@@ -120,9 +135,6 @@ export default class RateCardImportService {
 
                     // Process Rows into Sub-Documents
                     // We need to fetch Zones to map "A" -> ObjectId
-                    const zones = await Zone.find({ companyId: new mongoose.Types.ObjectId(companyId) }).session(session).lean();
-                    const zoneMap = new Map(zones.map(z => [z.standardZoneCode?.toUpperCase() || z.name.toUpperCase(), z._id]));
-
                     const newBaseRates: any[] = [];
                     const newZoneRules: any[] = [];
 

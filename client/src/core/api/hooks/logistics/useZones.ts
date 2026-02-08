@@ -74,7 +74,7 @@ export const useCreateZone = (options?: UseMutationOptions<Zone, ApiError, Creat
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.all() });
-            showSuccessToast('Zone created successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -96,7 +96,7 @@ export const useUpdateZone = (options?: UseMutationOptions<Zone, ApiError, { id:
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.detail(variables.id) });
-            showSuccessToast('Zone updated successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -116,7 +116,7 @@ export const useDeleteZone = (options?: UseMutationOptions<void, ApiError, strin
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.all() });
-            showSuccessToast('Zone deleted successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -140,7 +140,7 @@ export const useAddPincodesToZone = (options?: UseMutationOptions<PincodeValidat
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.detail(variables.id) });
-            showSuccessToast('Pincodes added successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -164,7 +164,7 @@ export const useRemovePincodesFromZone = (options?: UseMutationOptions<void, Api
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.detail(variables.id) });
-            showSuccessToast('Pincodes removed successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

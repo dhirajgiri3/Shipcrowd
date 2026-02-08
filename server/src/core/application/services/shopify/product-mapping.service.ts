@@ -108,6 +108,18 @@ export class ProductMappingService {
       productsCount: products.length,
     });
 
+    const variantIds = products
+      .flatMap((product) => product.variants.map((variant) => variant.id.toString()));
+    const existingMappings = variantIds.length > 0
+      ? await ProductMapping.find({
+        shopifyStoreId: storeId,
+        shopifyVariantId: { $in: variantIds },
+      }).select('shopifyVariantId').lean()
+      : [];
+    const existingVariantIds = new Set(
+      existingMappings.map((mapping) => mapping.shopifyVariantId)
+    );
+
     // Process each variant
     for (const product of products) {
       for (const variant of product.variants) {
@@ -118,12 +130,7 @@ export class ProductMappingService {
 
         try {
           // Check if mapping already exists
-          const existingMapping = await ProductMapping.findOne({
-            shopifyStoreId: storeId,
-            shopifyVariantId: variant.id.toString(),
-          });
-
-          if (existingMapping) {
+          if (existingVariantIds.has(variant.id.toString())) {
             result.skipped++;
             continue;
           }

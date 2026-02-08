@@ -177,18 +177,23 @@ export class ShopifyInventorySyncService {
     const batchSize = 50;
     for (let i = 0; i < updates.length; i += batchSize) {
       const batch = updates.slice(i, i + batchSize);
+      const batchSkus = batch.map((update) => update.sku.toUpperCase());
+      const mappings = batchSkus.length > 0
+        ? await ProductMapping.find({
+          shopifyStoreId: storeId,
+          ShipcrowdSKU: { $in: batchSkus },
+          isActive: true,
+          syncInventory: true,
+        })
+        : [];
+      const mappingBySku = new Map(mappings.map((mapping) => [mapping.ShipcrowdSKU, mapping]));
 
       for (const update of batch) {
         result.itemsProcessed++;
 
         try {
           // Find mapping
-          const mapping = await ProductMapping.findOne({
-            shopifyStoreId: storeId,
-            ShipcrowdSKU: update.sku.toUpperCase(),
-            isActive: true,
-            syncInventory: true,
-          });
+          const mapping = mappingBySku.get(update.sku.toUpperCase());
 
           if (!mapping) {
             result.itemsFailed++;

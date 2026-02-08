@@ -20,6 +20,30 @@ router.get(
     courierController.getCourier
 );
 
+router.put(
+    '/:id',
+    authenticate,
+    courierController.updateCourier
+);
+
+router.post(
+    '/:id/toggle-status',
+    authenticate,
+    courierController.toggleStatus
+);
+
+router.post(
+    '/:id/test-connection',
+    authenticate,
+    courierController.testConnection
+);
+
+router.get(
+    '/:id/performance',
+    authenticate,
+    courierController.getPerformance
+);
+
 /**
  * @route POST /api/v1/courier/recommendations
  * @desc Get AI-powered courier recommendations

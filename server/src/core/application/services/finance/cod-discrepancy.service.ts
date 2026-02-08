@@ -221,31 +221,47 @@ export class CODDiscrepancyService {
             autoResolveAt: { $lte: new Date() }
         });
 
-        let count = 0;
-        for (const disc of expired) {
-            // Auto accept courier amount
-            disc.status = 'timeout';
-            disc.resolution = {
-                method: 'auto_accept',
-                adjustedAmount: disc.amounts.actual.collected,
-                resolvedAt: new Date(),
-                resolvedBy: 'system_timeout',
-                remarks: 'Auto-resolved due to timeout (7 days)'
-            };
-            await disc.save();
-
-            // Reconcile shipment with actual amount
-            await Shipment.findByIdAndUpdate(disc.shipmentId, {
-                'paymentDetails.collectionStatus': 'reconciled',
-                'paymentDetails.reconciled': true,
-                'paymentDetails.reconciledAt': new Date(),
-                'paymentDetails.reconciledBy': 'system_timeout',
-                'paymentDetails.actualCollection': disc.amounts.actual.collected
-            });
-
-            count++;
+        if (expired.length === 0) {
+            return 0;
         }
 
-        return count;
+        const now = new Date();
+        const discrepancyOps = expired.map((disc) => ({
+            updateOne: {
+                filter: { _id: disc._id },
+                update: {
+                    $set: {
+                        status: 'timeout',
+                        resolution: {
+                            method: 'auto_accept',
+                            adjustedAmount: disc.amounts.actual.collected,
+                            resolvedAt: now,
+                            resolvedBy: 'system_timeout',
+                            remarks: 'Auto-resolved due to timeout (7 days)'
+                        }
+                    }
+                }
+            }
+        }));
+
+        const shipmentOps = expired.map((disc) => ({
+            updateOne: {
+                filter: { _id: disc.shipmentId },
+                update: {
+                    $set: {
+                        'paymentDetails.collectionStatus': 'reconciled',
+                        'paymentDetails.reconciled': true,
+                        'paymentDetails.reconciledAt': now,
+                        'paymentDetails.reconciledBy': 'system_timeout',
+                        'paymentDetails.actualCollection': disc.amounts.actual.collected
+                    }
+                }
+            }
+        }));
+
+        await CODDiscrepancy.bulkWrite(discrepancyOps);
+        await Shipment.bulkWrite(shipmentOps);
+
+        return expired.length;
     }
 }

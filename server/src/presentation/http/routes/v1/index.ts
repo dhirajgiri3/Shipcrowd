@@ -155,6 +155,7 @@ router.use('/shipments', shipmentRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
 router.use('/admin/carriers', courierRoutes); // Backward compatibility
+router.use('/admin/couriers', courierRoutes); // New standard route
 router.use('/courier', courierRoutes);
 router.use('/labels', labelTemplateRoutes);
 router.use('/logistics/address', addressRoutes);

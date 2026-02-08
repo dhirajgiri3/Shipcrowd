@@ -6,21 +6,9 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { CreditCard, Check, Info, Lock, Zap, Tag } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/src/core';
-
-interface RateCard {
-    _id: string;
-    name: string;
-    status: 'active' | 'inactive' | 'draft';
-    baseRates: any[];
-    createdAt: string;
-    // V2 Fields
-    version?: string;
-    fuelSurcharge?: number;
-    minimumCall?: number;
-    isLocked?: boolean;
-}
+import { useAdminRateCards, AdminRateCard } from '@/src/core/api/hooks/admin/useAdminRateCards';
 
 interface RateCardSettingsProps {
     companyId: string;
@@ -32,18 +20,14 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
     const queryClient = useQueryClient();
     const [selectedRateCardId, setSelectedRateCardId] = useState<string>(currentRateCardId || '');
 
-    // Fetch available rate cards
-    const { data: rateCardsResponse, isLoading: loadingRateCards } = useQuery({
-        queryKey: ['rate-cards', 'active'],
-        queryFn: async () => {
-            const response = await apiClient.get('/rate-cards?status=active');
-            return response.data;
-        }
+    const { data: rateCardsResponse, isLoading: loadingRateCards } = useAdminRateCards({
+        companyId,
+        status: 'active',
+        limit: 200,
     });
 
-    const rateCards: RateCard[] = rateCardsResponse?.data || [];
+    const rateCards: AdminRateCard[] = rateCardsResponse?.rateCards || [];
 
-    // Assign rate card mutation
     const { mutate: assignRateCard, isPending: isAssigning } = useMutation({
         mutationFn: async (rateCardId: string) => {
             const response = await apiClient.post(`/companies/${companyId}/assign-ratecard`, {
@@ -86,7 +70,6 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* Current Rate Card */}
                 {currentRateCardId && (
                     <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
                         <div className="flex items-center justify-between">
@@ -104,7 +87,6 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
                     </div>
                 )}
 
-                {/* Rate Card Selection */}
                 <div className="space-y-3">
                     <label className="text-sm font-medium text-gray-700">
                         Select Rate Card
@@ -186,7 +168,6 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
                     )}
                 </div>
 
-                {/* Action Button */}
                 <div className="flex justify-end pt-4 border-t">
                     <Button
                         onClick={handleAssign}
@@ -196,7 +177,6 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
                     </Button>
                 </div>
 
-                {/* Info Note */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <div className="flex gap-2">
                         <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />

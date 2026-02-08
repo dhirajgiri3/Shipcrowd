@@ -7,9 +7,10 @@ interface Step3WeightRulesProps {
     formData: RateCardFormData;
     onChange: (field: keyof RateCardFormData, value: string | boolean) => void;
     multipliers: Record<string, number>;
+    isReadOnly?: boolean;
 }
 
-export function Step3WeightRules({ formData, onChange, multipliers }: Step3WeightRulesProps) {
+export function Step3WeightRules({ formData, onChange, multipliers, isReadOnly = false }: Step3WeightRulesProps) {
     const zoneAValue = parseFloat(formData.additionalZoneA) || 0;
 
     const derivedZone = (zoneKey: string) => {
@@ -28,7 +29,9 @@ export function Step3WeightRules({ formData, onChange, multipliers }: Step3Weigh
                     onChange={(e) => onChange('additionalWeight', e.target.value)}
                     placeholder="500"
                     className="mt-2"
+                    disabled={isReadOnly}
                 />
+                <p className="text-xs text-[var(--text-muted)] mt-1">Charges are applied per increment in grams.</p>
             </div>
 
             <div className="space-y-3">
@@ -42,6 +45,7 @@ export function Step3WeightRules({ formData, onChange, multipliers }: Step3Weigh
                             onChange={(e) => onChange('additionalZoneA', e.target.value)}
                             placeholder="0"
                             className="pl-8"
+                            disabled={isReadOnly}
                         />
                     </div>
                 </div>

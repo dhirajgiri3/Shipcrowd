@@ -45,6 +45,10 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
     }
 
     const baseRates = rateCard.baseRates || [];
+    const company = typeof rateCard.companyId === 'string' ? null : rateCard.companyId;
+    const zoneRules = rateCard.zoneRules || [];
+    const hasMultipliers = !!rateCard.zoneMultipliers && Object.keys(rateCard.zoneMultipliers).length > 0;
+    const isActive = rateCard.status === 'active';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -64,6 +68,11 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                         <p className="text-[var(--text-muted)] text-sm mt-1">
                             Created: {new Date(rateCard.createdAt).toLocaleDateString()} • Version {rateCard.versionNumber || rateCard.version || '—'}
                         </p>
+                        {company && (
+                            <p className="text-[var(--text-muted)] text-xs mt-1">
+                                Company: {company.name}
+                            </p>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -80,9 +89,9 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => updateCard({ id: rateCardId, data: { status: 'inactive' } })}
+                        onClick={() => updateCard({ id: rateCardId, data: { status: isActive ? 'inactive' : 'active' } })}
                     >
-                        <PowerOff className="h-4 w-4 mr-2" /> Deactivate
+                        <PowerOff className="h-4 w-4 mr-2" /> {isActive ? 'Deactivate' : 'Activate'}
                     </Button>
                     <Link href={`/admin/ratecards/${rateCardId}/analytics`}>
                         <Button>
@@ -128,17 +137,41 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                                 </div>
 
                                 <div>
-                                    <p className="text-xs text-[var(--text-muted)] mb-2">Base Rates (First Slab)</p>
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                        {['A', 'B', 'C', 'D', 'E'].map((zone) => (
-                                            <div key={zone} className="bg-[var(--bg-secondary)] rounded-lg p-3 text-center">
-                                                <p className="text-xs text-[var(--text-muted)]">Zone {zone}</p>
-                                                <p className="text-sm font-semibold">₹{rateCard.zoneMultipliers?.[`zone${zone}`]
-                                                    ? Math.round((baseRates?.[0]?.basePrice || 0) * rateCard.zoneMultipliers[`zone${zone}`])
-                                                    : '—'}</p>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <p className="text-xs text-[var(--text-muted)] mb-2">Zone Pricing</p>
+                                    {hasMultipliers ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                            {['A', 'B', 'C', 'D', 'E'].map((zone) => (
+                                                <div key={zone} className="bg-[var(--bg-secondary)] rounded-lg p-3 text-center">
+                                                    <p className="text-xs text-[var(--text-muted)]">Zone {zone}</p>
+                                                    <p className="text-sm font-semibold">
+                                                        ₹{rateCard.zoneMultipliers?.[`zone${zone}`]
+                                                            ? Math.round((baseRates?.[0]?.basePrice || 0) * rateCard.zoneMultipliers[`zone${zone}`])
+                                                            : '—'}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : zoneRules.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {zoneRules.map((rule: any, idx: number) => {
+                                                const zoneLabel = typeof rule.zoneId === 'string'
+                                                    ? rule.zoneId
+                                                    : rule.zoneId?.standardZoneCode || rule.zoneId?.name || 'Zone';
+                                                return (
+                                                    <div key={`${zoneLabel}-${idx}`} className="flex items-center justify-between rounded-lg bg-[var(--bg-secondary)] px-3 py-2">
+                                                        <div className="text-sm font-medium text-[var(--text-primary)]">
+                                                            {zoneLabel}
+                                                            {rule.carrier ? ` • ${rule.carrier}` : ''}
+                                                            {rule.serviceType ? ` • ${rule.serviceType}` : ''}
+                                                        </div>
+                                                        <div className="text-sm font-semibold">₹{rule.additionalPrice}</div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-[var(--text-muted)]">No zone pricing configured.</p>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

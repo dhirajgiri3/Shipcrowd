@@ -89,11 +89,30 @@ export default class WooCommerceProductMappingService {
 
       // 4. Process each product
       for (const product of allProducts) {
+        const existingMappings = await WooCommerceProductMapping.find({
+          woocommerceStoreId: store._id,
+          woocommerceProductId: product.id,
+          isActive: true,
+        }).select('woocommerceVariationId').lean();
+        const variationIdSet = new Set(
+          existingMappings
+            .filter((mapping) => mapping.woocommerceVariationId)
+            .map((mapping) => mapping.woocommerceVariationId)
+        );
+        const hasSimpleMapping = existingMappings.some(
+          (mapping) => !mapping.woocommerceVariationId
+        );
+
         // Handle variable products (with variations)
         if (product.type === 'variable' && product.variations.length > 0) {
           // Fetch variations
           for (const variationId of product.variations) {
             try {
+              if (variationIdSet.has(variationId)) {
+                result.skipped++;
+                continue;
+              }
+
               const variation = await client.get<WooCommerceProductVariation>(
                 `/products/${product.id}/variations/${variationId}`
               );
@@ -122,6 +141,11 @@ export default class WooCommerceProductMappingService {
         } else {
           // Handle simple products
           if (product.sku) {
+            if (hasSimpleMapping) {
+              result.skipped++;
+              continue;
+            }
+
             await this.attemptMapping(
               store,
               product.id,
@@ -164,18 +188,6 @@ export default class WooCommerceProductMappingService {
     result: AutoMapResult
   ): Promise<void> {
     try {
-      // Check if mapping already exists
-      const existing = await WooCommerceProductMapping.findByWooCommerceId(
-        store._id.toString(),
-        productId,
-        variationId
-      );
-
-      if (existing) {
-        result.skipped++;
-        return;
-      }
-
       // TODO: Check if SKU exists in Shipcrowd inventory
       // For now, assuming exact SKU match
       const ShipcrowdSKU = wooSKU;

@@ -4,13 +4,18 @@ export const dynamic = "force-dynamic";
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CreditCard } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useAdminRateCard, useUpdateAdminRateCard } from '@/src/core/api/hooks/admin/useAdminRateCards';
 import { RateCardWizard } from '../../../components/RateCardWizard';
-import { RateCardFormData, initialRateCardFormData, buildRateCardPayload } from '../../../components/ratecardWizard.utils';
+import {
+    RateCardFormData,
+    buildRateCardPayload,
+    initialRateCardFormData,
+    mapAdminRateCardToFormState
+} from '../../../components/ratecardWizard.utils';
 
 interface EditRatecardClientProps {
     rateCardId: string;
@@ -22,60 +27,38 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
     const { data: rateCard, isLoading } = useAdminRateCard(rateCardId);
     const { mutate: updateRateCard, isPending } = useUpdateAdminRateCard();
 
-    // Derive initial data directly from rateCard
-    const initialData = useMemo<RateCardFormData>(() => {
-        if (!rateCard) return initialRateCardFormData;
-
-        const baseRate = rateCard.baseRates?.[0];
-        const weightRule = rateCard.weightRules?.[0];
-        const multipliers = rateCard.zoneMultipliers || { zoneA: 1 };
-        const basePrice = baseRate?.basePrice || 0;
-
-        // Calculate additional weight/price from weight rules if available
-        // Default to 500g logic if not explicitly found
-        const additionalWeight = 500; // Fixed as per previous logic, or assert from weightRules[0].minWeight/maxWeight difference
-        const additionalZoneA = weightRule?.pricePerKg
-            ? (weightRule.pricePerKg / 1000) * additionalWeight
-            : 0;
-
-        return {
-            ...initialRateCardFormData,
-            courierProviderId: baseRate?.carrier || '',
-            courierServiceId: baseRate?.serviceType || '',
-            rateCardCategory: rateCard.rateCardCategory || '',
-            shipmentType: rateCard.shipmentType || 'forward',
-            gst: String(rateCard.gst || 18),
-            minimumFare: String(rateCard.minimumFare || rateCard.minimumCall || 0),
-            minimumFareCalculatedOn: rateCard.minimumFareCalculatedOn || 'freight',
-            zoneBType: rateCard.zoneBType || 'state',
-            status: (rateCard.status as any) || 'active',
-            isGeneric: rateCard.name?.startsWith('GENERIC') || false,
-            basicWeight: String((baseRate?.maxWeight || 0.5) * 1000),
-            basicZoneA: String(basePrice),
-            basicZoneB: multipliers.zoneB ? String((basePrice * multipliers.zoneB).toFixed(2)) : '',
-            basicZoneC: multipliers.zoneC ? String((basePrice * multipliers.zoneC).toFixed(2)) : '',
-            basicZoneD: multipliers.zoneD ? String((basePrice * multipliers.zoneD).toFixed(2)) : '',
-            basicZoneE: multipliers.zoneE ? String((basePrice * multipliers.zoneE).toFixed(2)) : '',
-            additionalWeight: String(additionalWeight),
-            additionalZoneA: String(additionalZoneA || ''),
-            codPercentage: String(rateCard.codPercentage || 2.5),
-            codMinimumCharge: String(rateCard.codMinimumCharge || 25),
-        };
+    const editState = useMemo(() => {
+        if (!rateCard) {
+            return {
+                formData: initialRateCardFormData,
+                warnings: [],
+                isReadOnly: false,
+            };
+        }
+        return mapAdminRateCardToFormState(rateCard);
     }, [rateCard]);
 
+    const { formData: initialData, warnings, isReadOnly } = editState;
+
     const handleSubmit = async (formData: RateCardFormData) => {
-        if (!formData.isGeneric && (!formData.courierProviderId || !formData.courierServiceId)) {
+        if (isReadOnly) {
+            addToast('This rate card is read-only in the editor. Please edit it from the advanced tools.', 'info');
+            return;
+        }
+
+        if (!formData.name.trim()) {
+            addToast('Please provide a rate card name', 'error');
+            return;
+        }
+
+        if (!formData.isGeneric && (!formData.carrier || !formData.serviceType)) {
             addToast('Please select a courier and service', 'error');
             return;
         }
 
-        const payload = buildRateCardPayload(formData);
-        const updatePayload = {
-            ...payload,
-            name: rateCard?.name || payload.name,
-        };
+        const payload = buildRateCardPayload(formData, 'update');
 
-        updateRateCard({ id: rateCardId, data: updatePayload }, {
+        updateRateCard({ id: rateCardId, data: payload }, {
             onSuccess: () => {
                 addToast('Rate card updated successfully!', 'success');
                 router.push('/admin/ratecards');
@@ -115,13 +98,27 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
                 </div>
             </div>
 
-            {/* Key prop ensures component remounts when ID changes or data loads */}
+            {warnings.length > 0 && (
+                <div className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-4">
+                    <div className="flex items-start gap-2 text-[var(--warning)]">
+                        <AlertTriangle className="h-4 w-4 mt-0.5" />
+                        <div className="space-y-1 text-sm">
+                            {warnings.map((warning, idx) => (
+                                <div key={idx}>{warning}</div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <RateCardWizard
                 key={rateCard?._id || 'loading'}
                 initialData={initialData}
                 onSubmit={handleSubmit}
                 onSaveDraft={(draftData) => handleSubmit({ ...draftData, status: 'draft' })}
                 submitLabel={isPending ? 'Updating...' : 'Update Rate Card'}
+                isReadOnly={isReadOnly}
+                categoryOptions={rateCard.rateCardCategory ? [rateCard.rateCardCategory] : []}
             />
         </div>
     );

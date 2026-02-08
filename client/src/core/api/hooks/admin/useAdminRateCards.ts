@@ -36,8 +36,8 @@ export interface AdminRateCard {
     zoneBType?: 'state' | 'region';
     rateCardCategory?: string;
     baseRates: Array<{
-        carrier: string;
-        serviceType: string;
+        carrier?: string | null;
+        serviceType?: string | null;
         basePrice: number;
         minWeight: number;
         maxWeight: number;
@@ -50,9 +50,9 @@ export interface AdminRateCard {
         serviceType?: string;
     }>;
     zoneRules?: Array<{
-        zoneId: string | { _id: string; name: string };
-        carrier: string;
-        serviceType: string;
+        zoneId: string | { _id: string; name: string; standardZoneCode?: string };
+        carrier?: string | null;
+        serviceType?: string | null;
         additionalPrice: number;
         transitDays?: number;
     }>;
@@ -68,7 +68,7 @@ export interface AdminRateCard {
 
 export interface CreateAdminRateCardPayload {
     name: string;
-    companyId?: string;
+    companyId: string;
     rateCardCategory?: string;
     shipmentType?: 'forward' | 'reverse';
     gst?: number;
@@ -189,12 +189,14 @@ export const useAdminRateCard = (
  * Get platform-wide rate card statistics
  */
 export const useAdminRateCardStats = (
+    params?: { companyId?: string },
     options?: Partial<UseQueryOptions<AdminRateCardStats, ApiError>>
 ) => {
     return useQuery<AdminRateCardStats, ApiError>({
-        queryKey: ['admin', 'ratecards', 'stats'],
+        queryKey: ['admin', 'ratecards', 'stats', params],
         queryFn: async () => {
-            const response = await apiClient.get('/admin/ratecards/stats');
+            const query = params?.companyId ? `?companyId=${params.companyId}` : '';
+            const response = await apiClient.get(`/admin/ratecards/stats${query}`);
             return response.data.data;
         },
         ...CACHE_TIMES.MEDIUM,

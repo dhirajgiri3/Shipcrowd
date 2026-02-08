@@ -178,17 +178,24 @@ export default class AmazonInventorySyncService {
             ShipcrowdSKU: string;
         }> = [];
 
+        const normalizedSkus = updates.map(update => update.sku.toUpperCase());
+        const mappings = normalizedSkus.length > 0
+            ? await AmazonProductMapping.find({
+                amazonStoreId: storeId,
+                ShipcrowdSKU: { $in: normalizedSkus },
+                isActive: true,
+                syncInventory: true,
+            })
+            : [];
+        const mappingBySku = new Map(mappings.map(mapping => [mapping.ShipcrowdSKU, mapping]));
+        const mappingById = new Map(mappings.map(mapping => [String(mapping._id), mapping]));
+
         // Process each update and find mappings
         for (const update of updates) {
             result.itemsProcessed++;
 
             try {
-                const mapping = await AmazonProductMapping.findOne({
-                    amazonStoreId: storeId,
-                    ShipcrowdSKU: update.sku.toUpperCase(),
-                    isActive: true,
-                    syncInventory: true,
-                });
+                const mapping = mappingBySku.get(update.sku.toUpperCase());
 
                 if (!mapping) {
                     result.itemsFailed++;
@@ -245,7 +252,7 @@ export default class AmazonInventorySyncService {
                 // Mark all as synced if feed completed successfully
                 for (const msg of inventoryMessages) {
                     try {
-                        const mapping = await AmazonProductMapping.findById(msg.mappingId);
+                        const mapping = mappingById.get(msg.mappingId);
                         if (mapping) {
                             await this.recordMappingSyncSuccess(mapping);
                         }
@@ -275,7 +282,7 @@ export default class AmazonInventorySyncService {
                         timestamp: new Date(),
                     });
 
-                    const mapping = await AmazonProductMapping.findById(msg.mappingId);
+                    const mapping = mappingById.get(msg.mappingId);
                     if (mapping) {
                         await this.recordMappingSyncError(mapping, `Feed failed: ${feedResult.processingStatus}`);
                     }

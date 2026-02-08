@@ -610,11 +610,25 @@ export class ShopifyFulfillmentService {
                 currentStatus: { $in: ['PROCESSING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED'] },
             }).limit(100);
 
+            const orderIds = orders.map(order => order._id);
+            const shipments = orderIds.length > 0
+                ? await Shipment.find({ orderId: { $in: orderIds } })
+                    .select('orderId trackingNumber carrier')
+                    .lean()
+                : [];
+            const shipmentByOrderId = new Map<string, { trackingNumber?: string; carrier?: string }>();
+            for (const shipment of shipments) {
+                const key = shipment.orderId.toString();
+                if (!shipmentByOrderId.has(key)) {
+                    shipmentByOrderId.set(key, shipment);
+                }
+            }
+
             let syncedCount = 0;
 
             for (const order of orders) {
                 // Get shipment for this order
-                const shipment = await Shipment.findOne({ orderId: order._id });
+                const shipment = shipmentByOrderId.get(order._id.toString());
 
                 if (shipment && shipment.trackingNumber) {
                     try {

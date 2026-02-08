@@ -63,14 +63,17 @@ class NDRCommunicationService {
             };
 
             const companyId = shipment.companyId?.toString();
-            const canSendEmail = companyId
-                ? await NotificationPreferenceService.shouldSend(companyId, 'email')
+            const preferences = companyId
+                ? await NotificationPreferenceService.getCompanyPreferences(companyId)
+                : null;
+            const canSendEmail = preferences
+                ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'email')
                 : true;
-            const canSendSms = companyId
-                ? await NotificationPreferenceService.shouldSend(companyId, 'sms')
+            const canSendSms = preferences
+                ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'sms')
                 : true;
-            const canSendWhatsApp = companyId
-                ? await NotificationPreferenceService.shouldSend(companyId, 'whatsapp')
+            const canSendWhatsApp = preferences
+                ? NotificationPreferenceService.shouldSendWithPreferences(preferences, 'whatsapp')
                 : true;
 
             // Send via WhatsApp

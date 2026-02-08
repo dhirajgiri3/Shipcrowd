@@ -474,25 +474,122 @@ export class SKUWeightProfileService {
                 shipmentCount: shipments.length
             });
 
-            let processed = 0;
-
+            const samplesBySku = new Map<string, { weights: number[]; name?: string }>();
             for (const shipment of shipments) {
                 const items = (shipment as any).packageDetails?.items || [];
                 const actualWeight = (shipment as any).weights?.actual?.value;
 
                 if (items.length === 1 && actualWeight) {
-                    // Single-item shipments only (for accurate SKU weight)
                     const item = items[0];
-                    if (item.sku) {
-                        await this.learnFromShipment(
-                            companyId,
-                            item.sku,
-                            actualWeight,
-                            item.name
-                        );
-                        processed++;
+                    if (!item.sku) continue;
+
+                    const key = item.sku;
+                    if (!samplesBySku.has(key)) {
+                        samplesBySku.set(key, { weights: [], name: item.name });
                     }
+                    samplesBySku.get(key)!.weights.push(actualWeight);
                 }
+            }
+
+            const skus = Array.from(samplesBySku.keys());
+            if (skus.length === 0) {
+                return 0;
+            }
+
+            const existingProfiles = await SKUWeightProfile.find({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                sku: { $in: skus },
+                isDeleted: false
+            });
+            const existingBySku = new Map(existingProfiles.map(profile => [profile.sku, profile]));
+
+            const now = new Date();
+            const bulkOps: any[] = [];
+            let processed = 0;
+
+            for (const [sku, data] of samplesBySku.entries()) {
+                const weights = data.weights;
+                if (weights.length === 0) continue;
+
+                const existing = existingBySku.get(sku);
+                if (existing?.frozen?.isFrozen) {
+                    continue;
+                }
+
+                let batchMean = 0;
+                let batchM2 = 0;
+                let batchMin = weights[0];
+                let batchMax = weights[0];
+                let batchCount = 0;
+                for (const weight of weights) {
+                    batchCount++;
+                    const delta = weight - batchMean;
+                    batchMean += delta / batchCount;
+                    const delta2 = weight - batchMean;
+                    batchM2 += delta * delta2;
+                    batchMin = Math.min(batchMin, weight);
+                    batchMax = Math.max(batchMax, weight);
+                }
+
+                if (!existing) {
+                    bulkOps.push({
+                        insertOne: {
+                            document: {
+                                companyId: new mongoose.Types.ObjectId(companyId),
+                                sku,
+                                productName: data.name,
+                                statistics: {
+                                    sampleCount: batchCount,
+                                    mean: batchMean,
+                                    m2: batchM2,
+                                    standardDeviation: batchCount > 1 ? Math.sqrt(batchM2 / (batchCount - 1)) : 0,
+                                    min: batchMin,
+                                    max: batchMax,
+                                    lastUpdated: now
+                                },
+                                firstShipmentDate: now,
+                                lastShipmentDate: now
+                            }
+                        }
+                    });
+                    processed += batchCount;
+                    continue;
+                }
+
+                const existingStats = existing.statistics;
+                const totalCount = existingStats.sampleCount + batchCount;
+                const deltaMean = batchMean - existingStats.mean;
+                const combinedMean = (existingStats.mean * existingStats.sampleCount + batchMean * batchCount) / totalCount;
+                const combinedM2 = existingStats.m2
+                    + batchM2
+                    + (deltaMean * deltaMean * existingStats.sampleCount * batchCount) / totalCount;
+                const combinedStdDev = totalCount > 1 ? Math.sqrt(combinedM2 / (totalCount - 1)) : 0;
+                const combinedMin = Math.min(existingStats.min ?? batchMin, batchMin);
+                const combinedMax = Math.max(existingStats.max ?? batchMax, batchMax);
+
+                bulkOps.push({
+                    updateOne: {
+                        filter: { _id: existing._id },
+                        update: {
+                            $set: {
+                                productName: existing.productName || data.name,
+                                'statistics.sampleCount': totalCount,
+                                'statistics.mean': combinedMean,
+                                'statistics.m2': combinedM2,
+                                'statistics.standardDeviation': combinedStdDev,
+                                'statistics.min': combinedMin,
+                                'statistics.max': combinedMax,
+                                'statistics.lastUpdated': now,
+                                lastShipmentDate: now
+                            }
+                        }
+                    }
+                });
+                processed += batchCount;
+            }
+
+            if (bulkOps.length > 0) {
+                await SKUWeightProfile.bulkWrite(bulkOps);
             }
 
             logger.info('[SKU Profile] Bulk learning completed', {

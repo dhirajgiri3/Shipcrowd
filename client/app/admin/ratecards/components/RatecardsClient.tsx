@@ -2,9 +2,8 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent } from '@/src/components/ui/core/Card';
+import { Card } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
 import {
     CreditCard,
     Plus,
@@ -34,9 +33,9 @@ import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RateCardItem } from './RateCardItem';
 import { BulkActionsPanel } from './BulkActionsPanel';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useDebouncedValue } from '@/src/hooks/data';
-import { rateCardCategories } from './ratecardWizard.utils';
+import { useAdminCompanies } from '@/src/core/api/hooks/admin/companies/useCompanies';
+import { useCouriers } from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import {
     Dialog,
     DialogContent,
@@ -53,6 +52,7 @@ export function RatecardsClient() {
     const [searchInput, setSearchInput] = useState(search);
     const debouncedSearch = useDebouncedValue(searchInput, 400);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive' | 'draft' | 'expired'>('all');
+    const [selectedCompanyId, setSelectedCompanyId] = useState<string>('all');
     const [selectedCourier, setSelectedCourier] = useState<string>('all');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
@@ -61,8 +61,8 @@ export function RatecardsClient() {
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
     const [cloneTarget, setCloneTarget] = useState<{ id: string; name: string } | null>(null);
     const { addToast } = useToast();
-    const { user } = useAuth();
-    const hasCompanyContext = !!user?.companyId;
+    const { data: companiesData } = useAdminCompanies({ limit: 200 });
+    const { data: couriers = [] } = useCouriers();
 
     useEffect(() => {
         if (debouncedSearch === search) return;
@@ -75,14 +75,21 @@ export function RatecardsClient() {
         router.push(`?${params.toString()}`, { scroll: false });
     }, [debouncedSearch, search, searchParams, router]);
 
+    useEffect(() => {
+        setSelectedCards([]);
+    }, [selectedCompanyId]);
+
     // Integration: Fetch real rate cards
     const { data: adminData, isLoading, isError, error, refetch } = useAdminRateCards({
         status: selectedStatus === 'all' ? undefined : selectedStatus,
+        companyId: selectedCompanyId === 'all' ? undefined : selectedCompanyId,
         search: debouncedSearch || undefined,
         carrier: selectedCourier === 'all' ? undefined : selectedCourier,
         category: selectedCategory === 'all' ? undefined : selectedCategory,
     });
-    const { data: statsData } = useAdminRateCardStats();
+    const { data: statsData } = useAdminRateCardStats({
+        companyId: selectedCompanyId === 'all' ? undefined : selectedCompanyId
+    });
     const rateCards = adminData?.rateCards || [];
 
     // Bulk operations hooks
@@ -100,23 +107,38 @@ export function RatecardsClient() {
     }, [rateCards, debouncedSearch]);
 
     const courierOptions = useMemo(() => {
-        const carriers = new Set<string>();
-        rateCards.forEach(card => {
-            card.baseRates?.forEach((rate: any) => {
-                if (rate?.carrier) carriers.add(rate.carrier);
-            });
-        });
-        return Array.from(carriers);
-    }, [rateCards]);
+        return couriers.map(courier => ({
+            value: courier.id,
+            label: courier.name,
+        }));
+    }, [couriers]);
 
     const categoryOptions = useMemo(() => {
         const categories = new Set<string>();
-        rateCardCategories.forEach(category => categories.add(category));
         rateCards.forEach(card => {
             if (card.rateCardCategory) categories.add(card.rateCardCategory);
         });
         return Array.from(categories).filter(Boolean);
     }, [rateCards]);
+
+    const companyOptions = companiesData?.companies || [];
+
+    const selectedCardsCompanyIds = useMemo(() => {
+        const ids = new Set<string>();
+        rateCards.forEach(card => {
+            if (selectedCards.includes(card._id)) {
+                const companyId = typeof card.companyId === 'string' ? card.companyId : card.companyId?._id;
+                if (companyId) ids.add(companyId);
+            }
+        });
+        return ids;
+    }, [rateCards, selectedCards]);
+
+    const inferredCompanyId = selectedCardsCompanyIds.size === 1 ? Array.from(selectedCardsCompanyIds)[0] : null;
+    const effectiveCompanyId = selectedCompanyId !== 'all' ? selectedCompanyId : inferredCompanyId;
+    const canBulkOperate = !!effectiveCompanyId && selectedCards.length > 0 && selectedCardsCompanyIds.size <= 1;
+    const canExport = !!effectiveCompanyId;
+    const canImport = !!effectiveCompanyId;
 
     const handleClone = (id: string, name: string) => {
         setCloneTarget({ id, name });
@@ -143,8 +165,11 @@ export function RatecardsClient() {
     };
 
     const handleBulkActivate = () => {
-        if (selectedCards.length === 0) return;
-        bulkUpdate({ rateCardIds: selectedCards, operation: 'activate' }, {
+        if (!canBulkOperate || !effectiveCompanyId) {
+            addToast('Select rate cards from a single company to bulk update', 'error');
+            return;
+        }
+        bulkUpdate({ companyId: effectiveCompanyId, rateCardIds: selectedCards, operation: 'activate' }, {
             onSuccess: () => {
                 setSelectedCards([]);
                 setShowBulkActions(false);
@@ -153,8 +178,11 @@ export function RatecardsClient() {
     };
 
     const handleBulkDeactivate = () => {
-        if (selectedCards.length === 0) return;
-        bulkUpdate({ rateCardIds: selectedCards, operation: 'deactivate' }, {
+        if (!canBulkOperate || !effectiveCompanyId) {
+            addToast('Select rate cards from a single company to bulk update', 'error');
+            return;
+        }
+        bulkUpdate({ companyId: effectiveCompanyId, rateCardIds: selectedCards, operation: 'deactivate' }, {
             onSuccess: () => {
                 setSelectedCards([]);
                 setShowBulkActions(false);
@@ -163,12 +191,16 @@ export function RatecardsClient() {
     };
 
     const handleBulkPriceAdjustment = (type: 'increase' | 'decrease', rawValue?: number) => {
-        if (selectedCards.length === 0) return;
+        if (!canBulkOperate || !effectiveCompanyId) {
+            addToast('Select rate cards from a single company to bulk update', 'error');
+            return;
+        }
         if (typeof rawValue !== 'number' || Number.isNaN(rawValue) || rawValue <= 0) {
             addToast('Please enter a valid percentage', 'error');
             return;
         }
         bulkUpdate({
+            companyId: effectiveCompanyId,
             rateCardIds: selectedCards,
             operation: 'adjust_price',
             adjustmentType: 'percentage',
@@ -212,7 +244,17 @@ export function RatecardsClient() {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setShowImportModal(true)}>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            if (!canImport) {
+                                addToast('Select a company to import rate cards', 'error');
+                                return;
+                            }
+                            setShowImportModal(true);
+                        }}
+                        disabled={!canImport}
+                    >
                         <Upload className="h-4 w-4 mr-2" /> Import
                     </Button>
                     <Link href="/admin/ratecards/create">
@@ -289,6 +331,23 @@ export function RatecardsClient() {
                             </div>
                         </div>
 
+                        {/* Company Filter */}
+                        <div className="relative min-w-[200px]">
+                            <select
+                                value={selectedCompanyId}
+                                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                className="w-full h-10 pl-3 pr-8 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Companies</option>
+                                {companyOptions.map(company => (
+                                    <option key={company._id} value={company._id}>{company.name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <MoreVertical className="h-4 w-4 text-[var(--text-muted)] opacity-50" />
+                            </div>
+                        </div>
+
                         {/* Courier Filter */}
                         <div className="relative min-w-[180px]">
                             <select
@@ -298,7 +357,7 @@ export function RatecardsClient() {
                             >
                                 <option value="all">All Couriers</option>
                                 {courierOptions.map(courier => (
-                                    <option key={courier} value={courier}>{courier}</option>
+                                    <option key={courier.value} value={courier.value}>{courier.label}</option>
                                 ))}
                             </select>
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -338,12 +397,18 @@ export function RatecardsClient() {
                             <span className="hidden sm:inline">Select & Edit</span>
                         </Button>
 
-                        <Button
-                            variant="ghost"
-                            onClick={() => exportCards()}
-                            disabled={isExporting}
-                            className="gap-2"
-                        >
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            if (!effectiveCompanyId) {
+                                addToast('Select a company (or cards from one company) to export rate cards', 'error');
+                                return;
+                            }
+                            exportCards({ companyId: effectiveCompanyId });
+                        }}
+                        disabled={isExporting || !canExport}
+                        className="gap-2"
+                    >
                             <Download className="h-4 w-4" />
                             <span className="hidden sm:inline">Export</span>
                         </Button>
@@ -383,7 +448,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={handleBulkActivate}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
+                                            disabled={!canBulkOperate || isBulkUpdating}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <Power className="h-3.5 w-3.5 mr-1.5 text-green-500" />
@@ -393,7 +458,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={handleBulkDeactivate}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
+                                            disabled={!canBulkOperate || isBulkUpdating}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <PowerOff className="h-3.5 w-3.5 mr-1.5 text-red-500" />
@@ -403,7 +468,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleBulkPriceAdjustment('increase')}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
+                                            disabled={!canBulkOperate || isBulkUpdating}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <TrendingUp className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
@@ -413,7 +478,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleBulkPriceAdjustment('decrease')}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
+                                            disabled={!canBulkOperate || isBulkUpdating}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <TrendingDown className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
@@ -436,7 +501,7 @@ export function RatecardsClient() {
                         handleBulkPriceAdjustment(type, value);
                         setTimeout(() => setShowBulkActions(false), 0);
                     }}
-                    disabled={!hasCompanyContext || isBulkUpdating}
+                    disabled={!canBulkOperate || isBulkUpdating}
                 />
             )}
 
@@ -472,7 +537,16 @@ export function RatecardsClient() {
                             : "Get started by creating a new rate card or importing an existing one."}
                     </p>
                     <div className="flex gap-3 mt-6">
-                        <Button variant="outline" onClick={() => { setSearchInput(''); setSelectedStatus('all'); }}>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setSearchInput('');
+                                setSelectedStatus('all');
+                                setSelectedCompanyId('all');
+                                setSelectedCourier('all');
+                                setSelectedCategory('all');
+                            }}
+                        >
                             Clear Filters
                         </Button>
                         <Link href="/admin/ratecards/create">
@@ -489,6 +563,7 @@ export function RatecardsClient() {
                 isOpen={showImportModal}
                 onClose={() => setShowImportModal(false)}
                 onSuccess={() => refetch()}
+                companyId={effectiveCompanyId || ''}
             />
 
             <Dialog open={!!cloneTarget} onOpenChange={(open) => !open && setCloneTarget(null)}>

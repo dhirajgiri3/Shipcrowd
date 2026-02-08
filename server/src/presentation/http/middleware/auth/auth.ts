@@ -20,12 +20,6 @@ export const authenticate = async (
     // Get token from cookie first, then fallback to Authorization header/query
     let token = getAccessTokenFromRequest(req);
 
-    // Debug logging
-    if (process.env.NODE_ENV === 'development' && !token) {
-      logger.debug('No accessToken cookie found. Available cookies:', Object.keys(req.cookies || {}));
-      logger.debug('Cookie header:', req.headers.cookie);
-    }
-
     if (!token) {
       res.status(401).json({ message: 'Authentication required' });
       return;

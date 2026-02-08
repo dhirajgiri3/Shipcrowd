@@ -110,6 +110,15 @@ export class FlipkartProductMappingService {
       listingsCount: listings.length,
     });
 
+    const fsns = listings.map((listing) => listing.fsn);
+    const existingMappings = fsns.length > 0
+      ? await FlipkartProductMapping.find({
+        flipkartStoreId: storeId,
+        flipkartFSN: { $in: fsns },
+      }).select('flipkartFSN').lean()
+      : [];
+    const existingFsns = new Set(existingMappings.map((mapping) => mapping.flipkartFSN));
+
     // Process each listing
     for (const listing of listings) {
       if (!listing.sku || listing.sku.trim() === '') {
@@ -119,12 +128,7 @@ export class FlipkartProductMappingService {
 
       try {
         // Check if mapping already exists
-        const existingMapping = await FlipkartProductMapping.findOne({
-          flipkartStoreId: storeId,
-          flipkartFSN: listing.fsn,
-        });
-
-        if (existingMapping) {
+        if (existingFsns.has(listing.fsn)) {
           result.skipped++;
           continue;
         }

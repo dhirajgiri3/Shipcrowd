@@ -931,16 +931,23 @@ export class CODRemittanceService {
 
             const discrepancies: Array<{ awb: string; reason: string }> = [];
             const reconciledShipments = new Set<string>();
+            const reconciledShipmentIds = new Set<string>();
+
+            const awbs = payload.shipments.map((shipment) => shipment.awb).filter(Boolean);
+            const shipments = awbs.length > 0
+                ? await Shipment.find({
+                    trackingNumber: { $in: awbs },
+                    'paymentDetails.type': 'cod',
+                    isDeleted: false,
+                })
+                : [];
+            const shipmentByAwb = new Map(shipments.map(shipment => [shipment.trackingNumber, shipment]));
 
             // Step 1: Match each shipment in settlement with internal records
             for (const settlementShipment of payload.shipments) {
                 try {
                     // Find shipment by AWB
-                    const shipment = await Shipment.findOne({
-                        trackingNumber: settlementShipment.awb,
-                        'paymentDetails.type': 'cod',
-                        isDeleted: false
-                    });
+                    const shipment = shipmentByAwb.get(settlementShipment.awb);
 
                     if (!shipment) {
                         discrepancies.push({
@@ -967,6 +974,7 @@ export class CODRemittanceService {
                             shipment.remittance.remittedAmount = settlementShipment.net_amount;
                             await shipment.save();
                             reconciledShipments.add(settlementShipment.awb);
+                            reconciledShipmentIds.add(String(shipment._id));
                         }
                     } else {
                         // Mark as remitted
@@ -979,6 +987,7 @@ export class CODRemittanceService {
                         };
                         await shipment.save();
                         reconciledShipments.add(settlementShipment.awb);
+                        reconciledShipmentIds.add(String(shipment._id));
                     }
                 } catch (error) {
                     logger.error('Error reconciling shipment', {
@@ -994,30 +1003,36 @@ export class CODRemittanceService {
 
             // Step 2: Find and update related COD remittance batches
             const companyIds = new Set<string>();
-            for (const awb of reconciledShipments) {
-                const shipment = await Shipment.findOne({ trackingNumber: awb }).select('companyId');
-                if (shipment) {
+            for (const shipment of shipments) {
+                if (reconciledShipments.has(shipment.trackingNumber)) {
                     companyIds.add(shipment.companyId.toString());
                 }
             }
 
             let reconciledBatches = 0;
-            for (const companyId of companyIds) {
+            const companyIdList = Array.from(companyIds).map(id => new mongoose.Types.ObjectId(id));
+            if (companyIdList.length > 0) {
                 // Find batches that might contain these shipments
                 const batches = await CODRemittance.find({
-                    companyId: new mongoose.Types.ObjectId(companyId),
+                    companyId: { $in: companyIdList },
                     status: { $in: ['approved', 'processing'] },
                     isDeleted: false
                 });
 
                 for (const batch of batches) {
                     // Check if batch shipments are in the settlement
-                    const batchShipments = await Shipment.find({
-                        _id: { $in: batch.shipments },
-                        trackingNumber: { $in: Array.from(reconciledShipments) }
+                    const batchShipments = batch.shipments || [];
+                    const hasReconciledShipment = batchShipments.some((shipment: any) => {
+                        if (shipment?.awb && reconciledShipments.has(shipment.awb)) {
+                            return true;
+                        }
+                        if (shipment?.shipmentId && reconciledShipmentIds.has(String(shipment.shipmentId))) {
+                            return true;
+                        }
+                        return false;
                     });
 
-                    if (batchShipments.length > 0) {
+                    if (hasReconciledShipment) {
                         // Update batch status
                         (batch as any).status = 'settled';
                         (batch as any).settlementDetails = {
@@ -1032,8 +1047,7 @@ export class CODRemittanceService {
 
                         logger.info('Batch reconciled with settlement', {
                             batchId: batch._id,
-                            settlementId: payload.settlement_id,
-                            shipmentsReconciled: batchShipments.length
+                            settlementId: payload.settlement_id
                         });
                     }
                 }

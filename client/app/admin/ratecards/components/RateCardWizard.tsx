@@ -15,11 +15,20 @@ interface RateCardWizardProps {
     onSubmit: (data: RateCardFormData) => Promise<void> | void;
     onSaveDraft?: (data: RateCardFormData) => Promise<void> | void;
     submitLabel?: string;
+    categoryOptions?: string[];
+    isReadOnly?: boolean;
 }
 
-export function RateCardWizard({ initialData, onSubmit, onSaveDraft, submitLabel = 'Save Rate Card' }: RateCardWizardProps) {
+export function RateCardWizard({
+    initialData,
+    onSubmit,
+    onSaveDraft,
+    submitLabel = 'Save Rate Card',
+    categoryOptions = [],
+    isReadOnly = false
+}: RateCardWizardProps) {
     const steps = useMemo(() => ([
-        { id: 'basic', title: 'Basic', fields: ['courierProviderId', 'courierServiceId', 'rateCardCategory'] },
+        { id: 'basic', title: 'Basic', fields: ['name', 'companyId', 'carrier', 'serviceType', 'rateCardCategory'] },
         { id: 'zones', title: 'Zones', fields: ['basicWeight', 'basicZoneA'] },
         { id: 'weights', title: 'Weight', fields: ['additionalWeight', 'additionalZoneA'] },
         { id: 'overhead', title: 'Overhead', fields: ['codPercentage', 'codMinimumCharge'] },
@@ -38,7 +47,7 @@ export function RateCardWizard({ initialData, onSubmit, onSaveDraft, submitLabel
         canProceed,
         complete,
     } = useMultiStepForm<RateCardFormData>({
-        steps: steps.map((step, index) => ({
+        steps: steps.map((step) => ({
             id: step.id,
             title: step.title,
             fields: step.fields as any,
@@ -47,6 +56,7 @@ export function RateCardWizard({ initialData, onSubmit, onSaveDraft, submitLabel
         })),
         initialData,
         onComplete: async (data) => {
+            if (isReadOnly) return;
             await onSubmit(data);
         },
     });
@@ -54,32 +64,59 @@ export function RateCardWizard({ initialData, onSubmit, onSaveDraft, submitLabel
     const multipliers = calculateMultipliers(formData);
     const stepCanProceed = (() => {
         if (currentStep === 0) {
-            if (formData.isGeneric) {
-                return formData.rateCardCategory.trim().length > 0;
-            }
+            if (!formData.name.trim() || !formData.companyId.trim()) return false;
+            if (!formData.rateCardCategory.trim()) return false;
+            if (formData.isGeneric) return true;
             return (
-                formData.courierProviderId.trim().length > 0 &&
-                formData.courierServiceId.trim().length > 0 &&
-                formData.rateCardCategory.trim().length > 0
+                formData.carrier.trim().length > 0 &&
+                formData.serviceType.trim().length > 0
             );
         }
         return canProceed;
     })();
 
     const handleChange = (field: keyof RateCardFormData, value: string | boolean) => {
+        if (isReadOnly) return;
         setFieldValue(field, value as any);
     };
 
     const renderStep = () => {
         switch (currentStep) {
             case 0:
-                return <Step1BasicInfo formData={formData} onChange={handleChange} />;
+                return (
+                    <Step1BasicInfo
+                        formData={formData}
+                        onChange={handleChange}
+                        categoryOptions={categoryOptions}
+                        isReadOnly={isReadOnly}
+                    />
+                );
             case 1:
-                return <Step2ZonePricing formData={formData} onChange={handleChange} multipliers={multipliers} />;
+                return (
+                    <Step2ZonePricing
+                        formData={formData}
+                        onChange={handleChange}
+                        multipliers={multipliers}
+                        isReadOnly={isReadOnly}
+                    />
+                );
             case 2:
-                return <Step3WeightRules formData={formData} onChange={handleChange} multipliers={multipliers} />;
+                return (
+                    <Step3WeightRules
+                        formData={formData}
+                        onChange={handleChange}
+                        multipliers={multipliers}
+                        isReadOnly={isReadOnly}
+                    />
+                );
             case 3:
-                return <Step4Overhead formData={formData} onChange={handleChange} />;
+                return (
+                    <Step4Overhead
+                        formData={formData}
+                        onChange={handleChange}
+                        isReadOnly={isReadOnly}
+                    />
+                );
             case 4:
                 return <Step5Review formData={formData} />;
             default:
@@ -112,14 +149,14 @@ export function RateCardWizard({ initialData, onSubmit, onSaveDraft, submitLabel
                     Previous
                 </Button>
                 <div className="flex items-center gap-2">
-                    {isLastStep && onSaveDraft && (
+                    {isLastStep && onSaveDraft && !isReadOnly && (
                         <Button variant="outline" onClick={() => onSaveDraft({ ...formData, status: 'draft' })}>
                             Save as Draft
                         </Button>
                     )}
                     <Button
                         onClick={isLastStep ? complete : nextStep}
-                        disabled={!stepCanProceed || isSubmitting}
+                        disabled={isLastStep ? (!stepCanProceed || isSubmitting || isReadOnly) : (!stepCanProceed || isSubmitting)}
                     >
                         {isLastStep ? submitLabel : 'Next'}
                     </Button>

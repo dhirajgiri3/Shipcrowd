@@ -1,22 +1,40 @@
 "use client";
 export const dynamic = "force-dynamic";
 
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { CreditCard, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/src/components/ui/core/Button';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { useCreateRateCard } from '@/src/hooks/shipping/use-create-rate-card';
+import { useCreateAdminRateCard, useAdminRateCards } from '@/src/core/api/hooks/admin/useAdminRateCards';
 import { RateCardWizard } from '../../components/RateCardWizard';
 import { buildRateCardPayload, initialRateCardFormData, RateCardFormData } from '../../components/ratecardWizard.utils';
 
 export function CreateRatecardClient() {
     const { addToast } = useToast();
     const router = useRouter();
-    const { mutate: createRateCard, isPending } = useCreateRateCard();
+    const { mutate: createRateCard, isPending } = useCreateAdminRateCard();
+    const { data: existingCards } = useAdminRateCards({ limit: 100 });
+
+    const categoryOptions = useMemo(() => {
+        const categories = new Set<string>();
+        existingCards?.rateCards?.forEach(card => {
+            if (card.rateCardCategory) categories.add(card.rateCardCategory);
+        });
+        return Array.from(categories);
+    }, [existingCards]);
 
     const handleSubmit = async (formData: RateCardFormData) => {
-        if (!formData.isGeneric && (!formData.courierProviderId || !formData.courierServiceId)) {
+        if (!formData.name.trim()) {
+            addToast('Please provide a rate card name', 'error');
+            return;
+        }
+        if (!formData.companyId) {
+            addToast('Please select a company', 'error');
+            return;
+        }
+        if (!formData.isGeneric && (!formData.carrier || !formData.serviceType)) {
             addToast('Please select a courier and service, or choose "Generic Rate Card"', 'error');
             return;
         }
@@ -29,7 +47,7 @@ export function CreateRatecardClient() {
             return;
         }
 
-        const payload = buildRateCardPayload(formData);
+        const payload = buildRateCardPayload(formData, 'create');
         createRateCard(payload, {
             onSuccess: () => {
                 addToast('Rate card created successfully!', 'success');
@@ -67,6 +85,7 @@ export function CreateRatecardClient() {
                 onSubmit={handleSubmit}
                 onSaveDraft={(draftData) => handleSubmit({ ...draftData, status: 'draft' })}
                 submitLabel={isPending ? 'Saving...' : 'Create Rate Card'}
+                categoryOptions={categoryOptions}
             />
         </div>
     );

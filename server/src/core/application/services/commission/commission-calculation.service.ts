@@ -188,8 +188,22 @@ export default class CommissionCalculationService {
 
             // First, check assigned rules
             if (salesRep.commissionRules && salesRep.commissionRules.length > 0) {
-                for (const ruleId of salesRep.commissionRules) {
-                    const rule = await CommissionRule.findById(ruleId, null, { session });
+                const assignedRules = salesRep.commissionRules as any[];
+                const populatedRules = assignedRules.filter(rule => typeof rule?.isApplicable === 'function');
+                let rulesToCheck = populatedRules;
+
+                if (rulesToCheck.length === 0) {
+                    const ruleIds = assignedRules.map(rule => (rule?._id ? rule._id : rule));
+                    const fetchedRules = await CommissionRule.find({
+                        _id: { $in: ruleIds },
+                    }, null, { session });
+                    const rulesById = new Map(fetchedRules.map(rule => [rule._id.toString(), rule]));
+                    rulesToCheck = ruleIds
+                        .map(id => rulesById.get(id.toString()))
+                        .filter(Boolean);
+                }
+
+                for (const rule of rulesToCheck) {
                     if (rule && rule.isApplicable(order)) {
                         applicableRule = rule;
                         break;

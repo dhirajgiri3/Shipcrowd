@@ -7,26 +7,28 @@ import { RateCardFormData } from '../../components/ratecardWizard.utils';
 interface Step4OverheadProps {
     formData: RateCardFormData;
     onChange: (field: keyof RateCardFormData, value: string | boolean) => void;
+    isReadOnly?: boolean;
 }
 
-export function Step4Overhead({ formData, onChange }: Step4OverheadProps) {
+export function Step4Overhead({ formData, onChange, isReadOnly = false }: Step4OverheadProps) {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">COD Percentage *</label>
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">COD Percentage</label>
                     <div className="relative">
                         <Input
                             type="number"
                             value={formData.codPercentage}
                             onChange={(e) => onChange('codPercentage', e.target.value)}
                             placeholder="2.5"
+                            disabled={isReadOnly}
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">%</span>
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">COD Minimum Charge *</label>
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">COD Minimum Charge</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">₹</span>
                         <Input
@@ -35,6 +37,7 @@ export function Step4Overhead({ formData, onChange }: Step4OverheadProps) {
                             onChange={(e) => onChange('codMinimumCharge', e.target.value)}
                             placeholder="25"
                             className="pl-8"
+                            disabled={isReadOnly}
                         />
                     </div>
                 </div>
@@ -42,7 +45,7 @@ export function Step4Overhead({ formData, onChange }: Step4OverheadProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Minimum Fare *</label>
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">Minimum Fare</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">₹</span>
                         <Input
@@ -51,14 +54,16 @@ export function Step4Overhead({ formData, onChange }: Step4OverheadProps) {
                             onChange={(e) => onChange('minimumFare', e.target.value)}
                             placeholder="35"
                             className="pl-8"
+                            disabled={isReadOnly}
                         />
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Min Fare Based On *</label>
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">Min Fare Based On</label>
                     <Select
                         value={formData.minimumFareCalculatedOn}
                         onChange={(e) => onChange('minimumFareCalculatedOn', e.target.value)}
+                        disabled={isReadOnly}
                         options={[
                             { label: 'Freight', value: 'freight' },
                             { label: 'Freight + Overhead', value: 'freight_overhead' }
@@ -68,13 +73,14 @@ export function Step4Overhead({ formData, onChange }: Step4OverheadProps) {
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--text-secondary)]">GST % *</label>
+                <label className="text-sm font-medium text-[var(--text-secondary)]">GST %</label>
                 <div className="relative max-w-[200px]">
                     <Input
                         type="number"
                         value={formData.gst}
                         onChange={(e) => onChange('gst', e.target.value)}
                         placeholder="18"
+                        disabled={isReadOnly}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">%</span>
                 </div>

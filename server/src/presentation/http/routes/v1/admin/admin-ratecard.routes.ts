@@ -8,8 +8,13 @@ import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import adminRatecardController from '../../../controllers/admin/admin-ratecard.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import multer from 'multer';
 
 const router = express.Router();
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 /**
  * @route GET /api/v1/admin/ratecards/stats
@@ -52,6 +57,27 @@ router.post('/bulk-assign', authenticate, csrfProtection, asyncHandler(adminRate
  * @access Admin, Super Admin
  */
 router.get('/couriers', authenticate, asyncHandler(adminRatecardController.getAdminRateCardCouriers));
+
+/**
+ * @route GET /api/v1/admin/ratecards/export
+ * @desc Export rate cards to CSV (admin, scoped by company)
+ * @access Admin, Super Admin
+ */
+router.get('/export', authenticate, asyncHandler(adminRatecardController.exportAdminRateCards));
+
+/**
+ * @route POST /api/v1/admin/ratecards/import
+ * @desc Import rate cards from CSV/Excel (admin, scoped by company)
+ * @access Admin, Super Admin
+ */
+router.post('/import', authenticate, csrfProtection, upload.single('file'), asyncHandler(adminRatecardController.importAdminRateCards));
+
+/**
+ * @route POST /api/v1/admin/ratecards/bulk-update
+ * @desc Bulk update rate cards (admin, scoped by company)
+ * @access Admin, Super Admin
+ */
+router.post('/bulk-update', authenticate, csrfProtection, asyncHandler(adminRatecardController.bulkUpdateAdminRateCards));
 
 /**
  * @route GET /api/v1/admin/ratecards

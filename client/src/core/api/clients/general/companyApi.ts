@@ -30,6 +30,9 @@ export interface Company {
     billingInfo?: CompanyBillingInfo;
     status: 'pending_verification' | 'kyc_submitted' | 'approved' | 'suspended' | 'rejected';
     isActive: boolean;
+    settings?: {
+        defaultRateCardId?: string;
+    };
     createdAt: string;
     updatedAt: string;
 }

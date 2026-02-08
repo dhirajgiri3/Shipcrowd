@@ -55,7 +55,7 @@ export function useUploadShipmentPOD(
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.pod(variables.shipmentId) });
-            showSuccessToast('POD uploaded successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

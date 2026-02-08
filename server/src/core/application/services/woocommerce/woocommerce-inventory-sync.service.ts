@@ -180,6 +180,16 @@ export default class WooCommerceInventorySyncService {
       const batchSize = 50;
       for (let i = 0; i < updates.length; i += batchSize) {
         const batch = updates.slice(i, i + batchSize);
+        const batchSkus = batch.map((update) => update.sku.toUpperCase());
+        const mappings = batchSkus.length > 0
+          ? await WooCommerceProductMapping.find({
+            woocommerceStoreId: storeId,
+            ShipcrowdSKU: { $in: batchSkus },
+            isActive: true,
+            syncInventory: true,
+          })
+          : [];
+        const mappingBySku = new Map(mappings.map((mapping) => [mapping.ShipcrowdSKU, mapping]));
 
         // Prepare batch update data
         const productUpdates: any[] = [];
@@ -190,10 +200,7 @@ export default class WooCommerceInventorySyncService {
 
           try {
             // Get mapping
-            const mapping = await WooCommerceProductMapping.findByShipcrowdSKU(
-              storeId,
-              update.sku
-            );
+            const mapping = mappingBySku.get(update.sku.toUpperCase());
 
             if (!mapping || !mapping.syncInventory) {
               result.itemsSkipped++;

@@ -461,13 +461,15 @@ Shipcrowd`,
             },
         ];
 
-        for (const templateData of defaultTemplates) {
-            const exists = await NotificationTemplate.findOne({
-                code: templateData.code,
-                companyId: null,
-            });
+        const codes = defaultTemplates.map(template => template.code);
+        const existingTemplates = await NotificationTemplate.find({
+            code: { $in: codes },
+            companyId: null,
+        }).select('code').lean();
+        const existingCodes = new Set(existingTemplates.map(template => template.code));
 
-            if (!exists) {
+        for (const templateData of defaultTemplates) {
+            if (!existingCodes.has(templateData.code)) {
                 await this.createTemplate(templateData);
                 logger.info(`Seeded default template: ${templateData.code}`);
             }

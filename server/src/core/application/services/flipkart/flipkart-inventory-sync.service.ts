@@ -219,6 +219,17 @@ export class FlipkartInventorySyncService {
         mappingId: string;
         ShipcrowdSKU: string;
       }> = [];
+      const batchSkus = batch.map((update) => update.sku.toUpperCase());
+      const mappings = batchSkus.length > 0
+        ? await FlipkartProductMapping.find({
+          flipkartStoreId: storeId,
+          ShipcrowdSKU: { $in: batchSkus },
+          isActive: true,
+          syncInventory: true,
+        })
+        : [];
+      const mappingBySku = new Map(mappings.map((mapping) => [mapping.ShipcrowdSKU, mapping]));
+      const mappingById = new Map(mappings.map((mapping) => [String(mapping._id), mapping]));
 
       // Prepare batch data
       for (const update of batch) {
@@ -226,12 +237,7 @@ export class FlipkartInventorySyncService {
 
         try {
           // Find mapping
-          const mapping = await FlipkartProductMapping.findOne({
-            flipkartStoreId: storeId,
-            ShipcrowdSKU: update.sku.toUpperCase(),
-            isActive: true,
-            syncInventory: true,
-          });
+          const mapping = mappingBySku.get(update.sku.toUpperCase());
 
           if (!mapping) {
             result.itemsFailed++;
@@ -281,7 +287,7 @@ export class FlipkartInventorySyncService {
             for (const success of response.successful) {
               const item = batchListings.find((b) => b.fsn === success.fsn);
               if (item) {
-                const mapping = await FlipkartProductMapping.findById(item.mappingId);
+                const mapping = mappingById.get(item.mappingId);
                 if (mapping) {
                   await mapping.recordSyncSuccess();
                 }
@@ -301,7 +307,7 @@ export class FlipkartInventorySyncService {
             for (const failure of response.failed) {
               const item = batchListings.find((b) => b.fsn === failure.fsn);
               if (item) {
-                const mapping = await FlipkartProductMapping.findById(item.mappingId);
+                const mapping = mappingById.get(item.mappingId);
                 if (mapping) {
                   await mapping.recordSyncError(failure.error);
                 }

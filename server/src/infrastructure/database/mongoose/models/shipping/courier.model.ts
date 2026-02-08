@@ -18,6 +18,8 @@ export interface ICourier extends Document {
     codEnabled: boolean;
     pickupEnabled: boolean;
     trackingEnabled: boolean;
+    codLimit: number;
+    weightLimit: number;
 
     // Meta
     createdAt: Date;
@@ -40,6 +42,9 @@ const courierSchema = new Schema<ICourier>(
         codEnabled: { type: Boolean, default: true },
         pickupEnabled: { type: Boolean, default: true },
         trackingEnabled: { type: Boolean, default: true },
+
+        codLimit: { type: Number, default: 50000 },
+        weightLimit: { type: Number, default: 50 },
     },
     {
         timestamps: true,

@@ -146,9 +146,7 @@ export const useBulkValidateAddresses = (options?: UseMutationOptions<BulkAddres
         },
         onSuccess: (data) => {
             const { totalAddresses, validAddresses, invalidAddresses } = data;
-            showSuccessToast(
-                `Validated ${totalAddresses} addresses: ${validAddresses} valid, ${invalidAddresses} invalid`
-            );
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

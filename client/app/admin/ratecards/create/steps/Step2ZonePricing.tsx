@@ -7,9 +7,10 @@ interface Step2ZonePricingProps {
     formData: RateCardFormData;
     onChange: (field: keyof RateCardFormData, value: string | boolean) => void;
     multipliers: Record<string, number>;
+    isReadOnly?: boolean;
 }
 
-export function Step2ZonePricing({ formData, onChange, multipliers }: Step2ZonePricingProps) {
+export function Step2ZonePricing({ formData, onChange, multipliers, isReadOnly = false }: Step2ZonePricingProps) {
     return (
         <div className="space-y-6">
             <div>
@@ -20,7 +21,9 @@ export function Step2ZonePricing({ formData, onChange, multipliers }: Step2ZoneP
                     onChange={(e) => onChange('basicWeight', e.target.value)}
                     placeholder="500"
                     className="mt-2"
+                    disabled={isReadOnly}
                 />
+                <p className="text-xs text-[var(--text-muted)] mt-1">All weights should be entered in grams.</p>
             </div>
 
             <div className="space-y-3">
@@ -35,6 +38,7 @@ export function Step2ZonePricing({ formData, onChange, multipliers }: Step2ZoneP
                                 onChange={(e) => onChange(`basicZone${zone}` as keyof RateCardFormData, e.target.value)}
                                 placeholder="0"
                                 className="pl-8"
+                                disabled={isReadOnly}
                             />
                         </div>
                         {zone !== 'A' && (
@@ -57,6 +61,7 @@ export function Step2ZonePricing({ formData, onChange, multipliers }: Step2ZoneP
                                 value={mapping}
                                 checked={formData.zoneBType === mapping}
                                 onChange={() => onChange('zoneBType', mapping)}
+                                disabled={isReadOnly}
                                 className="text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                             />
                             {mapping.charAt(0).toUpperCase() + mapping.slice(1)}-based

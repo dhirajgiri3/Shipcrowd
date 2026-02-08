@@ -58,6 +58,36 @@ const getLocalMinutes = (date: Date, timeZone: string): number => {
 };
 
 export class NotificationPreferenceService {
+    static shouldSendWithPreferences(
+        preferences: NotificationPreferences,
+        channel: NotificationChannel,
+        date: Date = new Date()
+    ): boolean {
+        if (!preferences.channels[channel]) {
+            return false;
+        }
+
+        if (!preferences.quietHours.enabled) {
+            return true;
+        }
+
+        const start = parseTime(preferences.quietHours.start);
+        const end = parseTime(preferences.quietHours.end);
+        const now = getLocalMinutes(date, preferences.quietHours.timezone);
+
+        if (start === end) {
+            return true;
+        }
+
+        if (start < end) {
+            // Same-day quiet hours window
+            return !(now >= start && now < end);
+        }
+
+        // Overnight quiet hours (e.g., 22:00 - 08:00)
+        return !(now >= start || now < end);
+    }
+
     static async getCompanyPreferences(companyId: string): Promise<NotificationPreferences> {
         try {
             const company = await Company.findById(companyId)
@@ -100,29 +130,7 @@ export class NotificationPreferenceService {
     ): Promise<boolean> {
         const prefs = await this.getCompanyPreferences(companyId);
 
-        if (!prefs.channels[channel]) {
-            return false;
-        }
-
-        if (!prefs.quietHours.enabled) {
-            return true;
-        }
-
-        const start = parseTime(prefs.quietHours.start);
-        const end = parseTime(prefs.quietHours.end);
-        const now = getLocalMinutes(date, prefs.quietHours.timezone);
-
-        if (start === end) {
-            return true;
-        }
-
-        if (start < end) {
-            // Same-day quiet hours window
-            return !(now >= start && now < end);
-        }
-
-        // Overnight quiet hours (e.g., 22:00 - 08:00)
-        return !(now >= start || now < end);
+        return this.shouldSendWithPreferences(prefs, channel, date);
     }
 }
 

@@ -18,15 +18,16 @@ import { Input } from '@/src/components/ui/core/Input';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { cn } from "@/src/lib/utils";
-import axios from 'axios';
+import { apiClient } from '@/src/core/api/http';
 
 interface UploadRateCardModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: () => void;
+    companyId: string;
 }
 
-export function UploadRateCardModal({ isOpen, onClose, onSuccess }: UploadRateCardModalProps) {
+export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: UploadRateCardModalProps) {
     const { addToast } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -55,6 +56,11 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess }: UploadRateCa
     });
 
     const handleUpload = async () => {
+        if (!companyId) {
+            addToast('Please select a company before importing rate cards', 'error');
+            return;
+        }
+
         if (!file) {
             addToast('Please select a file', 'error');
             return;
@@ -63,6 +69,7 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess }: UploadRateCa
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('companyId', companyId);
 
         // Append Metadata
         const metadata = {
@@ -75,7 +82,7 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess }: UploadRateCa
         formData.append('metadata', JSON.stringify(metadata));
 
         try {
-            await axios.post('/api/v1/ratecards/import', formData, {
+            await apiClient.post('/admin/ratecards/import', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },

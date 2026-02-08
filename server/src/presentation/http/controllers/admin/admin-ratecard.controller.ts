@@ -25,6 +25,7 @@ import {
 import { ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import RateCardAnalyticsService from '../../../../core/application/services/analytics/rate-card-analytics.service';
+import RateCardImportService from '../../../../core/application/services/pricing/rate-card-import.service';
 
 // Validation schemas
 const weightRuleSchema = z.object({
@@ -109,7 +110,7 @@ export const getAdminRateCards = async (req: Request, res: Response, next: NextF
 
         const [rateCards, total] = await Promise.all([
             RateCard.find(filter)
-                .populate('zoneRules.zoneId', 'name')
+                .populate('zoneRules.zoneId', 'name standardZoneCode')
                 .populate('companyId', 'name email phone') // Include company details
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -146,7 +147,7 @@ export const getAdminRateCardById = async (req: Request, res: Response, next: Ne
             _id: rateCardId,
             isDeleted: false,
         })
-            .populate('zoneRules.zoneId', 'name postalCodes')
+            .populate('zoneRules.zoneId', 'name postalCodes standardZoneCode')
             .populate('companyId', 'name email phone')
             .lean();
 
@@ -515,14 +516,32 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
         requirePlatformAdmin(auth);
 
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const companyIdParam = req.query.companyId as string | undefined;
+        const baseMatch: any = { isDeleted: false };
+
+        if (companyIdParam) {
+            if (!mongoose.Types.ObjectId.isValid(companyIdParam)) {
+                throw new ValidationError('Invalid company ID format');
+            }
+            baseMatch.companyId = new mongoose.Types.ObjectId(companyIdParam);
+        }
+
+        const shipmentMatch: any = {
+            isDeleted: false,
+            createdAt: { $gte: thirtyDaysAgo },
+            'pricingDetails.totalPrice': { $exists: true }
+        };
+        if (companyIdParam) {
+            shipmentMatch.companyId = new mongoose.Types.ObjectId(companyIdParam);
+        }
 
         const [total, active, inactive, draft, byCompany, avgRatePerKgResult, revenue30dResult] = await Promise.all([
-            RateCard.countDocuments({ isDeleted: false }),
-            RateCard.countDocuments({ isDeleted: false, status: 'active' }),
-            RateCard.countDocuments({ isDeleted: false, status: 'inactive' }),
-            RateCard.countDocuments({ isDeleted: false, status: 'draft' }),
+            RateCard.countDocuments({ ...baseMatch }),
+            RateCard.countDocuments({ ...baseMatch, status: 'active' }),
+            RateCard.countDocuments({ ...baseMatch, status: 'inactive' }),
+            RateCard.countDocuments({ ...baseMatch, status: 'draft' }),
             RateCard.aggregate([
-                { $match: { isDeleted: false } },
+                { $match: { ...baseMatch } },
                 { $group: { _id: '$companyId', count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
                 { $limit: 10 },
@@ -545,7 +564,7 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
                 }
             ]),
             RateCard.aggregate([
-                { $match: { isDeleted: false, status: 'active' } },
+                { $match: { ...baseMatch, status: 'active' } },
                 { $unwind: '$baseRates' },
                 {
                     $project: {
@@ -561,13 +580,7 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
                 { $group: { _id: null, avgRatePerKg: { $avg: '$pricePerKg' } } }
             ]),
             Shipment.aggregate([
-                {
-                    $match: {
-                        isDeleted: false,
-                        createdAt: { $gte: thirtyDaysAgo },
-                        'pricingDetails.totalPrice': { $exists: true }
-                    }
-                },
+                { $match: shipmentMatch },
                 { $group: { _id: null, revenue30d: { $sum: '$pricingDetails.totalPrice' } } }
             ])
         ]);
@@ -588,6 +601,246 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
         sendSuccess(res, stats, 'Rate card statistics retrieved successfully');
     } catch (error) {
         logger.error('Error fetching admin rate card stats:', error);
+        next(error);
+    }
+};
+
+/**
+ * Bulk update rate cards (admin, scoped by company)
+ *
+ * @route POST /api/v1/admin/ratecards/bulk-update
+ * @access Admin, Super Admin
+ */
+export const bulkUpdateAdminRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const bulkUpdateSchema = z.object({
+            companyId: z.string().min(1),
+            rateCardIds: z.array(z.string()).min(1),
+            operation: z.enum(['activate', 'deactivate', 'adjust_price']),
+            adjustmentType: z.enum(['percentage', 'fixed']).optional(),
+            adjustmentValue: z.number().optional()
+        });
+
+        const validation = bulkUpdateSchema.safeParse(req.body);
+        if (!validation.success) {
+            throw new ValidationError('Invalid bulk update data', validation.error.errors);
+        }
+
+        const { companyId, rateCardIds, operation, adjustmentType, adjustmentValue } = validation.data;
+
+        if (!mongoose.Types.ObjectId.isValid(companyId)) {
+            throw new ValidationError('Invalid company ID format');
+        }
+
+        const companyObjectId = new mongoose.Types.ObjectId(companyId);
+
+        const rateCards = await RateCard.find({
+            _id: { $in: rateCardIds.map(id => new mongoose.Types.ObjectId(id)) },
+            companyId: companyObjectId,
+            isDeleted: false
+        });
+
+        if (rateCards.length !== rateCardIds.length) {
+            throw new ValidationError('Some rate cards not found or do not belong to the specified company');
+        }
+
+        let updatedCount = 0;
+
+        if (operation === 'activate' || operation === 'deactivate') {
+            const status = operation === 'activate' ? 'active' : 'inactive';
+            await RateCard.updateMany(
+                { _id: { $in: rateCardIds.map(id => new mongoose.Types.ObjectId(id)) } },
+                { $set: { status } }
+            );
+            updatedCount = rateCards.length;
+        } else if (operation === 'adjust_price' && adjustmentType && adjustmentValue !== undefined) {
+            for (const card of rateCards) {
+                if (adjustmentType === 'percentage') {
+                    card.baseRates = card.baseRates.map(rate => ({
+                        ...rate,
+                        basePrice: rate.basePrice * (1 + adjustmentValue / 100)
+                    }));
+
+                    card.zoneRules = card.zoneRules.map(rule => ({
+                        ...rule,
+                        additionalPrice: rule.additionalPrice * (1 + adjustmentValue / 100)
+                    }));
+                } else {
+                    card.baseRates = card.baseRates.map(rate => ({
+                        ...rate,
+                        basePrice: rate.basePrice + adjustmentValue
+                    }));
+
+                    card.zoneRules = card.zoneRules.map(rule => ({
+                        ...rule,
+                        additionalPrice: rule.additionalPrice + adjustmentValue
+                    }));
+                }
+
+                await card.save();
+                updatedCount++;
+            }
+        }
+
+        await createAuditLog(
+            auth.userId,
+            companyId,
+            'update',
+            'ratecard',
+            'multiple',
+            {
+                message: `Bulk ${operation} on rate cards`,
+                count: updatedCount,
+                operation,
+                adjustmentType,
+                adjustmentValue
+            },
+            req
+        );
+
+        sendSuccess(res, { updatedCount }, `Successfully updated ${updatedCount} rate cards`);
+    } catch (error) {
+        logger.error('Error in admin bulk update:', error);
+        next(error);
+    }
+};
+
+/**
+ * Export rate cards to CSV (admin, scoped by company)
+ *
+ * @route GET /api/v1/admin/ratecards/export
+ * @access Admin, Super Admin
+ */
+export const exportAdminRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const companyId = req.query.companyId as string | undefined;
+        if (!companyId || !mongoose.Types.ObjectId.isValid(companyId)) {
+            throw new ValidationError('Valid companyId query param is required');
+        }
+
+        const rateCards = await RateCard.find({
+            companyId: new mongoose.Types.ObjectId(companyId),
+            isDeleted: false
+        }).populate('zoneRules.zoneId', 'name standardZoneCode').lean();
+
+        const csvRows: string[] = [];
+        csvRows.push('Name,Carrier,Service Type,Base Price,Min Weight,Max Weight,Zone,Zone Price,Status,Effective Start Date');
+
+        for (const card of rateCards) {
+            const baseRates = card.baseRates || [];
+            const zoneRules = card.zoneRules || [];
+
+            if (zoneRules.length > 0) {
+                for (const baseRate of baseRates) {
+                    for (const zoneRule of zoneRules) {
+                        const zoneName = (zoneRule.zoneId as any)?.standardZoneCode || (zoneRule.zoneId as any)?.name || 'Unknown';
+                        csvRows.push([
+                            `"${card.name}"`,
+                            baseRate.carrier,
+                            baseRate.serviceType,
+                            baseRate.basePrice,
+                            baseRate.minWeight,
+                            baseRate.maxWeight,
+                            zoneName,
+                            zoneRule.additionalPrice,
+                            card.status,
+                            card.effectiveDates.startDate.toISOString().split('T')[0]
+                        ].join(','));
+                    }
+                }
+                continue;
+            }
+
+            const multipliers = card.zoneMultipliers || {};
+            const zoneCodes = Object.keys(multipliers).length > 0
+                ? Object.keys(multipliers).map(code => code.replace('zone', ''))
+                : ['A', 'B', 'C', 'D', 'E'];
+
+            for (const baseRate of baseRates) {
+                for (const zone of zoneCodes) {
+                    const multiplier = multipliers[`zone${zone}`] ?? 1;
+                    const zonePrice = Math.round(baseRate.basePrice * multiplier * 100) / 100;
+                    csvRows.push([
+                        `"${card.name}"`,
+                        baseRate.carrier,
+                        baseRate.serviceType,
+                        baseRate.basePrice,
+                        baseRate.minWeight,
+                        baseRate.maxWeight,
+                        zone,
+                        zonePrice,
+                        card.status,
+                        card.effectiveDates.startDate.toISOString().split('T')[0]
+                    ].join(','));
+                }
+            }
+        }
+
+        const csv = csvRows.join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="rate-cards-${Date.now()}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        logger.error('Error exporting admin rate cards:', error);
+        next(error);
+    }
+};
+
+/**
+ * Import rate cards from CSV/Excel (admin, scoped by company)
+ *
+ * @route POST /api/v1/admin/ratecards/import
+ * @access Admin, Super Admin
+ */
+export const importAdminRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const companyId = req.body.companyId as string | undefined;
+        if (!companyId || !mongoose.Types.ObjectId.isValid(companyId)) {
+            throw new ValidationError('Valid companyId is required');
+        }
+
+        if (!req.file) {
+            throw new ValidationError('CSV or Excel file is required');
+        }
+
+        let overrides = {};
+        if (req.body.metadata) {
+            try {
+                const parsed = JSON.parse(req.body.metadata);
+                overrides = {
+                    fuelSurcharge: parsed.fuelSurcharge ? Number(parsed.fuelSurcharge) : undefined,
+                    fuelSurchargeBase: parsed.fuelSurchargeBase,
+                    minimumCall: parsed.minimumCall ? Number(parsed.minimumCall) : undefined,
+                    version: parsed.version,
+                    isLocked: parsed.isLocked === true || parsed.isLocked === 'true'
+                };
+            } catch (e) {
+                logger.warn('Failed to parse admin rate card import metadata', e);
+            }
+        }
+
+        const result = await RateCardImportService.importRateCards(
+            companyId,
+            req.file.buffer,
+            req.file.mimetype,
+            auth.userId,
+            req,
+            { overrides }
+        );
+
+        sendSuccess(res, result, `Imported: ${result.created} new, ${result.updated} updated. ${result.errors.length} errors.`);
+    } catch (error) {
+        logger.error('Error importing admin rate cards:', error);
         next(error);
     }
 };
@@ -767,5 +1020,8 @@ export default {
     updateAdminRateCard,
     deleteAdminRateCard,
     getAdminRateCardStats,
+    bulkUpdateAdminRateCards,
+    exportAdminRateCards,
+    importAdminRateCards,
     cloneAdminRateCard,
 };
