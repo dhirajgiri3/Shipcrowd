@@ -5,9 +5,14 @@
  */
 
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+
+
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
+import Company from '../../mongoose/models/organization/core/company.model';
+import RateCard from '../../mongoose/models/logistics/shipping/configuration/rate-card.model';
 import { SEED_CONFIG } from '../config';
 import { randomInt, selectRandom, selectWeightedFromObject, maybeExecute } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -23,51 +28,84 @@ import {
 } from '../data/carrier-data';
 import { CarrierName } from '../config';
 
+const ZONE_CODE_MAP: Record<string, 'zoneA' | 'zoneB' | 'zoneC' | 'zoneD' | 'zoneE'> = {
+    zone_a: 'zoneA',
+    zone_b: 'zoneB',
+    zone_c: 'zoneC',
+    zone_d: 'zoneD',
+    zone_e: 'zoneE',
+};
+
 /**
- * Determine delivery status based on configured distribution
+ * Determine delivery status based on order status
  */
-function selectDeliveryStatus(): 'delivered' | 'ndr' | 'rto' {
-    return selectWeightedFromObject(SEED_CONFIG.deliveryStatus) as 'delivered' | 'ndr' | 'rto';
+function deriveDeliveryStatus(orderStatus: string): 'delivered' | 'ndr' | 'rto' | 'in_transit' {
+    if (orderStatus === 'delivered') return 'delivered';
+    if (orderStatus === 'rto' || orderStatus === 'rto_delivered') return 'rto';
+    if (orderStatus === 'in_transit') return 'in_transit';
+    if (orderStatus === 'manifested') return 'in_transit'; // Just created/picked up
+    // Default fallback if mismatch
+    return 'delivered';
 }
 
 /**
- * Generate status history based on delivery outcome
+ * Generate status history ensuring alignment with Order dates
  */
-function generateStatusHistory(
-    pickupDate: Date,
-    deliveryStatus: 'delivered' | 'ndr' | 'rto',
+function generateAlignedStatusHistory(
+    order: any,
+    deliveryStatus: 'delivered' | 'ndr' | 'rto' | 'in_transit',
     carrier: CarrierName
 ): Array<{ status: string; timestamp: Date; location?: string; description?: string }> {
     const history: Array<{ status: string; timestamp: Date; location?: string; description?: string }> = [];
 
-    // Initial statuses (always present)
+    // Extract key dates from Order History
+    const orderHistory = order.statusHistory || [];
+    const getOrderDate = (status: string) => orderHistory.find((h: any) => h.status === status)?.timestamp;
+
+    const createdDate = getOrderDate('manifested') || order.createdAt; // Manifested date
+    const pickupDate = getOrderDate('in_transit') || addHours(createdDate, 4); // Picked up date
+
+    // 1. Created
     history.push({
         status: 'created',
-        timestamp: pickupDate,
+        timestamp: createdDate,
         location: 'Origin Warehouse',
         description: 'Shipment created',
     });
 
+    if (order.currentStatus === 'manifested') return history; // Stop here if just manifested
+
+    // 2. Picked Up
     history.push({
         status: 'picked_up',
-        timestamp: addHours(pickupDate, randomInt(2, 8)),
+        timestamp: pickupDate,
         location: 'Origin Warehouse',
         description: `Package picked up by ${carrier}`,
     });
 
+    // 3. In Transit
+    // Typically same day or next day
+    const transitDate = addHours(pickupDate, 12);
+    // Don't add future dates
+    if (transitDate > new Date()) return history;
+
     history.push({
         status: 'in_transit',
-        timestamp: addDays(pickupDate, 1),
+        timestamp: transitDate,
         location: 'Sorting Hub',
         description: 'In transit to destination',
     });
 
+    if (deliveryStatus === 'in_transit') return history;
+
+    // 4. Delivered / RTO Logic
     if (deliveryStatus === 'delivered') {
-        const deliveryDate = addDays(pickupDate, randomInt(2, 7));
+        const deliveryDate = getOrderDate('delivered') || addDays(pickupDate, 3);
+        const outForDeliveryDate = getOrderDate('out_for_delivery') || addHours(deliveryDate, -4);
 
         history.push({
             status: 'out_for_delivery',
-            timestamp: addHours(deliveryDate, -randomInt(2, 6)),
+            timestamp: outForDeliveryDate,
             location: 'Destination Hub',
             description: 'Out for delivery',
         });
@@ -78,63 +116,46 @@ function generateStatusHistory(
             location: 'Delivery Address',
             description: 'Delivered successfully',
         });
-    } else if (deliveryStatus === 'ndr') {
-        history.push({
-            status: 'out_for_delivery',
-            timestamp: addDays(pickupDate, 2),
-            location: 'Destination Hub',
-            description: 'Out for delivery',
-        });
-
-        history.push({
-            status: 'ndr',
-            timestamp: addDays(pickupDate, 3),
-            location: 'Delivery Address',
-            description: selectRandom([
-                'Customer unavailable',
-                'Address not found',
-                'Customer refused delivery',
-                'COD amount not ready',
-            ]),
-        });
     } else if (deliveryStatus === 'rto') {
+        // RTO Logic
+        const ndrDate = getOrderDate('ndr') || addDays(pickupDate, 2);
+        const rtoInitDate = getOrderDate('rto_initiated') || addDays(ndrDate, 2);
+        const rtoDeliveredDate = getOrderDate('rto_delivered') || addDays(rtoInitDate, 4);
+
         history.push({
             status: 'out_for_delivery',
-            timestamp: addDays(pickupDate, 2),
+            timestamp: addHours(ndrDate, -4),
             location: 'Destination Hub',
             description: 'Out for delivery',
         });
 
         history.push({
             status: 'ndr',
-            timestamp: addDays(pickupDate, 3),
+            timestamp: ndrDate,
             location: 'Delivery Address',
-            description: 'Delivery attempt failed',
+            description: 'Customer unavailable',
         });
 
         history.push({
             status: 'rto_initiated',
-            timestamp: addDays(pickupDate, 5),
+            timestamp: rtoInitDate,
             location: 'Destination Hub',
             description: 'Return to origin initiated',
         });
 
-        // Some RTOs complete, some still in transit
-        if (Math.random() < 0.6) {
-            history.push({
-                status: 'rto_in_transit',
-                timestamp: addDays(pickupDate, 7),
-                location: 'Transit Hub',
-                description: 'In transit back to origin',
-            });
+        history.push({
+            status: 'rto_in_transit',
+            timestamp: addDays(rtoInitDate, 1),
+            location: 'Transit Hub',
+            description: 'In transit back to origin',
+        });
 
-            history.push({
-                status: 'rto_delivered',
-                timestamp: addDays(pickupDate, 10),
-                location: 'Origin Warehouse',
-                description: 'Returned to warehouse',
-            });
-        }
+        history.push({
+            status: 'rto_delivered',
+            timestamp: rtoDeliveredDate,
+            location: 'Origin Warehouse',
+            description: 'Returned to warehouse',
+        });
     }
 
     return history;
@@ -143,27 +164,95 @@ function generateStatusHistory(
 /**
  * Generate shipment data for an order
  */
-function generateShipmentData(order: any, warehouse: any): any {
+function calculatePricingDetails(rateCard: any, zoneCode: string, weight: number, paymentMode: 'prepaid' | 'cod', orderValue: number) {
+    const zonePricing = rateCard?.zonePricing?.[zoneCode];
+    if (!zonePricing) {
+        return null;
+    }
+
+    const baseWeight = zonePricing.baseWeight || 0;
+    const basePrice = zonePricing.basePrice || 0;
+    const additionalPricePerKg = zonePricing.additionalPricePerKg || 0;
+
+    const extraWeight = Math.max(0, weight - baseWeight);
+    const weightCharge = Math.round(extraWeight * additionalPricePerKg * 100) / 100;
+    const baseRate = Math.round(basePrice * 100) / 100;
+
+    let codCharge = 0;
+    if (paymentMode === 'cod') {
+        if (Array.isArray(rateCard.codSurcharges) && rateCard.codSurcharges.length > 0) {
+            const slab = rateCard.codSurcharges.find((s: any) => orderValue >= s.min && orderValue <= s.max);
+            if (slab) {
+                codCharge = slab.type === 'percentage' ? (orderValue * slab.value) / 100 : slab.value;
+            }
+        } else {
+            const pct = Number(rateCard.codPercentage || 0);
+            const min = Number(rateCard.codMinimumCharge || 0);
+            codCharge = Math.max((orderValue * pct) / 100, min);
+        }
+    }
+
+    const fuelSurcharge = Number(rateCard.fuelSurcharge || 0);
+    const fuelBaseMode = rateCard.fuelSurchargeBase === 'freight_cod' ? 'freight_cod' : 'freight';
+    const freight = baseRate + weightCharge;
+    const fuelBase = fuelBaseMode === 'freight_cod' ? freight + codCharge : freight;
+    const fuelCharge = Math.round((fuelBase * fuelSurcharge) / 100 * 100) / 100;
+
+    let freightWithFuel = freight + fuelCharge;
+    const minFare = Number(rateCard.minimumFare || 0);
+    const minCalcMode = rateCard.minimumFareCalculatedOn === 'freight_overhead' ? 'freight_overhead' : 'freight';
+    const minTarget = minCalcMode === 'freight_overhead' ? (freightWithFuel + codCharge) : freightWithFuel;
+    if (minFare > 0 && minTarget < minFare) {
+        freightWithFuel = minCalcMode === 'freight_overhead' ? (minFare - codCharge) : minFare;
+    }
+
+    const gstRate = Number(rateCard.gst || 18);
+    const subtotal = freightWithFuel + codCharge;
+    const gstAmount = Math.round((subtotal * gstRate) / 100 * 100) / 100;
+    const totalPrice = Math.round((subtotal + gstAmount) * 100) / 100;
+
+    return {
+        rateCardId: rateCard._id,
+        rateCardName: rateCard.name,
+        baseRate,
+        weightCharge,
+        zoneCharge: 0,
+        zone: zoneCode,
+        customerDiscount: 0,
+        subtotal: Math.round(freightWithFuel * 100) / 100,
+        codCharge: Math.round(codCharge * 100) / 100,
+        gstAmount,
+        totalPrice,
+        calculatedAt: new Date(),
+        calculationMethod: 'ratecard'
+    };
+}
+
+function generateShipmentData(order: any, warehouse: any, rateCard: any | null): any {
     const carrier = selectCarrier();
-    const deliveryStatus = selectDeliveryStatus();
+    const deliveryStatus = deriveDeliveryStatus(order.currentStatus);
     const isExpress = Math.random() < 0.3; // 30% express
     const serviceType = selectServiceType(carrier, isExpress);
 
-    const pickupDate = addDays(order.createdAt, randomInt(
-        SEED_CONFIG.pickupDelay.min,
-        SEED_CONFIG.pickupDelay.max
-    ));
+    // Use order's manifested date as baseline for pickup
+    const baseDate = order.statusHistory.find((h: any) => h.status === 'manifested')?.timestamp || order.createdAt;
+
+    // Pickup delay is already accounted for in Order Status (manifested -> in_transit)
+    // So we align with Order 
+    const pickupDate = order.statusHistory.find((h: any) => h.status === 'in_transit')?.timestamp || addDays(baseDate, 1);
 
     const destCity = order.customerInfo?.address?.city || 'Mumbai';
     const originCity = warehouse?.address?.city || 'Mumbai';
-    const zone = getShippingZone(originCity, destCity);
-    const cityTier = getCityTier(destCity);
-    const isMetroToMetro = cityTier === 'metro' && getCityTier(originCity) === 'metro';
+    const zoneKey = getShippingZone(originCity, destCity); // Uses cached zone calculation
+    const zoneCode = ZONE_CODE_MAP[zoneKey] || 'zoneC';
 
-    const deliveryDays = getEstimatedDeliveryDays(carrier, zone, isExpress);
+    // Estimate delivery
+    const deliveryDays = getEstimatedDeliveryDays(carrier, zoneCode, isExpress);
     const estimatedDelivery = addDays(pickupDate, randomInt(deliveryDays.min, deliveryDays.max));
 
-    const statusHistory = generateStatusHistory(pickupDate, deliveryStatus, carrier);
+    const statusHistory = generateAlignedStatusHistory(order, deliveryStatus, carrier);
+
+    // Current status is the last one in history
     const currentStatus = statusHistory[statusHistory.length - 1].status;
 
     const actualDelivery = deliveryStatus === 'delivered'
@@ -173,6 +262,17 @@ function generateShipmentData(order: any, warehouse: any): any {
     // Calculate package details
     const products = order.products || [];
     const totalWeight = products.reduce((sum: number, p: any) => sum + (p.weight || 0.5) * (p.quantity || 1), 0);
+
+    const paymentMode = (order.paymentMethod || 'prepaid') as 'prepaid' | 'cod';
+    const orderValue = order.totals?.total || 0;
+    const pricingDetails = rateCard
+        ? calculatePricingDetails(rateCard, zoneCode, Math.round(totalWeight * 100) / 100, paymentMode, orderValue)
+        : null;
+
+    const shippingCost = pricingDetails?.totalPrice
+        || order.shippingDetails?.shippingCost
+        || order.totals?.shipping
+        || 100;
 
     return {
         trackingNumber: generateTrackingNumber(carrier),
@@ -217,11 +317,12 @@ function generateShipmentData(order: any, warehouse: any): any {
             ]), 0.3),
         },
         paymentDetails: {
-            type: order.paymentMethod || 'prepaid',
-            codAmount: order.paymentMethod === 'cod' ? order.totals?.total : undefined,
-            shippingCost: order.shippingDetails?.shippingCost || order.totals?.shipping || 100,
+            type: paymentMode,
+            codAmount: paymentMode === 'cod' ? orderValue : undefined,
+            shippingCost,
             currency: 'INR',
         },
+        pricingDetails: pricingDetails || undefined,
         statusHistory,
         currentStatus,
         estimatedDelivery,
@@ -243,22 +344,21 @@ function generateShipmentData(order: any, warehouse: any): any {
             carrierServiceType: serviceType,
             carrierAccount: order.companyId.toString().slice(-6),
         },
-        // Week 11: Weight tracking and verification
+        // Weights
         weights: {
             declared: {
-                value: Math.round(totalWeight * 100) / 100, // Same as packageDetails.weight
+                value: Math.round(totalWeight * 100) / 100,
                 unit: 'kg',
             },
-            // Add actual weight for delivered shipments (simulates carrier scanning)
             actual: deliveryStatus === 'delivered' ? {
-                value: Math.round((totalWeight + (Math.random() * 0.4 - 0.1)) * 100) / 100, // Slight variance (-0.1 to +0.3 kg)
+                value: Math.round((totalWeight + (Math.random() * 0.4 - 0.1)) * 100) / 100,
                 unit: 'kg',
                 scannedAt: actualDelivery,
                 scannedBy: carrier.charAt(0).toUpperCase() + carrier.slice(1).replace(/_/g, ' '),
             } : undefined,
             verified: deliveryStatus === 'delivered',
         },
-        // NDR/RTO details will be populated by their respective seeders
+        // NDR/RTO details
         ndrDetails: deliveryStatus === 'ndr' || deliveryStatus === 'rto' ? {
             ndrReason: selectRandom([
                 'Customer unavailable',
@@ -297,12 +397,22 @@ export async function seedShipments(): Promise<void> {
     resetTrackingCounters();
 
     try {
-        // Get all orders
-        const orders = await Order.find({ isDeleted: false }).lean();
+        await Shipment.deleteMany({});
+        logger.info('Cleared existing shipments');
+
+        // Get all orders that are eligible for shipping (Manifested or further)
+        // Skip 'pending', 'processing', 'cancelled'
+        const orders = await Order.find({
+            isDeleted: false,
+            currentStatus: { $nin: ['pending', 'processing', 'cancelled'] }
+        }).lean();
+
         const warehouses = await Warehouse.find({ isActive: true, isDeleted: false }).lean();
+        const companies = await Company.find({ isDeleted: false }).lean();
+        const rateCards = await RateCard.find({ isDeleted: false, status: 'active' }).lean();
 
         if (orders.length === 0) {
-            logger.warn('No orders found. Skipping shipments seeder.');
+            logger.warn('No eligible orders found for shipping. Skipping shipments seeder.');
             return;
         }
 
@@ -312,7 +422,19 @@ export async function seedShipments(): Promise<void> {
             warehouseMap.set(wh._id.toString(), wh);
         }
 
+        const companyDefaultRateCardMap = new Map<string, any>();
+        for (const company of companies) {
+            const defaultId = company.settings?.defaultRateCardId?.toString();
+            const defaultRateCard = defaultId
+                ? rateCards.find((rc) => rc._id.toString() === defaultId)
+                : rateCards.find((rc) => rc.companyId?.toString() === company._id.toString());
+            if (defaultRateCard) {
+                companyDefaultRateCardMap.set(company._id.toString(), defaultRateCard);
+            }
+        }
+
         const shipments: any[] = [];
+        const orderUpdates: any[] = [];
         let deliveredCount = 0;
         let ndrCount = 0;
         let rtoCount = 0;
@@ -321,8 +443,24 @@ export async function seedShipments(): Promise<void> {
             const order = orders[i];
             const warehouse = warehouseMap.get(order.warehouseId?.toString() || '');
 
-            const shipmentData = generateShipmentData(order, warehouse);
+            const rateCard = companyDefaultRateCardMap.get(order.companyId?.toString() || '') || null;
+            const shipmentData = generateShipmentData(order, warehouse, rateCard);
             shipments.push(shipmentData);
+
+            orderUpdates.push({
+                updateOne: {
+                    filter: { _id: order._id },
+                    update: {
+                        $set: {
+                            'shippingDetails.provider': shipmentData.carrier,
+                            'shippingDetails.method': shipmentData.serviceType,
+                            'shippingDetails.trackingNumber': shipmentData.trackingNumber,
+                            'shippingDetails.estimatedDelivery': shipmentData.estimatedDelivery,
+                            'shippingDetails.shippingCost': shipmentData.paymentDetails.shippingCost,
+                        }
+                    }
+                }
+            });
 
             // Count statuses
             if (shipmentData.currentStatus === 'delivered') deliveredCount++;
@@ -341,6 +479,12 @@ export async function seedShipments(): Promise<void> {
             await Shipment.insertMany(batch);
         }
 
+        // Update orders with shipment metadata (provider, tracking number, ETA)
+        for (let i = 0; i < orderUpdates.length; i += batchSize) {
+            const batch = orderUpdates.slice(i, i + batchSize);
+            await Order.bulkWrite(batch, { ordered: false });
+        }
+
         logger.complete('shipments', shipments.length, timer.elapsed());
         logger.table({
             'Total Shipments': shipments.length,
@@ -353,6 +497,33 @@ export async function seedShipments(): Promise<void> {
         logger.error('Failed to seed shipments:', error);
         throw error;
     }
+}
+
+// Standalone Execution
+// Standalone Execution
+if (require.main === module) {
+    dotenv.config();
+
+    if (!process.env.ENCRYPTION_KEY) {
+        console.warn('⚠️  ENCRYPTION_KEY not found in environment. Using default dev key for seeding.');
+        process.env.ENCRYPTION_KEY = 'd99716e21c089e3c1d530e69ea1b956dc676cae451e9e4d47154d8dea2721875';
+    }
+
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Shipcrowd';
+
+    mongoose.connect(mongoUri)
+        .then(() => {
+            logger.info('Connected to MongoDB');
+            return seedShipments();
+        })
+        .then(() => {
+            logger.success('✅ Shipments seeding completed!');
+            return mongoose.disconnect();
+        })
+        .catch((error) => {
+            logger.error('Seeding failed:', error);
+            process.exit(1);
+        });
 }
 
 /**

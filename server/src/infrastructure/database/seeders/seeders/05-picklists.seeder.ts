@@ -11,6 +11,7 @@ import mongoose from 'mongoose';
 import PickList from '../../mongoose/models/logistics/warehouse/activities/pick-list.model';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
+import WarehouseLocation from '../../mongoose/models/logistics/warehouse/structure/warehouse-location.model';
 import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
 import User from '../../mongoose/models/iam/users/user.model';
 import { SEED_CONFIG } from '../config';
@@ -18,18 +19,18 @@ import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/rand
 import { logger, createTimer } from '../utils/logger.utils';
 import { addDays, addMinutes } from '../utils/date.utils';
 
-// Pick list status distribution
+// Pick list status distribution - Uppercase to match Enum
 const PICKLIST_STATUS_DISTRIBUTION = {
-    pending: 15,
-    picking: 20,
-    picked: 45,
-    verified: 20,
+    PENDING: 15,
+    IN_PROGRESS: 20, // Was picking
+    COMPLETED: 45, // Was picked/verified merged
+    ASSIGNED: 20,
 };
 
 /**
- * Generate pick list ID
+ * Generate pick list Number
  */
-function generatePickListId(date: Date, warehouseId: string): string {
+function generatePickListNumber(date: Date, warehouseId: string): string {
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
     const whCode = warehouseId.toString().slice(-4).toUpperCase();
     const random = Math.random().toString(36).substring(2, 5).toUpperCase();
@@ -41,7 +42,7 @@ function generatePickListId(date: Date, warehouseId: string): string {
  */
 function generatePickListItems(orders: any[], warehouseId: string, inventory: Map<string, any>): any[] {
     const items: any[] = [];
-    let itemNumber = 1;
+    let sequence = 1;
 
     for (const order of orders) {
         if (!order.products || order.products.length === 0) continue;
@@ -50,33 +51,65 @@ function generatePickListItems(orders: any[], warehouseId: string, inventory: Ma
             const inventoryKey = `${warehouseId}-${product.name}`;
             const inventoryItem = inventory.get(inventoryKey);
 
-            // Find location code from inventory if available
-            let locationCode = undefined;
+            // Find location details
+            let locationId = new mongoose.Types.ObjectId(); // Default new ID if not found (should be found in real scenario)
+            let locationCode = 'UNKNOWN';
+            let zone = 'A';
+            let aisle = '01';
+
+            // Try to find a valid location from inventory
             if (inventoryItem?.locations && inventoryItem.locations.length > 0) {
-                const location = selectRandom(inventoryItem.locations) as any;
-                locationCode = location?.locationCode;
+                const randomLoc = selectRandom(inventoryItem.locations) as any;
+                if (randomLoc) {
+                    locationCode = randomLoc.locationCode;
+                    locationId = randomLoc.locationId;
+
+                    // Parse location code for zone/aisle if available
+                    // Format: Zone-Aisle-Rack-Shelf-Bin (e.g., A-01-03-02-05)
+                    if (locationCode && locationCode.includes('-')) {
+                        const parts = locationCode.split('-');
+                        if (parts.length >= 2) {
+                            // Assuming Zone is first part, Aisle is second
+                            // But wait, generateInventoryLocations uses "ZONE-A-A01..."
+                            // Let's just use defaults or parse simple Logic
+                            // Actually, just leaving defaults 'A', '01' is fine for seeding.
+                        }
+                    }
+                }
             }
 
             items.push({
-                itemNumber,
+                sequence,
                 orderId: order._id,
+                orderItemId: product._id || new mongoose.Types.ObjectId(), // Ensure we have an ID
                 orderNumber: order.orderNumber,
                 sku: product.sku || inventoryItem?.sku || product.name,
                 productName: product.name,
-                quantityOrdered: product.quantity || 1,
-                quantityPicked: 0, // Will be updated during picking
+                barcode: product.sku, // Fallback
+
+                // Location data
+                locationId,
                 locationCode,
-                warehouseId,
-                status: 'pending',
-                flaggedForQC: Math.random() < 0.05, // 5% flagged
-                qcNotes: Math.random() < 0.05 ? selectRandom([
+                zone,
+                aisle,
+
+                // Quantities
+                quantityRequired: product.quantity || 1,
+                quantityPicked: 0, // Will be updated if status is PICKED
+                quantityShort: 0,
+
+                status: 'PENDING', // Default item status
+                barcodeScanned: false,
+
+                // Notes from potential QC flags (mapped to notes)
+                notes: Math.random() < 0.05 ? selectRandom([
                     'Check expiry date',
                     'Verify seal integrity',
                     'Check for damage',
                 ]) : undefined,
             });
 
-            itemNumber++;
+            sequence++;
         }
     }
 
@@ -95,7 +128,8 @@ export async function seedPickLists(): Promise<void> {
         const orders = await Order.find({
             currentStatus: { $in: ['confirmed', 'processing', 'shipped'] },
             isDeleted: false,
-        }).limit(500).lean(); // Limit to 500 for reasonable pick list generation
+        }).limit(500).lean();
+        logger.info(`Fetched ${orders.length} orders`);
 
         if (orders.length === 0) {
             logger.warn('No orders found for pick list generation. Skipping pick lists seeder.');
@@ -104,13 +138,14 @@ export async function seedPickLists(): Promise<void> {
 
         // Get warehouses
         const warehouses = await Warehouse.find({ isActive: true, isDeleted: false }).lean();
+        logger.info(`Fetched ${warehouses.length} warehouses`);
         const warehouseMap = new Map(warehouses.map(w => [w._id.toString(), w]));
 
         // Get inventory with locations
         const inventoryRecords = await Inventory.find({
             isActive: true,
-            isDeleted: false,
         }).lean();
+        logger.info(`Fetched ${inventoryRecords.length} inventory records`);
 
         // Create inventory lookup map
         const inventoryMap = new Map<string, any>();
@@ -119,8 +154,11 @@ export async function seedPickLists(): Promise<void> {
             inventoryMap.set(key, inv);
         }
 
+        // Removed WarehouseLocation fetch to prevent OOM/Hang and because it wasn't working with mismatching IDs
+
         // Get staff users for assignment
         const staffUsers = await User.find({ role: 'staff', isActive: true }).lean();
+        logger.info(`Fetched ${staffUsers.length} staff users`);
 
         // Group orders by warehouse
         const ordersByWarehouse = new Map<string, any[]>();
@@ -135,11 +173,11 @@ export async function seedPickLists(): Promise<void> {
         }
 
         const pickLists: any[] = [];
-        let totalItems = 0;
-        let flaggedItems = 0;
+        let totalItemsCount = 0;
 
         // Create pick lists for each warehouse
         for (const [warehouseId, warehouseOrders] of ordersByWarehouse.entries()) {
+            logger.info(`Processing warehouse ${warehouseId} with ${warehouseOrders.length} orders`);
             const warehouse = warehouseMap.get(warehouseId);
             if (!warehouseOrders || warehouseOrders.length === 0 || !warehouse) continue;
 
@@ -154,84 +192,116 @@ export async function seedPickLists(): Promise<void> {
 
                 if (batchOrders.length === 0) continue;
 
-                const createdDate = new Date(Date.now() - randomInt(1, 3) * 24 * 60 * 60 * 1000);
-                const status = selectWeightedFromObject(PICKLIST_STATUS_DISTRIBUTION);
+                const createdDate = new Date(Date.now() - randomInt(1, 4) * 24 * 60 * 60 * 1000); // 1-4 days ago
+                const listStatus = selectWeightedFromObject(PICKLIST_STATUS_DISTRIBUTION) as string;
+
+                // Generate items
                 const items = generatePickListItems(batchOrders, warehouseId, inventoryMap);
 
-                // Count flagged items
-                const flagged = items.filter(i => i.flaggedForQC).length;
-                flaggedItems += flagged;
+                // Calculate item aggregates
+                const totalItems = items.length;
 
-                // Assign picker if not pending
+                // Update items based on list status
+                if (listStatus === 'COMPLETED') {
+                    items.forEach(item => {
+                        item.status = 'PICKED';
+                        item.quantityPicked = item.quantityRequired;
+                        item.barcodeScanned = true;
+                        item.scannedAt = addMinutes(createdDate, randomInt(30, 120));
+                    });
+                } else if (listStatus === 'IN_PROGRESS') {
+                    // Randomly pick some items
+                    items.forEach(item => {
+                        if (Math.random() > 0.3) {
+                            item.status = 'PICKED';
+                            item.quantityPicked = item.quantityRequired;
+                            item.barcodeScanned = true;
+                            item.scannedAt = addMinutes(createdDate, randomInt(10, 60));
+                        }
+                    });
+                }
+
+                const pickedItems = items.filter(i => i.status === 'PICKED').length;
+
+                // Assignment details
                 let assignedTo = undefined;
                 let startedAt = undefined;
                 let completedAt = undefined;
                 let verifiedBy = undefined;
                 let verifiedAt = undefined;
 
-                if (status !== 'pending' && staffUsers.length > 0) {
+                if (listStatus !== 'PENDING' && staffUsers.length > 0) {
                     const picker = selectRandom(staffUsers);
                     assignedTo = picker._id;
-                    startedAt = addDays(createdDate, randomInt(0, 1));
+                    const assignDate = addMinutes(createdDate, randomInt(10, 60));
 
-                    if (status === 'picked' || status === 'verified') {
-                        completedAt = addMinutes(startedAt || createdDate, randomInt(15, 45));
+                    if (listStatus === 'IN_PROGRESS' || listStatus === 'COMPLETED') {
+                        startedAt = addMinutes(assignDate, randomInt(5, 30));
                     }
 
-                    if (status === 'verified' && staffUsers.length > 0) {
-                        const verifier = selectRandom(staffUsers);
-                        verifiedBy = verifier._id;
-                        verifiedAt = addMinutes(completedAt || createdDate, randomInt(5, 10));
+                    if (listStatus === 'COMPLETED') {
+                        completedAt = addMinutes(startedAt || assignDate, randomInt(20, 90));
+
+                        // Add verification randomly for completed
+                        if (Math.random() > 0.2) {
+                            const verifier = selectRandom(staffUsers);
+                            verifiedBy = verifier._id;
+                            verifiedAt = addMinutes(completedAt, randomInt(5, 15));
+                        }
                     }
                 }
 
                 pickLists.push({
-                    pickListId: generatePickListId(createdDate, warehouseId),
+                    pickListNumber: generatePickListNumber(createdDate, warehouseId),
                     warehouseId: new mongoose.Types.ObjectId(warehouseId),
-                    company: batchOrders[0]?.companyId,
+                    companyId: batchOrders[0]?.companyId,
                     orders: batchOrders.map(o => o._id),
                     items,
-                    totalItems: items.length,
-                    totalOrders: batchOrders.length,
-                    status,
+                    totalItems,
+                    pickedItems,
+                    orderCount: batchOrders.length,
+
+                    pickingStrategy: 'BATCH', // Schema required
+                    priority: 'MEDIUM', // Schema required
+
+                    status: listStatus,
                     assignedTo,
+                    assignedAt: assignedTo ? addMinutes(createdDate, 30) : undefined,
                     startedAt,
                     completedAt,
                     verifiedBy,
                     verifiedAt,
-                    timeline: [{
-                        status: 'created',
-                        timestamp: createdDate,
-                        actor: 'system',
-                        action: `Pick list created with ${items.length} items from ${batchOrders.length} orders`,
-                    }],
+
+                    requiresVerification: true,
+                    verificationStatus: verifiedAt ? 'PASSED' : (listStatus === 'COMPLETED' ? 'PENDING' : undefined),
+
                     createdAt: createdDate,
                     updatedAt: verifiedAt || completedAt || startedAt || createdDate,
-                    isDeleted: false,
                 });
 
-                totalItems += items.length;
+                totalItemsCount += items.length;
             }
         }
 
         // Insert pick lists
         if (pickLists.length > 0) {
+            logger.info(`Inserting ${pickLists.length} pick lists...`);
             await PickList.insertMany(pickLists);
+            logger.info('Pick lists inserted successfully');
         }
 
-        const completedCount = pickLists.filter(p => p.status === 'verified').length;
-        const inProgressCount = pickLists.filter(p => ['picking', 'picked'].includes(p.status)).length;
-        const pendingCount = pickLists.filter(p => p.status === 'pending').length;
+        const completedCount = pickLists.filter(p => p.status === 'COMPLETED').length;
+        const inProgressCount = pickLists.filter(p => p.status === 'IN_PROGRESS').length;
+        const pendingCount = pickLists.filter(p => p.status === 'PENDING').length;
 
         logger.complete('pick lists', pickLists.length, timer.elapsed());
         logger.table({
             'Total Pick Lists': pickLists.length,
-            'Total Items': totalItems,
-            'Items Flagged for QC': flaggedItems,
+            'Total Items': totalItemsCount,
             'Status: Completed': completedCount,
             'Status: In Progress': inProgressCount,
             'Status: Pending': pendingCount,
-            'Avg Items per List': totalItems > 0 ? Math.round(totalItems / pickLists.length) : 0,
+            'Avg Items per List': totalItemsCount > 0 ? Math.round(totalItemsCount / pickLists.length) : 0,
         });
 
     } catch (error) {
@@ -251,5 +321,5 @@ export async function getPickListsByWarehouse(warehouseId: mongoose.Types.Object
  * Get pending pick lists
  */
 export async function getPendingPickLists() {
-    return PickList.find({ status: { $in: ['pending', 'picking'] }, isDeleted: false }).lean();
+    return PickList.find({ status: { $in: ['PENDING', 'ASSIGNED'] }, isDeleted: false }).lean();
 }

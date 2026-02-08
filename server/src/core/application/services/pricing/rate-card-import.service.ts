@@ -2,25 +2,35 @@ import csvParser from 'csv-parser';
 import ExcelJS from 'exceljs';
 import { Readable } from 'stream';
 import mongoose from 'mongoose';
-import { RateCard, Zone } from '../../../../infrastructure/database/mongoose/models';
-import { AppError, ValidationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { RateCard } from '../../../../infrastructure/database/mongoose/models';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import PricingMetricsService from '../metrics/pricing-metrics.service';
 
-interface RateCardImportRow {
+interface ZonePricingImportRow {
     name: string;
-    carrier: string;
-    serviceType: string;
-    basePrice: number;
-    minWeight: number;
-    maxWeight: number;
-    zone: string; // "A", "B", etc. or "Within City"
-    zonePrice: number;
-    status?: string | 'active';
-    startDate?: string;
-    endDate?: string;
+    zone: string;
+    baseWeight?: number;
+    basePrice?: number;
+    additionalPricePerKg?: number;
+    status?: string;
+    effectiveStartDate?: string;
+    effectiveEndDate?: string;
+    category?: string;
+    shipmentType?: string;
+    minimumFare?: number;
+    minimumFareCalculatedOn?: string;
+    codPercentage?: number;
+    codMinimumCharge?: number;
+    fuelSurcharge?: number;
+    zoneBType?: string;
+    rowNumber?: number;
+}
+
+interface ParsedImportData {
+    headers: string[];
+    rows: Array<{ data: Record<string, any>; rowNumber: number }>;
 }
 
 export default class RateCardImportService {
@@ -40,25 +50,37 @@ export default class RateCardImportService {
 
         try {
             // 1. Parse File
-            let rows: RateCardImportRow[] = [];
+            let parsed: ParsedImportData;
             if (mimetype.includes('csv') || mimetype.includes('text/plain')) { // CSV
-                rows = await this.parseCSV(fileBuffer);
+                parsed = await this.parseCSV(fileBuffer);
             } else if (mimetype.includes('spreadsheet') || mimetype.includes('excel')) { // Excel
-                rows = await this.parseExcel(fileBuffer);
+                parsed = await this.parseExcel(fileBuffer);
             } else {
                 throw new ValidationError('Invalid file format. Please upload CSV or Excel.');
             }
 
-            if (rows.length === 0) {
+            if (parsed.rows.length === 0) {
                 throw new ValidationError('File is empty or contains no valid data rows');
             }
 
-            // 2. Validate & Group Data by Rate Card Name
-            // One Rate Card (document) can have multiple rows (base rates/zones)
-            const groupedData = new Map<string, RateCardImportRow[]>();
+            const isZonePricing = this.detectZonePricingFormat(parsed.headers);
+            if (!isZonePricing) {
+                throw new ValidationError('Unsupported import format. Please use the Zone Pricing CSV template.');
+            }
 
-            for (const row of rows) {
-                if (!row.name || !row.carrier || !row.zone) continue; // Skip empty rows
+            // 2. Validate & Group Data by Rate Card Name
+            // One Rate Card (document) can have multiple rows (zone pricing rows)
+            const groupedData = new Map<string, ZonePricingImportRow[]>();
+            const normalizedRows = parsed.rows
+                .map((row) => this.normalizeZonePricingRow(row.data, row.rowNumber))
+                .filter(Boolean) as ZonePricingImportRow[];
+
+            if (normalizedRows.length === 0) {
+                throw new ValidationError('File contains no valid data rows');
+            }
+
+            for (const row of normalizedRows) {
+                if (!row.name || !row.zone) continue; // Skip empty rows
 
                 const key = row.name.trim();
                 if (!groupedData.has(key)) groupedData.set(key, []);
@@ -80,119 +102,186 @@ export default class RateCardImportService {
                 : [];
             const existingRateCardMap = new Map(existingRateCards.map(card => [card.name, card]));
 
-            const zones = await Zone.find({ companyId: companyObjectId }).session(session).lean();
-            const zoneMap = new Map(
-                zones.map(z => [
-                    (z.standardZoneCode?.toUpperCase() || z.name.toUpperCase()),
-                    z._id,
-                ])
-            );
-
             // 3. Process Each Rate Card Group
             for (const [rateCardName, cardRows] of groupedData) {
                 try {
                     // Fetch or Instantiate
                     let rateCard = existingRateCardMap.get(rateCardName);
 
+                    const firstRowNumber = (cardRows[0] as any)?.rowNumber;
+
                     if (rateCard && rateCard.isLocked) {
-                        errors.push(`Rate Card '${rateCardName}' is locked and cannot be updated via bulk import.`);
+                        errors.push({
+                            name: rateCardName,
+                            rowNumber: firstRowNumber,
+                            error: `Rate Card '${rateCardName}' is locked and cannot be updated via bulk import.`
+                        });
                         continue;
                     }
 
                     const isNew = !rateCard;
 
+                    const zonePricingRows = cardRows as ZonePricingImportRow[];
+                    const referenceRow = zonePricingRows[0];
+                    const metadataFields: Array<keyof ZonePricingImportRow> = [
+                        'status',
+                        'effectiveStartDate',
+                        'effectiveEndDate',
+                        'category',
+                        'shipmentType',
+                        'minimumFare',
+                        'minimumFareCalculatedOn',
+                        'codPercentage',
+                        'codMinimumCharge',
+                        'fuelSurcharge',
+                        'zoneBType'
+                    ];
+
+                    let hasMetadataConflict = false;
+                    for (const row of zonePricingRows) {
+                        for (const field of metadataFields) {
+                            if (row[field] !== undefined && referenceRow[field] !== undefined) {
+                                if (String(row[field]).trim() !== String(referenceRow[field]).trim()) {
+                                    errors.push({
+                                        name: rateCardName,
+                                        rowNumber: row.rowNumber,
+                                        error: `Inconsistent ${field} value within rate card rows`
+                                    });
+                                    hasMetadataConflict = true;
+                                }
+                            }
+                        }
+                    }
+                    if (hasMetadataConflict) {
+                        PricingMetricsService.incrementImportError();
+                        continue;
+                    }
+
+                    const requiredZones = ['A', 'B', 'C', 'D', 'E'];
+                    const zoneMapByCode = new Map<string, ZonePricingImportRow>();
+                    for (const row of zonePricingRows) {
+                        const zoneCode = this.normalizeZoneCode(row.zone);
+                        if (!zoneCode) {
+                            errors.push({ name: rateCardName, rowNumber: row.rowNumber, error: `Invalid zone '${row.zone}'` });
+                            continue;
+                        }
+                        if (zoneMapByCode.has(zoneCode)) {
+                            errors.push({ name: rateCardName, rowNumber: row.rowNumber, error: `Duplicate zone '${zoneCode}'` });
+                            continue;
+                        }
+                        zoneMapByCode.set(zoneCode, row);
+                    }
+
+                    const missingZones = requiredZones.filter(zone => !zoneMapByCode.has(zone));
+                    if (missingZones.length > 0) {
+                        PricingMetricsService.incrementImportError();
+                        errors.push({
+                            name: rateCardName,
+                            rowNumber: referenceRow.rowNumber,
+                            error: `Missing zones: ${missingZones.join(', ')}`
+                        });
+                        continue;
+                    }
+
+                    const zonePricing: any = {};
+                    let hasZoneErrors = false;
+                    for (const zoneCode of requiredZones) {
+                        const row = zoneMapByCode.get(zoneCode)!;
+                        const baseWeight = row.baseWeight;
+                        const basePrice = row.basePrice;
+                        const additionalPricePerKg = row.additionalPricePerKg;
+
+                        if (![baseWeight, basePrice, additionalPricePerKg].every(val => Number.isFinite(val) && val >= 0)) {
+                            errors.push({
+                                name: rateCardName,
+                                rowNumber: row.rowNumber,
+                                error: `Invalid pricing values for zone '${zoneCode}'`
+                            });
+                            hasZoneErrors = true;
+                            continue;
+                        }
+
+                        zonePricing[`zone${zoneCode}`] = {
+                            baseWeight,
+                            basePrice,
+                            additionalPricePerKg
+                        };
+                    }
+
+                    if (hasZoneErrors) {
+                        PricingMetricsService.incrementImportError();
+                        continue;
+                    }
+
+                    const effectiveStartDate = this.parseDate(referenceRow.effectiveStartDate) || new Date();
+                    const effectiveEndDate = this.parseDate(referenceRow.effectiveEndDate);
+                    const normalizedZoneBType = this.normalizeZoneBType(referenceRow.zoneBType);
+                    if (referenceRow.zoneBType !== undefined && !normalizedZoneBType) {
+                        PricingMetricsService.incrementImportError();
+                        errors.push({
+                            name: rateCardName,
+                            rowNumber: referenceRow.rowNumber,
+                            error: `Invalid zoneBType '${referenceRow.zoneBType}'. Use 'state' or 'distance'.`
+                        });
+                        continue;
+                    }
+                    const normalizedStatus = this.normalizeStatus(referenceRow.status);
+                    const normalizedShipmentType = this.normalizeShipmentType(referenceRow.shipmentType);
+                    const normalizedMinimumFareCalculatedOn = this.normalizeMinimumFareCalculatedOn(referenceRow.minimumFareCalculatedOn);
+                    const resolvedFuelSurcharge = referenceRow.fuelSurcharge ?? options.overrides?.fuelSurcharge ?? 0;
+                    const resolvedFuelSurchargeBase = options.overrides?.fuelSurchargeBase || 'freight';
+
                     if (isNew) {
                         rateCard = new RateCard({
                             name: rateCardName,
                             companyId: companyObjectId,
-                            baseRates: [],
-                            zoneRules: [],
-                            status: cardRows[0].status || 'draft',
+                            zonePricing,
+                            status: normalizedStatus || 'draft',
                             effectiveDates: {
-                                startDate: cardRows[0].startDate ? new Date(cardRows[0].startDate) : new Date(),
-                                endDate: cardRows[0].endDate ? new Date(cardRows[0].endDate) : undefined
+                                startDate: effectiveStartDate,
+                                endDate: effectiveEndDate
                             },
-                            // V2 Fields (Defaults or Overrides)
-                            fuelSurcharge: options.overrides?.fuelSurcharge || 0,
-                            fuelSurchargeBase: options.overrides?.fuelSurchargeBase || 'freight',
-                            minimumCall: options.overrides?.minimumCall || 0,
-                            version: options.overrides?.version || 'v1',
-                            isLocked: options.overrides?.isLocked || false,
-                            codSurcharges: []
+                            rateCardCategory: referenceRow.category,
+                            shipmentType: normalizedShipmentType,
+                            minimumFare: referenceRow.minimumFare,
+                            minimumFareCalculatedOn: normalizedMinimumFareCalculatedOn,
+                            codPercentage: referenceRow.codPercentage,
+                            codMinimumCharge: referenceRow.codMinimumCharge,
+                            fuelSurcharge: resolvedFuelSurcharge,
+                            fuelSurchargeBase: resolvedFuelSurchargeBase,
+                            zoneBType: normalizedZoneBType || 'state',
+                            version: options.overrides?.version || 'v2',
+                            isLocked: options.overrides?.isLocked || false
                         });
                         createdCount++;
                     } else {
-                        // Simplification: We will upsert BaseRates and ZoneRules.
-                        // Apply overrides on update too? Yes, usually desired if passed.
+                        rateCard!.zonePricing = zonePricing;
+                        if (normalizedStatus) rateCard!.status = normalizedStatus as any;
+                        rateCard!.effectiveDates = {
+                            startDate: effectiveStartDate,
+                            endDate: effectiveEndDate
+                        };
+                        rateCard!.rateCardCategory = referenceRow.category || rateCard!.rateCardCategory;
+                        rateCard!.shipmentType = normalizedShipmentType || rateCard!.shipmentType;
+                        if (referenceRow.minimumFare !== undefined) rateCard!.minimumFare = referenceRow.minimumFare;
+                        if (normalizedMinimumFareCalculatedOn) rateCard!.minimumFareCalculatedOn = normalizedMinimumFareCalculatedOn;
+                        if (referenceRow.codPercentage !== undefined) rateCard!.codPercentage = referenceRow.codPercentage;
+                        if (referenceRow.codMinimumCharge !== undefined) rateCard!.codMinimumCharge = referenceRow.codMinimumCharge;
+                        rateCard!.fuelSurcharge = resolvedFuelSurcharge ?? rateCard!.fuelSurcharge;
+                        rateCard!.fuelSurchargeBase = resolvedFuelSurchargeBase || rateCard!.fuelSurchargeBase;
+                        rateCard!.zoneBType = normalizedZoneBType || rateCard!.zoneBType || 'state';
+
                         if (options.overrides) {
-                            if (options.overrides.fuelSurcharge !== undefined) rateCard!.fuelSurcharge = options.overrides.fuelSurcharge;
-                            if (options.overrides.fuelSurchargeBase) rateCard!.fuelSurchargeBase = options.overrides.fuelSurchargeBase;
-                            if (options.overrides.minimumCall !== undefined) rateCard!.minimumCall = options.overrides.minimumCall;
                             if (options.overrides.version) rateCard!.version = options.overrides.version;
                             if (options.overrides.isLocked !== undefined) rateCard!.isLocked = options.overrides.isLocked;
                         }
                     }
 
-                    // Process Rows into Sub-Documents
-                    // We need to fetch Zones to map "A" -> ObjectId
-                    const newBaseRates: any[] = [];
-                    const newZoneRules: any[] = [];
-
-                    for (const row of cardRows) {
-                        // Base Rate
-                        // Only add if not duplicate in this batch
-                        const existingBase = newBaseRates.find(br =>
-                            br.carrier === row.carrier &&
-                            br.serviceType === row.serviceType &&
-                            br.minWeight === row.minWeight &&
-                            br.maxWeight === row.maxWeight
-                        );
-
-                        if (!existingBase) {
-                            newBaseRates.push({
-                                carrier: row.carrier,
-                                serviceType: row.serviceType,
-                                basePrice: row.basePrice || 0,
-                                minWeight: row.minWeight || 0,
-                                maxWeight: row.maxWeight || 50 // Default max
-                            });
-                        }
-
-                        // Zone Rule
-                        const zoneId = zoneMap.get(row.zone.toUpperCase());
-                        // If generic zone like "A", "B", verify existence. 
-                        // If not found, skip or create? For now skip with warning.
-                        if (zoneId) {
-                            newZoneRules.push({
-                                zoneId,
-                                carrier: row.carrier,
-                                serviceType: row.serviceType,
-                                additionalPrice: row.zonePrice || 0
-                            });
-                        } else {
-                            // Log warning but don't fail entire batch
-                            errors.push(`Zone '${row.zone}' not found for card '${rateCardName}'`);
-                        }
-                    }
-
-                    // For new cards, just assign. For existing, merge? 
-                    // Best practice for "Import" is usually "Overwrite/Sync" for consistency.
-                    // Let's Overwrite BaseRates and ZoneRules for cleanliness.
-                    rateCard!.baseRates = newBaseRates;
-                    rateCard!.zoneRules = newZoneRules as any;
-
-                    if (cardRows[0].status) rateCard!.status = cardRows[0].status as any;
-
-
-                    // Validate Weight Slabs
-                    const validationErrors = this.validateWeightSlabs(newBaseRates);
-                    if (validationErrors.length > 0) {
-                        PricingMetricsService.incrementImportError();
-                        errors.push(...validationErrors.map(e => `[${rateCardName}] ${e}`));
-                        continue; // Skip saving this card
-                    }
-
                     await rateCard!.save({ session });
+
+                    if (!isNew) {
+                        updatedCount++;
+                    }
 
                     // Audit Log
                     await createAuditLog(
@@ -207,7 +296,7 @@ export default class RateCardImportService {
 
                 } catch (err: any) {
                     PricingMetricsService.incrementImportError();
-                    errors.push({ name: rateCardName, error: err.message });
+                    errors.push({ name: rateCardName, rowNumber: (cardRows[0] as any)?.rowNumber, error: err.message });
                 }
             }
 
@@ -235,33 +324,38 @@ export default class RateCardImportService {
         }
     }
 
-    private static async parseCSV(buffer: Buffer): Promise<RateCardImportRow[]> {
-        const rows: RateCardImportRow[] = [];
+    private static async parseCSV(buffer: Buffer): Promise<ParsedImportData> {
+        const rows: Array<{ data: Record<string, any>; rowNumber: number }> = [];
+        let headers: string[] = [];
+        let rowNumber = 1;
         return new Promise((resolve, reject) => {
             const stream = Readable.from(buffer.toString());
             stream
                 .pipe(csvParser())
-                .on('data', (data) => {
-                    const row = this.normalizeRow(data);
-                    if (row) rows.push(row);
+                .on('headers', (headerList) => {
+                    headers = headerList.map((header: string) => header.toString().trim());
                 })
-                .on('end', () => resolve(rows))
+                .on('data', (data) => {
+                    rowNumber += 1;
+                    rows.push({ data, rowNumber });
+                })
+                .on('end', () => resolve({ headers, rows }))
                 .on('error', (err) => reject(err));
         });
     }
 
-    private static async parseExcel(buffer: Buffer): Promise<RateCardImportRow[]> {
+    private static async parseExcel(buffer: Buffer): Promise<ParsedImportData> {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(buffer as any);
         const worksheet = workbook.getWorksheet(1);
-        const rows: RateCardImportRow[] = [];
+        const rows: Array<{ data: Record<string, any>; rowNumber: number }> = [];
 
-        if (!worksheet) return [];
+        if (!worksheet) return { headers: [], rows: [] };
 
         // Assuming Row 1 is header
         const headers: string[] = [];
         worksheet.getRow(1).eachCell((cell, colNumber) => {
-            headers[colNumber] = cell.toString().toLowerCase().trim();
+            headers[colNumber] = cell.toString().trim();
         });
 
         worksheet.eachRow((row, rowNumber) => {
@@ -273,62 +367,103 @@ export default class RateCardImportService {
                     rowData[header] = cell.value; // Keep original value types if possible
                 }
             });
-            const normalized = this.normalizeRow(rowData);
-            if (normalized) rows.push(normalized);
+            rows.push({ data: rowData, rowNumber });
         });
 
-        return rows;
+        return { headers, rows };
     }
 
-    private static normalizeRow(data: any): RateCardImportRow | null {
-        // Map loose headers to strict interface
-        // Helper to find key efficiently
+    private static normalizeZonePricingRow(data: any, rowNumber: number): ZonePricingImportRow | null {
         const findVal = (keywords: string[]) => {
             const key = Object.keys(data).find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
             return key ? data[key] : undefined;
         };
 
         const name = findVal(['name', 'rate card']);
-        const carrier = findVal(['carrier', 'logistics']);
-        const service = findVal(['service', 'mode']);
+        const zone = findVal(['zone']);
 
-        if (!name || !carrier || !service) return null;
+        if (!name || !zone) return null;
 
         return {
             name: String(name).trim(),
-            carrier: String(carrier).trim(),
-            serviceType: String(service).trim(),
-            basePrice: Number(findVal(['base', 'price'])) || 0,
-            minWeight: Number(findVal(['min', 'weight'])) || 0,
-            maxWeight: Number(findVal(['max', 'weight'])) || 50,
-            zone: String(findVal(['zone'])).trim(),
-            zonePrice: Number(findVal(['zone price', 'additional'])) || 0,
+            zone: String(zone).trim(),
+            baseWeight: this.parseNumber(findVal(['base weight'])),
+            basePrice: this.parseNumber(findVal(['base price'])),
+            additionalPricePerKg: this.parseNumber(findVal(['additional price per kg', 'additional per kg', 'additionalpriceperkg'])),
             status: findVal(['status']),
-            startDate: findVal(['start', 'effective']),
-            endDate: findVal(['end', 'expiry'])
+            effectiveStartDate: findVal(['effective start', 'start date', 'start']),
+            effectiveEndDate: findVal(['effective end', 'end date', 'expiry']),
+            category: findVal(['category']),
+            shipmentType: findVal(['shipment type', 'shipment']),
+            minimumFare: this.parseNumber(findVal(['minimum fare', 'min fare'])),
+            minimumFareCalculatedOn: findVal(['minimum fare calculated on', 'minimum calculated']),
+            codPercentage: this.parseNumber(findVal(['cod percentage', 'cod percent', 'cod%'])),
+            codMinimumCharge: this.parseNumber(findVal(['cod minimum charge', 'cod min'])),
+            fuelSurcharge: this.parseNumber(findVal(['fuel surcharge'])),
+            zoneBType: findVal(['zonebtype', 'zone b type']),
+            rowNumber
         };
     }
-    private static validateWeightSlabs(baseRates: any[]): string[] {
-        const errors: string[] = [];
-        const groups = new Map<string, any[]>();
 
-        // Group by carrier + service
-        for (const rate of baseRates) {
-            const key = `${rate.carrier}:${rate.serviceType}`;
-            if (!groups.has(key)) groups.set(key, []);
-            groups.get(key)!.push(rate);
+    private static detectZonePricingFormat(headers: string[]): boolean {
+        const normalized = headers.map((header) => this.normalizeHeader(header));
+        const hasZone = normalized.some(h => h === 'zone');
+        const hasBaseWeight = normalized.some(h => h.includes('baseweight'));
+        const hasAdditionalPerKg = normalized.some(h => h.includes('additionalpriceperkg') || (h.includes('additional') && h.includes('perkg')));
+        return hasZone && hasBaseWeight && hasAdditionalPerKg;
+    }
+
+    private static normalizeHeader(header: string): string {
+        return header.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    private static normalizeZoneCode(zone: string | undefined): string | null {
+        if (!zone) return null;
+        const cleaned = zone.toString().toUpperCase().replace(/ZONE/g, '').trim();
+        return ['A', 'B', 'C', 'D', 'E'].includes(cleaned) ? cleaned : null;
+    }
+
+    private static normalizeZoneBType(zoneBType: string | undefined): 'state' | 'distance' | undefined {
+        if (!zoneBType) return undefined;
+        const normalized = zoneBType.toString().toLowerCase().trim();
+        if (normalized === 'distance' || normalized === 'state') return normalized;
+        return undefined;
+    }
+
+    private static normalizeStatus(status: any): 'draft' | 'active' | 'inactive' | 'expired' | undefined {
+        if (!status) return undefined;
+        const normalized = status.toString().toLowerCase().trim();
+        if (['draft', 'active', 'inactive', 'expired'].includes(normalized)) {
+            return normalized as 'draft' | 'active' | 'inactive' | 'expired';
         }
+        return undefined;
+    }
 
-        // Validate each group
-        for (const [key, rates] of groups) {
-            const sorted = rates.sort((a, b) => a.minWeight - b.minWeight);
-            for (let i = 1; i < sorted.length; i++) {
-                if (sorted[i].minWeight < sorted[i - 1].maxWeight) {
-                    errors.push(`Overlapping weight slabs for ${key}: [${sorted[i - 1].minWeight}-${sorted[i - 1].maxWeight}] overlaps with [${sorted[i].minWeight}-${sorted[i].maxWeight}]`);
-                }
-            }
-        }
+    private static normalizeShipmentType(shipmentType: any): 'forward' | 'reverse' | undefined {
+        if (!shipmentType) return undefined;
+        const normalized = shipmentType.toString().toLowerCase().trim();
+        if (normalized === 'forward' || normalized === 'reverse') return normalized;
+        return undefined;
+    }
 
-        return errors;
+    private static normalizeMinimumFareCalculatedOn(value: any): 'freight' | 'freight_overhead' | undefined {
+        if (!value) return undefined;
+        const normalized = value.toString().toLowerCase().trim();
+        if (normalized === 'freight' || normalized === 'freight_overhead') return normalized;
+        return undefined;
+    }
+
+    private static parseNumber(value: any): number | undefined {
+        if (value === undefined || value === null || value === '') return undefined;
+        const cleaned = String(value).replace(/[%₹,]/g, '').trim();
+        if (!cleaned) return undefined;
+        const num = Number(cleaned);
+        return Number.isFinite(num) ? num : undefined;
+    }
+
+    private static parseDate(value: any): Date | undefined {
+        if (!value) return undefined;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? undefined : parsed;
     }
 }

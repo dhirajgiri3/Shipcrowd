@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { RateCard, IRateCard } from '../../../../infrastructure/database/mongoose/models';
-import { Zone } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -25,44 +24,43 @@ import { RateCardSelectorService } from '../../../../core/application/services/p
 import { RateCardSimulationService, SimulationInput } from '../../../../core/application/services/pricing/rate-card-simulation.service';
 
 // Validation schemas
-const weightRuleSchema = z.object({
-    minWeight: z.number().min(0),
-    maxWeight: z.number().min(0),
-    pricePerKg: z.number().min(0),
-    carrier: z.string().optional(),
-    serviceType: z.string().optional(),
-});
-
-const baseRateSchema = z.object({
-    carrier: z.string().min(1),
-    serviceType: z.string().min(1),
+const zonePricingEntrySchema = z.object({
+    baseWeight: z.number().min(0),
     basePrice: z.number().min(0),
-    minWeight: z.number().min(0),
-    maxWeight: z.number().min(0),
+    additionalPricePerKg: z.number().min(0),
 });
 
-const zoneRuleSchema = z.object({
-    zoneId: z.string(),
-    carrier: z.string().min(1),
-    serviceType: z.string().min(1),
-    additionalPrice: z.number(),
-    transitDays: z.number().optional(),
+const zonePricingSchema = z.object({
+    zoneA: zonePricingEntrySchema,
+    zoneB: zonePricingEntrySchema,
+    zoneC: zonePricingEntrySchema,
+    zoneD: zonePricingEntrySchema,
+    zoneE: zonePricingEntrySchema,
 });
 
-const createRateCardSchema = z.object({
+const rateCardPayloadSchema = z.object({
     name: z.string().min(2),
-    baseRates: z.array(baseRateSchema).min(1),
-    weightRules: z.array(weightRuleSchema).optional(),
-    zoneRules: z.array(zoneRuleSchema).optional(),
+    rateCardCategory: z.string().optional(),
+    shipmentType: z.enum(['forward', 'reverse']).optional(),
+    gst: z.number().min(0).optional(),
+    minimumFare: z.number().min(0).optional(),
+    minimumFareCalculatedOn: z.enum(['freight', 'freight_overhead']).optional(),
+    zoneBType: z.enum(['state', 'distance']).optional(),
+    codPercentage: z.number().min(0).optional(),
+    codMinimumCharge: z.number().min(0).optional(),
+    fuelSurcharge: z.number().min(0).optional(),
+    fuelSurchargeBase: z.enum(['freight', 'freight_cod']).optional(),
+    zonePricing: zonePricingSchema,
     effectiveDates: z.object({
         startDate: z.string().transform(str => new Date(str)),
         endDate: z.string().transform(str => new Date(str)).optional(),
     }),
-    zoneMultipliers: z.record(z.number()).optional(),
     status: z.enum(['draft', 'active', 'inactive']).default('draft'),
 });
 
-const updateRateCardSchema = createRateCardSchema.partial();
+const createRateCardSchema = rateCardPayloadSchema;
+
+const updateRateCardSchema = rateCardPayloadSchema.partial();
 
 const calculateRateSchema = z.object({
     weight: z.number().min(0),
@@ -105,34 +103,6 @@ const smartRateCalculateSchema = z.object({
     }, { message: 'Scoring weights must sum to 100' }),
 });
 
-const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number; carrier?: string; serviceType?: string }>): boolean => {
-    if (!rules || rules.length <= 1) return true;
-
-    const groups = new Map<string, typeof rules>();
-    const normalize = (s?: string) => (s || '').trim().toLowerCase();
-
-    // Group slabs by carrier + serviceType
-    for (const rule of rules) {
-        const carrier = normalize(rule.carrier) || 'any';
-        const service = normalize(rule.serviceType) || 'any';
-        const key = `${carrier}:${service}`;
-
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(rule);
-    }
-
-    // Validate each group independently
-    for (const [key, groupRules] of groups) {
-        const sorted = [...groupRules].sort((a, b) => a.minWeight - b.minWeight);
-        for (let i = 1; i < sorted.length; i++) {
-            if (sorted[i].minWeight < sorted[i - 1].maxWeight) {
-                return false;
-            }
-        }
-    }
-    return true;
-};
-
 export const createRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
@@ -148,14 +118,6 @@ export const createRateCard = async (req: Request, res: Response, next: NextFunc
             throw new ValidationError('Validation failed', errors);
         }
 
-        if (validation.data.weightRules && !validateWeightSlabs(validation.data.weightRules)) {
-            throw new ValidationError('Weight Rules slabs cannot overlap within the same carrier/service type');
-        }
-
-        if (validation.data.baseRates && !validateWeightSlabs(validation.data.baseRates)) {
-            throw new ValidationError('Base Rate slabs cannot overlap within the same carrier/service type');
-        }
-
         const existingCard = await RateCard.findOne({
             name: validation.data.name,
             companyId,
@@ -166,15 +128,9 @@ export const createRateCard = async (req: Request, res: Response, next: NextFunc
             throw new ConflictError('Rate card with this name already exists', ErrorCode.BIZ_ALREADY_EXISTS);
         }
 
-        const zoneRules = validation.data.zoneRules?.map(rule => ({
-            ...rule,
-            zoneId: new mongoose.Types.ObjectId(rule.zoneId),
-        }));
-
         const rateCard = new RateCard({
             ...validation.data,
             companyId,
-            zoneRules,
         });
 
         await rateCard.save();
@@ -202,7 +158,10 @@ export const getRateCards = async (req: Request, res: Response, next: NextFuncti
         requireCompanyContext(auth);
         const companyId = auth.companyId;
 
-        const filter: any = { companyId, isDeleted: false };
+        const filter: any = {
+            isDeleted: false,
+            $or: [{ companyId }, { scope: 'global' }]
+        };
         if (req.query.status) filter.status = req.query.status;
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -211,7 +170,6 @@ export const getRateCards = async (req: Request, res: Response, next: NextFuncti
 
         const [rateCards, total] = await Promise.all([
             RateCard.find(filter)
-                .populate('zoneRules.zoneId', 'name')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -240,9 +198,9 @@ export const getRateCardById = async (req: Request, res: Response, next: NextFun
 
         const rateCard = await RateCard.findOne({
             _id: rateCardId,
-            companyId,
             isDeleted: false,
-        }).populate('zoneRules.zoneId', 'name postalCodes').lean();
+            $or: [{ companyId }, { scope: 'global' }]
+        }).lean();
 
         if (!rateCard) {
             throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
@@ -275,14 +233,6 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
             throw new ValidationError('Validation failed', errors);
         }
 
-        if (validation.data.weightRules && !validateWeightSlabs(validation.data.weightRules)) {
-            throw new ValidationError('Weight Rules slabs cannot overlap within the same carrier/service type');
-        }
-
-        if (validation.data.baseRates && !validateWeightSlabs(validation.data.baseRates)) {
-            throw new ValidationError('Base Rate slabs cannot overlap within the same carrier/service type');
-        }
-
         const rateCard = await RateCard.findOne({
             _id: rateCardId,
             companyId,
@@ -307,13 +257,6 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
         }
 
         Object.assign(rateCard, validation.data);
-
-        if (validation.data.zoneRules) {
-            rateCard.zoneRules = validation.data.zoneRules.map(rule => ({
-                ...rule,
-                zoneId: new mongoose.Types.ObjectId(rule.zoneId),
-            })) as any;
-        }
 
         await rateCard.save();
 
@@ -495,7 +438,8 @@ export const getRateCardAnalytics = async (req: Request, res: Response, next: Ne
         const stats = await RateCardAnalyticsService.getRateCardUsageStats(
             rateCardId,
             startDate,
-            endDate
+            endDate,
+            rateCard.name
         );
 
         sendSuccess(res, { stats }, 'Rate card analytics retrieved successfully');
@@ -540,7 +484,8 @@ export const getRateCardRevenueSeries = async (req: Request, res: Response, next
             rateCardId,
             startDate,
             endDate,
-            granularity
+            granularity,
+            rateCard.name
         );
 
         sendSuccess(res, { timeSeries }, 'Revenue time series retrieved successfully');
@@ -559,32 +504,49 @@ export const exportRateCards = async (req: Request, res: Response, next: NextFun
         const rateCards = await RateCard.find({
             companyId,
             isDeleted: false
-        }).populate('zoneRules.zoneId', 'name standardZoneCode').lean();
+        }).lean();
 
-        // Convert to CSV format
         const csvRows: string[] = [];
-        csvRows.push('Name,Carrier,Service Type,Base Price,Min Weight,Max Weight,Zone,Zone Price,Status,Effective Start Date');
+        const csvSafe = (value: any) => {
+            if (value === undefined || value === null) return '';
+            let str = String(value);
+            if (str.includes('"')) str = str.replace(/"/g, '""');
+            if (str.search(/[",\n]/) >= 0) return `"${str}"`;
+            return str;
+        };
 
-        for (const card of rateCards) {
-            const baseRates = card.baseRates || [];
-            const zoneRules = card.zoneRules || [];
-
-            for (const baseRate of baseRates) {
-                for (const zoneRule of zoneRules) {
-                    const zoneName = (zoneRule.zoneId as any)?.standardZoneCode || (zoneRule.zoneId as any)?.name || 'Unknown';
-                    csvRows.push([
-                        `"${card.name}"`,
-                        baseRate.carrier,
-                        baseRate.serviceType,
-                        baseRate.basePrice,
-                        baseRate.minWeight,
-                        baseRate.maxWeight,
-                        zoneName,
-                        zoneRule.additionalPrice,
-                        card.status,
-                        card.effectiveDates.startDate.toISOString().split('T')[0]
-                    ].join(','));
+        csvRows.push('Name,Zone,BaseWeight,BasePrice,AdditionalPricePerKg,Status,EffectiveStartDate,EffectiveEndDate,Category,ShipmentType,MinimumFare,MinimumFareCalculatedOn,CODPercentage,CODMinimumCharge,FuelSurcharge,ZoneBType');
+        const zones = ['A', 'B', 'C', 'D', 'E'];
+        for (const card of rateCards as any[]) {
+            const zonePricing = card.zonePricing || {};
+            if (!Object.keys(zonePricing).length) {
+                throw new ValidationError(`Zone pricing is missing for rate card: ${card.name}`);
+            }
+            const startDate = card.effectiveDates?.startDate ? new Date(card.effectiveDates.startDate).toISOString().split('T')[0] : '';
+            const endDate = card.effectiveDates?.endDate ? new Date(card.effectiveDates.endDate).toISOString().split('T')[0] : '';
+            for (const zone of zones) {
+                const zoneData = zonePricing[`zone${zone}`];
+                if (!zoneData) {
+                    throw new ValidationError(`Zone ${zone} pricing is missing for rate card: ${card.name}`);
                 }
+                csvRows.push([
+                    csvSafe(card.name),
+                    zone,
+                    zoneData.baseWeight ?? '',
+                    zoneData.basePrice ?? '',
+                    zoneData.additionalPricePerKg ?? '',
+                    csvSafe(card.status),
+                    startDate,
+                    endDate,
+                    csvSafe(card.rateCardCategory),
+                    csvSafe(card.shipmentType),
+                    card.minimumFare ?? '',
+                    csvSafe(card.minimumFareCalculatedOn),
+                    card.codPercentage ?? '',
+                    card.codMinimumCharge ?? '',
+                    card.fuelSurcharge ?? '',
+                    csvSafe(card.zoneBType)
+                ].join(','));
             }
         }
 
@@ -640,25 +602,49 @@ export const bulkUpdateRateCards = async (req: Request, res: Response, next: Nex
             );
             updatedCount = rateCards.length;
         } else if (operation === 'adjust_price' && adjustmentType && adjustmentValue !== undefined) {
-            const updateQuery = adjustmentType === 'percentage'
+            const zonePricingUpdateQuery = adjustmentType === 'percentage'
                 ? {
                     $mul: {
-                        'baseRates.$[].basePrice': 1 + adjustmentValue / 100,
-                        'zoneRules.$[].additionalPrice': 1 + adjustmentValue / 100
+                        'zonePricing.zoneA.basePrice': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneA.additionalPricePerKg': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneB.basePrice': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneB.additionalPricePerKg': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneC.basePrice': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneC.additionalPricePerKg': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneD.basePrice': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneD.additionalPricePerKg': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneE.basePrice': 1 + adjustmentValue / 100,
+                        'zonePricing.zoneE.additionalPricePerKg': 1 + adjustmentValue / 100,
                     }
                 }
                 : {
                     $inc: {
-                        'baseRates.$[].basePrice': adjustmentValue,
-                        'zoneRules.$[].additionalPrice': adjustmentValue
+                        'zonePricing.zoneA.basePrice': adjustmentValue,
+                        'zonePricing.zoneA.additionalPricePerKg': adjustmentValue,
+                        'zonePricing.zoneB.basePrice': adjustmentValue,
+                        'zonePricing.zoneB.additionalPricePerKg': adjustmentValue,
+                        'zonePricing.zoneC.basePrice': adjustmentValue,
+                        'zonePricing.zoneC.additionalPricePerKg': adjustmentValue,
+                        'zonePricing.zoneD.basePrice': adjustmentValue,
+                        'zonePricing.zoneD.additionalPricePerKg': adjustmentValue,
+                        'zonePricing.zoneE.basePrice': adjustmentValue,
+                        'zonePricing.zoneE.additionalPricePerKg': adjustmentValue,
                     }
                 };
 
+            const zonePricingIds = rateCards
+                .filter((card: any) => !!card.zonePricing && Object.keys(card.zonePricing || {}).length > 0)
+                .map((card: any) => card._id);
+
+            if (zonePricingIds.length !== rateCards.length) {
+                throw new ValidationError('Some rate cards do not have zone pricing configured');
+            }
+
             await RateCard.updateMany(
-                { _id: { $in: rateCardIds.map(id => new mongoose.Types.ObjectId(id)) } },
-                updateQuery as any
+                { _id: { $in: zonePricingIds } },
+                zonePricingUpdateQuery as any
             );
-            updatedCount = rateCards.length;
+            updatedCount = zonePricingIds.length;
         }
 
         await createAuditLog(
@@ -702,7 +688,6 @@ export const importRateCards = async (req: Request, res: Response, next: NextFun
                 overrides = {
                     fuelSurcharge: parsed.fuelSurcharge ? Number(parsed.fuelSurcharge) : undefined,
                     fuelSurchargeBase: parsed.fuelSurchargeBase,
-                    minimumCall: parsed.minimumCall ? Number(parsed.minimumCall) : undefined,
                     version: parsed.version,
                     isLocked: parsed.isLocked === true || parsed.isLocked === 'true'
                 };
@@ -1001,12 +986,17 @@ export const getApplicableRateCards = async (req: Request, res: Response, next: 
         const effectiveDate = req.query.effectiveDate ? new Date(req.query.effectiveDate as string) : new Date();
 
         const rateCards = await RateCard.find({
-            companyId: auth.companyId,
             status: 'active',
-            'effectiveDates.startDate': { $lte: effectiveDate },
-            $or: [
-                { 'effectiveDates.endDate': { $exists: false } },
-                { 'effectiveDates.endDate': { $gte: effectiveDate } }
+            isDeleted: false,
+            $and: [
+                { $or: [{ companyId: auth.companyId }, { scope: 'global' }] },
+                { 'effectiveDates.startDate': { $lte: effectiveDate } },
+                {
+                    $or: [
+                        { 'effectiveDates.endDate': { $exists: false } },
+                        { 'effectiveDates.endDate': { $gte: effectiveDate } }
+                    ]
+                }
             ]
         }).sort({ priority: -1 }).lean();
 

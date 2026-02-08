@@ -1,73 +1,85 @@
 "use client";
 
 import { Input } from '@/src/components/ui/core/Input';
+import { Select } from '@/src/components/ui/form/Select';
 import { RateCardFormData, zoneMappings } from '../../components/ratecardWizard.utils';
 
 interface Step2ZonePricingProps {
     formData: RateCardFormData;
     onChange: (field: keyof RateCardFormData, value: RateCardFormData[keyof RateCardFormData]) => void;
-    multipliers: Record<string, number>;
     isReadOnly?: boolean;
 }
 
-export function Step2ZonePricing({ formData, onChange, multipliers, isReadOnly = false }: Step2ZonePricingProps) {
+const ZONES = [
+    { key: 'A', label: 'Zone A' },
+    { key: 'B', label: 'Zone B' },
+    { key: 'C', label: 'Zone C' },
+    { key: 'D', label: 'Zone D' },
+    { key: 'E', label: 'Zone E' },
+] as const;
+
+export function Step2ZonePricing({ formData, onChange, isReadOnly = false }: Step2ZonePricingProps) {
     return (
         <div className="space-y-6">
-            <div>
-                <label className="text-sm font-medium text-[var(--text-secondary)]">First Weight Slab (grams) *</label>
-                <Input
-                    type="number"
-                    value={formData.basicWeight}
-                    onChange={(e) => onChange('basicWeight', e.target.value)}
-                    placeholder="500"
-                    className="mt-2"
-                    disabled={isReadOnly}
-                />
-                <p className="text-xs text-[var(--text-muted)] mt-1">All weights should be entered in grams.</p>
+            <div className="text-sm text-[var(--text-muted)]">
+                Enter pricing per zone. Base Weight is in grams and will be stored in kg.
             </div>
+            <div className="space-y-4">
+                {ZONES.map((zone) => {
+                    const baseWeightField = `zone${zone.key}BaseWeight` as keyof RateCardFormData;
+                    const basePriceField = `zone${zone.key}BasePrice` as keyof RateCardFormData;
+                    const additionalField = `zone${zone.key}AdditionalPricePerKg` as keyof RateCardFormData;
 
-            <div className="space-y-3">
-                {(['A', 'B', 'C', 'D', 'E'] as const).map(zone => (
-                    <div key={zone} className="flex items-center gap-4">
-                        <div className="w-32 text-sm text-[var(--text-secondary)]">Zone {zone}</div>
-                        <div className="flex-1 relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">₹</span>
-                            <Input
-                                type="number"
-                                value={(formData as any)[`basicZone${zone}`]}
-                                onChange={(e) => onChange(`basicZone${zone}` as keyof RateCardFormData, e.target.value)}
-                                placeholder="0"
-                                className="pl-8"
-                                disabled={isReadOnly}
-                            />
-                        </div>
-                        {zone !== 'A' && (
-                            <div className="text-xs text-[var(--text-muted)] min-w-[60px]">
-                                {multipliers[`zone${zone}`] ? `${multipliers[`zone${zone}`]}x` : '—'}
+                    return (
+                        <div key={zone.key} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
+                            <div className="text-sm font-semibold text-[var(--text-primary)] mb-3">{zone.label}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="text-xs font-medium text-[var(--text-secondary)]">Base Weight (gm)</label>
+                                    <Input
+                                        type="number"
+                                        value={formData[baseWeightField] as string}
+                                        onChange={(e) => onChange(baseWeightField, e.target.value)}
+                                        className="mt-2"
+                                        disabled={isReadOnly}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-[var(--text-secondary)]">Base Price (₹)</label>
+                                    <Input
+                                        type="number"
+                                        value={formData[basePriceField] as string}
+                                        onChange={(e) => onChange(basePriceField, e.target.value)}
+                                        className="mt-2"
+                                        disabled={isReadOnly}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-[var(--text-secondary)]">Additional Price per Kg (₹/kg)</label>
+                                    <Input
+                                        type="number"
+                                        value={formData[additionalField] as string}
+                                        onChange={(e) => onChange(additionalField, e.target.value)}
+                                        className="mt-2"
+                                        disabled={isReadOnly}
+                                    />
+                                </div>
                             </div>
-                        )}
-                    </div>
-                ))}
+                        </div>
+                    );
+                })}
             </div>
-
-            <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--text-secondary)]">Zone B Mapping Type *</label>
-                <div className="flex gap-4">
-                    {zoneMappings.map(mapping => (
-                        <label key={mapping} className="flex items-center gap-2 text-sm">
-                            <input
-                                type="radio"
-                                name="zoneBType"
-                                value={mapping}
-                                checked={formData.zoneBType === mapping}
-                                onChange={() => onChange('zoneBType', mapping)}
-                                disabled={isReadOnly}
-                                className="text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                            />
-                            {mapping.charAt(0).toUpperCase() + mapping.slice(1)}-based
-                        </label>
-                    ))}
-                </div>
+            <div className="space-y-2 max-w-[280px]">
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Zone B Type</label>
+                <Select
+                    value={formData.zoneBType}
+                    onChange={(e) => onChange('zoneBType', e.target.value)}
+                    disabled={isReadOnly}
+                    options={zoneMappings.map((value) => ({
+                        label: value === 'state' ? 'Same State' : 'Distance (<= 500km)',
+                        value
+                    }))}
+                />
             </div>
         </div>
     );

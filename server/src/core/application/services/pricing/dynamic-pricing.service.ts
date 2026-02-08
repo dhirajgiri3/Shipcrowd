@@ -1,4 +1,4 @@
-import { RateCard, Zone } from '../../../../infrastructure/database/mongoose/models';
+import { RateCard } from '../../../../infrastructure/database/mongoose/models';
 import CarrierProfile from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/carrier-profile.model';
 import PincodeLookupService from '../logistics/pincode-lookup.service';
 import GSTService from '../finance/gst.service';
@@ -6,7 +6,6 @@ import { getCODChargeService } from './cod-charge.service';
 import { getPricingCache } from './pricing-cache.service';
 import logger from '../../../../shared/logger/winston.logger';
 import PricingMetricsService from '../metrics/pricing-metrics.service';
-import CarrierNormalizationService from '../shipping/carrier-normalization.service';
 import { VolumetricWeightCalculator } from '../../../../shared/utils/volumetric-weight.util';
 
 export interface CalculatePricingInput {
@@ -50,7 +49,6 @@ export interface PricingBreakdown {
         rateCardId?: string;
         pricingVersion?: string;
         carrierRate: number;
-        zoneMultiplier: number;
         cached: boolean;
         breakdown?: {
             baseCharge: number;
@@ -154,22 +152,7 @@ export class DynamicPricingService {
                 );
             }
 
-            // Step 1: Get zone (with cache or external override)
-            const { zone: zoneCode, isSameCity, isSameState, source } = await this.getZoneWithCache(
-                input.fromPincode,
-                input.toPincode,
-                input.externalZone
-            );
-            logger.info(`[DynamicPricing] Zone: ${zoneCode} (Source: ${source})`);
-
-            // Step 1.5: Resolve Zone Code (string) to Zone ID (ObjectId) for RateCard lookup
-            // Ideally cached, but fast enough via index
-            const zoneDoc = await Zone.findOne({
-                companyId: input.companyId,
-                standardZoneCode: zoneCode
-            }).select('_id').lean();
-
-            // Step 2: Get RateCard (with cache)
+            // Step 1: Get RateCard first (to know zoneBType)
             const rateCard = await this.getRateCardWithCache(
                 input.companyId,
                 input.rateCardId
@@ -179,16 +162,19 @@ export class DynamicPricingService {
                 throw new Error(`RateCard not found for company ${input.companyId}`);
             }
 
-            // Step 3: Calculate base shipping cost (using chargeable weight)
-            const costBreakdown = this.calculateShippingCost(
-                rateCard,
-                zoneCode,
-                zoneDoc?._id?.toString(), // Pass ID if found
-                chargeableWeight, // Use chargeable weight (max of actual and volumetric)
-                carrier,
-                serviceType,
-                input.strict
+            // Step 2: Get zone using RateCard's zoneBType configuration
+            const zoneBType = rateCard.zoneBType || 'state';
+
+            const { zone: zoneCode, isSameCity, isSameState, source } = await this.getZoneWithCache(
+                input.fromPincode,
+                input.toPincode,
+                input.externalZone,
+                zoneBType
             );
+            logger.info(`[DynamicPricing] Zone: ${zoneCode} (Source: ${source}, Type: ${zoneBType})`);
+
+            // Step 3: Calculate base shipping cost (using chargeable weight)
+            const costBreakdown = this.calculateZonePricingCost(rateCard, zoneCode, chargeableWeight);
 
 
             // Step 4: Calculate Customer Discount
@@ -270,16 +256,23 @@ export class DynamicPricingService {
                 remoteAreaCharge = rateCard.remoteAreaSurcharge || 0;
             }
 
-            // Step 7: Subtotal & Minimum Call
+            // Step 7: Subtotal & Minimum Fare
             let subTotal = baseShippingCost + codCharge + fuelCharge + remoteAreaCharge;
 
-            // Apply Minimum Call
-            if (rateCard.minimumCall && subTotal < rateCard.minimumCall) {
-                subTotal = rateCard.minimumCall;
-                // Adjust shipping cost to match min call? Or keep distinct?
-                // Usually we just bump the total.
-                // Let's adjust "shipping" component to absorb the difference for breakdown.
-                // But 'total' return is strict.
+            // Apply Minimum Fare
+            // minimumFareCalculatedOn determines the base for minimum calculation:
+            // - 'freight': Minimum applies to (baseShippingCost)
+            // - 'freight_overhead': Minimum applies to (baseShippingCost + codCharge + fuelCharge + remoteAreaCharge)
+            if (rateCard.minimumFare) {
+                const minimumBase = rateCard.minimumFareCalculatedOn === 'freight_overhead'
+                    ? subTotal
+                    : baseShippingCost;
+
+                if (minimumBase < rateCard.minimumFare) {
+                    const difference = rateCard.minimumFare - minimumBase;
+                    // Add the difference to baseShippingCost to meet minimum
+                    subTotal += difference;
+                }
             }
 
             // Step 6: Calculate GST (on shipping + COD)
@@ -312,7 +305,6 @@ export class DynamicPricingService {
                     rateCardId: rateCard._id?.toString(),
                     pricingVersion: (rateCard as any).version || 'v1', // Determinism
                     carrierRate: baseShippingCost,
-                    zoneMultiplier: rateCard.zoneMultipliers?.[zoneCode] || 1.0,
                     cached: false,
                     breakdown: {
                         baseCharge: costBreakdown.base,
@@ -345,7 +337,8 @@ export class DynamicPricingService {
     private async getZoneWithCache(
         fromPincode: string,
         toPincode: string,
-        externalZone?: string
+        externalZone?: string,
+        zoneBType: 'state' | 'distance' = 'state'
     ): Promise<{
         zone: string;
         isSameCity: boolean;
@@ -385,9 +378,13 @@ export class DynamicPricingService {
             };
         }
 
-        // Priority 3: Internal Calculation
+        // Priority 3: Internal Calculation (with zoneBType)
         logger.debug('[DynamicPricing] Zone cache MISS');
-        const zoneInfo = this.pincodeService.getZoneFromPincodes(fromPincode, toPincode);
+        const zoneInfo = this.pincodeService.getZoneFromPincodes(
+            fromPincode,
+            toPincode,
+            zoneBType
+        );
 
         // Cache for future requests
         await this.cacheService.cacheZone(fromPincode, toPincode, zoneInfo.zone);
@@ -445,183 +442,60 @@ export class DynamicPricingService {
     }
 
     /**
-     * Calculate shipping cost from RateCard
+     * Calculate shipping cost using zone pricing (direct zone-to-price mapping)
      */
-    /**
-     * Calculate shipping cost from RateCard
-     */
-    private calculateShippingCost(
+    private calculateZonePricingCost(
         rateCard: any,
         zoneCode: string,
-        zoneId: string | undefined,
-        weight: number,
-        carrier: string,
-        serviceType: string,
-        strict: boolean = false
-    ): { total: number; base: number; weight: number; zone: number, resolution: any } {
-        // Normalize search keys
-        const normCarrier = CarrierNormalizationService.normalizeCarrier(carrier);
-        const normService = CarrierNormalizationService.normalizeServiceType(serviceType);
+        weight: number
+    ): { total: number; base: number; weight: number; zone: number; resolution: any } {
+        const zoneKey = this.normalizeZoneKey(zoneCode);
+        const zonePricing = rateCard.zonePricing?.[zoneKey];
 
-        // 1. Calculate Base Charge
-        let baseRate = 0;
+        if (!zonePricing) {
+            const displayZone = zoneKey || zoneCode;
+            throw new Error(`Zone pricing not configured for ${displayZone} in rate card ${rateCard._id}`);
+        }
+
+        const { baseWeight, basePrice, additionalPricePerKg } = zonePricing;
+
+        // Step 1: Base charge for first X kg
+        let baseCharge = basePrice;
         let weightCharge = 0;
-        let additionalWeight = 0;
 
-        // Search for matching base rate entry (Waterfall Logic)
-        // 1. Exact Match: Carrier + Service
-        // 2. Carrier Default: Carrier + Any/Null Service
-        // 3. Generic: Any/Null Carrier
-
-        const candidates = rateCard.baseRates?.filter(
-            (rate: any) => weight >= rate.minWeight && weight <= rate.maxWeight
-        ) || [];
-
-        let resolutionLevel = 'GENERIC';
-
-        // 1. Exact Match: Carrier + Service
-        let baseRateEntry = candidates.find((r: any) => {
-            const rCarrier = CarrierNormalizationService.normalizeCarrier(r.carrier);
-            const rService = CarrierNormalizationService.normalizeServiceType(r.serviceType);
-            return rCarrier === normCarrier && rService === normService;
-        });
-
-        if (baseRateEntry) {
-            resolutionLevel = 'EXACT';
+        // Step 2: Additional weight charge
+        if (weight > baseWeight) {
+            const additionalKg = weight - baseWeight;
+            weightCharge = additionalKg * additionalPricePerKg;
         }
 
-        if (!baseRateEntry) {
-            // 2. Carrier Default: Carrier + Any/Null Service
-            baseRateEntry = candidates.find((r: any) => {
-                const rCarrier = CarrierNormalizationService.normalizeCarrier(r.carrier);
-                const rService = CarrierNormalizationService.normalizeServiceType(r.serviceType);
-                return rCarrier === normCarrier && (rService === 'any' || !r.serviceType);
-            });
-            if (baseRateEntry) resolutionLevel = 'CARRIER_DEFAULT';
-        }
-
-        if (!baseRateEntry) {
-            // Strict Mode Guard - Fail if we are falling back to generic but strict was requested for a specific courier
-            // Assumption: Strict mode means "I asked for Velocity, only give me Velocity rates".
-            if (strict && normCarrier !== 'any') {
-                const error: any = new Error('PRC_NO_RATE_FOR_CARRIER_SERVICE');
-                error.code = 'PRC_NO_RATE_FOR_CARRIER_SERVICE';
-                throw error;
-            }
-
-            // 3. Generic: Any/Null Carrier
-            baseRateEntry = candidates.find((r: any) => {
-                const rCarrier = CarrierNormalizationService.normalizeCarrier(r.carrier);
-                return rCarrier === 'any' || !r.carrier;
-            });
-            if (baseRateEntry) resolutionLevel = 'GENERIC';
-        }
-
-        if (baseRateEntry) {
-            baseRate = baseRateEntry.basePrice;
-        } else {
-            // Fallback: use highest weight slab... matching specificity if possible?
-            // Existing logic fallback to generic highest seems risky but we will keep it simple for now.
-            // Ideally we should throw specific error if explicit rate expected.
-            // But let's try to find highest weight slab FOR THIS CARRIER.
-
-            const carrierRates = rateCard.baseRates?.filter((r: any) =>
-                CarrierNormalizationService.normalizeCarrier(r.carrier) === normCarrier
-            ) || [];
-
-            // If no rates for this carrier, maybe generic?
-            const pool = carrierRates.length > 0 ? carrierRates : rateCard.baseRates;
-
-            const maxWeightRate = pool?.reduce((max: any, rate: any) =>
-                rate.maxWeight > max.maxWeight ? rate : max
-                , { maxWeight: -1 } as any);
-
-            if (!maxWeightRate || maxWeightRate.maxWeight === -1) {
-                // Should we check generic fallback here explicitly?
-                // Throwing specific error code
-                const error: any = new Error('PRC_NO_RATE_FOR_CARRIER_SERVICE');
-                error.code = 'PRC_NO_RATE_FOR_CARRIER_SERVICE';
-                throw error;
-            }
-
-            baseRate = maxWeightRate.basePrice;
-            additionalWeight = weight - maxWeightRate.maxWeight;
-
-            // Determine price per kg. Match specificity.
-            // Search weightRules
-            const weightRules = rateCard.weightRules || [];
-            let weightRule = weightRules.find((r: any) => {
-                const rCarrier = CarrierNormalizationService.normalizeCarrier(r.carrier);
-                const rService = CarrierNormalizationService.normalizeServiceType(r.serviceType);
-                return rCarrier === normCarrier && rService === normService;
-            });
-
-            if (!weightRule) {
-                weightRule = weightRules.find((r: any) => {
-                    const rCarrier = CarrierNormalizationService.normalizeCarrier(r.carrier);
-                    return rCarrier === normCarrier && (!r.serviceType || r.serviceType === 'any');
-                });
-            }
-
-            if (!weightRule) {
-                weightRule = weightRules.find((r: any) => {
-                    const rCarrier = CarrierNormalizationService.normalizeCarrier(r.carrier);
-                    return rCarrier === 'any' || !r.carrier;
-                });
-            }
-
-            // Absolute fallback
-            const pricePerKg = weightRule?.pricePerKg || 20;
-
-            weightCharge = additionalWeight * pricePerKg;
-        }
-
-        const rawRate = baseRate + weightCharge;
-
-        // 2. Calculate Zone Charge (Multipliers XOR Additives)
-        // Check for specific Zone Rule (Additive) - Filter by carrier too?
-        // Ideally yes, zone rules usually carrier specific.
-
-        let zoneCharge = 0;
-        let zoneRule = rateCard.zoneRules?.find(
-            (r: any) => {
-                if (r.zoneId.toString() !== zoneId) return false;
-                const rCarrier = CarrierNormalizationService.normalizeCarrier(r.carrier);
-                const rService = CarrierNormalizationService.normalizeServiceType(r.serviceType);
-                return rCarrier === normCarrier && rService === normService;
-            }
-        );
-
-        // Fallback Zone Rule
-        if (!zoneRule) {
-            zoneRule = rateCard.zoneRules?.find(
-                (r: any) => r.zoneId.toString() === zoneId && (!r.carrier || r.carrier === 'any')
-            );
-        }
-
-        if (zoneRule) {
-            zoneCharge = zoneRule.additionalPrice;
-        } else {
-            // Fallback to Multiplier (Legacy / Generic)
-            // Ideally assume multiplier is generic unless structured otherwise
-            const zoneMultiplier = rateCard.zoneMultipliers?.[zoneCode] || 1.0;
-            zoneCharge = (rawRate * zoneMultiplier) - rawRate;
-        }
-
-        const total = Math.round((rawRate + zoneCharge) * 100) / 100;
+        const total = Math.round((baseCharge + weightCharge) * 100) / 100;
 
         return {
             total,
-            base: baseRate,
+            base: baseCharge,
             weight: weightCharge,
-            zone: Math.round(zoneCharge * 100) / 100,
+            zone: 0, // Zone cost is already included in base price for simplified model
             resolution: {
-                matchedLevel: resolutionLevel,
-                matchedCarrier: baseRateEntry?.carrier || 'any',
-                matchedServiceType: baseRateEntry?.serviceType || 'any',
-                rateCardId: rateCard._id?.toString()
+                matchedLevel: 'EXACT',
+                matchedCarrier: 'zone_pricing',
+                matchedServiceType: rateCard.shipmentType || 'generic',
+                rateCardId: rateCard._id?.toString(),
+                pricingModel: 'zone_pricing'
             }
         };
+    }
+    private normalizeZoneKey(zoneCode: string): string {
+        const raw = zoneCode?.toString().trim();
+        if (!raw) return '';
+        const normalized = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const letter = normalized.startsWith('zone')
+            ? normalized.replace('zone', '').toUpperCase()
+            : normalized.toUpperCase();
+        if (!['A', 'B', 'C', 'D', 'E'].includes(letter)) {
+            return '';
+        }
+        return `zone${letter}`;
     }
 
     private calculateCustomerDiscount(

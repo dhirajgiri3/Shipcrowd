@@ -51,8 +51,26 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
             return;
         }
 
-        if (!formData.useAdvancedPricing && !formData.isGeneric && (!formData.carrier || !formData.serviceType)) {
-            addToast('Please select a courier and service', 'error');
+        const requiredZoneFields: Array<keyof RateCardFormData> = [
+            'zoneABaseWeight',
+            'zoneABasePrice',
+            'zoneAAdditionalPricePerKg',
+            'zoneBBaseWeight',
+            'zoneBBasePrice',
+            'zoneBAdditionalPricePerKg',
+            'zoneCBaseWeight',
+            'zoneCBasePrice',
+            'zoneCAdditionalPricePerKg',
+            'zoneDBaseWeight',
+            'zoneDBasePrice',
+            'zoneDAdditionalPricePerKg',
+            'zoneEBaseWeight',
+            'zoneEBasePrice',
+            'zoneEAdditionalPricePerKg'
+        ];
+        const missingField = requiredZoneFields.find(field => !formData[field]);
+        if (missingField) {
+            addToast('Please fill all zone pricing fields before saving', 'error');
             return;
         }
 
@@ -92,7 +110,7 @@ export function EditRatecardClient({ rateCardId }: EditRatecardClientProps) {
                             Edit Rate Card
                         </h1>
                         <p className="text-[var(--text-muted)] text-sm mt-1">
-                            Modify pricing for this service
+                            Modify zone-based pricing for this rate card
                         </p>
                     </div>
                 </div>

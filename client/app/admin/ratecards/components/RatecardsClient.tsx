@@ -35,7 +35,6 @@ import { RateCardItem } from './RateCardItem';
 import { BulkActionsPanel } from './BulkActionsPanel';
 import { useDebouncedValue } from '@/src/hooks/data';
 import { useAdminCompanies } from '@/src/core/api/hooks/admin/companies/useCompanies';
-import { useCouriers } from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import {
     Dialog,
     DialogContent,
@@ -45,6 +44,8 @@ import {
     DialogTitle,
 } from '@/src/components/ui/feedback/Dialog';
 
+import { Pagination } from '@/src/components/ui/data/Pagination';
+
 export function RatecardsClient() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -53,8 +54,12 @@ export function RatecardsClient() {
     const debouncedSearch = useDebouncedValue(searchInput, 400);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive' | 'draft' | 'expired'>('all');
     const [selectedCompanyId, setSelectedCompanyId] = useState<string>('all');
-    const [selectedCourier, setSelectedCourier] = useState<string>('all');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
+
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [showBulkActions, setShowBulkActions] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
@@ -62,7 +67,6 @@ export function RatecardsClient() {
     const [cloneTarget, setCloneTarget] = useState<{ id: string; name: string } | null>(null);
     const { addToast } = useToast();
     const { data: companiesData } = useAdminCompanies({ limit: 200 });
-    const { data: couriers = [] } = useCouriers();
 
     useEffect(() => {
         if (debouncedSearch === search) return;
@@ -75,6 +79,11 @@ export function RatecardsClient() {
         router.push(`?${params.toString()}`, { scroll: false });
     }, [debouncedSearch, search, searchParams, router]);
 
+    // Reset pagination when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, selectedStatus, selectedCompanyId, selectedCategory]);
+
     useEffect(() => {
         setSelectedCards([]);
     }, [selectedCompanyId]);
@@ -84,13 +93,15 @@ export function RatecardsClient() {
         status: selectedStatus === 'all' ? undefined : selectedStatus,
         companyId: selectedCompanyId === 'all' ? undefined : selectedCompanyId,
         search: debouncedSearch || undefined,
-        carrier: selectedCourier === 'all' ? undefined : selectedCourier,
         category: selectedCategory === 'all' ? undefined : selectedCategory,
+        page,
+        limit,
     });
     const { data: statsData } = useAdminRateCardStats({
         companyId: selectedCompanyId === 'all' ? undefined : selectedCompanyId
     });
     const rateCards = adminData?.rateCards || [];
+    const pagination = adminData?.pagination || {};
 
     // Bulk operations hooks
     const { mutate: bulkUpdate, isPending: isBulkUpdating } = useBulkUpdateRateCards();
@@ -100,20 +111,16 @@ export function RatecardsClient() {
     const { mutate: cloneCard, isPending: isCloning } = useCloneAdminRateCard();
     const { mutate: deleteCard, isPending: isDeleting } = useDeleteAdminRateCard();
 
-    const filteredRateCards = useMemo(() => {
-        if (!debouncedSearch) return rateCards;
-        const term = debouncedSearch.toLowerCase();
-        return rateCards.filter(card => card.name.toLowerCase().includes(term));
-    }, [rateCards, debouncedSearch]);
-
-    const courierOptions = useMemo(() => {
-        return couriers.map(courier => ({
-            value: courier.id,
-            label: courier.name,
-        }));
-    }, [couriers]);
+    // Frontend filtering is NOT needed if backend handles search, 
+    // BUT since we might want to support client-side search on current page if API doesn't fully support it (it does),
+    // we can keep it simple. However, best practice with pagination is to rely on backend results.
+    // The previous code did client-side filtering on the fetched data. 
+    // Since we are now paginating, `rateCards` only contains the current page.
+    // So we should rely on the API's search.
+    const filteredRateCards = rateCards;
 
     const categoryOptions = useMemo(() => {
+        // ideally categories should come from a separate API or aggregation
         const categories = new Set<string>();
         rateCards.forEach(card => {
             if (card.rateCardCategory) categories.add(card.rateCardCategory);
@@ -138,7 +145,7 @@ export function RatecardsClient() {
     const effectiveCompanyId = selectedCompanyId !== 'all' ? selectedCompanyId : inferredCompanyId;
     const canBulkOperate = !!effectiveCompanyId && selectedCards.length > 0 && selectedCardsCompanyIds.size <= 1;
     const canExport = !!effectiveCompanyId;
-    const canImport = !!effectiveCompanyId;
+    const canImport = companyOptions.length > 0;
 
     const handleClone = (id: string, name: string) => {
         setCloneTarget({ id, name });
@@ -146,6 +153,15 @@ export function RatecardsClient() {
 
     const handleDelete = (id: string, name: string) => {
         setDeleteTarget({ id, name });
+    };
+
+    const downloadTemplate = () => {
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_ratecard_zone_pricing_template.csv';
+        link.download = 'shipcrowd_ratecard_zone_pricing_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleSelectAll = () => {
@@ -226,6 +242,8 @@ export function RatecardsClient() {
         );
     }
 
+    // Don't block UI with full page loader on subsequent fetches (like page change)
+    // adminData check ensures we show loader only on FIRST load
     if (isLoading && !adminData) {
         return <Loader centered size="lg" message="Loading rate cards..." />;
     }
@@ -240,7 +258,7 @@ export function RatecardsClient() {
                         Rate Cards Management
                     </h1>
                     <p className="text-sm mt-1 text-[var(--text-secondary)]">
-                        Configure and manage courier pricing rules
+                        Configure and manage zone-based pricing rules
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -248,7 +266,7 @@ export function RatecardsClient() {
                         variant="outline"
                         onClick={() => {
                             if (!canImport) {
-                                addToast('Select a company to import rate cards', 'error');
+                                addToast('No companies available to import rate cards', 'error');
                                 return;
                             }
                             setShowImportModal(true);
@@ -256,6 +274,9 @@ export function RatecardsClient() {
                         disabled={!canImport}
                     >
                         <Upload className="h-4 w-4 mr-2" /> Import
+                    </Button>
+                    <Button variant="outline" onClick={downloadTemplate}>
+                        <Download className="h-4 w-4 mr-2" /> CSV Template
                     </Button>
                     <Link href="/admin/ratecards/create">
                         <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20">
@@ -348,23 +369,6 @@ export function RatecardsClient() {
                             </div>
                         </div>
 
-                        {/* Courier Filter */}
-                        <div className="relative min-w-[180px]">
-                            <select
-                                value={selectedCourier}
-                                onChange={(e) => setSelectedCourier(e.target.value)}
-                                className="w-full h-10 pl-3 pr-8 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none cursor-pointer"
-                            >
-                                <option value="all">All Couriers</option>
-                                {courierOptions.map(courier => (
-                                    <option key={courier.value} value={courier.value}>{courier.label}</option>
-                                ))}
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                <MoreVertical className="h-4 w-4 text-[var(--text-muted)] opacity-50" />
-                            </div>
-                        </div>
-
                         {/* Category Filter */}
                         <div className="relative min-w-[180px]">
                             <select
@@ -397,18 +401,18 @@ export function RatecardsClient() {
                             <span className="hidden sm:inline">Select & Edit</span>
                         </Button>
 
-                    <Button
-                        variant="ghost"
-                        onClick={() => {
-                            if (!effectiveCompanyId) {
-                                addToast('Select a company (or cards from one company) to export rate cards', 'error');
-                                return;
-                            }
-                            exportCards({ companyId: effectiveCompanyId });
-                        }}
-                        disabled={isExporting || !canExport}
-                        className="gap-2"
-                    >
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                if (!effectiveCompanyId) {
+                                    addToast('Select a company (or cards from one company) to export rate cards', 'error');
+                                    return;
+                                }
+                                exportCards({ companyId: effectiveCompanyId });
+                            }}
+                            disabled={isExporting || !canExport}
+                            className="gap-2"
+                        >
                             <Download className="h-4 w-4" />
                             <span className="hidden sm:inline">Export</span>
                         </Button>
@@ -443,48 +447,6 @@ export function RatecardsClient() {
                                             {selectedCards.length} Selected
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleBulkActivate}
-                                            disabled={!canBulkOperate || isBulkUpdating}
-                                            className="h-8 text-xs bg-white dark:bg-black"
-                                        >
-                                            <Power className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-                                            Activate
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleBulkDeactivate}
-                                            disabled={!canBulkOperate || isBulkUpdating}
-                                            className="h-8 text-xs bg-white dark:bg-black"
-                                        >
-                                            <PowerOff className="h-3.5 w-3.5 mr-1.5 text-red-500" />
-                                            Deactivate
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleBulkPriceAdjustment('increase')}
-                                            disabled={!canBulkOperate || isBulkUpdating}
-                                            className="h-8 text-xs bg-white dark:bg-black"
-                                        >
-                                            <TrendingUp className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                                            Increase Price
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleBulkPriceAdjustment('decrease')}
-                                            disabled={!canBulkOperate || isBulkUpdating}
-                                            className="h-8 text-xs bg-white dark:bg-black"
-                                        >
-                                            <TrendingDown className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
-                                            Decrease Price
-                                        </Button>
-                                    </div>
                                 </div>
                             </motion.div>
                         )}
@@ -492,18 +454,20 @@ export function RatecardsClient() {
                 </div>
             </Card>
 
-            {selectedCards.length > 0 && (
-                <BulkActionsPanel
-                    selectedCount={selectedCards.length}
-                    onActivate={handleBulkActivate}
-                    onDeactivate={handleBulkDeactivate}
-                    onAdjustPrice={(type, value) => {
-                        handleBulkPriceAdjustment(type, value);
-                        setTimeout(() => setShowBulkActions(false), 0);
-                    }}
-                    disabled={!canBulkOperate || isBulkUpdating}
-                />
-            )}
+            {
+                selectedCards.length > 0 && (
+                    <BulkActionsPanel
+                        selectedCount={selectedCards.length}
+                        onActivate={handleBulkActivate}
+                        onDeactivate={handleBulkDeactivate}
+                        onAdjustPrice={(type, value) => {
+                            handleBulkPriceAdjustment(type, value);
+                            setTimeout(() => setShowBulkActions(false), 0);
+                        }}
+                        disabled={!canBulkOperate || isBulkUpdating}
+                    />
+                )
+            }
 
             {/* Rate Cards Grid */}
             <div className="grid gap-6 md:grid-cols-2">
@@ -525,45 +489,68 @@ export function RatecardsClient() {
             </div>
 
             {/* Empty State */}
-            {filteredRateCards.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-center bg-[var(--bg-secondary)] rounded-2xl border-2 border-dashed border-[var(--border-subtle)]">
-                    <div className="h-16 w-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mb-4">
-                        <Search className="h-8 w-8 text-[var(--text-muted)]" />
-                    </div>
-                    <h3 className="text-lg font-medium text-[var(--text-primary)]">No rate cards found</h3>
-                    <p className="mt-1 text-[var(--text-secondary)] max-w-sm">
-                        {searchInput
-                            ? `No results found for "${searchInput}". Try a different search term.`
-                            : "Get started by creating a new rate card or importing an existing one."}
-                    </p>
-                    <div className="flex gap-3 mt-6">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setSearchInput('');
-                                setSelectedStatus('all');
-                                setSelectedCompanyId('all');
-                                setSelectedCourier('all');
-                                setSelectedCategory('all');
-                            }}
-                        >
-                            Clear Filters
-                        </Button>
-                        <Link href="/admin/ratecards/create">
-                            <Button>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Create New
+            {
+                filteredRateCards.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-center bg-[var(--bg-secondary)] rounded-2xl border-2 border-dashed border-[var(--border-subtle)]">
+                        <div className="h-16 w-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mb-4">
+                            <Search className="h-8 w-8 text-[var(--text-muted)]" />
+                        </div>
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No rate cards found</h3>
+                        <p className="mt-1 text-[var(--text-secondary)] max-w-sm">
+                            {searchInput
+                                ? `No results found for "${searchInput}". Try a different search term.`
+                                : "Get started by creating a new rate card or importing an existing one."}
+                        </p>
+                        <div className="flex gap-3 mt-6">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setSearchInput('');
+                                    setSelectedStatus('all');
+                                    setSelectedCompanyId('all');
+                                    setSelectedCategory('all');
+                                }}
+                            >
+                                Clear Filters
                             </Button>
-                        </Link>
+                            <Link href="/admin/ratecards/create">
+                                <Button>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Create New
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Pagination Component */}
+            {
+                filteredRateCards.length > 0 && pagination && (
+                    <Card className="border-[var(--border-subtle)] overflow-hidden mt-4">
+                        <Pagination
+                            currentPage={page}
+                            totalPages={pagination.pages || 1}
+                            totalItems={pagination.total || 0}
+                            pageSize={limit}
+                            onPageChange={setPage}
+                            onPageSizeChange={(newSize) => {
+                                setLimit(newSize);
+                                setPage(1);
+                            }}
+                            pageSizeOptions={[10, 20, 50, 100]}
+                            className="border-none"
+                        />
+                    </Card>
+                )
+            }
 
             <UploadRateCardModal
                 isOpen={showImportModal}
                 onClose={() => setShowImportModal(false)}
                 onSuccess={() => refetch()}
-                companyId={effectiveCompanyId || ''}
+                companyId={effectiveCompanyId || undefined}
+                companies={companyOptions}
             />
 
             <Dialog open={!!cloneTarget} onOpenChange={(open) => !open && setCloneTarget(null)}>
@@ -639,6 +626,6 @@ export function RatecardsClient() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

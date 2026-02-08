@@ -14,7 +14,7 @@ export interface RateCardUsageStats {
 export class RateCardAnalyticsService {
     private static instance: RateCardAnalyticsService;
 
-    private constructor() {}
+    private constructor() { }
 
     public static getInstance(): RateCardAnalyticsService {
         if (!RateCardAnalyticsService.instance) {
@@ -26,15 +26,24 @@ export class RateCardAnalyticsService {
     async getRateCardUsageStats(
         rateCardId: string,
         startDate?: Date,
-        endDate?: Date
+        endDate?: Date,
+        rateCardName?: string
     ): Promise<RateCardUsageStats> {
         try {
             const dateFilter: any = {};
             if (startDate) dateFilter.$gte = startDate;
             if (endDate) dateFilter.$lte = endDate;
 
+            const rateCardMatchers: any[] = [
+                { 'pricingDetails.rateCardId': new mongoose.Types.ObjectId(rateCardId) },
+                { 'pricingDetails.rateCardId': rateCardId }
+            ];
+            if (rateCardName) {
+                rateCardMatchers.push({ 'pricingDetails.rateCardName': rateCardName });
+            }
+
             const matchStage: any = {
-                'pricingDetails.rateCardId': new mongoose.Types.ObjectId(rateCardId),
+                $or: rateCardMatchers,
                 isDeleted: false
             };
 
@@ -49,8 +58,16 @@ export class RateCardAnalyticsService {
                     $group: {
                         _id: null,
                         totalShipments: { $sum: 1 },
-                        totalRevenue: { $sum: '$pricingDetails.totalPrice' },
-                        avgCost: { $avg: '$pricingDetails.totalPrice' },
+                        totalRevenue: {
+                            $sum: {
+                                $ifNull: ['$pricingDetails.totalPrice', '$paymentDetails.shippingCost']
+                            }
+                        },
+                        avgCost: {
+                            $avg: {
+                                $ifNull: ['$pricingDetails.totalPrice', '$paymentDetails.shippingCost']
+                            }
+                        },
                         zones: { $push: '$pricingDetails.zone' },
                         carriers: { $push: '$carrier' }
                     }
@@ -103,7 +120,8 @@ export class RateCardAnalyticsService {
         rateCardId: string,
         startDate: Date,
         endDate: Date,
-        granularity: 'day' | 'week' | 'month' = 'day'
+        granularity: 'day' | 'week' | 'month' = 'day',
+        rateCardName?: string
     ): Promise<Array<{ date: string; revenue: number; count: number }>> {
         try {
             const groupByFormat = granularity === 'day'
@@ -112,10 +130,18 @@ export class RateCardAnalyticsService {
                     ? '%Y-%U'
                     : '%Y-%m';
 
+            const rateCardMatchers: any[] = [
+                { 'pricingDetails.rateCardId': new mongoose.Types.ObjectId(rateCardId) },
+                { 'pricingDetails.rateCardId': rateCardId }
+            ];
+            if (rateCardName) {
+                rateCardMatchers.push({ 'pricingDetails.rateCardName': rateCardName });
+            }
+
             const timeSeries = await Shipment.aggregate([
                 {
                     $match: {
-                        'pricingDetails.rateCardId': new mongoose.Types.ObjectId(rateCardId),
+                        $or: rateCardMatchers,
                         createdAt: { $gte: startDate, $lte: endDate },
                         isDeleted: false
                     }
@@ -123,7 +149,11 @@ export class RateCardAnalyticsService {
                 {
                     $group: {
                         _id: { $dateToString: { format: groupByFormat, date: '$createdAt' } },
-                        revenue: { $sum: '$pricingDetails.totalPrice' },
+                        revenue: {
+                            $sum: {
+                                $ifNull: ['$pricingDetails.totalPrice', '$paymentDetails.shippingCost']
+                            }
+                        },
                         count: { $sum: 1 }
                     }
                 },

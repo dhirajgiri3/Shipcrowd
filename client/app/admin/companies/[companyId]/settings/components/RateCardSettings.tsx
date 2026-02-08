@@ -121,7 +121,7 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
                                                 )}
                                             </div>
                                             <p className="text-xs text-gray-500 mt-1">
-                                                {rateCard.baseRates?.length || 0} base rates configured
+                                                {Object.keys(rateCard.zonePricing || {}).length || 0} zones configured
                                             </p>
                                             <div className="flex gap-2 mt-2">
                                                 {rateCard.version && (
@@ -134,9 +134,9 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
                                                         <Zap className="h-3 w-3" /> Fuel: {rateCard.fuelSurcharge}%
                                                     </Badge>
                                                 ) : null}
-                                                {rateCard.minimumCall ? (
+                                                {rateCard.minimumFare ? (
                                                     <Badge variant="secondary" className="text-xs">
-                                                        Min: ₹{rateCard.minimumCall}
+                                                        Min: ₹{rateCard.minimumFare}
                                                     </Badge>
                                                 ) : null}
                                                 {rateCard.isLocked && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,7 +11,8 @@ import {
     Loader2,
     Settings2,
     Lock,
-    Zap
+    Zap,
+    Download
 } from "lucide-react";
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
@@ -24,20 +25,31 @@ interface UploadRateCardModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: () => void;
-    companyId: string;
+    companyId?: string;
+    companies?: Array<{ _id: string; name: string }>;
 }
 
-export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: UploadRateCardModalProps) {
+export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId, companies = [] }: UploadRateCardModalProps) {
     const { addToast } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [selectedCompanyId, setSelectedCompanyId] = useState<string>(companyId || companies[0]?._id || '');
 
     // V2 Fields
-    const [version, setVersion] = useState('v1');
+    const [version, setVersion] = useState('v2');
     const [fuelSurcharge, setFuelSurcharge] = useState<string>('0');
-    const [minCall, setMinCall] = useState<string>('0');
     const [isLocked, setIsLocked] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
+
+    useEffect(() => {
+        if (companyId) {
+            setSelectedCompanyId(companyId);
+            return;
+        }
+        if (!selectedCompanyId && companies.length > 0) {
+            setSelectedCompanyId(companies[0]._id);
+        }
+    }, [companyId, companies, selectedCompanyId]);
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
@@ -56,7 +68,7 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
     });
 
     const handleUpload = async () => {
-        if (!companyId) {
+        if (!selectedCompanyId) {
             addToast('Please select a company before importing rate cards', 'error');
             return;
         }
@@ -69,13 +81,12 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('companyId', companyId);
+        formData.append('companyId', selectedCompanyId);
 
         // Append Metadata
         const metadata = {
             version,
             fuelSurcharge: Number(fuelSurcharge),
-            minimumCall: Number(minCall),
             isLocked,
             fuelSurchargeBase: 'freight' // Default for now
         };
@@ -100,6 +111,15 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
         }
     };
 
+    const downloadSample = (url: string, filename: string) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <Modal
             isOpen={isOpen}
@@ -108,6 +128,26 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
             size="md"
         >
             <div className="space-y-6">
+                {/* Company Selection */}
+                {companies.length > 0 && (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                            Company
+                        </label>
+                        <select
+                            value={selectedCompanyId}
+                            onChange={(e) => setSelectedCompanyId(e.target.value)}
+                            className="w-full h-10 px-3 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border border-[var(--border-default)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)]/20 transition-all"
+                        >
+                            {companies.map((company) => (
+                                <option key={company._id} value={company._id}>
+                                    {company.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
                 {/* Dropzone */}
                 {!file ? (
                     <div
@@ -152,6 +192,27 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
                     </div>
                 )}
 
+                {/* Sample Templates */}
+                <div className="bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-subtle)] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                        <p className="text-sm font-medium text-[var(--text-primary)]">Need a CSV template?</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                            Download the exact import format. Zone Pricing uses zones A–E with BaseWeight in kg.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadSample('/samples/shipcrowd_ratecard_zone_pricing_template.csv', 'shipcrowd_ratecard_zone_pricing_template.csv')}
+                        >
+                            <Download className="h-4 w-4 mr-2" />
+                            Zone Pricing CSV
+                        </Button>
+                    </div>
+                </div>
+
                 {/* Advanced Settings Toggle */}
                 <div>
                     <button
@@ -159,7 +220,7 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
                         className="flex items-center gap-2 text-sm text-[var(--primary-blue)] font-medium hover:underline"
                     >
                         <Settings2 className="h-4 w-4" />
-                        {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options (Fuel, MinCall)'}
+                        {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options (Fuel, Version, Lock)'}
                     </button>
                 </div>
 
@@ -172,7 +233,7 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
                             className="overflow-hidden"
                         >
                             <div className="space-y-4 p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4">
                                     <div>
                                         <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
                                             Version Tag
@@ -182,18 +243,6 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
                                             value={version}
                                             onChange={(e) => setVersion(e.target.value)}
                                             placeholder="e.g. v2"
-                                            size="sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
-                                            Min Call Charge (₹)
-                                        </label>
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            value={minCall}
-                                            onChange={(e) => setMinCall(e.target.value)}
                                             size="sm"
                                         />
                                     </div>
@@ -246,7 +295,7 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess, companyId }: U
                     <Button
                         variant="primary"
                         onClick={handleUpload}
-                        disabled={!file || uploading}
+                        disabled={!file || uploading || !selectedCompanyId}
                         className="flex-1"
                     >
                         {uploading ? (

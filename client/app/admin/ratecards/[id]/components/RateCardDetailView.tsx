@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
@@ -12,6 +12,15 @@ import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/src/components/ui/feedback/Dialog';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import {
     ArrowLeft,
     BarChart3,
     Copy,
@@ -22,7 +31,6 @@ import {
     Clock,
     History,
     Users,
-    ChevronRight,
     Package,
     IndianRupee,
     TrendingUp
@@ -31,7 +39,6 @@ import { useAdminRateCard, useCloneAdminRateCard, useUpdateAdminRateCard } from 
 import { useAdminRateCardAnalytics, useAdminRateCardHistory } from '@/src/core/api/hooks/admin/useAdminRateCardAnalytics';
 import { useRateCardAssignments } from '@/src/core/api/hooks/admin/useRateCardManagement';
 import { formatCurrency, cn } from '@/src/lib/utils';
-import { motion } from 'framer-motion';
 
 interface RateCardDetailViewProps {
     rateCardId: string;
@@ -40,27 +47,69 @@ interface RateCardDetailViewProps {
 
 export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateCardDetailViewProps) {
     const router = useRouter();
+    const { addToast } = useToast();
     const { data: rateCard, isLoading } = useAdminRateCard(rateCardId);
-    const { data: analytics } = useAdminRateCardAnalytics({ rateCardId });
+
+    // Dialog state
+    const [cloneTarget, setCloneTarget] = useState<{ id: string; name: string } | null>(null);
+
+    const usageDateRange = useMemo(() => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 30);
+        return { startDate: start, endDate: end };
+    }, []);
+
+    const { data: stats } = useAdminRateCardAnalytics({
+        rateCardId,
+        startDate: usageDateRange.startDate,
+        endDate: usageDateRange.endDate
+    });
+    const defaultAnalytics = {
+        totalShipments: 0,
+        totalRevenue: 0,
+        averageCost: 0,
+        zoneDistribution: {},
+        topCarriers: [],
+        topCustomers: []
+    };
+
+    const analytics = stats || defaultAnalytics;
+
     const { data: historyData } = useAdminRateCardHistory({ rateCardId, page: 1, limit: 20 });
     const { data: assignmentsData } = useRateCardAssignments();
     const { mutate: cloneCard, isPending: isCloning } = useCloneAdminRateCard();
     const { mutate: updateCard, isPending: isUpdating } = useUpdateAdminRateCard();
 
     const assignments = useMemo(() => {
-        const items = (assignmentsData as any)?.assignments || [];
-        return items.filter((assignment: any) => assignment.rateCardId === rateCardId && assignment.isActive);
+        const items = assignmentsData?.assignments || [];
+        return items.filter((assignment) => assignment.rateCardId === rateCardId && assignment.isActive);
     }, [assignmentsData, rateCardId]);
+
+    const handleClone = () => {
+        if (rateCard) {
+            setCloneTarget({ id: rateCardId, name: rateCard.name });
+        }
+    };
 
     if (isLoading || !rateCard) {
         return <Loader centered size="lg" message="Loading rate card..." />;
     }
 
-    const baseRates = rateCard.baseRates || [];
     const company = typeof rateCard.companyId === 'string' ? null : rateCard.companyId;
-    const zoneRules = rateCard.zoneRules || [];
-    const hasMultipliers = !!rateCard.zoneMultipliers && Object.keys(rateCard.zoneMultipliers).length > 0;
+    const zonePricing = rateCard.zonePricing || {};
+    const hasZonePricing = Object.keys(zonePricing).length > 0;
     const isActive = rateCard.status === 'active';
+    const zonePricingRows = ['A', 'B', 'C', 'D', 'E'].map((zone) => {
+        const key = `zone${zone}` as keyof typeof zonePricing;
+        const zoneData = (zonePricing as any)?.[key];
+        return {
+            key: zone,
+            baseWeight: zoneData?.baseWeight ?? 0,
+            basePrice: zoneData?.basePrice ?? 0,
+            additionalPricePerKg: zoneData?.additionalPricePerKg ?? 0
+        };
+    });
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20 max-w-[1600px] mx-auto">
@@ -86,52 +135,52 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                             <History className="h-3.5 w-3.5" />
                             Version {rateCard.versionNumber || rateCard.version || '1.0'}
                         </span>
-                        {company && (
-                            <span className="flex items-center gap-1.5 bg-[var(--bg-secondary)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">
-                                <Users className="h-3.5 w-3.5" />
-                                {company.name}
-                            </span>
-                        )}
+                        <span className="flex items-center gap-1.5 bg-[var(--bg-secondary)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">
+                            <Users className="h-3.5 w-3.5" />
+                            {company ? company.name : 'Global'}
+                        </span>
                     </>
                 }
                 actions={
                     <>
-                        <Link href={`/admin/ratecards/${rateCardId}/edit`}>
-                            <Button variant="outline" className="shadow-sm">
-                                <Edit2 className="h-4 w-4 mr-2" />
-                                Edit
+                        <div className="flex items-center gap-2">
+                            <Link href={`/admin/ratecards/${rateCardId}/edit`}>
+                                <Button variant="outline" className="shadow-sm">
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Edit
+                                </Button>
+                            </Link>
+                            <Button
+                                variant="outline"
+                                onClick={handleClone}
+                                disabled={isCloning}
+                                className="shadow-sm"
+                            >
+                                <Copy className="h-4 w-4 mr-2" />
+                                {isCloning ? 'Cloning...' : 'Clone'}
                             </Button>
-                        </Link>
-                        <Button
-                            variant="outline"
-                            onClick={() => cloneCard(rateCardId)}
-                            disabled={isCloning}
-                            className="shadow-sm"
-                        >
-                            <Copy className="h-4 w-4 mr-2" />
-                            {isCloning ? 'Cloning...' : 'Clone'}
-                        </Button>
-                        <Button
-                            variant={isActive ? "outline" : "primary"}
-                            onClick={() => updateCard({ id: rateCardId, data: { status: isActive ? 'inactive' : 'active' } })}
-                            disabled={isUpdating}
-                            className={cn(
-                                "shadow-sm",
-                                isActive ? "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200" : "bg-green-600 hover:bg-green-700 text-white"
-                            )}
-                        >
-                            {isActive ? (
-                                <><PowerOff className="h-4 w-4 mr-2" /> Deactivate</>
-                            ) : (
-                                <><Power className="h-4 w-4 mr-2" /> Activate</>
-                            )}
-                        </Button>
-                        <Link href={`/admin/ratecards/${rateCardId}/analytics`}>
-                            <Button variant="secondary" className="bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]">
-                                <BarChart3 className="h-4 w-4 mr-2" />
-                                Analytics
+                            <Button
+                                variant={isActive ? "outline" : "primary"}
+                                onClick={() => updateCard({ id: rateCardId, data: { status: isActive ? 'inactive' : 'active' } })}
+                                disabled={isUpdating}
+                                className={cn(
+                                    "shadow-sm",
+                                    isActive ? "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200" : "bg-green-600 hover:bg-green-700 text-white"
+                                )}
+                            >
+                                {isActive ? (
+                                    <><PowerOff className="h-4 w-4 mr-2" /> Deactivate</>
+                                ) : (
+                                    <><Power className="h-4 w-4 mr-2" /> Activate</>
+                                )}
                             </Button>
-                        </Link>
+                            <Link href={`/admin/ratecards/${rateCardId}/analytics`}>
+                                <Button variant="secondary" className="bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]">
+                                    <BarChart3 className="h-4 w-4 mr-2" />
+                                    Analytics
+                                </Button>
+                            </Link>
+                        </div>
                     </>
                 }
             />
@@ -181,12 +230,14 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                                 </CardHeader>
                                 <CardContent className="pt-4 grid grid-cols-2 md:grid-cols-4 gap-6">
                                     <div>
-                                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Carrier</p>
-                                        <p className="font-semibold text-[var(--text-primary)]">{baseRates?.[0]?.carrier || '—'}</p>
+                                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Pricing Type</p>
+                                        <p className="font-semibold text-[var(--text-primary)]">Zone Pricing</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Service</p>
-                                        <p className="font-semibold text-[var(--text-primary)]">{baseRates?.[0]?.serviceType || '—'}</p>
+                                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Zone B Type</p>
+                                        <p className="font-semibold text-[var(--text-primary)] capitalize">
+                                            {rateCard.zoneBType === 'distance' ? 'Distance' : 'State'}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Category</p>
@@ -207,56 +258,30 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                                         Zone Pricing
                                     </CardTitle>
                                     <div className="flex gap-4 text-sm text-[var(--text-muted)]">
-                                        <span>Base Price: <span className="font-mono font-medium text-[var(--text-primary)]">₹{baseRates?.[0]?.basePrice || 0}</span></span>
+                                        <span>
+                                            Zone A Base: <span className="font-mono font-medium text-[var(--text-primary)]">₹{zonePricingRows[0]?.basePrice || 0}</span>
+                                        </span>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="pt-4">
-                                    {hasMultipliers ? (
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                                            {['A', 'B', 'C', 'D', 'E'].map((zone) => {
-                                                const multiplier = rateCard.zoneMultipliers?.[`zone${zone}`] || 0;
-                                                const calculatedPrice = Math.round((baseRates?.[0]?.basePrice || 0) * multiplier);
-
-                                                return (
-                                                    <div key={zone} className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-subtle)] flex flex-col items-center justify-center text-center hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] transition-colors group">
-                                                        <div className="mb-2 h-8 w-8 rounded-full bg-[var(--bg-tertiary)] group-hover:bg-white flex items-center justify-center font-bold text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)] transition-colors">
-                                                            {zone}
+                                    {hasZonePricing ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {zonePricingRows.map((zone) => (
+                                                <div key={zone.key} className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-subtle)] flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="h-8 w-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center font-bold text-[var(--text-secondary)]">
+                                                            {zone.key}
                                                         </div>
-                                                        <p className="text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)]">
-                                                            ₹{calculatedPrice}
-                                                        </p>
-                                                        <p className="text-xs text-[var(--text-muted)] mt-1">
-                                                            {multiplier}x multiplier
-                                                        </p>
+                                                        <div className="text-sm text-[var(--text-muted)]">Base {zone.baseWeight}kg</div>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : zoneRules.length > 0 ? (
-                                        <div className="space-y-2 border rounded-lg overflow-hidden">
-                                            {zoneRules.map((rule: any, idx: number) => {
-                                                const zoneLabel = typeof rule.zoneId === 'string'
-                                                    ? rule.zoneId
-                                                    : rule.zoneId?.standardZoneCode || rule.zoneId?.name || 'Zone';
-                                                return (
-                                                    <div key={`${zoneLabel}-${idx}`} className="flex items-center justify-between px-4 py-3 bg-[var(--bg-primary)] border-b last:border-0 hover:bg-[var(--bg-secondary)] transition-colors">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium text-[var(--text-primary)]">{zoneLabel}</span>
-                                                            {(rule.carrier || rule.serviceType) && (
-                                                                <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                                                                    {rule.carrier && <span>{rule.carrier}</span>}
-                                                                    {rule.carrier && rule.serviceType && <span>•</span>}
-                                                                    {rule.serviceType && <span>{rule.serviceType}</span>}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className="font-mono font-semibold">₹{rule.additionalPrice}</div>
-                                                            <div className="text-[10px] text-[var(--text-muted)] uppercase">Add-on</div>
-                                                        </div>
+                                                    <div className="text-lg font-bold text-[var(--text-primary)]">
+                                                        ₹{zone.basePrice}
                                                     </div>
-                                                );
-                                            })}
+                                                    <div className="text-xs text-[var(--text-muted)]">
+                                                        + ₹{zone.additionalPricePerKg}/kg after base weight
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     ) : (
                                         <div className="text-center py-8 text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded-lg border border-dashed border-[var(--border-default)]">
@@ -283,7 +308,7 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                                         </div>
                                         <div className="flex justify-between items-center py-2 border-b border-[var(--border-subtle)] last:border-0">
                                             <span className="text-sm text-[var(--text-secondary)]">Minimum Fare</span>
-                                            <span className="font-mono font-medium">₹{rateCard.minimumFare || rateCard.minimumCall || 0}</span>
+                                            <span className="font-mono font-medium">₹{rateCard.minimumFare || 0}</span>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -344,7 +369,7 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                             <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
                                 <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">Did you know?</h4>
                                 <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
-                                    You can verify the pricing logic by using the calculator in the Edit wizard. Zone multipliers are applied to the base freight before adding overheads.
+                                    You can verify the pricing logic by using the calculator in the Edit wizard. Zone pricing uses a base weight and an additional per-kg rate for each zone.
                                 </p>
                             </div>
                         </div>
@@ -468,6 +493,44 @@ export function RateCardDetailView({ rateCardId, initialTab = 'details' }: RateC
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Clone Confirmation Dialog */}
+            <Dialog open={!!cloneTarget} onOpenChange={(open) => !open && setCloneTarget(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Clone rate card</DialogTitle>
+                        <DialogDescription>
+                            {cloneTarget
+                                ? `Create a copy of "${cloneTarget.name}"?`
+                                : 'Create a copy of this rate card?'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCloneTarget(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                if (!cloneTarget) return;
+                                cloneCard(cloneTarget.id, {
+                                    onSuccess: (newCard) => {
+                                        addToast(`Successfully cloned "${cloneTarget.name}" as "${newCard.name}"`, 'success');
+                                        setCloneTarget(null);
+                                        // Optional: Redirect to new card or just stay here
+                                        router.push(`/admin/ratecards/${newCard._id}`);
+                                    },
+                                    onError: (err) => {
+                                        addToast(`Failed to clone: ${err.message}`, 'error');
+                                    }
+                                });
+                            }}
+                            disabled={isCloning}
+                        >
+                            {isCloning ? 'Cloning...' : 'Clone'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { RateCardFormData, calculateMultipliers } from '../../components/ratecardWizard.utils';
+import { RateCardFormData } from '../../components/ratecardWizard.utils';
 import { PriceCalculator } from '../../components/PriceCalculator';
 
 interface Step5ReviewProps {
@@ -8,7 +8,13 @@ interface Step5ReviewProps {
 }
 
 export function Step5Review({ formData }: Step5ReviewProps) {
-    const multipliers = calculateMultipliers(formData);
+    const zones = [
+        { key: 'A', baseWeight: formData.zoneABaseWeight, basePrice: formData.zoneABasePrice, addPerKg: formData.zoneAAdditionalPricePerKg },
+        { key: 'B', baseWeight: formData.zoneBBaseWeight, basePrice: formData.zoneBBasePrice, addPerKg: formData.zoneBAdditionalPricePerKg },
+        { key: 'C', baseWeight: formData.zoneCBaseWeight, basePrice: formData.zoneCBasePrice, addPerKg: formData.zoneCAdditionalPricePerKg },
+        { key: 'D', baseWeight: formData.zoneDBaseWeight, basePrice: formData.zoneDBasePrice, addPerKg: formData.zoneDAdditionalPricePerKg },
+        { key: 'E', baseWeight: formData.zoneEBaseWeight, basePrice: formData.zoneEBasePrice, addPerKg: formData.zoneEAdditionalPricePerKg },
+    ];
 
     return (
         <div className="space-y-6">
@@ -17,21 +23,21 @@ export function Step5Review({ formData }: Step5ReviewProps) {
                 <div className="text-sm text-[var(--text-secondary)] space-y-1">
                     <div>Name: {formData.name || '—'}</div>
                     <div>Category: {formData.rateCardCategory || '—'}</div>
-                    <div>Carrier: {formData.isGeneric ? 'Generic' : `${formData.carrier} ${formData.serviceType}`}</div>
+                    <div>Pricing Model: Zone Pricing</div>
                     <div>Status: {formData.status}</div>
                     <div>Shipment Type: {formData.shipmentType}</div>
-                    <div>Base Rate Zone A: ₹{formData.basicZoneA || 0}</div>
-                    <div>Zone Multipliers: B {multipliers.zoneB || '—'}x, C {multipliers.zoneC || '—'}x, D {multipliers.zoneD || '—'}x, E {multipliers.zoneE || '—'}x</div>
-                    <div>Additional Weight: {formData.additionalWeight || '—'} gm @ ₹{formData.additionalZoneA || 0} (Zone A)</div>
+                    <div className="space-y-1">
+                        <div className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Zone Pricing</div>
+                        {zones.map((zone) => (
+                            <div key={zone.key}>
+                                Zone {zone.key}: {zone.baseWeight || '—'} gm • ₹{zone.basePrice || 0} base • ₹{zone.addPerKg || 0}/kg
+                            </div>
+                        ))}
+                    </div>
                     <div>COD: {formData.codPercentage || 0}% (min ₹{formData.codMinimumCharge || 0})</div>
                     <div>Minimum Fare: ₹{formData.minimumFare || 0}</div>
                     <div>GST: {formData.gst || 0}%</div>
                     <div>Effective Dates: {formData.effectiveStartDate || '—'} {formData.effectiveEndDate ? `→ ${formData.effectiveEndDate}` : ''}</div>
-                    {formData.useAdvancedPricing && (
-                        <div>
-                            Advanced Slabs: {formData.advancedBaseRates.length} base rate{formData.advancedBaseRates.length === 1 ? '' : 's'} • {formData.advancedWeightRules.length} weight rule{formData.advancedWeightRules.length === 1 ? '' : 's'}
-                        </div>
-                    )}
                 </div>
             </div>
 

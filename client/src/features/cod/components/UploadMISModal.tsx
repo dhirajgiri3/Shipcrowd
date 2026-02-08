@@ -9,7 +9,8 @@ import {
     X,
     Check,
     AlertCircle,
-    Loader2
+    Loader2,
+    Download
 } from "lucide-react";
 import { Button } from '@/src/components/ui/core/Button';
 import { useToast } from '@/src/components/ui/feedback/Toast';
@@ -26,6 +27,15 @@ export function UploadMISModal({ isOpen, onClose }: UploadMISModalProps) {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [provider, setProvider] = useState<'velocity' | 'generic'>('velocity');
+
+    const downloadTemplate = () => {
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_cod_mis_template.csv';
+        link.download = 'shipcrowd_cod_mis_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
@@ -185,6 +195,19 @@ export function UploadMISModal({ isOpen, onClose }: UploadMISModalProps) {
                                         </Button>
                                     </div>
                                 )}
+
+                                <div className="bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border-subtle)] p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-[var(--text-primary)]">Need a template?</p>
+                                        <p className="text-xs text-[var(--text-muted)]">
+                                            Use the generic MIS CSV format (awb, amount, remittance_date, utr).
+                                        </p>
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Download Template
+                                    </Button>
+                                </div>
 
                                 {/* Actions */}
                                 <div className="flex gap-3">

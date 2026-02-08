@@ -37,13 +37,13 @@ export function RateCardItem({
     isCloning = false,
     isDeleting = false,
 }: RateCardItemProps) {
-    const baseRate = card.baseRates?.[0];
-    const basePrice = baseRate?.basePrice ?? baseRate?.baseRate ?? 0;
-    const minFare = card.minimumFare ?? card.minimumCall ?? 0;
-    const zones = card.zoneRules?.length || 0;
+    const zonePricing = card.zonePricing || {};
+    const basePrice = zonePricing?.zoneA?.basePrice ?? 0;
+    const minFare = card.minimumFare ?? 0;
+    const zones = Object.keys(zonePricing).length || 0;
     const codPercent = card.codPercentage ?? 0;
-    const courier = baseRate?.carrier || '—';
-    const service = baseRate?.serviceType || '—';
+    const courier = 'Zone Pricing';
+    const service = card.shipmentType ? (card.shipmentType === 'reverse' ? 'Reverse' : 'Forward') : 'All';
     const category = card.rateCardCategory;
 
     return (

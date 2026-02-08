@@ -485,6 +485,58 @@
                     "companyId": {
                         "type": "string"
                     },
+                    "rateCardCategory": {
+                        "type": "string",
+                        "example": "standard"
+                    },
+                    "shipmentType": {
+                        "type": "string",
+                        "enum": [
+                            "forward",
+                            "reverse"
+                        ]
+                    },
+                    "gst": {
+                        "type": "number",
+                        "example": 18
+                    },
+                    "minimumFare": {
+                        "type": "number",
+                        "example": 35
+                    },
+                    "minimumFareCalculatedOn": {
+                        "type": "string",
+                        "enum": [
+                            "freight",
+                            "freight_overhead"
+                        ]
+                    },
+                    "zoneBType": {
+                        "type": "string",
+                        "enum": [
+                            "state",
+                            "distance"
+                        ]
+                    },
+                    "codPercentage": {
+                        "type": "number",
+                        "example": 2
+                    },
+                    "codMinimumCharge": {
+                        "type": "number",
+                        "example": 25
+                    },
+                    "fuelSurcharge": {
+                        "type": "number",
+                        "example": 8
+                    },
+                    "fuelSurchargeBase": {
+                        "type": "string",
+                        "enum": [
+                            "freight",
+                            "freight_cod"
+                        ]
+                    },
                     "status": {
                         "type": "string",
                         "enum": [
@@ -495,47 +547,47 @@
                         ],
                         "example": "active"
                     },
-                    "baseRates": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "carrier": {
-                                    "type": "string",
-                                    "example": "Delhivery"
-                                },
-                                "serviceType": {
-                                    "type": "string",
-                                    "example": "standard"
-                                },
-                                "basePrice": {
-                                    "type": "number",
-                                    "example": 40
-                                },
-                                "minWeight": {
-                                    "type": "number",
-                                    "example": 0
-                                },
-                                "maxWeight": {
-                                    "type": "number",
-                                    "example": 5
+                    "zonePricing": {
+                        "type": "object",
+                        "properties": {
+                            "zoneA": {
+                                "type": "object",
+                                "properties": {
+                                    "baseWeight": { "type": "number", "example": 0.5 },
+                                    "basePrice": { "type": "number", "example": 30 },
+                                    "additionalPricePerKg": { "type": "number", "example": 15 }
                                 }
-                            }
-                        }
-                    },
-                    "weightRules": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "minWeight": {
-                                    "type": "number"
-                                },
-                                "maxWeight": {
-                                    "type": "number"
-                                },
-                                "pricePerKg": {
-                                    "type": "number"
+                            },
+                            "zoneB": {
+                                "type": "object",
+                                "properties": {
+                                    "baseWeight": { "type": "number", "example": 0.5 },
+                                    "basePrice": { "type": "number", "example": 40 },
+                                    "additionalPricePerKg": { "type": "number", "example": 20 }
+                                }
+                            },
+                            "zoneC": {
+                                "type": "object",
+                                "properties": {
+                                    "baseWeight": { "type": "number", "example": 0.5 },
+                                    "basePrice": { "type": "number", "example": 50 },
+                                    "additionalPricePerKg": { "type": "number", "example": 25 }
+                                }
+                            },
+                            "zoneD": {
+                                "type": "object",
+                                "properties": {
+                                    "baseWeight": { "type": "number", "example": 0.5 },
+                                    "basePrice": { "type": "number", "example": 65 },
+                                    "additionalPricePerKg": { "type": "number", "example": 30 }
+                                }
+                            },
+                            "zoneE": {
+                                "type": "object",
+                                "properties": {
+                                    "baseWeight": { "type": "number", "example": 0.5 },
+                                    "basePrice": { "type": "number", "example": 90 },
+                                    "additionalPricePerKg": { "type": "number", "example": 45 }
                                 }
                             }
                         }
@@ -2131,7 +2183,7 @@
             },
             "post": {
                 "summary": "Create a rate card",
-                "description": "Create new rate card with weight slab validation",
+                "description": "Create new rate card with zone pricing",
                 "tags": [
                     "Rate Cards"
                 ],
@@ -2144,7 +2196,7 @@
                                 "type": "object",
                                 "required": [
                                     "name",
-                                    "baseRates",
+                                    "zonePricing",
                                     "effectiveDates"
                                 ],
                                 "properties": {
@@ -2152,42 +2204,101 @@
                                         "type": "string",
                                         "minLength": 2
                                     },
-                                    "baseRates": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "items": {
-                                            "type": "object",
-                                            "required": [
-                                                "carrier",
-                                                "serviceType",
-                                                "basePrice",
-                                                "minWeight",
-                                                "maxWeight"
-                                            ],
-                                            "properties": {
-                                                "carrier": {
-                                                    "type": "string"
-                                                },
-                                                "serviceType": {
-                                                    "type": "string"
-                                                },
-                                                "basePrice": {
-                                                    "type": "number"
-                                                },
-                                                "minWeight": {
-                                                    "type": "number"
-                                                },
-                                                "maxWeight": {
-                                                    "type": "number"
+                                    "rateCardCategory": {
+                                        "type": "string"
+                                    },
+                                    "shipmentType": {
+                                        "type": "string",
+                                        "enum": [
+                                            "forward",
+                                            "reverse"
+                                        ]
+                                    },
+                                    "gst": {
+                                        "type": "number",
+                                        "minimum": 0
+                                    },
+                                    "minimumFare": {
+                                        "type": "number",
+                                        "minimum": 0
+                                    },
+                                    "minimumFareCalculatedOn": {
+                                        "type": "string",
+                                        "enum": [
+                                            "freight",
+                                            "freight_overhead"
+                                        ]
+                                    },
+                                    "zoneBType": {
+                                        "type": "string",
+                                        "enum": [
+                                            "state",
+                                            "distance"
+                                        ]
+                                    },
+                                    "codPercentage": {
+                                        "type": "number",
+                                        "minimum": 0
+                                    },
+                                    "codMinimumCharge": {
+                                        "type": "number",
+                                        "minimum": 0
+                                    },
+                                    "fuelSurcharge": {
+                                        "type": "number",
+                                        "minimum": 0
+                                    },
+                                    "fuelSurchargeBase": {
+                                        "type": "string",
+                                        "enum": [
+                                            "freight",
+                                            "freight_cod"
+                                        ]
+                                    },
+                                    "zonePricing": {
+                                        "type": "object",
+                                        "properties": {
+                                            "zoneA": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "baseWeight": { "type": "number", "minimum": 0 },
+                                                    "basePrice": { "type": "number", "minimum": 0 },
+                                                    "additionalPricePerKg": { "type": "number", "minimum": 0 }
+                                                }
+                                            },
+                                            "zoneB": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "baseWeight": { "type": "number", "minimum": 0 },
+                                                    "basePrice": { "type": "number", "minimum": 0 },
+                                                    "additionalPricePerKg": { "type": "number", "minimum": 0 }
+                                                }
+                                            },
+                                            "zoneC": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "baseWeight": { "type": "number", "minimum": 0 },
+                                                    "basePrice": { "type": "number", "minimum": 0 },
+                                                    "additionalPricePerKg": { "type": "number", "minimum": 0 }
+                                                }
+                                            },
+                                            "zoneD": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "baseWeight": { "type": "number", "minimum": 0 },
+                                                    "basePrice": { "type": "number", "minimum": 0 },
+                                                    "additionalPricePerKg": { "type": "number", "minimum": 0 }
+                                                }
+                                            },
+                                            "zoneE": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "baseWeight": { "type": "number", "minimum": 0 },
+                                                    "basePrice": { "type": "number", "minimum": 0 },
+                                                    "additionalPricePerKg": { "type": "number", "minimum": 0 }
                                                 }
                                             }
                                         }
-                                    },
-                                    "weightRules": {
-                                        "type": "array"
-                                    },
-                                    "zoneRules": {
-                                        "type": "array"
                                     },
                                     "effectiveDates": {
                                         "type": "object",
@@ -2255,17 +2366,21 @@
                                         "minimum": 0,
                                         "example": 5.5
                                     },
+                                    "zoneId": {
+                                        "type": "string",
+                                        "example": "zoneB"
+                                    },
+                                    "originPincode": {
+                                        "type": "string",
+                                        "example": "110001"
+                                    },
                                     "destinationPincode": {
                                         "type": "string",
                                         "example": "560001"
                                     },
                                     "carrier": {
                                         "type": "string",
-                                        "enum": [
-                                            "Delhivery",
-                                            "DTDC",
-                                            "Xpressbees"
-                                        ]
+                                        "example": "Delhivery"
                                     },
                                     "serviceType": {
                                         "type": "string",
@@ -2274,6 +2389,25 @@
                                             "standard"
                                         ],
                                         "default": "standard"
+                                    },
+                                    "dimensions": {
+                                        "type": "object",
+                                        "properties": {
+                                            "length": { "type": "number" },
+                                            "width": { "type": "number" },
+                                            "height": { "type": "number" }
+                                        }
+                                    },
+                                    "paymentMode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "prepaid",
+                                            "cod"
+                                        ]
+                                    },
+                                    "orderValue": {
+                                        "type": "number",
+                                        "minimum": 0
                                     }
                                 }
                             }
@@ -2317,6 +2451,9 @@
                                                     "type": "number"
                                                 },
                                                 "zoneCharge": {
+                                                    "type": "number"
+                                                },
+                                                "tax": {
                                                     "type": "number"
                                                 }
                                             }

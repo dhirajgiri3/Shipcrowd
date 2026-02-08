@@ -11,6 +11,8 @@ export interface RateCardSelectionInput {
     effectiveDate?: Date;
     carrier?: string;
     serviceType?: string;
+    shipmentType?: 'forward' | 'reverse';
+    rateCardCategory?: string;
 }
 
 export interface RateCardSelectionResult {
@@ -35,21 +37,72 @@ export class RateCardSelectorService {
      * 4. Default Company Rate Card
      */
     static async selectRateCard(input: RateCardSelectionInput): Promise<RateCardSelectionResult> {
-        const { companyId, customerId, customerGroup } = input;
+        const { companyId, customerId, customerGroup, shipmentType, rateCardCategory } = input;
         const effectiveDate = input.effectiveDate || new Date();
+
+        // Build base filters that apply to ALL queries
+        const baseFiltersCompany: any = {
+            companyId,
+            status: 'active',
+            isDeleted: false, // CRITICAL: Never select deleted cards
+            'effectiveDates.startDate': { $lte: effectiveDate },
+            $or: [
+                { 'effectiveDates.endDate': { $exists: false } },
+                { 'effectiveDates.endDate': { $gte: effectiveDate } }
+            ]
+        };
+
+        const baseFiltersAny: any = {
+            status: 'active',
+            isDeleted: false,
+            'effectiveDates.startDate': { $lte: effectiveDate },
+            $or: [
+                { 'effectiveDates.endDate': { $exists: false } },
+                { 'effectiveDates.endDate': { $gte: effectiveDate } }
+            ]
+        };
+
+        // Add optional filters if provided
+        if (shipmentType) {
+            baseFiltersCompany.$and = baseFiltersCompany.$and || [];
+            baseFiltersCompany.$and.push({
+                $or: [
+                    { shipmentType },
+                    { shipmentType: { $exists: false } }, // Allow cards without shipmentType (generic)
+                ]
+            });
+            baseFiltersAny.$and = baseFiltersAny.$and || [];
+            baseFiltersAny.$and.push({
+                $or: [
+                    { shipmentType },
+                    { shipmentType: { $exists: false } },
+                ]
+            });
+        }
+
+        if (rateCardCategory) {
+            baseFiltersCompany.$and = baseFiltersCompany.$and || [];
+            baseFiltersCompany.$and.push({
+                $or: [
+                    { rateCardCategory },
+                    { rateCardCategory: { $exists: false } }, // Allow cards without category (generic)
+                ]
+            });
+            baseFiltersAny.$and = baseFiltersAny.$and || [];
+            baseFiltersAny.$and.push({
+                $or: [
+                    { rateCardCategory },
+                    { rateCardCategory: { $exists: false } },
+                ]
+            });
+        }
 
         // 1. Check for Customer-Specific Override
         if (customerId) {
             const customerOverride = await RateCard.findOne({
-                companyId,
+                ...baseFiltersCompany,
                 'customerOverrides.customerId': customerId,
-                status: 'active',
-                'effectiveDates.startDate': { $lte: effectiveDate },
-                $or: [
-                    { 'effectiveDates.endDate': { $exists: false } },
-                    { 'effectiveDates.endDate': { $gte: effectiveDate } }
-                ]
-            }).sort({ priority: -1 });
+            }).sort({ priority: -1 }).lean();
 
             if (customerOverride) {
                 return this.formatResult(customerOverride, 'customer_override');
@@ -59,15 +112,9 @@ export class RateCardSelectorService {
         // 2. Check for Customer Group Override
         if (customerGroup) {
             const groupOverride = await RateCard.findOne({
-                companyId,
+                ...baseFiltersCompany,
                 'customerOverrides.customerGroup': customerGroup,
-                status: 'active',
-                'effectiveDates.startDate': { $lte: effectiveDate },
-                $or: [
-                    { 'effectiveDates.endDate': { $exists: false } },
-                    { 'effectiveDates.endDate': { $gte: effectiveDate } }
-                ]
-            }).sort({ priority: -1 });
+            }).sort({ priority: -1 }).lean();
 
             if (groupOverride) {
                 return this.formatResult(groupOverride, 'group_override');
@@ -75,43 +122,47 @@ export class RateCardSelectorService {
         }
 
         // 3. Time-Bound / Special Promotion (Highest Priority)
-        // Find all active cards that are NOT default, and pick the highest priority one
-        // Need to identify "Special" cards. Assuming 'isSpecialPromotion' flag or high priority > 0
         const specialCard = await RateCard.findOne({
-            companyId,
-            status: 'active',
+            ...baseFiltersCompany,
             isSpecialPromotion: true,
-            'effectiveDates.startDate': { $lte: effectiveDate },
-            $or: [
-                { 'effectiveDates.endDate': { $exists: false } },
-                { 'effectiveDates.endDate': { $gte: effectiveDate } }
-            ]
-        }).sort({ priority: -1 });
+        }).sort({ priority: -1 }).lean();
 
         if (specialCard) {
             return this.formatResult(specialCard, 'time_bound');
         }
 
         // 4. Default Company Rate Card
-        const company = await Company.findById(companyId);
+        const company = await Company.findById(companyId).lean();
         if (company?.settings?.defaultRateCardId) {
-            const defaultCard = await RateCard.findById(company.settings.defaultRateCardId);
-            if (defaultCard && defaultCard.status === 'active') { // Ensure default is still active
+            const defaultCard = await RateCard.findOne({
+                _id: company.settings.defaultRateCardId,
+                ...baseFiltersAny
+            }).lean();
+
+            if (defaultCard) {
                 return this.formatResult(defaultCard, 'default');
             }
         }
 
-        // Fallback: Find ANY active rate card (safeguard)
-        const fallbackCard = await RateCard.findOne({
-            companyId,
-            status: 'active'
-        }).sort({ priority: -1, createdAt: -1 });
+        // Fallback: Find ANY active rate card matching filters (safeguard)
+        const fallbackCard = await RateCard.findOne(baseFiltersCompany)
+            .sort({ priority: -1, createdAt: -1 })
+            .lean();
 
         if (fallbackCard) {
             return this.formatResult(fallbackCard, 'default');
         }
 
-        throw new NotFoundError('No applicable rate card found configuration');
+        const globalFallback = await RateCard.findOne({
+            ...baseFiltersAny,
+            companyId: null
+        }).sort({ priority: -1, createdAt: -1 }).lean();
+
+        if (globalFallback) {
+            return this.formatResult(globalFallback, 'default');
+        }
+
+        throw new NotFoundError(`No applicable rate card found for company ${companyId} with filters: shipmentType=${shipmentType}, category=${rateCardCategory}`);
     }
 
     private static formatResult(rateCard: any, reason: RateCardSelectionResult['selectionReason']): RateCardSelectionResult {

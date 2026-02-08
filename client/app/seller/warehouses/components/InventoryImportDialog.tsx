@@ -41,19 +41,12 @@ export function InventoryImportDialog({ warehouseId, isOpen, onClose }: Inventor
     };
 
     const downloadTemplate = () => {
-        const headers = ['sku', 'quantity', 'productName', 'location', 'barcode', 'reorderPoint'];
-        const sampleRow = ['TEST-SKU-001', '100', 'Test Product Name', 'A-01-01', '123456789', '10'];
-        const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'inventory_import_template.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_inventory_template.csv';
+        link.download = 'shipcrowd_inventory_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleClose = () => {

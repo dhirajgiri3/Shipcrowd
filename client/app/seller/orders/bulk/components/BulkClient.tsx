@@ -42,6 +42,16 @@ export function BulkClient() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { addToast } = useToast();
 
+    const downloadTemplate = () => {
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_bulk_orders_template.csv';
+        link.download = 'shipcrowd_bulk_orders_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        addToast('Template downloaded', 'success');
+    };
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
@@ -213,7 +223,12 @@ export function BulkClient() {
                                 <p className="text-sm text-[var(--text-muted)]">Use our template for error-free uploads</p>
                             </div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => addToast('Template downloaded!', 'success')} className="bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border-subtle)]">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={downloadTemplate}
+                            className="bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border-subtle)]"
+                        >
                             <Download className="h-4 w-4 mr-2" />
                             Download
                         </Button>

@@ -1,5 +1,5 @@
 import { DynamicPricingService } from '@/core/application/services/pricing/dynamic-pricing.service';
-import { RateCard, Zone } from '@/infrastructure/database/mongoose/models';
+import { RateCard } from '@/infrastructure/database/mongoose/models';
 import PincodeLookupService from '@/core/application/services/logistics/pincode-lookup.service';
 import GSTService from '@/core/application/services/finance/gst.service';
 import { getCODChargeService } from '@/core/application/services/pricing/cod-charge.service';
@@ -9,9 +9,6 @@ import PricingMetricsService from '@/core/application/services/metrics/pricing-m
 // Mock Dependencies
 jest.mock('@/infrastructure/database/mongoose/models', () => ({
     RateCard: {
-        findOne: jest.fn()
-    },
-    Zone: {
         findOne: jest.fn()
     }
 }));
@@ -72,15 +69,10 @@ describe('DynamicPricingService', () => {
             city: 'New Delhi'
         });
 
-        // Default Mock Return for RateCard/Zone to avoid undefined errors
+        // Default Mock Return for RateCard
         (RateCard.findOne as jest.Mock).mockReturnValue({
             sort: jest.fn().mockReturnThis(),
             lean: jest.fn().mockResolvedValue(null)
-        });
-        (Zone.findOne as jest.Mock).mockReturnValue({
-            select: jest.fn().mockReturnValue({
-                lean: jest.fn().mockResolvedValue(null)
-            })
         });
 
         service = new DynamicPricingService();
@@ -101,16 +93,14 @@ describe('DynamicPricingService', () => {
         const mockRateCard = {
             _id: 'rc123',
             name: 'Standard Card',
-            carrier: 'velocity',
-            serviceType: 'standard',
-            baseRates: [
-                { minWeight: 0, maxWeight: 5, basePrice: 100 } // zoneA match scenario logic mock
-            ],
-            zoneRules: [
-                { zoneId: 'zoneId1', additionalPrice: 20 }
-            ],
-            zoneMultipliers: { zoneA: 1.0 },
-            minimumCall: 0,
+            zonePricing: {
+                zoneA: { baseWeight: 0.5, basePrice: 100, additionalPricePerKg: 20 },
+                zoneB: { baseWeight: 0.5, basePrice: 120, additionalPricePerKg: 25 },
+                zoneC: { baseWeight: 0.5, basePrice: 140, additionalPricePerKg: 30 },
+                zoneD: { baseWeight: 0.5, basePrice: 160, additionalPricePerKg: 35 },
+                zoneE: { baseWeight: 0.5, basePrice: 180, additionalPricePerKg: 40 }
+            },
+            minimumFare: 0,
             fuelSurcharge: 0,
             remoteAreaSurcharge: 0,
             codSurcharges: [],
@@ -118,17 +108,9 @@ describe('DynamicPricingService', () => {
         };
 
         it('should calculate basic prepaid pricing successfully', async () => {
-            // Mock RateCard found
             (RateCard.findOne as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnThis(),
                 lean: jest.fn().mockResolvedValue(mockRateCard)
-            });
-
-            // Mock Zone found
-            (Zone.findOne as jest.Mock).mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                    lean: jest.fn().mockResolvedValue({ _id: 'zoneId1' })
-                })
             });
 
             const result = await service.calculatePricing(defaultInput);
@@ -136,13 +118,14 @@ describe('DynamicPricingService', () => {
             expect(result).toBeDefined();
             expect(result.pricingProvider).toBe('internal');
             expect(result.metadata.zone).toBe('zoneA');
+            expect(result.metadata.breakdown?.baseCharge).toBe(100);
+            expect(result.metadata.breakdown?.weightCharge).toBe(20); // (1.5 - 0.5) * 20
             expect(result.total).toBeGreaterThan(0);
             expect(PricingMetricsService.incrementRequestCount).toHaveBeenCalled();
             expect(PricingMetricsService.observeLatency).toHaveBeenCalled();
         });
 
         it('should prioritize externalZone if provided', async () => {
-            // Mock RateCard found
             (RateCard.findOne as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnThis(),
                 lean: jest.fn().mockResolvedValue(mockRateCard)
@@ -160,7 +143,7 @@ describe('DynamicPricingService', () => {
         it('should apply fuel surcharge correctly', async () => {
             const fuelRateCard = {
                 ...mockRateCard,
-                fuelSurcharge: 20 // 20%
+                fuelSurcharge: 20
             };
             (RateCard.findOne as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnThis(),
@@ -169,8 +152,6 @@ describe('DynamicPricingService', () => {
 
             const result = await service.calculatePricing(defaultInput);
 
-            // 100 base + 20% = 120 (approx) + GST
-            // We verify fuelCharge metadata
             expect(result.metadata.breakdown?.fuelCharge).toBeGreaterThan(0);
         });
 
@@ -195,90 +176,28 @@ describe('DynamicPricingService', () => {
             expect(result.codCharge).toBe(50);
         });
 
-        it('should enforce minimum call', async () => {
-            const minCallRateCard = {
+        it('should enforce minimum fare', async () => {
+            const minFareRateCard = {
                 ...mockRateCard,
-                baseRates: [
-                    { minWeight: 0, maxWeight: 5, basePrice: 10 } // Very low price
-                ],
-                minimumCall: 100
+                zonePricing: {
+                    zoneA: { baseWeight: 0.5, basePrice: 10, additionalPricePerKg: 5 },
+                    zoneB: { baseWeight: 0.5, basePrice: 10, additionalPricePerKg: 5 },
+                    zoneC: { baseWeight: 0.5, basePrice: 10, additionalPricePerKg: 5 },
+                    zoneD: { baseWeight: 0.5, basePrice: 10, additionalPricePerKg: 5 },
+                    zoneE: { baseWeight: 0.5, basePrice: 10, additionalPricePerKg: 5 }
+                },
+                minimumFare: 100,
+                minimumFareCalculatedOn: 'freight_overhead'
             };
             (RateCard.findOne as jest.Mock).mockReturnValue({
                 sort: jest.fn().mockReturnThis(),
-                lean: jest.fn().mockResolvedValue(minCallRateCard)
+                lean: jest.fn().mockResolvedValue(minFareRateCard)
             });
 
             const result = await service.calculatePricing(defaultInput);
 
-            // Subtotal (before tax) should be at least 100
-            // But logic says: if subTotal < minCall, subTotal = minCall.
-            // With 10 base + 20% zone(2) = 12.
-            // MinCall 100.
-            // Subtotal -> 100.
-            // Tax on 100 -> 18.
-            // Total -> 118.
             expect(result.subtotal).toBe(100);
             expect(result.total).toBe(118);
-        });
-
-        describe('Multi-Courier Waterfall Logic', () => {
-            const multiCourierCard = {
-                ...mockRateCard,
-                baseRates: [
-                    { minWeight: 0, maxWeight: 5, basePrice: 50, carrier: 'velocity', serviceType: 'standard' },
-                    { minWeight: 0, maxWeight: 5, basePrice: 100, carrier: 'bluedart', serviceType: 'express' },
-                    { minWeight: 0, maxWeight: 5, basePrice: 80, carrier: 'delhivery', serviceType: 'surface' },
-                    { minWeight: 0, maxWeight: 5, basePrice: 60, carrier: 'delhivery' }, // Carrier Default
-                    { minWeight: 0, maxWeight: 5, basePrice: 200 } // Generic
-                ],
-                weightRules: [
-                    { minWeight: 0, maxWeight: 100, pricePerKg: 10, carrier: 'velocity' },
-                    { minWeight: 0, maxWeight: 100, pricePerKg: 20 } // Generic
-                ],
-                zoneRules: [],
-                zoneMultipliers: {}
-            };
-
-            beforeEach(() => {
-                (RateCard.findOne as jest.Mock).mockReturnValue({
-                    sort: jest.fn().mockReturnThis(),
-                    lean: jest.fn().mockResolvedValue(multiCourierCard)
-                });
-            });
-
-            it('should match exact carrier and service', async () => {
-                const result = await service.calculatePricing({ ...defaultInput, carrier: 'bluedart', serviceType: 'express' });
-                expect(result.metadata.breakdown?.baseCharge).toBe(100);
-            });
-
-            it('should fallback to carrier default if specific service not found', async () => {
-                const result = await service.calculatePricing({ ...defaultInput, carrier: 'delhivery', serviceType: 'express-air' });
-                // Should match 'delhivery' (basePrice 60)
-                expect(result.metadata.breakdown?.baseCharge).toBe(60);
-            });
-
-            it('should fallback to generic if carrier not found', async () => {
-                const result = await service.calculatePricing({ ...defaultInput, carrier: 'xpressbees', serviceType: 'standard' });
-                // Should match generic (basePrice 200)
-                expect(result.metadata.breakdown?.baseCharge).toBe(200);
-            });
-
-            it('should use carrier specific weight rule', async () => {
-                const result = await service.calculatePricing({ ...defaultInput, carrier: 'velocity', serviceType: 'standard', weight: 6 });
-                // Base 50 (0-5kg). Extra 1kg.
-                // Velocity weight rule pricePerKg is 10.
-                // Total Base = 50 + 10 = 60.
-                expect(result.metadata.breakdown?.baseCharge).toBe(50);
-                expect(result.metadata.breakdown?.weightCharge).toBe(10);
-            });
-
-            it('should fallback to generic weight rule', async () => {
-                const result = await service.calculatePricing({ ...defaultInput, carrier: 'bluedart', serviceType: 'express', weight: 6 });
-                // Base 100. Extra 1kg.
-                // Generic weight rule is 20.
-                // Total = 120.
-                expect(result.metadata.breakdown?.weightCharge).toBe(20);
-            });
         });
     });
 });

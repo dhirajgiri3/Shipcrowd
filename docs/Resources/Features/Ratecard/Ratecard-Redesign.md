@@ -1,6 +1,8 @@
 
 # Rate Card Management System - UX Redesign Plan
 
+> Note (2026-02-08): Legacy pricing fields (baseRates, weightRules, zoneRules, zoneMultipliers) and migration scripts have been removed. Zone Pricing is now the only supported model.
+
 ## Executive Summary
 This plan outlines a comprehensive UX redesign of shipCrowd's Rate Card Management System to transform it from a cluttered, complex interface into a best-in-class, intuitive user experience.
 
@@ -722,7 +724,7 @@ Select cards (checkboxes) → Bulk panel slides down
 - **Automatic per-kg conversion shown inline**
 - Zone B-E auto-calculated based on Zone A + multipliers
 - Example calculation shown at bottom
-- Simplified to just Zone A input (reduces fields from 5 to 1)
+- Zone Pricing to just Zone A input (reduces fields from 5 to 1)
 
 #### **Step 4: Overhead Charges** (Toggleable Sections)
 

@@ -94,6 +94,15 @@ export function ProfitClient() {
         });
     };
 
+    const downloadTemplate = () => {
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_profit_import_template.csv';
+        link.download = 'shipcrowd_profit_import_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleExport = (format: 'csv' | 'xlsx') => {
         exportData({
             search: debouncedSearch,
@@ -305,6 +314,16 @@ export function ProfitClient() {
                             <CardDescription>Upload CSV or Excel file with profit records</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            <div className="bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-subtle)] flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-[var(--text-primary)]">Download Template</p>
+                                    <p className="text-xs text-[var(--text-muted)]">Use the standard profit import format.</p>
+                                </div>
+                                <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Template
+                                </Button>
+                            </div>
                             <div
                                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                                 onDragLeave={() => setIsDragging(false)}

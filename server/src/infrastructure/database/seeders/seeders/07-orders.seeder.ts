@@ -5,6 +5,8 @@
  */
 
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+
 import Order from '../../mongoose/models/orders/core/order.model';
 import Company from '../../mongoose/models/organization/core/company.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
@@ -145,6 +147,9 @@ function selectOrderSource(company: any): string {
 /**
  * Generate order data
  */
+/**
+ * Generate order data
+ */
 function generateOrderData(
     company: any,
     warehouse: any,
@@ -183,6 +188,147 @@ function generateOrderData(
 
     const customerName = generateIndianName();
 
+    // Select Order Status based on probability
+    // 70% Delivered, 10% RTO, 5% Cancelled, 5% In Transit, 10% Pending/Processing
+    const targetStatus = selectWeightedFromObject({
+        delivered: 70,
+        rto: 10,
+        cancelled: 5,
+        in_transit: 5,
+        pending: 5,
+        processing: 5
+    });
+
+    // Generate Status History
+    const statusHistory = [];
+    const createdDate = new Date(orderDate);
+
+    // 1. Placed
+    statusHistory.push({
+        status: 'pending',
+        timestamp: createdDate,
+        comment: 'Order placed successfully'
+    });
+
+    let currentStatus = 'pending';
+    let cancellationDate;
+
+    if (targetStatus !== 'pending') {
+        // 2. Processing (1-2 hours later)
+        const processingDate = addDays(createdDate, 0);
+        processingDate.setHours(processingDate.getHours() + randomInt(1, 4));
+
+        statusHistory.push({
+            status: 'processing',
+            timestamp: processingDate,
+            comment: 'Order verified and processing'
+        });
+        currentStatus = 'processing';
+
+        if (targetStatus === 'cancelled') {
+            // Cancelled during processing
+            cancellationDate = addDays(processingDate, 0);
+            cancellationDate.setMinutes(cancellationDate.getMinutes() + randomInt(30, 120));
+            statusHistory.push({
+                status: 'cancelled',
+                timestamp: cancellationDate,
+                comment: 'Order cancelled by customer'
+            });
+            currentStatus = 'cancelled';
+        } else if (targetStatus !== 'processing') {
+            // 3. Manifested (Ready to Ship)
+            const manifestedDate = addDays(processingDate, randomInt(0, 1));
+            statusHistory.push({
+                status: 'manifested',
+                timestamp: manifestedDate,
+                comment: 'Manifest generated'
+            });
+            currentStatus = 'manifested';
+
+            if (['in_transit', 'delivered', 'rto'].includes(targetStatus)) {
+                // 4. In Transit (Picked up)
+                const pickupDate = addDays(manifestedDate, 1);
+                statusHistory.push({
+                    status: 'in_transit',
+                    timestamp: pickupDate,
+                    comment: 'Picked up by courier'
+                });
+                currentStatus = 'in_transit';
+
+                if (targetStatus === 'delivered') {
+                    // 5. Delivered
+                    const deliveryDate = addDays(pickupDate, randomInt(2, 5));
+                    statusHistory.push({
+                        status: 'out_for_delivery',
+                        timestamp: addDays(deliveryDate, 0), // Same day earlier
+                        comment: 'Out for delivery'
+                    });
+                    statusHistory.push({
+                        status: 'delivered',
+                        timestamp: deliveryDate,
+                        comment: 'Delivered to customer'
+                    });
+                    currentStatus = 'delivered';
+                } else if (targetStatus === 'rto') {
+                    // 5. NDR -> RTO
+                    const attemptDate = addDays(pickupDate, randomInt(2, 4));
+                    statusHistory.push({
+                        status: 'ndr',
+                        timestamp: attemptDate,
+                        comment: 'Customer unavailable'
+                    });
+
+                    const rtoInitDate = addDays(attemptDate, 2);
+                    statusHistory.push({
+                        status: 'rto_initiated',
+                        timestamp: rtoInitDate,
+                        comment: 'RTO Initiated due to non-delivery'
+                    });
+
+                    const rtoDeliveredDate = addDays(rtoInitDate, 4);
+                    statusHistory.push({
+                        status: 'rto_delivered',
+                        timestamp: rtoDeliveredDate,
+                        comment: 'Returned to warehouse'
+                    });
+                    currentStatus = 'rto';
+                }
+            }
+        }
+    }
+
+    // Adjust timestamps to not be in the future (unless intended)
+    // Actually, seed config implies past dates usually, but we should cap at Date.now()
+    const now = new Date();
+    if (statusHistory[statusHistory.length - 1].timestamp > now) {
+        // If future, pullback or change status. For simplicity, just cap
+        // statusHistory[statusHistory.length - 1].timestamp = now;
+        // But that might mess up sequence. 
+        // Strategy: Only generate reached states based on date? 
+        // The provided random utils generate past dates mostly. 
+        // We'll assume the caller passes a date far enough in the past (12 month range).
+    }
+
+    // Determine Payment Status
+    let paymentStatus = 'pending';
+    if (paymentMethod === 'prepaid') {
+        if (targetStatus === 'cancelled') {
+            paymentStatus = 'refunded';
+        } else if (targetStatus !== 'pending' && targetStatus !== 'processing') {
+            paymentStatus = 'paid';
+        } else {
+            paymentStatus = 'pending'; // or paid immediately
+            if (Math.random() > 0.1) paymentStatus = 'paid';
+        }
+    } else {
+        // COD
+        if (targetStatus === 'delivered') {
+            paymentStatus = 'paid'; // Cash collected
+        } else {
+            paymentStatus = 'pending';
+        }
+    }
+
     return {
         orderNumber: generateOrderNumber(company._id.toString(), orderDate),
         companyId: company._id,
@@ -210,16 +356,12 @@ function generateOrderData(
         shippingDetails: {
             shippingCost,
         },
-        paymentStatus: selectWeightedFromObject({ paid: 85, pending: 10, failed: 5 }),
+        paymentStatus,
         paymentMethod,
         source: selectOrderSource(company),
         warehouseId: warehouse._id,
-        statusHistory: [{
-            status: 'pending',
-            timestamp: orderDate,
-            comment: 'Order placed',
-        }],
-        currentStatus: 'pending',
+        statusHistory,
+        currentStatus,
         totals: {
             subtotal,
             tax,
@@ -237,7 +379,7 @@ function generateOrderData(
         tags: businessType === 'b2b' ? ['b2b', 'bulk'] : [businessType],
         isDeleted: false,
         createdAt: orderDate,
-        updatedAt: orderDate,
+        updatedAt: statusHistory[statusHistory.length - 1].timestamp,
     };
 }
 
@@ -279,12 +421,17 @@ export async function seedOrders(): Promise<void> {
     const timer = createTimer();
     logger.step(7, 'Seeding Orders');
 
-    // Clear counters to ensure fresh start on each run
-    orderCounters.clear();
-    companyPrefixMap.clear();
-    nextPrefixIndex = 1;
-
     try {
+        // Clear existing orders
+        await Order.deleteMany({});
+        logger.info('Cleared existing orders');
+
+        // reset counters
+        // (Assuming counters are reset or generated freshly)
+        orderCounters.clear();
+        companyPrefixMap.clear();
+        nextPrefixIndex = 1;
+
         // Get approved companies with warehouses
         const companies = await Company.find({ status: 'approved' }).lean();
         const warehouses = await Warehouse.find({ isActive: true, isDeleted: false }).lean();
@@ -378,6 +525,35 @@ export async function seedOrders(): Promise<void> {
         logger.error('Failed to seed orders:', error);
         throw error;
     }
+}
+
+// Order Status Enum for reference
+// 'pending' | 'processing' | 'manifested' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'ndr' | 'rto_initiated' | 'rto_in_transit' | 'rto_delivered' | 'cancelled'
+
+if (require.main === module) {
+    dotenv.config();
+
+    // Ensure ENCRYPTION_KEY is present
+    if (!process.env.ENCRYPTION_KEY) {
+        console.warn('⚠️  ENCRYPTION_KEY not found in environment. Using default dev key for seeding.');
+        process.env.ENCRYPTION_KEY = 'd99716e21c089e3c1d530e69ea1b956dc676cae451e9e4d47154d8dea2721875';
+    }
+
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Shipcrowd';
+
+    mongoose.connect(mongoUri)
+        .then(() => {
+            logger.info('Connected to MongoDB');
+            return seedOrders();
+        })
+        .then(() => {
+            logger.success('✅ Orders seeding completed!');
+            return mongoose.disconnect();
+        })
+        .catch((error) => {
+            logger.error('Seeding failed:', error);
+            process.exit(1);
+        });
 }
 
 /**

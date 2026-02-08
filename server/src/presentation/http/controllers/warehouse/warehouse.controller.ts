@@ -472,7 +472,17 @@ export const importWarehouses = async (req: Request, res: Response, next: NextFu
       .pipe(csv())
       .on('data', (data) => results.push(data))
       .on('end', async () => {
-        const warehouses = [];
+        const warehouses: any[] = [];
+        const toInsert: any[] = [];
+        const seenNames = new Set<string>();
+        const names = results.map((row) => row.name).filter((name) => Boolean(name));
+        const existing = await Warehouse.find({
+          name: { $in: names },
+          companyId: companyId,
+          isDeleted: false,
+        }).select('name').lean();
+        const existingNames = new Set(existing.map((warehouse) => warehouse.name));
+
         for (const row of results) {
           try {
             if (!row.name || !row.address_line1 || !row.city || !row.state || !row.postal_code || !row.contact_name || !row.contact_phone) {
@@ -480,16 +490,16 @@ export const importWarehouses = async (req: Request, res: Response, next: NextFu
               continue;
             }
 
-            const existingWarehouse = await Warehouse.findOne({
-              name: row.name,
-              companyId: companyId,
-              isDeleted: false,
-            }).lean();
-
-            if (existingWarehouse) {
+            if (existingNames.has(row.name)) {
               errors.push({ row, error: 'Warehouse with this name already exists' });
               continue;
             }
+
+            if (seenNames.has(row.name)) {
+              errors.push({ row, error: 'Duplicate warehouse name in import file' });
+              continue;
+            }
+            seenNames.add(row.name);
 
             let operatingHours;
             if (row.monday_open || row.tuesday_open || row.wednesday_open || row.thursday_open || row.friday_open || row.saturday_open || row.sunday_open) {
@@ -504,7 +514,7 @@ export const importWarehouses = async (req: Request, res: Response, next: NextFu
               });
             }
 
-            const warehouse = new Warehouse({
+            const warehouse = {
               name: row.name,
               companyId: companyId,
               address: {
@@ -525,14 +535,20 @@ export const importWarehouses = async (req: Request, res: Response, next: NextFu
               isActive: true,
               isDefault: false,
               isDeleted: false,
-            });
+            };
 
-            await warehouse.save();
-            warehouses.push(warehouse);
-
-            await createAuditLog(auth.userId, companyId, 'create', 'warehouse', String(warehouse._id), { message: 'Warehouse imported from CSV' }, req);
+            toInsert.push(warehouse);
           } catch (error) {
             errors.push({ row, error: error instanceof Error ? error.message : 'Unknown error' });
+          }
+        }
+
+        if (toInsert.length > 0) {
+          const inserted = await Warehouse.insertMany(toInsert);
+          warehouses.push(...inserted);
+
+          for (const warehouse of inserted) {
+            await createAuditLog(auth.userId, companyId, 'create', 'warehouse', String(warehouse._id), { message: 'Warehouse imported from CSV' }, req);
           }
         }
 

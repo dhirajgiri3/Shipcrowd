@@ -81,17 +81,25 @@ export interface CompanyListResponse {
 class CompanyApiService {
     async createCompany(data: CreateCompanyData): Promise<{ message: string; company: Company }> {
         const response = await apiClient.post('/companies', data);
-        return response.data;
+        return {
+            message: response.data.message,
+            company: response.data.data.company,
+        };
     }
 
     async getCompany(companyId: string): Promise<{ company: Company }> {
         const response = await apiClient.get(`/companies/${companyId}`);
-        return response.data;
+        return {
+            company: response.data.data.company,
+        };
     }
 
     async updateCompany(companyId: string, data: Partial<CreateCompanyData>): Promise<{ message: string; company: Company }> {
         const response = await apiClient.put(`/companies/${companyId}`, data);
-        return response.data;
+        return {
+            message: response.data.message,
+            company: response.data.data.company,
+        };
     }
 
     async getAllCompanies(params?: {
@@ -104,12 +112,17 @@ class CompanyApiService {
         sortOrder?: 'asc' | 'desc';
     }): Promise<CompanyListResponse> {
         const response = await apiClient.get('/companies', { params });
-        return response.data;
+        return {
+            companies: response.data.data || [],
+            pagination: response.data.pagination || { total: 0, page: 1, limit: 10, pages: 1 },
+        };
     }
 
     async inviteOwner(companyId: string, data: InviteOwnerData): Promise<{ message: string }> {
         const response = await apiClient.post(`/companies/${companyId}/invite-owner`, data);
-        return response.data;
+        return {
+            message: response.data.message,
+        };
     }
 
     async updateCompanyStatus(
@@ -121,12 +134,15 @@ class CompanyApiService {
             `/companies/${companyId}/status`,
             { status, reason }
         );
-        return response.data;
+        return {
+            message: response.data.message,
+            company: response.data.data.company,
+        };
     }
 
     async getCompanyStats(): Promise<CompanyStats> {
         const response = await apiClient.get('/companies/stats');
-        return response.data;
+        return response.data.data;
     }
 }
 

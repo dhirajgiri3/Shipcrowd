@@ -198,9 +198,6 @@ export const KYC_REQUIRED_ROUTES = [
     'POST /api/v1/commission/payouts',
     'PUT /api/v1/companies/:id/bank',
 
-    // Ratecards
-    'POST /api/v1/ratecards',
-
     // Warehouse
     'POST /api/v1/warehouses',
     'PUT /api/v1/warehouses/:id',

@@ -1,0 +1,2 @@
+sku,quantity,productName,location,barcode,reorderPoint
+TEST-SKU-001,100,Test Product Name,A-01-01,123456789,10

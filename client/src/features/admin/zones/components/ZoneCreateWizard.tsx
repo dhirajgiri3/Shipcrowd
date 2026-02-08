@@ -76,6 +76,15 @@ export function ZoneCreateWizard({ onSuccess, onCancel }: ZoneCreateWizardProps)
                     }
     };
 
+    const downloadTemplate = () => {
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_zone_pincodes_template.csv';
+        link.download = 'shipcrowd_zone_pincodes_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleRemovePincode = (pincode: string) => {
         updateFormData({
             pincodes: formData.pincodes.filter((p) => p !== pincode),
@@ -236,6 +245,9 @@ export function ZoneCreateWizard({ onSuccess, onCancel }: ZoneCreateWizardProps)
                                         <p className="text-xs text-muted-foreground">
                                             CSV should contain one pincode per line or comma-separated
                                         </p>
+                                        <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
+                                            Download Template
+                                        </Button>
                                     </div>
                                 </div>
                             </div>

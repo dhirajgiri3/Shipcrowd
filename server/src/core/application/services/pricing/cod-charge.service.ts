@@ -19,7 +19,7 @@ export class CODChargeService {
 
     /**
      * Calculate COD charge based on RateCard or defaults
-     * 
+     *
      * @param orderValue - Total order value (invoice amount)
      * @param rateCard - Optional RateCard with custom COD settings
      * @returns COD charge amount
@@ -29,8 +29,11 @@ export class CODChargeService {
             return 0;
         }
 
-        const percentage = rateCard?.codCharges?.percentage || this.DEFAULT_PERCENTAGE;
-        const minimum = rateCard?.codCharges?.minimum || this.DEFAULT_MINIMUM;
+        // Read from RateCard schema fields: codPercentage and codMinimumCharge
+        // Convert percentage from whole number (2) to decimal (0.02) if >= 1
+        const percentageValue = rateCard?.codPercentage ?? this.DEFAULT_PERCENTAGE;
+        const percentage = percentageValue >= 1 ? percentageValue / 100 : percentageValue;
+        const minimum = rateCard?.codMinimumCharge ?? this.DEFAULT_MINIMUM;
 
         const percentageCharge = orderValue * percentage;
         const codCharge = Math.max(percentageCharge, minimum);
@@ -60,8 +63,10 @@ export class CODChargeService {
         minimum: number;
         formula: string;
     } {
-        const percentage = rateCard?.codCharges?.percentage || this.DEFAULT_PERCENTAGE;
-        const minimum = rateCard?.codCharges?.minimum || this.DEFAULT_MINIMUM;
+        // Read from RateCard schema fields: codPercentage and codMinimumCharge
+        const percentageValue = rateCard?.codPercentage ?? this.DEFAULT_PERCENTAGE;
+        const percentage = percentageValue >= 1 ? percentageValue / 100 : percentageValue;
+        const minimum = rateCard?.codMinimumCharge ?? this.DEFAULT_MINIMUM;
 
         return {
             percentage,

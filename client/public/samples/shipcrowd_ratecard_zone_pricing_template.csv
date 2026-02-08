@@ -1,0 +1,6 @@
+Name,Zone,BaseWeight,BasePrice,AdditionalPricePerKg,Status,EffectiveStartDate,EffectiveEndDate,Category,ShipmentType,MinimumFare,MinimumFareCalculatedOn,CODPercentage,CODMinimumCharge,FuelSurcharge,ZoneBType
+Standard Rates,A,0.5,30,15,active,2026-01-01,,standard,forward,35,freight_overhead,2,25,8,state
+Standard Rates,B,0.5,40,20,active,2026-01-01,,standard,forward,35,freight_overhead,2,25,8,state
+Standard Rates,C,0.5,50,25,active,2026-01-01,,standard,forward,35,freight_overhead,2,25,8,state
+Standard Rates,D,0.5,65,30,active,2026-01-01,,standard,forward,35,freight_overhead,2,25,8,state
+Standard Rates,E,0.5,90,45,active,2026-01-01,,standard,forward,35,freight_overhead,2,25,8,state

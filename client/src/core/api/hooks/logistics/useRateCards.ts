@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
@@ -8,37 +8,26 @@ export interface RateCard {
     name: string;
     companyId: string;
     status: 'draft' | 'active' | 'inactive' | 'expired';
-    baseRates: Array<{
-        carrier?: string;
-        serviceType?: string;
-        basePrice: number;
-        minWeight: number;
-        maxWeight: number;
-        baseRate?: number; // Legacy alias
-    }>;
-    weightRules: Array<{
-        minWeight: number;
-        maxWeight: number;
-        pricePerKg: number;
-        carrier?: string;
-        serviceType?: string;
-        ratePerKg?: number; // Legacy alias
-    }>;
-    zoneRules: Array<{
-        zoneId?: string; // Changed from zone string to zoneId often used
-        zone?: string;
-        multiplier?: number;
-        additionalPrice?: number;
-        carrier?: string;
-        serviceType?: string;
-    }>;
+    zonePricing?: {
+        zoneA?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneB?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneC?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneD?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneE?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+    };
+    minimumFare?: number;
+    minimumFareCalculatedOn?: 'freight' | 'freight_overhead';
+    codPercentage?: number;
+    codMinimumCharge?: number;
+    zoneBType?: 'state' | 'distance';
+    shipmentType?: 'forward' | 'reverse';
+    rateCardCategory?: string;
     createdAt: string;
     updatedAt: string;
     // V2 Fields
     version?: string;
     fuelSurcharge?: number;
-    fuelSurchargeBase?: 'freight' | 'total';
-    minimumCall?: number;
+    fuelSurchargeBase?: 'freight' | 'freight_cod';
     isLocked?: boolean;
     codSurcharges?: any[];
 }
@@ -68,7 +57,7 @@ export const useRateCards = (options?: UseQueryOptions<RateCard[], ApiError>) =>
         queryKey: queryKeys.rateCards.all(),
         queryFn: async () => {
             const response = await apiClient.get('/ratecards');
-            return response.data.rateCards;
+            return response.data.data;
         },
         ...CACHE_TIMES.LONG,
         retry: RETRY_CONFIG.DEFAULT,
@@ -84,7 +73,7 @@ export const useRateCard = (rateCardId: string, options?: UseQueryOptions<RateCa
         queryKey: queryKeys.rateCards.detail(rateCardId),
         queryFn: async () => {
             const response = await apiClient.get(`/ratecards/${rateCardId}`);
-            return response.data.rateCard;
+            return response.data.data.rateCard;
         },
         enabled: !!rateCardId,
         ...CACHE_TIMES.LONG,
@@ -101,7 +90,7 @@ export const useCalculateRate = (payload: RateCalculationPayload, options?: UseQ
         queryKey: queryKeys.rateCards.calculate(payload as any),
         queryFn: async () => {
             const response = await apiClient.post('/ratecards/calculate', payload);
-            return response.data;
+            return response.data.data;
         },
         enabled: !!(payload.weight && payload.destinationPincode),
         ...CACHE_TIMES.SHORT,
@@ -110,36 +99,4 @@ export const useCalculateRate = (payload: RateCalculationPayload, options?: UseQ
     });
 };
 
-/**
- * Clone a rate card
- */
-export const useCloneRateCard = (options?: UseMutationOptions<RateCard, ApiError, string>) => {
-    const queryClient = useQueryClient();
-    return useMutation<RateCard, ApiError, string>({
-        mutationFn: async (rateCardId) => {
-            const response = await apiClient.post(`/ratecards/${rateCardId}/clone`);
-            return response.data.rateCard;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.rateCards.all() });
-        },
-        ...options
-    });
-};
-
-/**
- * Delete a rate card
- */
-export const useDeleteRateCard = (options?: UseMutationOptions<{ id: string }, ApiError, string>) => {
-    const queryClient = useQueryClient();
-    return useMutation<{ id: string }, ApiError, string>({
-        mutationFn: async (rateCardId) => {
-            const response = await apiClient.delete(`/ratecards/${rateCardId}`);
-            return response.data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.rateCards.all() });
-        },
-        ...options
-    });
-};
+// Note: create/update/delete/clone are admin-only. Use admin hooks for management actions.

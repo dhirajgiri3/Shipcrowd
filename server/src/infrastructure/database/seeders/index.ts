@@ -65,7 +65,7 @@ const COLLECTIONS_TO_CLEAR = [
     'integrations',
     'couriers', // New collection
     // Phase 3 collections
-    'rate_cards',  // Fixed: was 'ratecards'
+    'ratecards',  // Correct Mongoose pluralization
     'zones',
     'shopify_sync_logs',  // Fixed: was 'shopifysynclogs'
     'woocommerce_sync_logs',  // Fixed: was 'woocommercesynclogs'
@@ -203,6 +203,7 @@ async function runSeeders(): Promise<void> {
         { name: 'KYC', fn: seedKYC },
         { name: 'Warehouses', fn: seedWarehouses },
         { name: 'Inventory', fn: seedInventory },
+        { name: 'Rate Cards & Zones', fn: seedRateCardsAndZones },
         { name: 'Orders', fn: seedOrders },
         { name: 'Pick Lists', fn: seedPickLists },
         { name: 'Shipments', fn: seedShipments },
@@ -221,8 +222,6 @@ async function runSeeders(): Promise<void> {
         { name: 'Warehouse Config', fn: seedWarehouseConfig },
         { name: 'Marketplace Stores', fn: seedMarketplaceStores },
         { name: 'Integrations', fn: seedIntegrations },
-        // Phase 3 seeders
-        { name: 'Rate Cards & Zones', fn: seedRateCardsAndZones },
         { name: 'Marketplace Sync Logs', fn: seedMarketplaceSyncLogs },
         { name: 'Product Mappings', fn: seedMarketplaceProductMappings },
         { name: 'Audit Logs', fn: seedAuditLogs },

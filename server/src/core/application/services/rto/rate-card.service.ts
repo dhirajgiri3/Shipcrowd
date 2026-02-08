@@ -16,6 +16,7 @@
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
 import RateCard from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/rate-card.model';
+import PincodeLookupService from '../logistics/pincode-lookup.service';
 
 interface RateCalculationInput {
   companyId: string;
@@ -41,7 +42,6 @@ interface RateCalculationResult {
     baseRate?: number;
     weightRate?: number;
     zoneAdditional?: number;
-    zoneMultiplier?: number;
     discountPercentage?: number;
     flatDiscount?: number;
   };
@@ -141,60 +141,26 @@ export default class RateCardService {
 
     const breakdown: RateCalculationResult['breakdown'] = {};
 
-    // 1. Find applicable base rate
-    const baseRate = rateCard.baseRates.find((rate: any) => {
-      const carrierMatch = !input.carrier || rate.carrier === input.carrier;
-      const serviceMatch = !input.serviceType || rate.serviceType === input.serviceType;
-      const weightMatch = input.weight >= rate.minWeight && input.weight <= rate.maxWeight;
-      return carrierMatch && serviceMatch && weightMatch;
-    });
-
-    if (baseRate) {
-      basePrice = baseRate.basePrice;
-      breakdown.baseRate = baseRate.basePrice;
-    } else {
-      // Fallback: Use first base rate or default
-      basePrice = rateCard.baseRates[0]?.basePrice || 50;
-      breakdown.baseRate = basePrice;
+    // 1. Resolve zone key
+    const zoneKey = this.resolveZoneKey(input, rateCard);
+    const zonePricing = rateCard.zonePricing?.[zoneKey];
+    if (!zonePricing) {
+      throw new Error(`Zone pricing not configured for ${zoneKey || 'unknown zone'}`);
     }
 
-    // 2. Calculate weight-based charges
-    const weightRule = rateCard.weightRules.find((rule: any) => {
-      const weightMatch = input.weight >= rule.minWeight && input.weight <= rule.maxWeight;
-      const carrierMatch = !rule.carrier || !input.carrier || rule.carrier === input.carrier;
-      const serviceMatch = !rule.serviceType || !input.serviceType || rule.serviceType === input.serviceType;
-      return weightMatch && carrierMatch && serviceMatch;
-    });
+    // 2. Calculate base + additional weight charges
+    basePrice = zonePricing.basePrice;
+    const additionalWeight = Math.max(0, input.weight - zonePricing.baseWeight);
+    weightCharge = additionalWeight * zonePricing.additionalPricePerKg;
+    breakdown.baseRate = basePrice;
+    breakdown.weightRate = zonePricing.additionalPricePerKg;
 
-    if (weightRule) {
-      weightCharge = input.weight * weightRule.pricePerKg;
-      breakdown.weightRate = weightRule.pricePerKg;
-    }
+    // 3. Zone charge (not used in zone pricing model)
+    zoneCharge = 0;
+    breakdown.zoneAdditional = 0;
 
-    // 3. Apply zone-based charges
-    if (input.zoneId) {
-      const zoneRule = rateCard.zoneRules.find((rule: any) => {
-        return rule.zoneId.toString() === input.zoneId;
-      });
-
-      if (zoneRule) {
-        zoneCharge = zoneRule.additionalPrice;
-        breakdown.zoneAdditional = zoneRule.additionalPrice;
-      }
-    }
-
-    // 4. Apply zone multipliers (if any)
-    let zoneMultiplier = 1;
-    if (input.zoneId && rateCard.zoneMultipliers) {
-      const multiplier = rateCard.zoneMultipliers.get(input.zoneId);
-      if (multiplier) {
-        zoneMultiplier = multiplier;
-        breakdown.zoneMultiplier = multiplier;
-      }
-    }
-
-    // 5. Calculate subtotal before discount
-    let subtotal = (basePrice + weightCharge + zoneCharge) * zoneMultiplier;
+    // 4. Calculate subtotal before discount
+    let subtotal = basePrice + weightCharge + zoneCharge;
 
     // 6. Apply customer-specific discounts
     const customerOverride = rateCard.customerOverrides.find((override: any) => {
@@ -227,6 +193,38 @@ export default class RateCardService {
       currency: 'INR',
       breakdown
     };
+  }
+
+  private static resolveZoneKey(input: RateCalculationInput, rateCard: any): string {
+    if (input.zoneId) {
+      const normalized = input.zoneId.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const letter = normalized.startsWith('zone')
+        ? normalized.replace('zone', '').toUpperCase()
+        : normalized.toUpperCase();
+      if (['A', 'B', 'C', 'D', 'E'].includes(letter)) {
+        return `zone${letter}`;
+      }
+    }
+
+    if (input.originPincode && input.destinationPincode) {
+      try {
+        const zoneBType = rateCard.zoneBType || 'state';
+        const zoneInfo = PincodeLookupService.getZoneFromPincodes(
+          input.originPincode,
+          input.destinationPincode,
+          zoneBType
+        );
+        return zoneInfo.zone;
+      } catch (error) {
+        logger.warn('Failed to resolve zone from pincodes, defaulting to zoneD', {
+          origin: input.originPincode,
+          destination: input.destinationPincode,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    return 'zoneD';
   }
 
   /**
@@ -268,23 +266,21 @@ export default class RateCardService {
   static validateRateCard(rateCard: any): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    if (!rateCard.baseRates || rateCard.baseRates.length === 0) {
-      errors.push('Rate card must have at least one base rate');
+    const zonePricing = rateCard.zonePricing || {};
+    const requiredZones = ['zoneA', 'zoneB', 'zoneC', 'zoneD', 'zoneE'];
+
+    if (!Object.keys(zonePricing).length) {
+      errors.push('Rate card must have zone pricing configured');
     }
 
-    if (rateCard.baseRates) {
-      for (const rate of rateCard.baseRates) {
-        if (rate.minWeight > rate.maxWeight) {
-          errors.push(`Invalid weight range for ${rate.carrier}/${rate.serviceType}`);
-        }
+    for (const zoneKey of requiredZones) {
+      const zoneData = zonePricing[zoneKey];
+      if (!zoneData) {
+        errors.push(`Missing pricing for ${zoneKey}`);
+        continue;
       }
-    }
-
-    if (rateCard.weightRules) {
-      for (const rule of rateCard.weightRules) {
-        if (rule.minWeight > rule.maxWeight) {
-          errors.push('Invalid weight range in weight rules');
-        }
+      if (zoneData.baseWeight < 0 || zoneData.basePrice < 0 || zoneData.additionalPricePerKg < 0) {
+        errors.push(`Invalid pricing values for ${zoneKey}`);
       }
     }
 

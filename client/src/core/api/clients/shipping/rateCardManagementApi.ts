@@ -49,7 +49,7 @@ class RateCardManagementApiService {
      */
     async getAssignments(): Promise<AssignmentsResponse> {
         const response = await apiClient.get('/admin/ratecards/assignments');
-        return response.data;
+        return response.data.data;
     }
 
     /**
@@ -57,7 +57,7 @@ class RateCardManagementApiService {
      */
     async assign(data: AssignRateCardData): Promise<RateCardAssignment> {
         const response = await apiClient.post('/admin/ratecards/assign', data);
-        return response.data;
+        return response.data.data;
     }
 
     /**
@@ -72,7 +72,7 @@ class RateCardManagementApiService {
      */
     async getAvailableCouriers(): Promise<CouriersResponse> {
         const response = await apiClient.get('/admin/ratecards/couriers');
-        return response.data;
+        return response.data.data;
     }
 
     /**

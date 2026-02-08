@@ -8,10 +8,11 @@ import mongoose from 'mongoose';
 import AuditLog from '../../mongoose/models/system/audit/audit-log.model';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
+import RateCard from '../../mongoose/models/logistics/shipping/configuration/rate-card.model';
 import User from '../../mongoose/models/iam/users/user.model';
 import { logger, createTimer } from '../utils/logger.utils';
 import { selectRandom, randomInt } from '../utils/random.utils';
-import { subMinutes, subHours, subDays } from '../utils/date.utils';
+import { subMinutes, subHours, subDays, addDays } from '../utils/date.utils';
 
 export async function seedAuditLogs(): Promise<void> {
     const timer = createTimer();
@@ -45,11 +46,11 @@ export async function seedAuditLogs(): Promise<void> {
                 userId: createdBy._id,
                 companyId: orderDoc.companyId,
                 action: 'create',
-                resource: 'Order',
+                resource: 'order',
                 resourceId: orderDoc._id,
                 details: {
-                    message: `Order ${orderDoc.orderId} created`,
-                    document: { orderId: orderDoc.orderId, amount: orderDoc.totalAmount }
+                    message: `Order ${orderDoc.orderNumber} created`,
+                    document: { orderNumber: orderDoc.orderNumber, amount: orderDoc.totals?.total }
                 },
                 timestamp: createdAt,
                 ipAddress: '192.168.1.1',
@@ -59,13 +60,13 @@ export async function seedAuditLogs(): Promise<void> {
             // 2. Status Updates
             // Simulate: Created -> Confirmed -> Processing
             const statuses = ['confirmed', 'processing'];
-            if (orderDoc.status === 'shipped' || orderDoc.status === 'delivered') {
+            if (orderDoc.currentStatus === 'shipped' || orderDoc.currentStatus === 'delivered') {
                 statuses.push('shipped');
             }
-            if (orderDoc.status === 'delivered') {
+            if (orderDoc.currentStatus === 'delivered') {
                 statuses.push('delivered');
             }
-            if (orderDoc.status === 'cancelled') {
+            if (orderDoc.currentStatus === 'cancelled') {
                 statuses.push('cancelled');
             }
 
@@ -93,7 +94,7 @@ export async function seedAuditLogs(): Promise<void> {
                     userId: selectRandom(users)._id,
                     companyId: orderDoc.companyId,
                     action: 'update',
-                    resource: 'Order',
+                    resource: 'order',
                     resourceId: orderDoc._id,
                     details: {
                         message: `Order status updated to ${status}`,
@@ -120,7 +121,90 @@ export async function seedAuditLogs(): Promise<void> {
             logsBuffer = [];
         }
 
-        // 2. Seed User Activity Logs (Login/Logout)
+        // 2. Seed Shipment Audit Logs
+        const totalShipments = await Shipment.countDocuments();
+        const shipmentCursor = Shipment.find().cursor();
+        let shipmentCount = 0;
+
+        for (let shipment = await shipmentCursor.next(); shipment != null; shipment = await shipmentCursor.next()) {
+            const shipmentDoc = shipment as any;
+            const createdBy = selectRandom(users);
+            const createdAt = new Date(shipmentDoc.createdAt);
+
+            logsBuffer.push({
+                userId: createdBy._id,
+                companyId: shipmentDoc.companyId,
+                action: 'create',
+                resource: 'shipment',
+                resourceId: shipmentDoc._id,
+                details: {
+                    message: `Shipment ${shipmentDoc.trackingNumber} created`,
+                    document: { trackingNumber: shipmentDoc.trackingNumber, carrier: shipmentDoc.carrier }
+                },
+                timestamp: createdAt,
+                ipAddress: '192.168.1.1',
+            });
+
+            shipmentCount++;
+            if (logsBuffer.length >= batchSize) {
+                await AuditLog.insertMany(logsBuffer, { ordered: false });
+                totalLogs += logsBuffer.length;
+                logsBuffer = [];
+                logger.progress(shipmentCount, totalShipments, 'Shipments Processed');
+            }
+        }
+
+        if (logsBuffer.length > 0) {
+            await AuditLog.insertMany(logsBuffer, { ordered: false });
+            totalLogs += logsBuffer.length;
+            logsBuffer = [];
+        }
+
+        // 3. Seed Rate Card Audit Logs
+        const rateCards = await RateCard.find({ isDeleted: false }).lean();
+        for (const rateCard of rateCards) {
+            const createdBy = selectRandom(users);
+            const createdAt = new Date(rateCard.createdAt);
+
+            logsBuffer.push({
+                userId: createdBy._id,
+                companyId: rateCard.companyId,
+                action: 'create',
+                resource: 'ratecard',
+                resourceId: rateCard._id,
+                details: {
+                    message: `Rate card ${rateCard.name} created`,
+                    document: { name: rateCard.name, status: rateCard.status }
+                },
+                timestamp: createdAt,
+                ipAddress: '192.168.1.1',
+            });
+
+            if (Math.random() < 0.5) {
+                const updatedAt = addDays(createdAt, randomInt(1, 20));
+                logsBuffer.push({
+                    userId: selectRandom(users)._id,
+                    companyId: rateCard.companyId,
+                    action: 'update',
+                    resource: 'ratecard',
+                    resourceId: rateCard._id,
+                    details: {
+                        message: `Rate card ${rateCard.name} updated`,
+                        changes: { status: { from: rateCard.status, to: rateCard.status } }
+                    },
+                    timestamp: updatedAt,
+                    ipAddress: '192.168.1.1',
+                });
+            }
+        }
+
+        if (logsBuffer.length > 0) {
+            await AuditLog.insertMany(logsBuffer, { ordered: false });
+            totalLogs += logsBuffer.length;
+            logsBuffer = [];
+        }
+
+        // 4. Seed User Activity Logs (Login/Logout)
         // Generate some random activity for each user
         for (const user of users) {
             const userDoc = user as any;
@@ -133,7 +217,7 @@ export async function seedAuditLogs(): Promise<void> {
                     userId: userDoc._id,
                     companyId: userDoc.companyId,
                     action: 'login',
-                    resource: 'Auth',
+                    resource: 'auth',
                     details: { message: 'User logged in' },
                     timestamp: loginTime,
                     ipAddress: '192.168.1.1'
@@ -144,7 +228,7 @@ export async function seedAuditLogs(): Promise<void> {
                     userId: userDoc._id,
                     companyId: userDoc.companyId,
                     action: 'logout',
-                    resource: 'Auth',
+                    resource: 'auth',
                     details: { message: 'User logged out' },
                     timestamp: new Date(loginTime.getTime() + randomInt(10, 120) * 60000),
                     ipAddress: '192.168.1.1'

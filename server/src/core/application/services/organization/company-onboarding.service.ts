@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import Zone from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/zone.model';
 import RateCard from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/rate-card.model';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
-import { CARRIERS } from '../../../../infrastructure/database/seeders/data/carrier-data';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -141,76 +140,31 @@ export class CompanyOnboardingService {
      */
     async createDefaultRateCard(companyId: mongoose.Types.ObjectId): Promise<mongoose.Types.ObjectId> {
         try {
-            // Get all carriers from static CARRIERS data
-            const carriersList = Object.values(CARRIERS);
-
-            // Create base rates for each carrier (first service type only for simplicity)
-            const baseRates = carriersList.map(carrier => ({
-                carrier: carrier.displayName,
-                serviceType: carrier.serviceTypes[0], // Use first service (usually 'Standard')
-                basePrice: 40, // Zone A base price
-                minWeight: 0,
-                maxWeight: 0.5 // Up to 500g
-            }));
-
-            // Create weight rules (progressive pricing)
-            const weightRules = carriersList.flatMap(carrier => [
-                {
-                    minWeight: 0.5,
-                    maxWeight: 10,
-                    pricePerKg: 30, // ₹30/kg for 0.5-10kg
-                    carrier: carrier.displayName,
-                    serviceType: carrier.serviceTypes[0]
-                },
-                {
-                    minWeight: 10,
-                    maxWeight: 50,
-                    pricePerKg: 25, // ₹25/kg for 10-50kg (bulk discount)
-                    carrier: carrier.displayName,
-                    serviceType: carrier.serviceTypes[0]
-                }
-            ]);
-
-            // Get the 5 standard zones we just created
-            const zones = await Zone.find({
-                companyId,
-                zoneType: 'standard',
-                isDeleted: false
-            }).lean();
-
-            // Create zone rules with zone multipliers (A cheapest, E most expensive)
-            const zoneMultipliers: Record<string, number> = {
-                zoneA: 1.0,   // Base rate (₹40)
-                zoneB: 1.5,   // 50% more (₹60)
-                zoneC: 2.25,  // 125% more (₹90)
-                zoneD: 3.75,  // 275% more (₹150)
-                zoneE: 5.0    // 400% more (₹200)
+            const zonePricing = {
+                zoneA: { baseWeight: 0.5, basePrice: 30, additionalPricePerKg: 15 },
+                zoneB: { baseWeight: 0.5, basePrice: 40, additionalPricePerKg: 20 },
+                zoneC: { baseWeight: 0.5, basePrice: 50, additionalPricePerKg: 25 },
+                zoneD: { baseWeight: 0.5, basePrice: 65, additionalPricePerKg: 30 },
+                zoneE: { baseWeight: 0.5, basePrice: 90, additionalPricePerKg: 45 }
             };
-
-            const zoneRules = zones.flatMap(zone =>
-                carriersList.map(carrier => ({
-                    zoneId: zone._id,
-                    carrier: carrier.displayName,
-                    serviceType: carrier.serviceTypes[0],
-                    additionalPrice: zone.standardZoneCode ?
-                        (40 * (zoneMultipliers[zone.standardZoneCode] - 1)) : 0,
-                    transitDays: zone.transitTimes[0]?.maxDays || 3
-                }))
-            );
 
             // Create the rate card
             const rateCard = new RateCard({
                 name: `Standard Rates - ${companyId.toString().substring(0, 8)}`,
                 companyId,
-                baseRates,
-                weightRules,
-                zoneRules,
-                zoneMultipliers,
+                zonePricing,
                 effectiveDates: {
                     startDate: new Date()
                 },
                 status: 'active',
-                version: 1,
+                version: 'v2',
+                versionNumber: 1,
+                zoneBType: 'state',
+                minimumFare: 35,
+                minimumFareCalculatedOn: 'freight_overhead',
+                codPercentage: 2.0,
+                codMinimumCharge: 25,
+                fuelSurcharge: 8,
                 isDeleted: false
             });
 

@@ -15,17 +15,17 @@ import { handleApiError, showSuccessToast } from '@/src/lib/error';
 export interface AdminRateCard {
     _id: string;
     name: string;
+    scope?: 'global' | 'company';
     companyId: {
         _id: string;
         name: string;
         email?: string;
         phone?: string;
-    } | string;
+    } | string | null;
     status: 'draft' | 'active' | 'inactive' | 'expired';
     version?: string;
     versionNumber?: number;
     fuelSurcharge?: number;
-    minimumCall?: number;
     isLocked?: boolean;
     minimumFare?: number;
     minimumFareCalculatedOn?: 'freight' | 'freight_overhead';
@@ -33,34 +33,19 @@ export interface AdminRateCard {
     codPercentage?: number;
     codMinimumCharge?: number;
     shipmentType?: 'forward' | 'reverse';
-    zoneBType?: 'state' | 'region';
+    zoneBType?: 'state' | 'distance';
     rateCardCategory?: string;
-    baseRates: Array<{
-        carrier?: string | null;
-        serviceType?: string | null;
-        basePrice: number;
-        minWeight: number;
-        maxWeight: number;
-    }>;
-    weightRules?: Array<{
-        minWeight: number;
-        maxWeight: number;
-        pricePerKg: number;
-        carrier?: string;
-        serviceType?: string;
-    }>;
-    zoneRules?: Array<{
-        zoneId: string | { _id: string; name: string; standardZoneCode?: string };
-        carrier?: string | null;
-        serviceType?: string | null;
-        additionalPrice: number;
-        transitDays?: number;
-    }>;
+    zonePricing?: {
+        zoneA?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneB?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneC?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneD?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneE?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+    };
     effectiveDates: {
         startDate: string;
         endDate?: string;
     };
-    zoneMultipliers?: Record<string, number>;
     createdAt: string;
     updatedAt: string;
     isDeleted: boolean;
@@ -68,41 +53,27 @@ export interface AdminRateCard {
 
 export interface CreateAdminRateCardPayload {
     name: string;
-    companyId: string;
+    scope?: 'global' | 'company';
+    companyId?: string;
     rateCardCategory?: string;
     shipmentType?: 'forward' | 'reverse';
     gst?: number;
     minimumFare?: number;
     minimumFareCalculatedOn?: 'freight' | 'freight_overhead';
-    zoneBType?: 'state' | 'region';
+    zoneBType?: 'state' | 'distance';
     codPercentage?: number;
     codMinimumCharge?: number;
-    baseRates: Array<{
-        carrier?: string | null;
-        serviceType?: string | null;
-        basePrice: number;
-        minWeight: number;
-        maxWeight: number;
-    }>;
-    weightRules?: Array<{
-        minWeight: number;
-        maxWeight: number;
-        pricePerKg: number;
-        carrier?: string | null;
-        serviceType?: string | null;
-    }>;
-    zoneRules?: Array<{
-        zoneId: string;
-        carrier?: string | null;
-        serviceType?: string | null;
-        additionalPrice: number;
-        transitDays?: number;
-    }>;
+    zonePricing?: {
+        zoneA?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneB?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneC?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneD?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+        zoneE?: { baseWeight: number; basePrice: number; additionalPricePerKg: number };
+    };
     effectiveDates: {
         startDate: string;
         endDate?: string;
     };
-    zoneMultipliers?: Record<string, number>;
     status?: 'draft' | 'active' | 'inactive';
 }
 
@@ -125,8 +96,8 @@ export interface AdminRateCardStats {
 interface AdminRateCardsFilters {
     status?: 'draft' | 'active' | 'inactive' | 'expired';
     companyId?: string;
+    scope?: 'global' | 'company';
     search?: string;
-    carrier?: string;
     category?: string;
     page?: number;
     limit?: number;
@@ -146,8 +117,8 @@ export const useAdminRateCards = (
             const params = new URLSearchParams();
             if (filters?.status) params.append('status', filters.status);
             if (filters?.companyId) params.append('companyId', filters.companyId);
+            if (filters?.scope) params.append('scope', filters.scope);
             if (filters?.search) params.append('search', filters.search);
-            if (filters?.carrier) params.append('carrier', filters.carrier);
             if (filters?.category) params.append('category', filters.category);
             if (filters?.page) params.append('page', filters.page.toString());
             if (filters?.limit) params.append('limit', filters.limit.toString());

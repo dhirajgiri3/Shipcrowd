@@ -23,6 +23,7 @@ import {
     Loader2,
     X,
 } from 'lucide-react';
+import { Button } from '@/src/components/ui/core/Button';
 import type { Address, BulkAddressValidationResult } from '@/src/types/api/logistics';
 
 type ValidationStatus = 'idle' | 'parsing' | 'validating' | 'complete' | 'error';
@@ -35,6 +36,15 @@ export function BulkAddressValidationClient() {
     const [parseError, setParseError] = useState<string | null>(null);
 
     const { mutate: validateAddresses, isPending } = useBulkValidateAddresses();
+
+    const downloadTemplate = () => {
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_address_validation_template.csv';
+        link.download = 'shipcrowd_address_validation_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     // Parse CSV function
     const parseCSV = useCallback((csvText: string): Address[] => {
@@ -229,6 +239,12 @@ export function BulkAddressValidationClient() {
                         <p className="text-xs text-[var(--primary-blue)] mt-3">
                             Required columns: <strong>pincode, city, state</strong>
                         </p>
+                        <div className="mt-4">
+                            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Download Template
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}

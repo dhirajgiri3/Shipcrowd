@@ -168,9 +168,11 @@ WalletTransactionSchema.index(
     { company: 1, 'metadata.idempotencyKey': 1 },
     {
         unique: true,
-        sparse: true,
         background: true,
-        name: 'idx_company_idempotency'
+        name: 'idx_company_idempotency',
+        partialFilterExpression: {
+            'metadata.idempotencyKey': { $exists: true, $type: 'string' }
+        }
     }
 );
 // External Reference Index (Phase 1 Hardening)

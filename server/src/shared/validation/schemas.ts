@@ -155,37 +155,35 @@ export type UpdateShipmentStatusInput = z.infer<typeof updateShipmentStatusSchem
 // RateCard Schemas
 // ============================================================================
 
-export const baseRateSchema = z.object({
-    carrier: z.string().min(1),
-    serviceType: z.string().min(1),
+export const zonePricingEntrySchema = z.object({
+    baseWeight: z.number().min(0),
     basePrice: z.number().min(0),
-    minWeight: z.number().min(0),
-    maxWeight: z.number().min(0),
+    additionalPricePerKg: z.number().min(0),
 });
 
-export const weightRuleSchema = z.object({
-    minWeight: z.number().min(0),
-    maxWeight: z.number().min(0),
-    pricePerKg: z.number().min(0),
-    carrier: z.string().optional(),
-    serviceType: z.string().optional(),
-});
-
-export const zoneRuleSchema = z.object({
-    zoneId: z.string(),
-    carrier: z.string().min(1),
-    serviceType: z.string().min(1),
-    additionalPrice: z.number(),
-    transitDays: z.number().int().min(0).optional(),
+export const zonePricingSchema = z.object({
+    zoneA: zonePricingEntrySchema,
+    zoneB: zonePricingEntrySchema,
+    zoneC: zonePricingEntrySchema,
+    zoneD: zonePricingEntrySchema,
+    zoneE: zonePricingEntrySchema,
 });
 
 export const rateCardStatusSchema = z.enum(['draft', 'active', 'inactive', 'expired']);
 
 export const createRateCardSchema = z.object({
     name: z.string().min(2, 'Rate card name is required'),
-    baseRates: z.array(baseRateSchema).min(1, 'At least one base rate is required'),
-    weightRules: z.array(weightRuleSchema).optional(),
-    zoneRules: z.array(zoneRuleSchema).optional(),
+    rateCardCategory: z.string().optional(),
+    shipmentType: z.enum(['forward', 'reverse']).optional(),
+    gst: z.number().min(0).optional(),
+    minimumFare: z.number().min(0).optional(),
+    minimumFareCalculatedOn: z.enum(['freight', 'freight_overhead']).optional(),
+    zoneBType: z.enum(['state', 'distance']).optional(),
+    codPercentage: z.number().min(0).optional(),
+    codMinimumCharge: z.number().min(0).optional(),
+    fuelSurcharge: z.number().min(0).optional(),
+    fuelSurchargeBase: z.enum(['freight', 'freight_cod']).optional(),
+    zonePricing: zonePricingSchema,
     effectiveDates: z.object({
         startDate: z.string().transform(str => new Date(str)),
         endDate: z.string().transform(str => new Date(str)).optional(),

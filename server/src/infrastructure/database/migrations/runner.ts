@@ -71,6 +71,11 @@ async function main() {
                 await new CodEnhancementMigration(dryRun).run();
                 break;
             }
+            case 'ratecard-scope': {
+                const { RateCardScopeMigration } = await import('./phase-2/ratecard-scope-migration');
+                await new RateCardScopeMigration(dryRun).run();
+                break;
+            }
 
             default:
                 console.log('Available migrations:');
@@ -80,6 +85,7 @@ async function main() {
                 console.log('  commission-soft-delete  -- Run CommissionTransaction soft delete migration');
                 console.log('  kyc-soft-delete         -- Run KYC soft delete migration');
                 console.log('  cod-enhancement         -- Run COD fields backfill (totalCollection, collectionStatus)');
+                console.log('  ratecard-scope          -- Backfill ratecard scope (global vs company)');
                 console.log('\nOptions:');
                 console.log('  --dry-run               -- Simulate migration without writes');
                 break;

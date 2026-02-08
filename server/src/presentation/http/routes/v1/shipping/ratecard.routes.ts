@@ -1,16 +1,9 @@
 import express from 'express';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { authenticate } from '../../../middleware/auth/auth';
 import ratecardController from '../../../controllers/shipping/ratecard.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = express.Router();
-
-/**
- * @route POST /api/v1/ratecards
- * @desc Create a new rate card
- * @access Private
- */
-router.post('/', authenticate, csrfProtection, asyncHandler(ratecardController.createRateCard));
 
 /**
  * @route GET /api/v1/ratecards
@@ -76,15 +69,6 @@ router.post('/preview', authenticate, asyncHandler(ratecardController.previewPri
 router.get('/:id', authenticate, asyncHandler(ratecardController.getRateCardById));
 
 /**
- * @route PATCH /api/v1/ratecards/:id
- * @desc Update a rate card
- * @access Private
- */
-router.patch('/:id', authenticate, csrfProtection, asyncHandler(ratecardController.updateRateCard));
-router.delete('/:id', authenticate, csrfProtection, asyncHandler(ratecardController.deleteRateCard));
-router.post('/:id/clone', authenticate, csrfProtection, asyncHandler(ratecardController.cloneRateCard));
-
-/**
  * @route GET /api/v1/ratecards/:id/analytics
  * @desc Get rate card usage analytics
  * @access Private
@@ -97,33 +81,5 @@ router.get('/:id/analytics', authenticate, asyncHandler(ratecardController.getRa
  * @access Private
  */
 router.get('/:id/revenue-series', authenticate, asyncHandler(ratecardController.getRateCardRevenueSeries));
-
-/**
- * @route GET /api/v1/ratecards/export
- * @desc Export all rate cards to CSV
- * @access Private
- */
-router.get('/export', authenticate, asyncHandler(ratecardController.exportRateCards));
-
-/**
- * @route POST /api/v1/ratecards/bulk-update
- * @desc Bulk update rate cards (activate/deactivate/adjust prices)
- * @access Private
- */
-// Configure multer for memory storage
-import multer from 'multer';
-const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
-});
-
-/**
- * @route POST /api/v1/ratecards/import
- * @desc Import rate cards from CSV/Excel
- * @access Private
- */
-router.post('/import', authenticate, csrfProtection, upload.single('file'), asyncHandler(ratecardController.importRateCards));
-
-router.post('/bulk-update', authenticate, csrfProtection, asyncHandler(ratecardController.bulkUpdateRateCards));
 
 export default router;

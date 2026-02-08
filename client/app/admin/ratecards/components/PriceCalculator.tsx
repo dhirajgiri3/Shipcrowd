@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Input } from '@/src/components/ui/core/Input';
 import { Button } from '@/src/components/ui/core/Button';
-import { RateCardFormData, calculateMultipliers } from './ratecardWizard.utils';
+import { RateCardFormData } from './ratecardWizard.utils';
 
 interface PriceCalculatorProps {
     formData: RateCardFormData;
@@ -16,21 +16,46 @@ export function PriceCalculator({ formData }: PriceCalculatorProps) {
     const [orderValue, setOrderValue] = useState(1000);
     const [result, setResult] = useState<{ subtotal: number; gst: number; total: number; breakdown: Record<string, number> } | null>(null);
 
-    const multipliers = useMemo(() => calculateMultipliers(formData), [formData]);
-
     const calculate = () => {
-        const baseWeightKg = (parseFloat(formData.basicWeight) || 500) / 1000;
-        const addWeightGm = parseFloat(formData.additionalWeight) || 500;
-        const baseZonePrice = parseFloat((formData as any)[`basicZone${zone}`]) || 0;
+        const zonePricingMap = {
+            A: {
+                baseWeight: formData.zoneABaseWeight,
+                basePrice: formData.zoneABasePrice,
+                additionalPricePerKg: formData.zoneAAdditionalPricePerKg,
+            },
+            B: {
+                baseWeight: formData.zoneBBaseWeight,
+                basePrice: formData.zoneBBasePrice,
+                additionalPricePerKg: formData.zoneBAdditionalPricePerKg,
+            },
+            C: {
+                baseWeight: formData.zoneCBaseWeight,
+                basePrice: formData.zoneCBasePrice,
+                additionalPricePerKg: formData.zoneCAdditionalPricePerKg,
+            },
+            D: {
+                baseWeight: formData.zoneDBaseWeight,
+                basePrice: formData.zoneDBasePrice,
+                additionalPricePerKg: formData.zoneDAdditionalPricePerKg,
+            },
+            E: {
+                baseWeight: formData.zoneEBaseWeight,
+                basePrice: formData.zoneEBasePrice,
+                additionalPricePerKg: formData.zoneEAdditionalPricePerKg,
+            },
+        } as const;
 
-        const freightBase = baseZonePrice;
+        const zoneData = zonePricingMap[zone];
+        let freightBase = 0;
+        let additionalCharge = 0;
+        const baseWeightGm = parseFloat(zoneData.baseWeight) || 0;
+        const baseWeightKg = baseWeightGm / 1000;
+        const basePrice = parseFloat(zoneData.basePrice) || 0;
+        const additionalPricePerKg = parseFloat(zoneData.additionalPricePerKg) || 0;
+
+        freightBase = basePrice;
         const additionalWeightKg = Math.max(0, weightKg - baseWeightKg);
-        const increments = Math.ceil((additionalWeightKg * 1000) / addWeightGm);
-
-        const zoneMultiplier = multipliers[`zone${zone}`] || 1;
-        const zoneAAdditional = parseFloat(formData.additionalZoneA) || 0;
-        const additionalRate = zoneAAdditional * zoneMultiplier;
-        const additionalCharge = increments > 0 ? increments * additionalRate : 0;
+        additionalCharge = additionalWeightKg * additionalPricePerKg;
 
         const codCharge = paymentMode === 'cod'
             ? Math.max((orderValue * (parseFloat(formData.codPercentage) || 0)) / 100, parseFloat(formData.codMinimumCharge) || 0)

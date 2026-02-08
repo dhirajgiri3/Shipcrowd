@@ -30,20 +30,34 @@ export function CreateRatecardClient() {
             addToast('Please provide a rate card name', 'error');
             return;
         }
-        if (!formData.companyId) {
+        if (formData.scope === 'company' && !formData.companyId) {
             addToast('Please select a company', 'error');
-            return;
-        }
-        if (!formData.useAdvancedPricing && !formData.isGeneric && (!formData.carrier || !formData.serviceType)) {
-            addToast('Please select a courier and service, or choose "Generic Rate Card"', 'error');
             return;
         }
         if (!formData.rateCardCategory) {
             addToast('Please select a rate card category', 'error');
             return;
         }
-        if (!formData.basicZoneA) {
-            addToast('Please set at least Zone A rate', 'error');
+        const requiredZoneFields: Array<keyof RateCardFormData> = [
+            'zoneABaseWeight',
+            'zoneABasePrice',
+            'zoneAAdditionalPricePerKg',
+            'zoneBBaseWeight',
+            'zoneBBasePrice',
+            'zoneBAdditionalPricePerKg',
+            'zoneCBaseWeight',
+            'zoneCBasePrice',
+            'zoneCAdditionalPricePerKg',
+            'zoneDBaseWeight',
+            'zoneDBasePrice',
+            'zoneDAdditionalPricePerKg',
+            'zoneEBaseWeight',
+            'zoneEBasePrice',
+            'zoneEAdditionalPricePerKg'
+        ];
+        const missingField = requiredZoneFields.find(field => !formData[field]);
+        if (missingField) {
+            addToast('Please fill all zone pricing fields before saving', 'error');
             return;
         }
 
@@ -74,7 +88,7 @@ export function CreateRatecardClient() {
                             Create Rate Card
                         </h1>
                         <p className="text-[var(--text-muted)] text-sm mt-1">
-                            Define pricing for a courier service
+                            Define zone-based pricing for shipments
                         </p>
                     </div>
                 </div>

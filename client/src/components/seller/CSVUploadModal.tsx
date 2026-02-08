@@ -182,18 +182,12 @@ export function CSVUploadModal({ isOpen, onClose }: CSVUploadModalProps) {
     };
 
     const downloadTemplate = () => {
-        const template = `customer_name,phone,email,address,address_line2,city,state,pincode,product,sku,quantity,weight,price,payment_mode
-Rahul Sharma,9876543210,rahul@email.com,123 MG Road,,Mumbai,Maharashtra,400001,Cotton T-Shirt,TS-001,1,0.3,499,prepaid
-Priya Singh,9123456789,priya@email.com,456 Connaught Place,,Delhi,Delhi,110001,Jeans,JN-002,2,0.8,1299,cod
-Amit Kumar,9988776655,amit@email.com,789 Electronic City,,Bangalore,Karnataka,560100,Wireless Earbuds,WE-003,1,0.2,2499,prepaid`;
-
-        const blob = new Blob([template], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Shipcrowd-bulk-order-template.csv';
-        a.click();
-        URL.revokeObjectURL(url);
+        const link = document.createElement('a');
+        link.href = '/samples/shipcrowd_bulk_orders_template.csv';
+        link.download = 'shipcrowd_bulk_orders_template.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
         addToast('Template downloaded', 'success');
     };

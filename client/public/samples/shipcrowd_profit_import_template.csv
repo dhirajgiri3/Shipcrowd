@@ -1,0 +1,2 @@
+date,sellerId,sellerName,shipments,shippingCost,charged,profit,margin
+2026-01-10,SELLER001,Acme Store,120,45000,62000,17000,27.4

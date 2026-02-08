@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useMultiStepForm } from '@/src/hooks/forms/useMultiStepForm';
 import { Button } from '@/src/components/ui/core/Button';
 import { Step1BasicInfo } from '../create/steps/Step1BasicInfo';
 import { Step2ZonePricing } from '../create/steps/Step2ZonePricing';
-import { Step3WeightRules } from '../create/steps/Step3WeightRules';
 import { Step4Overhead } from '../create/steps/Step4Overhead';
 import { Step5Review } from '../create/steps/Step5Review';
-import { RateCardFormData, calculateMultipliers, validateAdvancedSlabs } from './ratecardWizard.utils';
+import { RateCardFormData } from './ratecardWizard.utils';
 
 interface RateCardWizardProps {
     initialData: RateCardFormData;
@@ -28,9 +27,28 @@ export function RateCardWizard({
     isReadOnly = false
 }: RateCardWizardProps) {
     const steps = useMemo(() => ([
-        { id: 'basic', title: 'Basic', fields: ['name', 'companyId', 'carrier', 'serviceType', 'rateCardCategory'] },
-        { id: 'zones', title: 'Zones', fields: ['basicWeight', 'basicZoneA'] },
-        { id: 'weights', title: 'Weight', fields: ['additionalWeight', 'additionalZoneA'] },
+        { id: 'basic', title: 'Basic', fields: ['name', 'scope', 'companyId', 'rateCardCategory'] },
+        {
+            id: 'zonePricing',
+            title: 'Zone Pricing',
+            fields: [
+                'zoneABaseWeight',
+                'zoneABasePrice',
+                'zoneAAdditionalPricePerKg',
+                'zoneBBaseWeight',
+                'zoneBBasePrice',
+                'zoneBAdditionalPricePerKg',
+                'zoneCBaseWeight',
+                'zoneCBasePrice',
+                'zoneCAdditionalPricePerKg',
+                'zoneDBaseWeight',
+                'zoneDBasePrice',
+                'zoneDAdditionalPricePerKg',
+                'zoneEBaseWeight',
+                'zoneEBasePrice',
+                'zoneEAdditionalPricePerKg',
+            ],
+        },
         { id: 'overhead', title: 'Overhead', fields: ['codPercentage', 'codMinimumCharge'] },
         { id: 'review', title: 'Review', fields: [] },
     ] as const), []);
@@ -41,6 +59,7 @@ export function RateCardWizard({
         formData,
         nextStep,
         prevStep,
+        goToStep,
         setFieldValue,
         isLastStep,
         isSubmitting,
@@ -61,26 +80,12 @@ export function RateCardWizard({
         },
     });
 
-    const multipliers = calculateMultipliers(formData);
-    const isAdvancedPricingValid = useMemo(() => {
-        if (!formData.useAdvancedPricing) return true;
-        if (!formData.advancedBaseRates.length || !formData.advancedWeightRules.length) return false;
-        const validation = validateAdvancedSlabs(formData);
-        return !validation.hasErrors;
-    }, [formData]);
     const stepCanProceed = (() => {
         if (currentStep === 0) {
-            if (!formData.name.trim() || !formData.companyId.trim()) return false;
+            if (!formData.name.trim()) return false;
+            if (formData.scope === 'company' && !formData.companyId.trim()) return false;
             if (!formData.rateCardCategory.trim()) return false;
-            if (formData.useAdvancedPricing) return true;
-            if (formData.isGeneric) return true;
-            return (
-                formData.carrier.trim().length > 0 &&
-                formData.serviceType.trim().length > 0
-            );
-        }
-        if (formData.useAdvancedPricing && currentStep >= 2) {
-            return canProceed && isAdvancedPricingValid;
+            return true;
         }
         return canProceed;
     })();
@@ -89,6 +94,12 @@ export function RateCardWizard({
         if (isReadOnly) return;
         setFieldValue(field, value as any);
     };
+
+    useEffect(() => {
+        if (currentStep >= steps.length) {
+            goToStep(steps.length - 1);
+        }
+    }, [currentStep, steps.length, goToStep]);
 
     const renderStep = () => {
         switch (currentStep) {
@@ -106,20 +117,10 @@ export function RateCardWizard({
                     <Step2ZonePricing
                         formData={formData}
                         onChange={handleChange}
-                        multipliers={multipliers}
                         isReadOnly={isReadOnly}
                     />
                 );
             case 2:
-                return (
-                    <Step3WeightRules
-                        formData={formData}
-                        onChange={handleChange}
-                        multipliers={multipliers}
-                        isReadOnly={isReadOnly}
-                    />
-                );
-            case 3:
                 return (
                     <Step4Overhead
                         formData={formData}
@@ -127,7 +128,7 @@ export function RateCardWizard({
                         isReadOnly={isReadOnly}
                     />
                 );
-            case 4:
+            case 3:
                 return <Step5Review formData={formData} />;
             default:
                 return null;

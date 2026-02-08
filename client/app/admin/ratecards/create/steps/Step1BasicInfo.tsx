@@ -1,10 +1,8 @@
 "use client";
 
-import { useMemo } from 'react';
 import { Select } from '@/src/components/ui/form/Select';
 import { Input } from '@/src/components/ui/core/Input';
 import { useAdminCompanies } from '@/src/core/api/hooks/admin/companies/useCompanies';
-import { useCouriers } from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import { RateCardFormData, shipmentTypes } from '../../components/ratecardWizard.utils';
 
 interface Step1BasicInfoProps {
@@ -16,76 +14,42 @@ interface Step1BasicInfoProps {
 
 export function Step1BasicInfo({ formData, onChange, categoryOptions = [], isReadOnly = false }: Step1BasicInfoProps) {
     const { data: companiesData, isLoading: companiesLoading } = useAdminCompanies({ limit: 100 });
-    const { data: couriers = [], isLoading: couriersLoading } = useCouriers();
-
     const companies = companiesData?.companies || [];
-
-    const selectedCourier = useMemo(
-        () => couriers.find(courier => courier.id === formData.carrier),
-        [couriers, formData.carrier]
-    );
-
-    const courierOptions = couriers.map(courier => ({
-        label: courier.name,
-        value: courier.id,
-    }));
-
-    const serviceOptions = selectedCourier?.services?.map(service => ({
-        label: service,
-        value: service,
-    })) || [];
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-2">
-                <input
-                    type="checkbox"
-                    id="isGeneric"
-                    checked={formData.isGeneric}
-                    onChange={(e) => onChange('isGeneric', e.target.checked)}
-                    disabled={isReadOnly || formData.useAdvancedPricing}
-                    className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                />
-                <label htmlFor="isGeneric" className="text-sm font-medium text-[var(--text-primary)]">
-                    Generic Rate Card (applies to all couriers)
-                </label>
-            </div>
-            <div className="flex items-center gap-2">
-                <input
-                    type="checkbox"
-                    id="useAdvancedPricing"
-                    checked={formData.useAdvancedPricing}
-                    onChange={(e) => onChange('useAdvancedPricing', e.target.checked)}
-                    disabled={isReadOnly}
-                    className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                />
-                <label htmlFor="useAdvancedPricing" className="text-sm font-medium text-[var(--text-primary)]">
-                    Advanced Pricing (multi-carrier slabs)
-                </label>
-            </div>
-            {formData.useAdvancedPricing && (
-                <p className="text-xs text-[var(--text-muted)]">
-                    Carrier and service selection is managed in the Advanced Slabs section. Basic courier fields are optional.
-                </p>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-[var(--text-secondary)]">Rate Card Name *</label>
                     <Input
                         value={formData.name}
                         onChange={(e) => onChange('name', e.target.value)}
-                        placeholder="e.g. Velocity Standard 2025"
+                        placeholder="e.g. Standard Zone Pricing"
                         disabled={isReadOnly}
                     />
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Company *</label>
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">Scope *</label>
+                    <Select
+                        value={formData.scope}
+                        onChange={(e) => onChange('scope', e.target.value)}
+                        disabled={isReadOnly}
+                        options={[
+                            { label: 'Global (shared)', value: 'global' },
+                            { label: 'Company-specific', value: 'company' }
+                        ]}
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">
+                        Company {formData.scope === 'company' ? '*' : ''}
+                    </label>
                     <Select
                         value={formData.companyId}
                         onChange={(e) => onChange('companyId', e.target.value)}
-                        disabled={isReadOnly || companiesLoading}
+                        disabled={isReadOnly || companiesLoading || formData.scope !== 'company'}
                         options={[
                             { label: companiesLoading ? 'Loading companies...' : 'Select Company', value: '' },
                             ...companies.map(company => ({ label: company.name, value: company._id }))
@@ -99,7 +63,7 @@ export function Step1BasicInfo({ formData, onChange, categoryOptions = [], isRea
                         list="ratecard-category-options"
                         value={formData.rateCardCategory}
                         onChange={(e) => onChange('rateCardCategory', e.target.value)}
-                        placeholder="e.g. premium"
+                        placeholder="e.g. standard"
                         disabled={isReadOnly}
                     />
                     {categoryOptions.length > 0 && (
@@ -111,30 +75,6 @@ export function Step1BasicInfo({ formData, onChange, categoryOptions = [], isRea
                     )}
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Courier Provider *</label>
-                    <Select
-                        value={formData.carrier}
-                        onChange={(e) => onChange('carrier', e.target.value)}
-                        disabled={isReadOnly || formData.isGeneric || formData.useAdvancedPricing || couriersLoading}
-                        options={[
-                            { label: couriersLoading ? 'Loading couriers...' : 'Select Courier', value: '' },
-                            ...courierOptions
-                        ]}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Courier Service *</label>
-                    <Select
-                        value={formData.serviceType}
-                        onChange={(e) => onChange('serviceType', e.target.value)}
-                        disabled={isReadOnly || formData.isGeneric || formData.useAdvancedPricing || !selectedCourier}
-                        options={[
-                            { label: selectedCourier ? 'Select Service' : 'Select Courier First', value: '' },
-                            ...serviceOptions
-                        ]}
-                    />
-                </div>
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-[var(--text-secondary)]">Status *</label>
                     <Select

@@ -22,6 +22,8 @@ export * from './iam/membership.model';
 // Organization
 export { default as Company } from './organization/core/company.model';
 export * from './organization/core/company.model';
+export { default as CompanyGroup } from './organization/core/company-group.model';
+export * from './organization/core/company-group.model';
 export { default as KYC } from './organization/core/kyc.model';
 export * from './organization/core/kyc.model';
 export { default as KYCVerificationAttempt } from './organization/core/kyc-verification-attempt.model';

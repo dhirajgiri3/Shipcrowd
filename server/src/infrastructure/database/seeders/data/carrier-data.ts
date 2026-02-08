@@ -62,6 +62,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         capabilities: DELHIVERY_CONFIG.capabilities as CarrierCapabilities,
         paymentModes: DELHIVERY_CONFIG.services.paymentModes
     },
+    /*
     bluedart: {
         name: 'bluedart',
         displayName: 'BlueDart',
@@ -122,6 +123,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         tier3Coverage: true,
         isIntegrated: false,
     },
+    */
     velocity: {
         name: 'velocity',
         displayName: 'Velocity',
@@ -291,10 +293,12 @@ export function calculateShippingCost(
     // Carrier-specific multipliers
     const carrierMultipliers: Record<CarrierName, number> = {
         delhivery: 1.0,
+        /*
         bluedart: 1.3, // Premium carrier
         ecom_express: 0.95,
         dtdc: 0.9,
         xpressbees: 0.85, // Budget carrier
+        */
         velocity: 0.95, // Balanced
         ekart: 0.95, // Balanced
     };
@@ -317,10 +321,12 @@ export function calculateShippingCost(
 export function generateCarrierWarehouseId(carrierName: CarrierName): string {
     const prefixes: Record<CarrierName, string> = {
         delhivery: 'DEL',
+        /*
         bluedart: 'BDR',
         ecom_express: 'ECM',
         dtdc: 'DTC',
         xpressbees: 'XPB',
+        */
         velocity: 'VEL',
         ekart: 'EK',
     };
@@ -354,6 +360,7 @@ export function getEstimatedDeliveryDays(
         };
     }
 
+    /*
     // BlueDart is generally faster
     if (carrierName === 'bluedart') {
         return {
@@ -361,6 +368,7 @@ export function getEstimatedDeliveryDays(
             max: days.max,
         };
     }
+    */
 
     return days;
 }
