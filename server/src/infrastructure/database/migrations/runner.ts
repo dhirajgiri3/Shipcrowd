@@ -76,6 +76,16 @@ async function main() {
                 await new RateCardScopeMigration(dryRun).run();
                 break;
             }
+            case 'service-level-pricing-foundation': {
+                const { ServiceLevelPricingFoundationMigration } = await import('./phase-3/service-level-pricing-foundation.migration');
+                await new ServiceLevelPricingFoundationMigration(dryRun).run();
+                break;
+            }
+            case 'service-level-pricing-feature-flag': {
+                const { ServiceLevelPricingFeatureFlagMigration } = await import('./phase-3/service-level-pricing-feature-flag.migration');
+                await new ServiceLevelPricingFeatureFlagMigration(dryRun).run();
+                break;
+            }
 
             default:
                 console.log('Available migrations:');
@@ -86,6 +96,8 @@ async function main() {
                 console.log('  kyc-soft-delete         -- Run KYC soft delete migration');
                 console.log('  cod-enhancement         -- Run COD fields backfill (totalCollection, collectionStatus)');
                 console.log('  ratecard-scope          -- Backfill ratecard scope (global vs company)');
+                console.log('  service-level-pricing-foundation -- Create/sync collections and indexes for new service-level pricing models');
+                console.log('  service-level-pricing-feature-flag -- Ensure feature flag exists for service-level rollout');
                 console.log('\nOptions:');
                 console.log('  --dry-run               -- Simulate migration without writes');
                 break;

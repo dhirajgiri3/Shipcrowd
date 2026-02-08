@@ -138,7 +138,7 @@ export function OrderTable({
                                     exit={{ opacity: 0 }}
                                     transition={{ delay: index * 0.05, duration: 0.2 }}
                                     className="group hover:bg-[var(--bg-hover)] transition-colors border-b last:border-0 border-[var(--border-subtle)]"
-                                    onClick={() => handleViewDetails(order.orderNumber)} // Entire row clickable
+                                    onClick={() => handleViewDetails(order._id)} // Entire row clickable
                                 >
                                     <TableCell>
                                         <div>
@@ -185,7 +185,7 @@ export function OrderTable({
                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                         <div className="flex justify-center items-center gap-2 relative">
                                             <ViewActionButton
-                                                onClick={() => handleViewDetails(order.orderNumber)}
+                                                onClick={() => handleViewDetails(order._id)}
                                             />
 
                                             {['new', 'ready'].includes(order.currentStatus) && (

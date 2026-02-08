@@ -1,7 +1,7 @@
 import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
-import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { handleApiError } from '@/src/lib/error';
 import {
     useQuery,
     useMutation,
@@ -20,11 +20,21 @@ export interface Shipment {
         totals?: any;
     } | string;
     companyId: string;
-    carrier: 'Delhivery' | 'DTDC' | 'Xpressbees';
+    carrier: string;
     serviceType: 'express' | 'standard';
     currentStatus: 'created' | 'picked' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'ndr' | 'rto';
     estimatedDelivery: string;
     createdAt: string;
+    pricingDetails?: {
+        selectedQuote?: {
+            provider?: string;
+            serviceName?: string;
+            quotedSellAmount?: number;
+            expectedCostAmount?: number;
+            expectedMarginAmount?: number;
+            confidence?: 'high' | 'medium' | 'low';
+        };
+    };
     timeline?: Array<{
         status: string;
         timestamp: string;

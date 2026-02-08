@@ -23,6 +23,7 @@ import kycRoutes from './identity/kyc.routes';
 import companyRoutes from './organization/company.routes';
 import teamRoutes from './organization/team.routes';
 import warehouseRoutes from './warehouses/warehouse.routes';
+import adminWarehouseRoutes from './warehouses/admin-warehouse.routes';
 import warehouseWorkflowRoutes from './warehouses';
 import onboardingRoutes from './onboarding/onboarding.routes';
 
@@ -41,6 +42,10 @@ import orderRoutes from './shipping/order.routes';
 import shipmentRoutes from './shipping/shipment.routes';
 import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
+import quoteRoutes from './shipping/quote.routes';
+import courierServiceRoutes from './shipping/courier-service.routes';
+import serviceRateCardRoutes from './shipping/service-ratecard.routes';
+import sellerCourierPolicyRoutes from './shipping/seller-courier-policy.routes';
 
 import courierRoutes from './shipping/courier.routes';
 import labelTemplateRoutes from './shipping/label-template.routes';
@@ -140,6 +145,7 @@ router.use('/kyc', kycRoutes);
 router.use('/companies', companyRoutes);
 router.use('/team', teamRoutes);
 router.use('/warehouses', warehouseRoutes);
+router.use('/admin/warehouses', adminWarehouseRoutes);
 router.use('/warehouse', warehouseWorkflowRoutes); // Workflow: picking, packing
 router.use('/onboarding', onboardingRoutes);
 
@@ -155,6 +161,10 @@ router.use('/admin/orders', orderRoutes); // Alias for frontend admin/orders cal
 router.use('/shipments', shipmentRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
+router.use('/quotes', quoteRoutes);
+router.use('/admin/courier-services', courierServiceRoutes);
+router.use('/admin/service-ratecards', serviceRateCardRoutes);
+router.use('/sellers', sellerCourierPolicyRoutes);
 router.use('/admin/carriers', courierRoutes); // Backward compatibility
 router.use('/admin/couriers', courierRoutes); // New standard route
 router.use('/courier', courierRoutes);
@@ -189,6 +199,7 @@ router.use('/finance/cod/analytics', codAnalyticsRoutes);
 router.use('/finance/cod/discrepancies', codDiscrepancyRoutes);
 router.use('/finance/cod/early-program', earlyCodRoutes);
 router.use('/finance/reconciliation', reconciliationRoutes);
+router.use('/finance', reconciliationRoutes); // Alias: /finance/carrier-billing/import and /finance/pricing-variance-cases
 router.use('/seller/bank-accounts', bankAccountRoutes);
 router.use('/promos', promoCodeRoutes);
 

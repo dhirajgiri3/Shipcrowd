@@ -1,8 +1,12 @@
 import express from 'express';
 import { authenticate } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import ratecardController from '../../../controllers/shipping/ratecard.controller';
 import { CourierController } from '../../../controllers/shipping/courier.controller';
+import courierServiceController from '../../../controllers/shipping/courier-service.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import { requireFeatureFlag } from '../../../middleware/system/feature-flag.middleware';
 
 const router = express.Router();
 const courierController = new CourierController();
@@ -12,6 +16,14 @@ router.get(
     '/',
     authenticate,
     courierController.getCouriers
+);
+
+router.post(
+    '/:provider/services/sync',
+    authenticate,
+    requireFeatureFlag('enable_service_level_pricing'),
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(courierServiceController.syncProviderServices)
 );
 
 router.get(

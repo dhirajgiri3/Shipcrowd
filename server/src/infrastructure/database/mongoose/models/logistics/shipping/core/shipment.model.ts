@@ -112,6 +112,44 @@ export interface IShipment extends Document {
     };
   };
   pricingDetails?: {
+    selectedQuote?: {
+      quoteSessionId?: mongoose.Types.ObjectId;
+      optionId?: string;
+      provider?: string;
+      serviceId?: mongoose.Types.ObjectId;
+      serviceName?: string;
+      quotedSellAmount?: number;
+      expectedCostAmount?: number;
+      expectedMarginAmount?: number;
+      expectedMarginPercent?: number;
+      chargeableWeight?: number;
+      zone?: string;
+      pricingSource?: 'live' | 'table' | 'hybrid';
+      confidence?: 'high' | 'medium' | 'low';
+      calculatedAt?: Date;
+      sellBreakdown?: {
+        baseCharge?: number;
+        weightCharge?: number;
+        zoneCharge?: number;
+        codCharge?: number;
+        fuelSurcharge?: number;
+        discount?: number;
+        subtotal?: number;
+        gst?: number;
+        total?: number;
+      };
+      costBreakdown?: {
+        baseCharge?: number;
+        weightCharge?: number;
+        zoneCharge?: number;
+        codCharge?: number;
+        fuelSurcharge?: number;
+        rtoCharge?: number;
+        subtotal?: number;
+        gst?: number;
+        total?: number;
+      };
+    };
     rateCardId: mongoose.Types.ObjectId;
     rateCardName: string;
     baseRate: number;
@@ -444,6 +482,56 @@ const ShipmentSchema = new Schema<IShipment>(
       ],
     },
     pricingDetails: {
+      selectedQuote: {
+        quoteSessionId: {
+          type: Schema.Types.ObjectId,
+          ref: 'QuoteSession',
+        },
+        optionId: String,
+        provider: String,
+        serviceId: {
+          type: Schema.Types.ObjectId,
+          ref: 'CourierService',
+        },
+        serviceName: String,
+        quotedSellAmount: Number,
+        expectedCostAmount: Number,
+        expectedMarginAmount: Number,
+        expectedMarginPercent: Number,
+        chargeableWeight: Number,
+        zone: String,
+        pricingSource: {
+          type: String,
+          enum: ['live', 'table', 'hybrid'],
+        },
+        confidence: {
+          type: String,
+          enum: ['high', 'medium', 'low'],
+        },
+        calculatedAt: Date,
+        sellBreakdown: {
+          baseCharge: Number,
+          weightCharge: Number,
+          zoneCharge: Number,
+          codCharge: Number,
+          fuelSurcharge: Number,
+          discount: Number,
+          subtotal: Number,
+          gst: Number,
+          total: Number,
+        },
+        costBreakdown: {
+          baseCharge: Number,
+          weightCharge: Number,
+          zoneCharge: Number,
+          codCharge: Number,
+          fuelSurcharge: Number,
+          rtoCharge: Number,
+          subtotal: Number,
+          gst: Number,
+          total: Number,
+        },
+      },
       rateCardId: {
         type: Schema.Types.ObjectId,
         ref: 'RateCard',
@@ -703,6 +791,7 @@ ShipmentSchema.index({ 'weights.verified': 1, createdAt: -1 }); // Unverified we
 ShipmentSchema.index({ 'weightDispute.exists': 1, 'weightDispute.status': 1 }); // Active disputes
 ShipmentSchema.index({ 'remittance.included': 1, 'paymentDetails.type': 1, currentStatus: 1 }); // Eligible COD shipments for remittance
 ShipmentSchema.index({ companyId: 1, 'remittance.included': 1, 'remittance.remittanceId': 1 }); // Remittance batch tracking
+ShipmentSchema.index({ 'pricingDetails.selectedQuote.quoteSessionId': 1 }); // Quote-session traceability
 
 // Week 12: Advanced COD Indexes (Phase 1)
 ShipmentSchema.index({ 'paymentDetails.collectionStatus': 1, companyId: 1 }); // Track pending collections

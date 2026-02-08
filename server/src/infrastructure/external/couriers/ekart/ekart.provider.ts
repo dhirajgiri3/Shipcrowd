@@ -39,6 +39,8 @@ import {
     EkartTrackingResponse,
     EkartRawTrackingResponse,
     EkartServiceabilityResponse,
+    EkartLaneServiceabilityRequest,
+    EkartLaneServiceabilityOption,
     EkartRateRequest,
     EkartRateResponse
 } from './ekart.types';
@@ -390,6 +392,74 @@ export class EkartProvider implements ICourierAdapter {
             } catch (error) {
                 logger.error('Ekart checkServiceability failed', { error, pincode });
                 return false;
+            }
+        });
+    }
+
+    /**
+     * Lane-level serviceability with pincode fallback.
+     * Primary: /data/v3/serviceability
+     * Fallback: /api/v2/serviceability/{pincode}
+     */
+    async getLaneServiceability(input: {
+        pickupPincode: string;
+        dropPincode: string;
+        weight: number; // kg
+        paymentMode: 'cod' | 'prepaid';
+    }): Promise<{
+        serviceable: boolean;
+        source: 'lane' | 'pincode';
+        confidence: 'high' | 'medium';
+        zone?: string;
+        options: EkartLaneServiceabilityOption[];
+    }> {
+        return this.circuitBreaker.execute(async () => {
+            try {
+                const payload: EkartLaneServiceabilityRequest = {
+                    pickupPincode: input.pickupPincode,
+                    dropPincode: input.dropPincode,
+                    weight: EkartMapper.toGrams(input.weight),
+                    paymentType: input.paymentMode === 'cod' ? 'COD' : 'Prepaid',
+                };
+
+                const response = await retryWithBackoff(async () => {
+                    return await this.axiosInstance.post<EkartLaneServiceabilityOption[]>(
+                        EKART_ENDPOINTS.SERVICEABILITY_LANE,
+                        payload
+                    );
+                });
+
+                const raw = response.data;
+                const options = Array.isArray(raw)
+                    ? raw
+                    : Array.isArray((raw as any)?.data)
+                        ? (raw as any).data
+                        : [];
+
+                const primary = options[0];
+                const zone = primary?.forwardDeliveredCharges?.zone;
+
+                return {
+                    serviceable: options.length > 0,
+                    source: 'lane',
+                    confidence: 'high',
+                    zone,
+                    options,
+                };
+            } catch (laneError) {
+                logger.warn('Ekart lane serviceability failed, using pincode fallback', {
+                    pickupPincode: input.pickupPincode,
+                    dropPincode: input.dropPincode,
+                    error: laneError instanceof Error ? laneError.message : laneError,
+                });
+
+                const serviceable = await this.checkServiceability(input.dropPincode, 'delivery');
+                return {
+                    serviceable,
+                    source: 'pincode',
+                    confidence: 'medium',
+                    options: [],
+                };
             }
         });
     }

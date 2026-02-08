@@ -402,6 +402,30 @@ export interface EkartServiceabilityResponse {
     };
 }
 
+/**
+ * Lane-level serviceability request
+ * Endpoint: /data/v3/serviceability
+ */
+export interface EkartLaneServiceabilityRequest {
+    pickupPincode: string | number;
+    dropPincode: string | number;
+    weight: string | number; // grams
+    paymentType: 'COD' | 'Prepaid';
+}
+
+export interface EkartLaneServiceabilityOption {
+    courierGroup?: string;
+    tat?: {
+        minDays?: number;
+        maxDays?: number;
+    };
+    forwardDeliveredCharges?: {
+        zone?: string;
+        total?: string;
+    };
+    [key: string]: any;
+}
+
 // ==================== Manifest Types ====================
 
 /**
@@ -575,6 +599,7 @@ export const EKART_ENDPOINTS = {
     ADDRESSES: '/api/v2/addresses',
     DISPATCH_DATE: '/data/shipment/dispatch-date',
     SERVICEABILITY: '/api/v2/serviceability',
+    SERVICEABILITY_LANE: '/data/v3/serviceability',
 } as const;
 
 /**

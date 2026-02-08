@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import SystemHealthService from '../../../../core/application/services/system/system-health.service';
+import ServiceLevelPricingMetricsService from '../../../../core/application/services/metrics/service-level-pricing-metrics.service';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -79,8 +80,9 @@ export const detailedHealthCheck = async (req: Request, res: Response, next: Nex
 export const getApiMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const metrics = SystemHealthService.getApiMetrics();
+        const serviceLevelPricing = ServiceLevelPricingMetricsService.getSnapshot();
 
-        sendSuccess(res, { metrics }, 'API metrics retrieved successfully');
+        sendSuccess(res, { metrics, serviceLevelPricing }, 'API metrics retrieved successfully');
     } catch (error) {
         logger.error('API metrics error:', error);
         next(error);
@@ -173,6 +175,7 @@ export const getSystemMetrics = async (req: Request, res: Response, next: NextFu
 export const resetMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         SystemHealthService.resetMetrics();
+        ServiceLevelPricingMetricsService.reset();
 
         logger.info('API metrics reset', {
             userId: req.user?._id,

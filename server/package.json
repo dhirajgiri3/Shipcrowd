@@ -31,6 +31,8 @@
     "migrate:commission-soft-delete": "npx tsx src/infrastructure/database/migrations/runner.ts commission-soft-delete",
     "migrate:kyc-soft-delete": "npx tsx src/infrastructure/database/migrations/runner.ts kyc-soft-delete",
     "migrate:validate": "npx tsx src/infrastructure/database/migrations/pre-flight-validator.ts",
+    "migrate:service-level-pricing-foundation": "npx tsx src/infrastructure/database/migrations/runner.ts service-level-pricing-foundation",
+    "migrate:service-level-pricing-feature-flag": "npx tsx src/infrastructure/database/migrations/runner.ts service-level-pricing-feature-flag",
     "db:backup": "bash scripts/backup-database.sh",
     "db:restore": "bash scripts/restore-database.sh"
   },

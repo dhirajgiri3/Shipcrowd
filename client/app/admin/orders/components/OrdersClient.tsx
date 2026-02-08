@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -62,6 +62,8 @@ export default function OrdersClient() {
     const [selectedOrderForShip, setSelectedOrderForShip] = useState<Order | null>(null);
     const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
     const [courierRates, setCourierRates] = useState<CourierRate[]>([]);
+    const [quoteExpiresAt, setQuoteExpiresAt] = useState<Date | null>(null);
+    const [quoteTimeLeftSec, setQuoteTimeLeftSec] = useState<number>(0);
 
     // -- Debounce Search --
     useEffect(() => {
@@ -156,29 +158,77 @@ export default function OrdersClient() {
         showSuccessToast('Orders refreshed');
     };
 
-    const handleShipNow = async (order: Order) => {
-        setSelectedOrderForShip(order);
-        setSelectedCourier(null);
-        setCourierRates([]);
-        setIsShipModalOpen(true);
-
+    const fetchCourierRatesForOrder = useCallback(async (order: Order) => {
         const totalWeight = order.products.reduce((sum, product) => {
             const productWeight = product.weight || 0;
             return sum + (productWeight * product.quantity);
         }, 0);
 
+        const warehouse = warehouses.find((w: any) => w._id === order.warehouseId || w.id === order.warehouseId);
+        const fromPincode = warehouse?.address?.postalCode || order.customerInfo.address.postalCode;
+
+        const result = await getCourierRatesMutation.mutateAsync({
+            fromPincode,
+            toPincode: order.customerInfo.address.postalCode,
+            weight: totalWeight > 0 ? totalWeight : 0.5,
+            paymentMode: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
+            orderValue: Number(order.totals?.total || 0),
+            length: 20,
+            width: 15,
+            height: 10,
+        });
+
+        const rates = result.data || [];
+        const recommendation = rates.find((rate) => rate.isRecommended)?.optionId || rates[0]?.optionId || rates[0]?.courierId || null;
+        const expiresAtRaw = rates[0]?.expiresAt;
+        const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
+        const nextTimeLeft = expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : 0;
+
+        setCourierRates(rates);
+        setSelectedCourier(recommendation);
+        setQuoteExpiresAt(expiresAt);
+        setQuoteTimeLeftSec(nextTimeLeft);
+    }, [getCourierRatesMutation, warehouses]);
+
+    const handleShipNow = async (order: Order) => {
+        setSelectedOrderForShip(order);
+        setSelectedCourier(null);
+        setCourierRates([]);
+        setQuoteExpiresAt(null);
+        setQuoteTimeLeftSec(0);
+        setIsShipModalOpen(true);
+
         try {
-            const result = await getCourierRatesMutation.mutateAsync({
-                fromPincode: order.customerInfo.address.postalCode,
-                toPincode: order.customerInfo.address.postalCode,
-                weight: totalWeight || 500,
-                paymentMode: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid'
-            });
-            setCourierRates(result.data);
+            await fetchCourierRatesForOrder(order);
         } catch (error) {
-            console.error('Failed to fetch courier rates:', error);
+            showErrorToast('Unable to fetch courier rates right now');
         }
     };
+
+    const refreshQuotes = async () => {
+        if (!selectedOrderForShip) return;
+        try {
+            await fetchCourierRatesForOrder(selectedOrderForShip);
+            showSuccessToast('Quotes refreshed');
+        } catch {
+            // handled by mutation hook
+        }
+    };
+
+    useEffect(() => {
+        if (!isShipModalOpen || !quoteExpiresAt) {
+            return;
+        }
+
+        const updateTimer = () => {
+            const next = Math.max(0, Math.floor((quoteExpiresAt.getTime() - Date.now()) / 1000));
+            setQuoteTimeLeftSec(next);
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
+        return () => clearInterval(timer);
+    }, [isShipModalOpen, quoteExpiresAt]);
 
     const handleCreateShipment = async () => {
         if (!selectedCourier || !selectedOrderForShip) {
@@ -186,11 +236,20 @@ export default function OrdersClient() {
             return;
         }
 
+        if (quoteExpiresAt && quoteExpiresAt.getTime() <= Date.now()) {
+            showErrorToast('Selected quote has expired. Refreshing rates...');
+            await refreshQuotes();
+            return;
+        }
+
         try {
+            const selectedRate = courierRates.find((rate) => (rate.optionId || rate.courierId) === selectedCourier);
             await shipOrderMutation.mutateAsync({
                 orderId: selectedOrderForShip._id,
-                courierId: selectedCourier,
-                serviceType: 'Surface'
+                courierId: selectedRate?.courierId || selectedCourier,
+                serviceType: selectedRate?.serviceType || 'Surface',
+                sessionId: selectedRate?.sessionId,
+                optionId: selectedRate?.optionId,
             });
 
             showSuccessToast(`Shipment created for order ${selectedOrderForShip.orderNumber}`);
@@ -198,9 +257,16 @@ export default function OrdersClient() {
             setIsShipModalOpen(false);
             setSelectedOrderForShip(null);
             setSelectedCourier(null);
+            setQuoteExpiresAt(null);
+            setQuoteTimeLeftSec(0);
             refetch();
         } catch (error) {
-            // Error handled by mutation
+            const apiError = error as { code?: string; message?: string };
+            const expired = apiError?.code === 'BIZ_INVALID_STATE' || /expired/i.test(apiError?.message || '');
+            if (expired) {
+                showErrorToast('Quote session expired. Refreshing latest rates...');
+                await refreshQuotes();
+            }
         }
     };
 
@@ -420,10 +486,23 @@ export default function OrdersClient() {
 
                         {/* Courier Selection */}
                         <div>
-                            <p className="font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                                <Truck className="h-4 w-4 text-[var(--primary-blue)]" />
-                                Select Courier Partner
-                            </p>
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <p className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <Truck className="h-4 w-4 text-[var(--primary-blue)]" />
+                                    Select Courier Partner
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    {quoteExpiresAt && (
+                                        <Badge variant={quoteTimeLeftSec <= 60 ? 'warning' : 'outline'} className="text-[10px]">
+                                            Quote expires in {Math.floor(quoteTimeLeftSec / 60)}:{String(quoteTimeLeftSec % 60).padStart(2, '0')}
+                                        </Badge>
+                                    )}
+                                    <Button variant="outline" size="sm" onClick={refreshQuotes} disabled={getCourierRatesMutation.isPending}>
+                                        <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', getCourierRatesMutation.isPending && 'animate-spin')} />
+                                        Refresh
+                                    </Button>
+                                </div>
+                            </div>
                             {getCourierRatesMutation.isPending ? (
                                 <div className="flex items-center justify-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin text-[var(--primary-blue)]" />
@@ -437,11 +516,11 @@ export default function OrdersClient() {
                                 <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
                                     {courierRates.map((courier) => (
                                         <button
-                                            key={courier.courierId}
-                                            onClick={() => setSelectedCourier(courier.courierId)}
+                                            key={courier.optionId || courier.courierId}
+                                            onClick={() => setSelectedCourier(courier.optionId || courier.courierId)}
                                             className={cn(
                                                 "w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left relative overflow-hidden group",
-                                                selectedCourier === courier.courierId
+                                                selectedCourier === (courier.optionId || courier.courierId)
                                                     ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] ring-1 ring-[var(--primary-blue)]"
                                                     : "border-[var(--border-default)] hover:border-[var(--border-strong)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]"
                                             )}
@@ -449,7 +528,7 @@ export default function OrdersClient() {
                                             <div className="flex items-center gap-4 relative z-10">
                                                 <div className={cn(
                                                     "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
-                                                    selectedCourier === courier.courierId ? "bg-white text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                                                    selectedCourier === (courier.optionId || courier.courierId) ? "bg-white text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
                                                 )}>
                                                     <Truck className="h-5 w-5" />
                                                 </div>
@@ -458,7 +537,18 @@ export default function OrdersClient() {
                                                     <p className="text-xs text-[var(--text-muted)] mt-0.5">
                                                         ETA: {courier.estimatedDeliveryDays} days
                                                         {courier.rating && <span className="text-[var(--warning)]"> • ★ {courier.rating.average}</span>}
+                                                        {courier.confidence && <span> • {courier.confidence.toUpperCase()} confidence</span>}
                                                     </p>
+                                                    {courier.isRecommended && (
+                                                        <Badge variant="info" className="text-[10px] mt-1">
+                                                            Recommended
+                                                        </Badge>
+                                                    )}
+                                                    {courier.tags && courier.tags.length > 0 && (
+                                                        <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                                            {courier.tags.join(' • ')}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right relative z-10">
@@ -482,7 +572,7 @@ export default function OrdersClient() {
                             </Button>
                             <Button
                                 onClick={handleCreateShipment}
-                                disabled={!selectedCourier}
+                                disabled={!selectedCourier || (quoteExpiresAt ? quoteExpiresAt.getTime() <= Date.now() : false)}
                                 className={cn(
                                     "transition-all duration-300",
                                     selectedCourier ? "bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"

@@ -64,6 +64,13 @@ const COLLECTIONS_TO_CLEAR = [
     // Integrations
     'integrations',
     'couriers', // New collection
+    // Service-level pricing architecture collections
+    'courierservices',
+    'serviceratecards',
+    'sellercourierpolicies',
+    'quotesessions',
+    'carrierbillingrecords',
+    'pricingvariancecases',
     // Phase 3 collections
     'ratecards',  // Correct Mongoose pluralization
     'zones',

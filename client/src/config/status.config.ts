@@ -29,16 +29,16 @@ import type { WebhookStatus } from '@/src/types/api/settings';
  * Uses Tailwind color classes for consistency with theme
  */
 export const STATUS_COLORS = {
-  success: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-  warning: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
-  error: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-  info: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  pending: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
-  neutral: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
-  primary: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400',
-  secondary: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
-  tertiary: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400',
-  alert: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400',
+  success: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20',
+  warning: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20',
+  error: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/10',
+  info: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 ring-1 ring-inset ring-blue-700/10',
+  pending: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 ring-1 ring-inset ring-orange-600/20',
+  neutral: 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 ring-1 ring-inset ring-gray-500/10',
+  primary: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 ring-1 ring-inset ring-indigo-700/10',
+  secondary: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 ring-1 ring-inset ring-purple-700/10',
+  tertiary: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 ring-1 ring-inset ring-cyan-700/10',
+  alert: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 ring-1 ring-inset ring-teal-700/10',
 } as const;
 
 /**
@@ -50,6 +50,23 @@ export interface StatusConfig {
   description?: string;
   icon?: string;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAREHOUSE STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const WAREHOUSE_STATUS_CONFIG: Record<string, StatusConfig> = {
+  active: {
+    label: 'Active',
+    color: 'success',
+    description: 'Warehouse operational',
+  },
+  inactive: {
+    label: 'Inactive',
+    color: 'warning',
+    description: 'Warehouse inactive',
+  },
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RETURN STATUS CONFIGURATIONS
@@ -655,22 +672,7 @@ export const USER_STATUS_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// WAREHOUSE STATUS CONFIGURATIONS
-// ═══════════════════════════════════════════════════════════════════════════
 
-export const WAREHOUSE_STATUS_CONFIG: Record<string, StatusConfig> = {
-  active: {
-    label: 'Active',
-    color: 'success',
-    description: 'Warehouse operational',
-  },
-  inactive: {
-    label: 'Inactive',
-    color: 'neutral',
-    description: 'Warehouse inactive',
-  },
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVENTORY STATUS CONFIGURATIONS

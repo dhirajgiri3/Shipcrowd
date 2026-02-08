@@ -197,6 +197,22 @@ export const queryKeys = {
     services: (id: string) => [...queryKeys.couriers.detail(id), 'services'] as const,
   },
 
+  courierServices: {
+    all: () => ['courierServices'] as const,
+    list: (filters?: FilterParams) => [...queryKeys.courierServices.all(), 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.courierServices.all(), 'detail', id] as const,
+  },
+
+  serviceRateCards: {
+    all: () => ['serviceRateCards'] as const,
+    list: (filters?: FilterParams) => [...queryKeys.serviceRateCards.all(), 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.serviceRateCards.all(), 'detail', id] as const,
+  },
+
+  sellerCourierPolicy: {
+    detail: (sellerId: string) => ['sellerCourierPolicy', sellerId] as const,
+  },
+
   // ========================================================================
   // RATE CARDS DOMAIN
   // ========================================================================
@@ -288,6 +304,7 @@ export const queryKeys = {
     availableBalance: () => ['finance', 'available-balance'],
     cashFlowForecast: () => ['finance', 'cash-flow-forecast'],
     insights: () => ['finance', 'insights'],
+    pricingVarianceCases: (filters?: FilterParams) => ['finance', 'pricing-variance-cases', filters] as const,
   },
 
   cod: {

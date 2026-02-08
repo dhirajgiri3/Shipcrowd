@@ -32,7 +32,16 @@ export const useGetCourierRates = () => {
   return useMutation<
     { success: boolean; data: CourierRate[] },
     ApiError,
-    { fromPincode: string; toPincode: string; weight: number; paymentMode?: 'COD' | 'Prepaid' }
+    {
+      fromPincode: string;
+      toPincode: string;
+      weight: number;
+      paymentMode?: 'COD' | 'Prepaid';
+      orderValue?: number;
+      length?: number;
+      width?: number;
+      height?: number;
+    }
   >({
     mutationFn: async (params) => await orderApi.getCourierRates(params),
     onError: (error) => {
@@ -49,7 +58,7 @@ export const useShipOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    { success: boolean; data: { shipmentId: string; awbNumber: string; courierName: string; labelUrl: string }; message: string },
+    { success: boolean; data: Record<string, unknown>; message: string },
     ApiError,
     ShipOrderRequest
   >({

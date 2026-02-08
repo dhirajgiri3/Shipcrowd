@@ -30,6 +30,14 @@ export interface Shipment {
     createdAt: string; // ISO date string
     estimatedDelivery?: string;
     deliveredAt?: string;
+    quoteSnapshot?: {
+        provider?: string;
+        serviceName?: string;
+        quotedSellAmount?: number;
+        expectedCostAmount?: number;
+        expectedMarginAmount?: number;
+        confidence?: 'high' | 'medium' | 'low';
+    };
 }
 
 export interface AdminOrder {

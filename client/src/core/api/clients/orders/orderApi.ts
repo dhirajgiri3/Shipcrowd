@@ -262,6 +262,10 @@ export const orderApi = {
     toPincode: string;
     weight: number;
     paymentMode?: 'COD' | 'Prepaid';
+    orderValue?: number;
+    length?: number;
+    width?: number;
+    height?: number;
   }): Promise<{ success: boolean; data: CourierRate[] }> => {
     const response = await apiClient.get('/orders/courier-rates', { params });
     return response.data;
@@ -273,12 +277,7 @@ export const orderApi = {
    */
   shipOrder: async (data: ShipOrderRequest): Promise<{
     success: boolean;
-    data: {
-      shipmentId: string;
-      awbNumber: string;
-      courierName: string;
-      labelUrl: string;
-    };
+    data: Record<string, unknown>;
     message: string;
   }> => {
     const { orderId, ...payload } = data;

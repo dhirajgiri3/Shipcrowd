@@ -224,6 +224,13 @@ export interface CourierRate {
   estimatedDeliveryDays: number;
   zone?: string;
   rating?: { average: number; totalReviews: number };
+  sessionId?: string;
+  optionId?: string;
+  expiresAt?: string;
+  recommendation?: string;
+  isRecommended?: boolean;
+  confidence?: 'high' | 'medium' | 'low';
+  tags?: string[];
 }
 
 /**
@@ -233,6 +240,8 @@ export interface ShipOrderRequest {
   orderId: string;
   courierId: string;
   serviceType: string;
+  sessionId?: string;
+  optionId?: string;
   pickupSchedule?: {
     date: string;
     timeSlot: 'morning' | 'afternoon' | 'evening';

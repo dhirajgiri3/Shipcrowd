@@ -13,6 +13,7 @@ import {
 } from '../../../../shared/helpers/controller.helpers';
 import {
     createShipmentSchema,
+    bookFromQuoteSchema,
     updateShipmentStatusSchema,
     recommendCourierSchema
 } from '../../../../shared/validation/schemas';
@@ -28,7 +29,7 @@ import CacheService from '../../../../infrastructure/utilities/cache.service';
 import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
-import { auth } from '../../middleware';
+import BookFromQuoteService from '../../../../core/application/services/shipping/book-from-quote.service';
 
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -176,6 +177,38 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
             }
         }
         logger.error('Error creating shipment:', error);
+        next(error);
+    }
+};
+
+export const bookFromQuote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+
+        const validation = bookFromQuoteSchema.safeParse(req.body);
+        if (!validation.success) {
+            const errors = validation.error.errors.map(err => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', errors);
+        }
+
+        const result = await BookFromQuoteService.execute({
+            companyId: auth.companyId,
+            sellerId: auth.userId,
+            userId: auth.userId,
+            sessionId: validation.data.sessionId,
+            optionId: validation.data.optionId,
+            orderId: validation.data.orderId,
+            warehouseId: validation.data.warehouseId,
+            instructions: validation.data.instructions,
+        });
+
+        sendCreated(res, result, 'Shipment booked from quote successfully');
+    } catch (error) {
+        logger.error('Error booking shipment from quote:', error);
         next(error);
     }
 };
@@ -580,6 +613,7 @@ export const getShipmentStats = async (req: Request, res: Response, next: NextFu
 
 export default {
     createShipment,
+    bookFromQuote,
     getShipments,
     getShipmentById,
     trackShipment,

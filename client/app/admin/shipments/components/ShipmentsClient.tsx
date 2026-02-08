@@ -142,7 +142,15 @@ export function ShipmentsClient() {
             paymentMode: (row as any).paymentDetails?.type || 'prepaid',
             codAmount: (row as any).paymentDetails?.codAmount || 0,
             weight: (row as any).packageDetails?.weight || 0,
-            createdAt: row.createdAt
+            createdAt: row.createdAt,
+            quoteSnapshot: {
+                provider: (row as any)?.pricingDetails?.selectedQuote?.provider,
+                serviceName: (row as any)?.pricingDetails?.selectedQuote?.serviceName,
+                quotedSellAmount: (row as any)?.pricingDetails?.selectedQuote?.quotedSellAmount,
+                expectedCostAmount: (row as any)?.pricingDetails?.selectedQuote?.expectedCostAmount,
+                expectedMarginAmount: (row as any)?.pricingDetails?.selectedQuote?.expectedMarginAmount,
+                confidence: (row as any)?.pricingDetails?.selectedQuote?.confidence,
+            },
         };
         setSelectedShipment(domainShipment);
     };

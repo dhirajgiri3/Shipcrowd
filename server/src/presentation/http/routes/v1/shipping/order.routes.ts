@@ -7,6 +7,9 @@ import shipmentController from '../../../controllers/shipping/shipment.controlle
 import ratecardController from '../../../controllers/shipping/ratecard.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import multer from 'multer';
+import { isFeatureEnabled } from '../../../middleware/system/feature-flag.middleware';
+import QuoteEngineService from '../../../../../core/application/services/pricing/quote-engine.service';
+import { sendSuccess } from '../../../../../shared/utils/responseHelper';
 
 const router = express.Router();
 
@@ -156,10 +159,23 @@ router.post(
     authenticate,
     csrfProtection,
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
-    async (req, res, next) => {
-        // Create shipment expects orderId in body
+    async (req, res, next): Promise<void> => {
+        const featureEnabled = await isFeatureEnabled(req, 'enable_service_level_pricing', false);
         req.body.orderId = req.params.orderId;
-        return shipmentController.createShipment(req, res, next);
+
+        if (featureEnabled && req.body.sessionId) {
+            req.body = {
+                sessionId: req.body.sessionId,
+                optionId: req.body.optionId,
+                orderId: req.params.orderId,
+                warehouseId: req.body.warehouseId,
+                instructions: req.body.specialInstructions || req.body.instructions,
+            };
+            await shipmentController.bookFromQuote(req, res, next);
+            return;
+        }
+
+        await shipmentController.createShipment(req, res, next);
     }
 );
 
@@ -171,12 +187,55 @@ router.post(
 router.get(
     '/courier-rates',
     authenticate,
-    async (req, res, next) => {
-        // Map query params to body for rate calculation if needed
+    async (req, res, next): Promise<void> => {
+        const featureEnabled = await isFeatureEnabled(req, 'enable_service_level_pricing', false);
+
+        if (featureEnabled) {
+            const paymentMode: 'cod' | 'prepaid' =
+                String(req.query.paymentMode || 'Prepaid').toLowerCase() === 'cod' ? 'cod' : 'prepaid';
+            const quoteInput = {
+                companyId: (req as any).user.companyId,
+                sellerId: (req as any).user._id,
+                fromPincode: String(req.query.fromPincode || ''),
+                toPincode: String(req.query.toPincode || ''),
+                weight: Number(req.query.weight || 0),
+                dimensions: {
+                    length: Number(req.query.length || 10),
+                    width: Number(req.query.width || 10),
+                    height: Number(req.query.height || 10),
+                },
+                paymentMode,
+                orderValue: Number(req.query.orderValue || 0),
+                shipmentType: 'forward' as const,
+            };
+            const quoteResult = await QuoteEngineService.generateQuotes(quoteInput);
+            const legacy = quoteResult.options.map((option: any) => ({
+                courierId: option.provider,
+                courierName: option.serviceName,
+                serviceType: String(option.serviceName || '').toLowerCase().includes('express') || String(option.serviceName || '').toLowerCase().includes('air')
+                    ? 'express'
+                    : 'standard',
+                rate: option.quotedAmount,
+                estimatedDeliveryDays: option.eta?.maxDays || 0,
+                zone: option.zone,
+                sessionId: quoteResult.sessionId,
+                optionId: option.optionId,
+                expiresAt: quoteResult.expiresAt,
+                recommendation: quoteResult.recommendation,
+                isRecommended: option.optionId === quoteResult.recommendation,
+                confidence: option.confidence,
+                tags: option.tags,
+            }));
+
+            sendSuccess(res, legacy, 'Courier rates fetched successfully');
+            return;
+        }
+
+        // Legacy calculation fallback
         if (Object.keys(req.query).length > 0) {
             req.body = { ...req.body, ...req.query };
         }
-        return ratecardController.calculateRate(req, res, next);
+        await ratecardController.calculateRate(req, res, next);
     }
 );
 

@@ -8,6 +8,7 @@ import labelRoutes from '../shipments/label.routes';
 import manifestRoutes from '../shipments/manifest.routes';
 import bulkRoutes from '../shipments/bulk.routes';
 import podRoutes from '../shipments/pod.routes';
+import { requireFeatureFlag } from '../../../middleware/system/feature-flag.middleware';
 
 const router = express.Router();
 
@@ -35,6 +36,21 @@ router.post(
     requireCompleteCompany,
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(shipmentController.createShipment)
+);
+
+/**
+ * @route POST /api/v1/shipments/book-from-quote
+ * @desc Create shipment using a locked quote session option
+ * @access Private (Production, Complete Profile)
+ */
+router.post(
+    '/book-from-quote',
+    authenticate,
+    csrfProtection,
+    requireFeatureFlag('enable_service_level_pricing'),
+    requireCompleteCompany,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(shipmentController.bookFromQuote)
 );
 
 /**

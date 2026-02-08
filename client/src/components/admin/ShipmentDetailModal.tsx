@@ -137,6 +137,37 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                     </div>
                 </div>
 
+                {/* Quote Snapshot */}
+                {shipment.quoteSnapshot && (
+                    <div>
+                        <h4 className="text-sm font-semibold text-[var(--text-secondary)] mb-3 flex items-center gap-2">
+                            <Truck className="h-4 w-4" /> Quote Snapshot
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
+                                <p className="text-xs text-[var(--text-muted)]">Provider</p>
+                                <p className="font-medium text-[var(--text-primary)]">{shipment.quoteSnapshot.provider || '-'}</p>
+                                <p className="text-xs text-[var(--text-muted)]">{shipment.quoteSnapshot.serviceName || ''}</p>
+                            </div>
+                            <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
+                                <p className="text-xs text-[var(--text-muted)]">Quoted Sell</p>
+                                <p className="font-medium text-[var(--text-primary)]">{formatCurrency(shipment.quoteSnapshot.quotedSellAmount || 0)}</p>
+                            </div>
+                            <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
+                                <p className="text-xs text-[var(--text-muted)]">Expected Cost</p>
+                                <p className="font-medium text-[var(--text-primary)]">{formatCurrency(shipment.quoteSnapshot.expectedCostAmount || 0)}</p>
+                            </div>
+                            <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
+                                <p className="text-xs text-[var(--text-muted)]">Expected Margin</p>
+                                <p className="font-medium text-[var(--text-primary)]">{formatCurrency(shipment.quoteSnapshot.expectedMarginAmount || 0)}</p>
+                                {shipment.quoteSnapshot.confidence && (
+                                    <p className="text-xs text-[var(--text-muted)] mt-1">Confidence: {shipment.quoteSnapshot.confidence.toUpperCase()}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* POD Section */}
                 <div>
                     <h4 className="text-sm font-semibold text-[var(--text-secondary)] mb-3 flex items-center gap-2">

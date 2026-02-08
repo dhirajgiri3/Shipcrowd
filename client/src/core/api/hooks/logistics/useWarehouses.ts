@@ -8,6 +8,8 @@ export interface Warehouse {
     _id: string;
     companyId: string;
     name: string;
+    code?: string;
+    type?: string;
     address: {
         line1: string;
         line2?: string;
@@ -35,6 +37,15 @@ export interface Warehouse {
         saturday: { open: string | null; close: string | null };
         sunday: { open: string | null; close: string | null };
     };
+    formattedHours?: {
+        monday: string;
+        tuesday: string;
+        wednesday: string;
+        thursday: string;
+        friday: string;
+        saturday: string;
+        sunday: string;
+    };
     isActive: boolean;
     isDefault: boolean;
     isDeleted: boolean;
@@ -44,6 +55,10 @@ export interface Warehouse {
         dtdcWarehouseId?: string;
         xpressbeesWarehouseId?: string;
         lastSyncedAt?: string;
+    };
+    capacity?: {
+        storageCapacity: number;
+        storageUnit: string;
     };
     createdAt: string;
     updatedAt: string;
