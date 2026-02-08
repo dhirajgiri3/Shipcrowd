@@ -1,23 +1,18 @@
-"use client";
+'use client';
 export const dynamic = "force-dynamic";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DataTable } from '@/src/components/ui/data/DataTable';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
-import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
-import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { getCourierLogo } from '@/src/constants';
+import { ShipmentTable } from './ShipmentTable';
 import {
     Search,
-    Eye,
-    FileText,
     Package,
     Truck,
     CheckCircle,
@@ -26,249 +21,315 @@ import {
     RotateCcw,
     Filter,
     Download,
-    ArrowUpRight,
-    MapPin,
-    Calendar,
-    Loader2
+    RefreshCw,
+    Loader2,
+    Info
 } from 'lucide-react';
-import { Shipment } from '@/src/types/domain/admin';
-import { useShipments, useGenerateBulkLabels } from '@/src/core/api/hooks/orders/useShipments';
+
+import { useShipments, useShipmentStats, Shipment as ApiShipment } from '@/src/core/api/hooks/orders/useShipments';
 import { DateRange } from '@/src/lib/data';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 
 export function ShipmentsClient() {
-    const [search, setSearch] = useState('');
-    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { addToast } = useToast();
 
-    // Hooks
-    const { mutate: generateLabels, isPending: isGeneratingLabels } = useGenerateBulkLabels();
+    // -- State from URL & Local --
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const status = searchParams.get('status') || 'all';
+    const search = searchParams.get('search') || '';
+    const startDate = searchParams.get('startDate') || '';
+    const endDate = searchParams.get('endDate') || '';
 
-    // Fetch shipments from API
-    const { data: shipmentsResponse, isLoading } = useShipments({
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        search: search || undefined,
-        startDate: dateRange?.from?.toISOString(),
-        endDate: dateRange?.to?.toISOString()
+    const [searchTerm, setSearchTerm] = useState(search);
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+    const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
+
+    // -- Debounce Search --
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // -- Update URL Helper --
+    const updateUrl = (updates: Record<string, string | number | null>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        searchParams.forEach((value, key) => {
+            if (!(key in updates)) params.set(key, value);
+        });
+
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') {
+                params.delete(key);
+            } else {
+                params.set(key, String(value));
+            }
+        });
+        router.push(`?${params.toString()}`, { scroll: false });
+    };
+
+    const handleTabChange = (newStatus: string) => {
+        updateUrl({ status: newStatus, page: 1 });
+    };
+
+    const handlePageChange = (newPage: number) => {
+        updateUrl({ page: newPage });
+    };
+
+    const handleDateRangeChange = (range: DateRange) => {
+        updateUrl({
+            startDate: range.from.toISOString(),
+            endDate: range.to.toISOString(),
+            page: 1
+        });
+    };
+
+    const handleRefresh = () => {
+        refetch();
+        addToast('Shipments refreshed', 'success');
+    };
+
+    // Fetch shipments
+    const { data: shipmentsResponse, isLoading, refetch, isFetching } = useShipments({
+        status: status !== 'all' ? status : undefined,
+        search: debouncedSearch || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        page,
+        limit
     });
 
+    // Fetch stats
+    const { data: stats } = useShipmentStats();
+
     const shipmentsData = shipmentsResponse?.shipments || [];
-    // Client-side filtering if API date filtering isn't ready, or just passing through
-    const filteredData = shipmentsData;
+    const pagination = shipmentsResponse?.pagination;
 
-    // Status Cards Data
-    const statusGrid = [
-        { id: 'all', label: 'Total Shipments', icon: Package, color: 'blue' },
-        { id: 'pending', label: 'Pending Pickup', icon: Clock, color: 'amber' },
-        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'violet' },
-        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'emerald' },
-        { id: 'ndr', label: 'NDR / Issues', icon: AlertTriangle, color: 'orange' },
-        { id: 'rto', label: 'RTO / Returned', icon: RotateCcw, color: 'rose' },
-    ];
+    // Helper to extract order number
+    const getOrderNumber = (orderId: any) => {
+        if (typeof orderId === 'object' && orderId?.orderNumber) {
+            return orderId.orderNumber;
+        }
+        return 'N/A';
+    };
 
-    const getStatusCount = (id: string) => {
-        // If we have summary stats from API, use that. Otherwise count from list (might be partial list due to pagination)
-        if (id === 'all') return shipmentsData.length;
-        return shipmentsData.filter((s: any) => s.status === id).length;
+    const handleShipmentClick = (row: ApiShipment) => {
+        const domainShipment = {
+            id: row._id,
+            awb: row.trackingNumber,
+            orderNumber: getOrderNumber(row.orderId),
+            status: row.currentStatus,
+            customer: {
+                name: (row as any).deliveryDetails?.recipientName || 'Unknown',
+                phone: (row as any).deliveryDetails?.recipientPhone || 'N/A',
+                email: (row as any).deliveryDetails?.recipientEmail || ''
+            },
+            origin: {
+                city: 'Warehouse',
+                state: '',
+                pincode: ''
+            },
+            destination: {
+                city: (row as any).deliveryDetails?.address?.city || '',
+                state: (row as any).deliveryDetails?.address?.state || '',
+                pincode: (row as any).deliveryDetails?.address?.postalCode || ''
+            },
+            courier: row.carrier,
+            paymentMode: (row as any).paymentDetails?.type || 'prepaid',
+            codAmount: (row as any).paymentDetails?.codAmount || 0,
+            weight: (row as any).packageDetails?.weight || 0,
+            createdAt: row.createdAt
+        };
+        setSelectedShipment(domainShipment);
     };
 
     const handleExport = () => {
-        // Mock export functionality or call an API endpoint
-        // In a real app, this might trigger a download or email report
         addToast('Export started. You will receive an email shortly.', 'success');
     };
 
-    // Columns
-    const columns = [
+    const statsConfig = [
         {
-            header: 'Shipment Details',
-            accessorKey: 'awb',
-            cell: (row: Shipment) => (
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                        <Package className="w-4 h-4 text-[var(--text-muted)]" />
-                    </div>
-                    <div>
-                        <div className="font-bold text-[var(--text-primary)] text-sm">{row.awb}</div>
-                        <div className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                            Order #{row.orderNumber}
-                        </div>
-                    </div>
-                </div>
-            )
+            title: 'Total Shipments',
+            value: stats?.total || 0,
+            icon: Package,
+            iconColor: "bg-blue-600 text-white",
+            trend: { value: 0, label: 'vs last week', positive: true },
+            delay: 0,
+            filter: 'all'
         },
         {
-            header: 'Customer',
-            accessorKey: 'customer',
-            cell: (row: Shipment) => (
-                <div>
-                    <div className="font-semibold text-[var(--text-primary)] text-sm">{row.customer.name}</div>
-                    <div className="text-xs text-[var(--text-muted)]">{row.customer.phone}</div>
-                </div>
-            )
+            title: 'Pending Pickup',
+            value: stats?.pending || 0,
+            icon: Clock,
+            iconColor: "bg-yellow-500 text-white",
+            trend: { value: 0, label: 'waiting', positive: false },
+            delay: 1,
+            filter: 'pending'
         },
         {
-            header: 'Route',
-            accessorKey: 'origin',
-            cell: (row: Shipment) => (
-                <div className="flex items-center gap-2 text-sm">
-                    <span className="text-[var(--text-secondary)] font-medium">{row.origin.city}</span>
-                    <span className="text-[var(--text-muted)]">→</span>
-                    <span className="text-[var(--text-primary)] font-bold">{row.destination.city}</span>
-                </div>
-            )
+            title: 'In Transit',
+            value: stats?.in_transit || 0,
+            icon: Truck,
+            iconColor: "bg-orange-500 text-white",
+            trend: { value: 0, label: 'active now', positive: true },
+            delay: 2,
+            filter: 'in_transit'
         },
         {
-            header: 'Courier',
-            accessorKey: 'courier',
-            cell: (row: Shipment) => (
-                <div className="flex items-center gap-2">
-                    <img
-                        src={getCourierLogo(row.courier)}
-                        className="w-5 h-5 object-contain opacity-80"
-                        alt={row.courier}
-                        onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${row.courier}&background=random&color=fff&size=20`;
-                        }}
-                    />
-                    <span className="text-sm font-medium text-[var(--text-secondary)]">{row.courier}</span>
-                </div>
-            )
+            title: 'Delivered',
+            value: stats?.delivered || 0,
+            icon: CheckCircle,
+            iconColor: "bg-emerald-500 text-white",
+            trend: { value: 0, label: 'completed', positive: true },
+            delay: 3,
+            filter: 'delivered'
         },
         {
-            header: 'Status',
-            accessorKey: 'status',
-            cell: (row: Shipment) => <StatusBadge status={row.status} />
+            title: 'NDR / Issues',
+            value: stats?.ndr || 0,
+            icon: AlertTriangle,
+            iconColor: "bg-purple-500 text-white",
+            trend: { value: 0, label: 'action needed', positive: false },
+            delay: 4,
+            filter: 'ndr'
         },
         {
-            header: 'Amount',
-            accessorKey: 'codAmount',
-            cell: (row: Shipment) => (
-                <div>
-                    <div className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(row.codAmount)}</div>
-                    <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
-                        row.paymentMode === 'prepaid' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--info-bg)] text-[var(--info)]"
-                    )}>
-                        {row.paymentMode}
-                    </span>
-                </div>
-            )
-        },
-        {
-            header: 'Actions',
-            accessorKey: 'id',
-            cell: (row: Shipment) => (
-                <div className="flex items-center gap-2">
-                    <ViewActionButton
-                        onClick={() => setSelectedShipment(row)}
-                    />
-                    <Button variant="ghost" size="sm">
-                        <FileText className="w-4 h-4" />
-                    </Button>
-                </div>
-            )
+            title: 'RTO / Returned',
+            value: stats?.rto || 0,
+            icon: RotateCcw,
+            iconColor: "bg-red-500 text-white",
+            trend: { value: 0, label: 'attention needed', positive: false },
+            delay: 5,
+            filter: 'rto'
         }
     ];
 
+    const TABS = [
+        { id: 'all', label: 'All' },
+        { id: 'pending', label: 'Pending' },
+        { id: 'in_transit', label: 'In Transit' },
+        { id: 'delivered', label: 'Delivered' },
+        { id: 'ndr', label: 'NDR' },
+        { id: 'rto', label: 'RTO' },
+    ];
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-            {/* Header */}
+        <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
+            {/* Header Section - Matched to OrdersClient */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] shadow-lg shadow-blue-500/20">
-                        <Truck className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Shipments</h1>
-                        <p className="text-[var(--text-muted)] text-sm">Track and manage all deliveries</p>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Shipments</h1>
+                    <p className="text-[var(--text-secondary)] mt-1">Track and manage all deliveries across the platform.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <DateRangePicker
-                        onRangeChange={setDateRange}
-                    />
-                    <Button
-                        onClick={handleExport}
-                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25 border-0"
+                    <button
+                        onClick={handleRefresh}
+                        disabled={isFetching}
+                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
                     >
-                        <Download className="h-4 w-4 mr-1.5" /> Export
-                    </Button>
+                        <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
+                        Refresh Data
+                    </button>
+                    <button
+                        onClick={handleExport}
+                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
+                    >
+                        <Download size={16} />
+                        Export Data
+                    </button>
                 </div>
             </div>
 
-            {/* Status Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                {statusGrid.map((status, i) => {
-                    const count = getStatusCount(status.id);
-                    const isActive = statusFilter === status.id;
-                    return (
-                        <motion.button
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            key={status.id}
-                            onClick={() => setStatusFilter(status.id)}
-                            className={cn(
-                                "relative p-4 rounded-2xl border transition-all text-left group overflow-hidden",
-                                isActive
-                                    ? "bg-[var(--bg-primary)] border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)] shadow-lg"
-                                    : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-md"
-                            )}
-                        >
-                            <div className="flex flex-col h-full justify-between">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className={cn(
-                                        "p-2 rounded-lg",
-                                        status.color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
-                                            status.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                                status.color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
-                                                    status.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                                        status.color === 'orange' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                                            "bg-[var(--error-bg)] text-[var(--error)]"
-                                    )}>
-                                        <status.icon className="w-4 h-4" />
-                                    </div>
-                                    {isActive && <div className="w-2 h-2 rounded-full bg-[var(--primary-blue)]" />}
-                                </div>
-                                <div>
-                                    <p className="text-xl font-bold text-[var(--text-primary)]">{count}</p>
-                                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{status.label}</p>
-                                </div>
-                            </div>
-                        </motion.button>
-                    );
-                })}
+            {/* Stats Grid - Flat Design matching Orders */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                {statsConfig.map((stat, i) => (
+                    <StatsCard
+                        key={i}
+                        title={stat.title}
+                        value={stat.value}
+                        icon={stat.icon}
+                        iconColor={stat.iconColor}
+                        trend={stat.trend as any}
+                        delay={stat.delay}
+                    />
+                ))}
             </div>
 
             {/* Filters & Table */}
             <div className="space-y-4">
-                <div className="flex flex-col md:flex-row gap-4 justify-between bg-[var(--bg-primary)] p-1.5 rounded-2xl border border-[var(--border-subtle)]">
+                {/* Controls - Matched with Orders */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-default)]">
+                    {/* Search */}
                     <div className="relative w-full md:w-96">
-                        <Input
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={18} />
+                        <input
+                            type="text"
                             placeholder="Search by AWB, Order ID, or Customer..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            icon={<Search className="w-4 h-4" />}
-                            className="bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)]"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-muted)] text-[var(--text-primary)]"
                         />
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="h-full">
-                            <Filter className="w-4 h-4 mr-2" /> More Filters
-                        </Button>
+
+                    <div className="flex items-center gap-4">
+                        {/* Date Picker */}
+                        <div className="hidden md:block">
+                            <DateRangePicker onRangeChange={handleDateRangeChange} />
+                        </div>
+
+                        {/* Filter Tabs */}
+                        <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide">
+                            {TABS.map((tab) => {
+                                const isActive = status === tab.id;
+                                let count = 0;
+                                if (tab.id === 'all') count = stats?.total || 0;
+                                else count = (stats as any)?.[tab.id] || 0;
+
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => handleTabChange(tab.id)}
+                                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${isActive
+                                            ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
+                                            : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                                            }`}
+                                    >
+                                        {tab.label}
+                                        {count > 0 && (
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[var(--bg-secondary)] text-[var(--text-primary)]' : 'bg-[var(--bg-primary)]/50'}`}>
+                                                {count}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden shadow-sm">
-                    <DataTable
-                        columns={columns}
-                        data={filteredData as any[]}
-                        onRowClick={(row) => setSelectedShipment(row)}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                    <ShipmentTable
+                        data={shipmentsData}
                         isLoading={isLoading}
+                        onRefresh={handleRefresh}
+                        pagination={pagination ? {
+                            total: pagination.total,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            totalPages: pagination.pages
+                        } : undefined}
+                        onPageChange={handlePageChange}
+                        onRowClick={handleShipmentClick}
                     />
-                </div>
+                </motion.div>
             </div>
 
             {/* Detail Modal */}

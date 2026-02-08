@@ -13,7 +13,12 @@ import {
 export interface Shipment {
     _id: string;
     trackingNumber: string;
-    orderId: string;
+    orderId: {
+        _id: string;
+        orderNumber: string;
+        customerInfo?: any;
+        totals?: any;
+    } | string;
     companyId: string;
     carrier: 'Delhivery' | 'DTDC' | 'Xpressbees';
     serviceType: 'express' | 'standard';
@@ -94,7 +99,10 @@ export const useShipments = (filters: ShipmentFilters = {}, options?: UseQueryOp
         queryKey: queryKeys.shipments.list(filters),
         queryFn: async () => {
             const response = await apiClient.get('/shipments', { params: filters });
-            return response.data;
+            return {
+                shipments: response.data.data || [],
+                pagination: response.data.pagination
+            };
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
@@ -133,6 +141,32 @@ export const useTrackShipment = (trackingNumber: string, options?: UseQueryOptio
         },
         enabled: !!trackingNumber && trackingNumber.length > 0,
         ...CACHE_TIMES.REALTIME,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};
+
+export interface ShipmentStats {
+    total: number;
+    pending: number;
+    in_transit: number;
+    delivered: number;
+    ndr: number;
+    rto: number;
+}
+
+/**
+ * Fetch shipment statistics
+ */
+export const useShipmentStats = (options?: UseQueryOptions<ShipmentStats, ApiError>) => {
+    return useQuery<ShipmentStats, ApiError>({
+        queryKey: queryKeys.shipments.stats(),
+        queryFn: async () => {
+            const response = await apiClient.get('/shipments/stats');
+            return response.data.data || response.data;
+        },
+        staleTime: 0,
+        gcTime: 0,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });

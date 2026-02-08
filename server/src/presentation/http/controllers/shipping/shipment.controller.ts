@@ -184,7 +184,8 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
     try {
         const auth = guardChecks(req, { requireCompany: false });
 
-        if (!auth.companyId) {
+        // Seller/Staff must have company context
+        if (!auth.isAdmin && !auth.companyId) {
             sendSuccess(res, {
                 shipments: [],
                 pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
@@ -195,9 +196,29 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
 
         const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
 
-        const filter: Record<string, any> = { companyId: auth.companyId, isDeleted: false };
+        // Admins see all, Sellers see their own
+        const filter: Record<string, any> = { isDeleted: false };
+        if (!auth.isAdmin) {
+            filter.companyId = auth.companyId;
+        }
 
-        if (req.query.status) filter.currentStatus = req.query.status;
+        if (req.query.status) {
+            const status = req.query.status as string;
+            if (status === 'pending') {
+                filter.currentStatus = { $in: ['created', 'ready_to_ship'] };
+            } else if (status === 'in_transit') {
+                filter.currentStatus = { $in: ['picked', 'picked_up', 'in_transit', 'out_for_delivery'] };
+            } else if (status === 'rto') {
+                filter.currentStatus = { $in: ['rto', 'returned', 'rto_delivered', 'return_initiated'] };
+            } else if (status === 'delivered') {
+                filter.currentStatus = 'delivered';
+            } else if (status === 'ndr') {
+                filter.currentStatus = 'ndr';
+            } else {
+                filter.currentStatus = status;
+            }
+        }
+
         if (req.query.carrier) filter.carrier = { $regex: req.query.carrier, $options: 'i' };
         if (req.query.pincode) filter['deliveryDetails.address.postalCode'] = req.query.pincode;
 
@@ -213,6 +234,7 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
                 { trackingNumber: searchRegex },
                 { 'deliveryDetails.recipientName': searchRegex },
                 { 'deliveryDetails.recipientPhone': searchRegex },
+                { 'carrierDetails.carrierTrackingNumber': searchRegex }
             ];
         }
 
@@ -499,6 +521,63 @@ export const recommendCourier = async (req: Request, res: Response, next: NextFu
     }
 };
 
+export const getShipmentStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+
+        if (!auth.isAdmin && !auth.companyId) {
+            sendSuccess(res, {
+                total: 0,
+                pending: 0,
+                in_transit: 0,
+                delivered: 0,
+                ndr: 0,
+                rto: 0,
+            }, 'No company context');
+            return;
+        }
+
+        // Define match phase based on role
+        const matchStage: Record<string, any> = { isDeleted: false };
+        if (!auth.isAdmin) {
+            matchStage.companyId = new mongoose.Types.ObjectId(auth.companyId);
+        }
+
+        const stats = await Shipment.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: '$currentStatus',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const statusCounts: Record<string, number> = {};
+        let total = 0;
+
+        stats.forEach(stat => {
+            const status = stat._id || 'unknown';
+            statusCounts[status] = stat.count;
+            total += stat.count;
+        });
+
+        const response = {
+            total,
+            pending: (statusCounts['created'] || 0) + (statusCounts['ready_to_ship'] || 0),
+            in_transit: (statusCounts['picked'] || 0) + (statusCounts['picked_up'] || 0) + (statusCounts['in_transit'] || 0) + (statusCounts['out_for_delivery'] || 0),
+            delivered: statusCounts['delivered'] || 0,
+            ndr: statusCounts['ndr'] || 0,
+            rto: (statusCounts['rto'] || 0) + (statusCounts['returned'] || 0) + (statusCounts['rto_delivered'] || 0) + (statusCounts['return_initiated'] || 0),
+        };
+
+        sendSuccess(res, response, 'Shipment stats retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching shipment stats:', error);
+        next(error);
+    }
+};
+
 export default {
     createShipment,
     getShipments,
@@ -507,5 +586,6 @@ export default {
     updateShipmentStatus,
     deleteShipment,
     trackShipmentPublic,
-    recommendCourier
+    recommendCourier,
+    getShipmentStats
 };
