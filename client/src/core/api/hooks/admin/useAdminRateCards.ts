@@ -23,6 +23,7 @@ export interface AdminRateCard {
     } | string;
     status: 'draft' | 'active' | 'inactive' | 'expired';
     version?: string;
+    versionNumber?: number;
     fuelSurcharge?: number;
     minimumCall?: number;
     isLocked?: boolean;
@@ -112,6 +113,8 @@ export interface AdminRateCardStats {
     active: number;
     inactive: number;
     draft: number;
+    avgRatePerKg?: number;
+    revenue30d?: number;
     topCompanies: Array<{
         companyId: string;
         companyName: string;
@@ -123,6 +126,8 @@ interface AdminRateCardsFilters {
     status?: 'draft' | 'active' | 'inactive' | 'expired';
     companyId?: string;
     search?: string;
+    carrier?: string;
+    category?: string;
     page?: number;
     limit?: number;
 }
@@ -142,6 +147,8 @@ export const useAdminRateCards = (
             if (filters?.status) params.append('status', filters.status);
             if (filters?.companyId) params.append('companyId', filters.companyId);
             if (filters?.search) params.append('search', filters.search);
+            if (filters?.carrier) params.append('carrier', filters.carrier);
+            if (filters?.category) params.append('category', filters.category);
             if (filters?.page) params.append('page', filters.page.toString());
             if (filters?.limit) params.append('limit', filters.limit.toString());
 

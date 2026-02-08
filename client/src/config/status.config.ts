@@ -438,6 +438,33 @@ export const COURIER_STATUS_CONFIG: Record<string, StatusConfig> = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// RATE CARD STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const RATECARD_STATUS_CONFIG: Record<string, StatusConfig> = {
+  draft: {
+    label: 'Draft',
+    color: 'neutral',
+    description: 'Rate card in draft state'
+  },
+  active: {
+    label: 'Active',
+    color: 'success',
+    description: 'Rate card is active'
+  },
+  inactive: {
+    label: 'Inactive',
+    color: 'warning',
+    description: 'Rate card is inactive'
+  },
+  expired: {
+    label: 'Expired',
+    color: 'error',
+    description: 'Rate card has expired'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // COMMISSION STATUS CONFIGURATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -543,6 +570,7 @@ type StatusConfigMap =
   | typeof COMPANY_STATUS_CONFIG
   | typeof COUPON_STATUS_CONFIG
   | typeof COURIER_STATUS_CONFIG
+  | typeof RATECARD_STATUS_CONFIG
   | typeof KYC_STATUS_CONFIG
   | typeof ORDER_STATUS_CONFIG
   | typeof COMMISSION_STATUS_CONFIG
@@ -916,6 +944,7 @@ export function getStatusConfig(
     company: COMPANY_STATUS_CONFIG,
     coupon: COUPON_STATUS_CONFIG,
     courier: COURIER_STATUS_CONFIG,
+    ratecard: RATECARD_STATUS_CONFIG,
     kyc: KYC_STATUS_CONFIG,
     order: ORDER_STATUS_CONFIG,
     commission: COMMISSION_STATUS_CONFIG,
@@ -978,6 +1007,7 @@ export const STATUS_CONFIGS = {
   company: COMPANY_STATUS_CONFIG,
   coupon: COUPON_STATUS_CONFIG,
   courier: COURIER_STATUS_CONFIG,
+  ratecard: RATECARD_STATUS_CONFIG,
   kyc: KYC_STATUS_CONFIG,
   order: ORDER_STATUS_CONFIG,
   commission: COMMISSION_STATUS_CONFIG,

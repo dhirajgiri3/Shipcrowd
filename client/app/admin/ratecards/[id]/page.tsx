@@ -1,5 +1,5 @@
-import { RateCardAnalytics } from './analytics/components/RateCardAnalytics';
+import { RateCardDetailView } from './components/RateCardDetailView';
 
 export default function RateCardDetailsPage({ params }: { params: { id: string } }) {
-    return <RateCardAnalytics rateCardId={params.id} />;
+    return <RateCardDetailView rateCardId={params.id} />;
 }

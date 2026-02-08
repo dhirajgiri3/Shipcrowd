@@ -15,11 +15,12 @@ export const useBulkUpdateRateCards = () => {
 
     return useMutation({
         mutationFn: async (data: BulkUpdateInput) => {
-            const response = await apiClient.post('/rate-cards/bulk-update', data);
+            const response = await apiClient.post('/ratecards/bulk-update', data);
             return response.data;
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['rate-cards'] });
+            queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
             addToast(`Successfully updated ${data.data.updatedCount} rate cards`, 'success');
         },
         onError: (error: any) => {
@@ -33,7 +34,7 @@ export const useExportRateCards = () => {
 
     return useMutation({
         mutationFn: async () => {
-            const response = await apiClient.get('/rate-cards/export', {
+            const response = await apiClient.get('/ratecards/export', {
                 responseType: 'blob'
             });
 

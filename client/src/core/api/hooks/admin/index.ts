@@ -9,6 +9,7 @@ export * from './useAdminProfit';
 
 export * from './useRateCardManagement';
 export * from './useAdminRateCards';
+export * from './useAdminRateCardAnalytics';
 export * from './useSellerHealth';
 
 // Subdirectories

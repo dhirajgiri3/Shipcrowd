@@ -17,11 +17,12 @@ export const useCreateRateCard = () => {
 
     return useMutation({
         mutationFn: async (data: CreateRateCardInput) => {
-            const response = await apiClient.post('/rate-cards', data);
+            const response = await apiClient.post('/ratecards', data);
             return response.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['rate-cards'] });
+            queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
         },
     });
 };

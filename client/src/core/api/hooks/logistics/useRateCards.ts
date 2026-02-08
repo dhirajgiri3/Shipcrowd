@@ -11,16 +11,18 @@ export interface RateCard {
     baseRates: Array<{
         carrier?: string;
         serviceType?: string;
-        baseRate: number;
+        basePrice: number;
         minWeight: number;
         maxWeight: number;
+        baseRate?: number; // Legacy alias
     }>;
     weightRules: Array<{
         minWeight: number;
         maxWeight: number;
-        ratePerKg: number;
+        pricePerKg: number;
         carrier?: string;
         serviceType?: string;
+        ratePerKg?: number; // Legacy alias
     }>;
     zoneRules: Array<{
         zoneId?: string; // Changed from zone string to zoneId often used

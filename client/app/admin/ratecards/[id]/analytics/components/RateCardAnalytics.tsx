@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/src/lib/utils';
-import { useRateCardAnalytics, useRateCardRevenueSeries } from '@/src/hooks/shipping/use-rate-card-analytics';
+import { useAdminRateCardAnalytics, useAdminRateCardRevenueSeries } from '@/src/core/api/hooks/admin/useAdminRateCardAnalytics';
 
 interface RateCardAnalyticsProps {
     rateCardId: string;
@@ -31,13 +31,13 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
     });
     const [granularity, setGranularity] = useState<'day' | 'week' | 'month'>('day');
 
-    const { data: stats, isLoading: statsLoading } = useRateCardAnalytics({
+    const { data: stats, isLoading: statsLoading } = useAdminRateCardAnalytics({
         rateCardId,
         startDate: dateRange.start,
         endDate: dateRange.end
     });
 
-    const { data: timeSeries, isLoading: seriesLoading } = useRateCardRevenueSeries({
+    const { data: timeSeries, isLoading: seriesLoading } = useAdminRateCardRevenueSeries({
         rateCardId,
         startDate: dateRange.start,
         endDate: dateRange.end,

@@ -7,7 +7,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { RateCard } from '../../../../infrastructure/database/mongoose/models';
+import { RateCard, AuditLog } from '../../../../infrastructure/database/mongoose/models';
+import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -23,6 +24,7 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import RateCardAnalyticsService from '../../../../core/application/services/analytics/rate-card-analytics.service';
 
 // Validation schemas
 const weightRuleSchema = z.object({
@@ -86,6 +88,12 @@ export const getAdminRateCards = async (req: Request, res: Response, next: NextF
         if (req.query.search) {
             filter.name = { $regex: req.query.search, $options: 'i' };
         }
+        if (req.query.category) {
+            filter.rateCardCategory = req.query.category;
+        }
+        if (req.query.carrier) {
+            filter['baseRates.carrier'] = req.query.carrier;
+        }
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
@@ -141,6 +149,152 @@ export const getAdminRateCardById = async (req: Request, res: Response, next: Ne
         sendSuccess(res, { rateCard }, 'Rate card retrieved successfully');
     } catch (error) {
         logger.error('Error fetching admin rate card:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get rate card analytics (any company)
+ *
+ * @route GET /api/v1/admin/ratecards/:id/analytics
+ * @access Admin, Super Admin
+ */
+export const getAdminRateCardAnalytics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const rateCardId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
+            throw new ValidationError('Invalid rate card ID format');
+        }
+
+        const rateCard = await RateCard.findOne({
+            _id: rateCardId,
+            isDeleted: false,
+        }).lean();
+
+        if (!rateCard) {
+            throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+        }
+
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+        const stats = await RateCardAnalyticsService.getRateCardUsageStats(
+            rateCardId,
+            startDate,
+            endDate
+        );
+
+        sendSuccess(res, { stats }, 'Rate card analytics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching admin rate card analytics:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get rate card revenue series (any company)
+ *
+ * @route GET /api/v1/admin/ratecards/:id/revenue-series
+ * @access Admin, Super Admin
+ */
+export const getAdminRateCardRevenueSeries = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const rateCardId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
+            throw new ValidationError('Invalid rate card ID format');
+        }
+
+        const rateCard = await RateCard.findOne({
+            _id: rateCardId,
+            isDeleted: false,
+        }).lean();
+
+        if (!rateCard) {
+            throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+        }
+
+        const startDate = new Date(req.query.startDate as string);
+        const endDate = new Date(req.query.endDate as string);
+        const granularity = (req.query.granularity as 'day' | 'week' | 'month') || 'day';
+
+        if (!startDate || !endDate || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+            throw new ValidationError('startDate and endDate are required');
+        }
+
+        const timeSeries = await RateCardAnalyticsService.getRevenueTimeSeries(
+            rateCardId,
+            startDate,
+            endDate,
+            granularity
+        );
+
+        sendSuccess(res, { timeSeries }, 'Revenue time series retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching admin rate card revenue series:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get rate card change history via audit logs (any company)
+ *
+ * @route GET /api/v1/admin/ratecards/:id/history
+ * @access Admin, Super Admin
+ */
+export const getAdminRateCardHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const rateCardId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
+            throw new ValidationError('Invalid rate card ID format');
+        }
+
+        const page = Math.max(1, parseInt(req.query.page as string) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+        const skip = (page - 1) * limit;
+
+        const [logs, total] = await Promise.all([
+            AuditLog.find({
+                resource: 'ratecard',
+                resourceId: rateCardId,
+                isDeleted: false,
+            })
+                .sort({ timestamp: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('userId', 'name email')
+                .lean(),
+            AuditLog.countDocuments({
+                resource: 'ratecard',
+                resourceId: rateCardId,
+                isDeleted: false,
+            }),
+        ]);
+
+        const formattedLogs = logs.map(log => ({
+            id: log._id,
+            user: log.userId,
+            action: log.action,
+            resource: log.resource,
+            resourceId: log.resourceId,
+            details: log.details,
+            ipAddress: log.ipAddress,
+            userAgent: log.userAgent,
+            timestamp: log.timestamp,
+        }));
+
+        const pagination = calculatePagination(total, page, limit);
+        sendPaginated(res, formattedLogs, pagination, 'Rate card history retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching admin rate card history:', error);
         next(error);
     }
 };
@@ -352,7 +506,9 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
         const auth = guardChecks(req, { requireCompany: false });
         requirePlatformAdmin(auth);
 
-        const [total, active, inactive, draft, byCompany] = await Promise.all([
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+        const [total, active, inactive, draft, byCompany, avgRatePerKgResult, revenue30dResult] = await Promise.all([
             RateCard.countDocuments({ isDeleted: false }),
             RateCard.countDocuments({ isDeleted: false, status: 'active' }),
             RateCard.countDocuments({ isDeleted: false, status: 'inactive' }),
@@ -379,14 +535,46 @@ export const getAdminRateCardStats = async (req: Request, res: Response, next: N
                         _id: 0
                     }
                 }
+            ]),
+            RateCard.aggregate([
+                { $match: { isDeleted: false, status: 'active' } },
+                { $unwind: '$baseRates' },
+                {
+                    $project: {
+                        pricePerKg: {
+                            $cond: [
+                                { $gt: ['$baseRates.maxWeight', 0] },
+                                { $divide: ['$baseRates.basePrice', '$baseRates.maxWeight'] },
+                                0
+                            ]
+                        }
+                    }
+                },
+                { $group: { _id: null, avgRatePerKg: { $avg: '$pricePerKg' } } }
+            ]),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        isDeleted: false,
+                        createdAt: { $gte: thirtyDaysAgo },
+                        'pricingDetails.totalPrice': { $exists: true },
+                        'pricingDetails.rateCardId': { $exists: true }
+                    }
+                },
+                { $group: { _id: null, revenue30d: { $sum: '$pricingDetails.totalPrice' } } }
             ])
         ]);
+
+        const avgRatePerKg = avgRatePerKgResult?.[0]?.avgRatePerKg || 0;
+        const revenue30d = revenue30dResult?.[0]?.revenue30d || 0;
 
         const stats = {
             total,
             active,
             inactive,
             draft,
+            avgRatePerKg: Math.round(avgRatePerKg * 100) / 100,
+            revenue30d: Math.round(revenue30d * 100) / 100,
             topCompanies: byCompany,
         };
 
@@ -456,6 +644,9 @@ export const cloneAdminRateCard = async (req: Request, res: Response, next: Next
 export default {
     getAdminRateCards,
     getAdminRateCardById,
+    getAdminRateCardAnalytics,
+    getAdminRateCardRevenueSeries,
+    getAdminRateCardHistory,
     createAdminRateCard,
     updateAdminRateCard,
     deleteAdminRateCard,

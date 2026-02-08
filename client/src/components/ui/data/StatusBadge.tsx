@@ -48,6 +48,7 @@ export type WebhookStatusValue = keyof typeof STATUS_CONFIGS.webhook;
 export type CompanyStatusValue = keyof typeof STATUS_CONFIGS.company;
 export type CouponStatusValue = keyof typeof STATUS_CONFIGS.coupon;
 export type CourierStatusValue = keyof typeof STATUS_CONFIGS.courier;
+export type RatecardStatusValue = keyof typeof STATUS_CONFIGS.ratecard;
 
 export type StatusValue =
   | ReturnStatusValue
@@ -60,6 +61,7 @@ export type StatusValue =
   | CompanyStatusValue
   | CouponStatusValue
   | CourierStatusValue
+  | RatecardStatusValue
   | string;
 
 export interface StatusBadgeProps {

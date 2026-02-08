@@ -35,7 +35,7 @@ export const useRateCardAnalytics = ({ rateCardId, startDate, endDate }: RateCar
             if (endDate) params.append('endDate', endDate.toISOString());
 
             const response = await apiClient.get<{ data: { stats: RateCardUsageStats } }>(
-                `/rate-cards/${rateCardId}/analytics?${params.toString()}`
+                `/ratecards/${rateCardId}/analytics?${params.toString()}`
             );
             return response.data.data.stats;
         },
@@ -63,7 +63,7 @@ export const useRateCardRevenueSeries = ({
             });
 
             const response = await apiClient.get<{ data: { timeSeries: RevenueDataPoint[] } }>(
-                `/rate-cards/${rateCardId}/revenue-series?${params.toString()}`
+                `/ratecards/${rateCardId}/revenue-series?${params.toString()}`
             );
             return response.data.data.timeSeries;
         },

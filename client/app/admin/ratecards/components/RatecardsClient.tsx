@@ -1,11 +1,10 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
 import {
     CreditCard,
     Plus,
@@ -17,37 +16,45 @@ import {
     PowerOff,
     TrendingUp,
     TrendingDown,
+    IndianRupee,
     Upload,
     CheckCircle,
     X,
-    Filter,
-    MoreVertical,
-    FileInput
+    MoreVertical
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
-import { useAdminRateCards, useCloneAdminRateCard, useDeleteAdminRateCard } from '@/src/core/api/hooks/admin/useAdminRateCards';
+import { useAdminRateCards, useAdminRateCardStats, useCloneAdminRateCard, useDeleteAdminRateCard } from '@/src/core/api/hooks/admin/useAdminRateCards';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useBulkUpdateRateCards, useExportRateCards } from '@/src/hooks/shipping/use-bulk-rate-card-operations';
 import { UploadRateCardModal } from './UploadRateCardModal';
-import { RateCardItem } from './RateCardItem';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { EnhancedRateCardItem } from './EnhancedRateCardItem';
+import { BulkActionsPanel } from './BulkActionsPanel';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 export function RatecardsClient() {
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
+    const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive' | 'draft' | 'expired'>('all');
+    const [selectedCourier, setSelectedCourier] = useState<string>('all');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [showBulkActions, setShowBulkActions] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const { addToast } = useToast();
+    const { user } = useAuth();
+    const hasCompanyContext = !!user?.companyId;
 
     // Integration: Fetch real rate cards
     const { data: adminData, isLoading, isError, error, refetch } = useAdminRateCards({
         status: selectedStatus === 'all' ? undefined : selectedStatus,
         search: searchQuery || undefined,
+        carrier: selectedCourier === 'all' ? undefined : selectedCourier,
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
     });
+    const { data: statsData } = useAdminRateCardStats();
     const rateCards = adminData?.rateCards || [];
 
     // Bulk operations hooks
@@ -123,11 +130,11 @@ export function RatecardsClient() {
         });
     };
 
-    const handleBulkPriceAdjustment = (type: 'increase' | 'decrease') => {
+    const handleBulkPriceAdjustment = (type: 'increase' | 'decrease', rawValue?: number) => {
         if (selectedCards.length === 0) return;
-        const value = prompt(`Enter ${type === 'increase' ? 'increase' : 'decrease'} percentage (e.g., 10 for 10%)`);
-        if (!value) return;
-        const percentage = parseFloat(value);
+        const percentage = typeof rawValue === 'number'
+            ? rawValue
+            : parseFloat(prompt(`Enter ${type === 'increase' ? 'increase' : 'decrease'} percentage (e.g., 10 for 10%)`) || '');
         if (isNaN(percentage) || percentage <= 0) {
             addToast('Please enter a valid percentage', 'error');
             return;
@@ -164,9 +171,26 @@ export function RatecardsClient() {
 
     const filteredRateCards = rateCards.filter(card => {
         const matchesSearch = card.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = selectedStatus === 'all' || card.status === selectedStatus;
-        return matchesSearch && matchesStatus;
+        return matchesSearch;
     });
+
+    const courierOptions = useMemo(() => {
+        const carriers = new Set<string>();
+        rateCards.forEach(card => {
+            card.baseRates?.forEach((rate: any) => {
+                if (rate?.carrier) carriers.add(rate.carrier);
+            });
+        });
+        return Array.from(carriers);
+    }, [rateCards]);
+
+    const categoryOptions = useMemo(() => {
+        const categories = new Set<string>();
+        rateCards.forEach(card => {
+            if (card.rateCardCategory) categories.add(card.rateCardCategory);
+        });
+        return Array.from(categories);
+    }, [rateCards]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -198,16 +222,30 @@ export function RatecardsClient() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                     title="Total Cards"
-                    value={rateCards.length}
+                    value={statsData?.total ?? rateCards.length}
                     icon={CreditCard}
                     iconColor="text-[var(--primary-blue)] bg-[var(--primary-blue-soft)]"
                     variant="default"
                 />
                 <StatsCard
                     title="Active Now"
-                    value={rateCards.filter(c => c.status === 'active').length}
+                    value={statsData?.active ?? rateCards.filter(c => c.status === 'active').length}
                     icon={CheckCircle}
                     variant="success"
+                />
+                <StatsCard
+                    title="Avg Rate/kg"
+                    value={statsData?.avgRatePerKg !== undefined ? `₹${statsData.avgRatePerKg}` : '—'}
+                    icon={TrendingUp}
+                    iconColor="text-[var(--info)] bg-[var(--info-bg)]"
+                    variant="info"
+                />
+                <StatsCard
+                    title="Revenue (30d)"
+                    value={statsData?.revenue30d !== undefined ? `₹${statsData.revenue30d}` : '—'}
+                    icon={IndianRupee}
+                    iconColor="text-[var(--warning)] bg-[var(--warning-bg)]"
+                    variant="warning"
                 />
             </div>
 
@@ -229,15 +267,50 @@ export function RatecardsClient() {
 
                         {/* Status Filter */}
                         <div className="relative min-w-[150px]">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
                             <select
                                 value={selectedStatus}
                                 onChange={(e) => setSelectedStatus(e.target.value as any)}
-                                className="w-full h-10 pl-9 pr-8 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none cursor-pointer"
+                                className="w-full h-10 pl-3 pr-8 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none cursor-pointer"
                             >
                                 <option value="all">All Status</option>
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
+                                <option value="draft">Draft</option>
+                                <option value="expired">Expired</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <MoreVertical className="h-4 w-4 text-[var(--text-muted)] opacity-50" />
+                            </div>
+                        </div>
+
+                        {/* Courier Filter */}
+                        <div className="relative min-w-[180px]">
+                            <select
+                                value={selectedCourier}
+                                onChange={(e) => setSelectedCourier(e.target.value)}
+                                className="w-full h-10 pl-3 pr-8 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Couriers</option>
+                                {courierOptions.map(courier => (
+                                    <option key={courier} value={courier}>{courier}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <MoreVertical className="h-4 w-4 text-[var(--text-muted)] opacity-50" />
+                            </div>
+                        </div>
+
+                        {/* Category Filter */}
+                        <div className="relative min-w-[180px]">
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="w-full h-10 pl-3 pr-8 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Categories</option>
+                                {categoryOptions.map(category => (
+                                    <option key={category} value={category}>{category}</option>
+                                ))}
                             </select>
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <MoreVertical className="h-4 w-4 text-[var(--text-muted)] opacity-50" />
@@ -302,7 +375,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={handleBulkActivate}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <Power className="h-3.5 w-3.5 mr-1.5 text-green-500" />
@@ -312,7 +385,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={handleBulkDeactivate}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <PowerOff className="h-3.5 w-3.5 mr-1.5 text-red-500" />
@@ -322,7 +395,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleBulkPriceAdjustment('increase')}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <TrendingUp className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
@@ -332,7 +405,7 @@ export function RatecardsClient() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleBulkPriceAdjustment('decrease')}
-                                            disabled={selectedCards.length === 0 || isBulkUpdating}
+                                            disabled={selectedCards.length === 0 || isBulkUpdating || !hasCompanyContext}
                                             className="h-8 text-xs bg-white dark:bg-black"
                                         >
                                             <TrendingDown className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
@@ -346,11 +419,24 @@ export function RatecardsClient() {
                 </div>
             </Card>
 
+            {selectedCards.length > 0 && (
+                <BulkActionsPanel
+                    selectedCount={selectedCards.length}
+                    onActivate={handleBulkActivate}
+                    onDeactivate={handleBulkDeactivate}
+                    onAdjustPrice={(type, value) => {
+                        handleBulkPriceAdjustment(type, value);
+                        setTimeout(() => setShowBulkActions(false), 0);
+                    }}
+                    disabled={!hasCompanyContext || isBulkUpdating}
+                />
+            )}
+
             {/* Rate Cards Grid */}
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <AnimatePresence mode="popLayout">
                     {filteredRateCards.map((card) => (
-                        <RateCardItem
+                        <EnhancedRateCardItem
                             key={card._id}
                             card={card}
                             isSelected={selectedCards.includes(card._id)}
