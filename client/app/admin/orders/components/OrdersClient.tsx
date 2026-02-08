@@ -193,6 +193,8 @@ export default function OrdersClient() {
                 serviceType: 'Surface'
             });
 
+            showSuccessToast(`Shipment created for order ${selectedOrderForShip.orderNumber}`);
+
             setIsShipModalOpen(false);
             setSelectedOrderForShip(null);
             setSelectedCourier(null);
@@ -505,6 +507,7 @@ export default function OrdersClient() {
                     if (!deleteTarget) return;
                     try {
                         await deleteOrderMutation.mutateAsync(deleteTarget);
+                        showSuccessToast('Order deleted successfully');
                     } finally {
                         setDeleteTarget(null);
                     }

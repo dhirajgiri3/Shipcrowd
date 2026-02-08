@@ -133,7 +133,7 @@ export function useCreateShipmentManifest(
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
-            showSuccessToast('Manifest created successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -160,7 +160,7 @@ export function useUpdateManifest(
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifests() });
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifest(variables.id) });
-            showSuccessToast('Manifest updated successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -182,7 +182,7 @@ export function useDeleteManifest(
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifests() });
-            showSuccessToast('Manifest deleted successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -209,7 +209,7 @@ export function useAddShipmentsToManifest(
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifests() });
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifest(variables.id) });
-            showSuccessToast(`${variables.shipmentIds.length} shipment(s) added to manifest`);
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -236,7 +236,7 @@ export function useRemoveShipmentsFromManifest(
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifests() });
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifest(variables.id) });
-            showSuccessToast(`${variables.shipmentIds.length} shipment(s) removed from manifest`);
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -262,7 +262,7 @@ export function useCloseManifest(
         onSuccess: (_, manifestId) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifests() });
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifest(manifestId) });
-            showSuccessToast('Manifest closed and pickup scheduled');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -288,7 +288,7 @@ export function useHandoverManifest(
         onSuccess: (_, manifestId) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifests() });
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.manifest(manifestId) });
-            showSuccessToast('Manifest marked as handed over');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

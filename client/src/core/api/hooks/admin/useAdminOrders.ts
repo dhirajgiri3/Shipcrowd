@@ -58,7 +58,6 @@ export const useShipOrder = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
-      showSuccessToast(`Shipment created! AWB: ${response.data.awbNumber}`);
     },
     onError: (error) => {
       handleApiError(error, 'Failed to create shipment');
@@ -82,13 +81,6 @@ export const useBulkShipOrders = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
-
-      const { successful, failed } = response.data;
-      if (failed.length === 0) {
-        showSuccessToast(`Successfully created ${successful.length} shipments!`);
-      } else {
-        showSuccessToast(`Created ${successful.length} shipments. ${failed.length} failed.`);
-      }
     },
     onError: (error) => {
       handleApiError(error, 'Bulk shipment failed');
@@ -110,7 +102,6 @@ export const useDeleteOrder = () => {
     mutationFn: async (orderId) => await orderApi.deleteOrder(orderId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
-      showSuccessToast('Order deleted successfully');
     },
     onError: (error) => {
       handleApiError(error, 'Failed to delete order');

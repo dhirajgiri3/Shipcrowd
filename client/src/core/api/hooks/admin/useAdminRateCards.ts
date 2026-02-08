@@ -206,6 +206,9 @@ export const useAdminRateCardStats = (
 /**
  * Create rate card for a specific company
  */
+/**
+ * Create rate card for a specific company
+ */
 export const useCreateAdminRateCard = (
     options?: UseMutationOptions<AdminRateCard, ApiError, CreateAdminRateCardPayload>
 ) => {
@@ -218,7 +221,6 @@ export const useCreateAdminRateCard = (
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
-            showSuccessToast('Rate card created successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Failed to create rate card');
@@ -243,7 +245,6 @@ export const useUpdateAdminRateCard = (
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards', 'detail', variables.id] });
-            showSuccessToast('Rate card updated successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Failed to update rate card');
@@ -267,7 +268,6 @@ export const useDeleteAdminRateCard = (
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
-            showSuccessToast('Rate card deleted successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Failed to delete rate card');
@@ -291,7 +291,6 @@ export const useCloneAdminRateCard = (
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'ratecards'] });
-            showSuccessToast('Rate card cloned successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Failed to clone rate card');

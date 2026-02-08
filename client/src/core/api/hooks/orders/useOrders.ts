@@ -71,7 +71,6 @@ export const useCreateOrder = (
             // Invalidate related caches
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast(`Order ${order.orderNumber} created successfully`);
         },
         onError: (error) => {
             handleApiError(error, 'Create Order Failed');
@@ -125,7 +124,6 @@ export const useUpdateOrder = (
             // Invalidate related caches
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast('Order updated successfully');
         },
         onError: (error, variables, context) => {
             // Rollback on error
@@ -158,7 +156,6 @@ export const useDeleteOrder = (
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             // Remove specific order from cache
             queryClient.removeQueries({ queryKey: queryKeys.orders.detail(orderId) });
-            showSuccessToast('Order deleted successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Delete Order Failed');
@@ -194,7 +191,6 @@ export const useCloneOrder = (
             // Invalidate related caches
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast(`Order cloned successfully. New order: ${data.clonedOrder.orderNumber}`);
         },
         onError: (error) => {
             handleApiError(error, 'Clone Order Failed');
@@ -252,9 +248,6 @@ export const useSplitOrder = (
             // Invalidate related caches
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast(
-                `Order split into ${data.splitOrders.length} orders: ${data.splitOrders.map((o) => o.orderNumber).join(', ')}`
-            );
         },
         onError: (error) => {
             handleApiError(error, 'Split Order Failed');
@@ -316,9 +309,6 @@ export const useMergeOrders = (
             data.cancelledOrders.forEach((orderId) => {
                 queryClient.removeQueries({ queryKey: queryKeys.orders.detail(orderId) });
             });
-            showSuccessToast(
-                `${data.cancelledOrders.length} orders merged into ${data.mergedOrder.orderNumber}`
-            );
         },
         onError: (error) => {
             handleApiError(error, 'Merge Orders Failed');

@@ -68,7 +68,7 @@ export function useCreatePackingStation(
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.warehouseOps.all() });
-            showSuccessToast('Packing station created successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

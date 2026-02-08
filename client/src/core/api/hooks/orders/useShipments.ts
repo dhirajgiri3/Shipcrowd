@@ -154,7 +154,6 @@ export const useCreateShipment = (options?: UseMutationOptions<CreateShipmentRes
             // Invalidate related caches
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast(`Shipment created with ${data.carrierSelection.selectedCarrier}`);
         },
         onError: (error) => {
             handleApiError(error, 'Create Shipment Failed');
@@ -210,7 +209,6 @@ export const useUpdateShipmentStatus = (
             // Invalidate related caches
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast('Shipment status updated');
         },
         onError: (error, variables, context) => {
             // Rollback on error
@@ -240,7 +238,6 @@ export const useDeleteShipment = (options?: UseMutationOptions<void, ApiError, s
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             // Remove specific shipment from cache
             queryClient.removeQueries({ queryKey: queryKeys.shipments.detail(shipmentId) });
-            showSuccessToast('Shipment deleted successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Delete Shipment Failed');
@@ -276,7 +273,7 @@ export const useGenerateBulkLabels = (options?: UseMutationOptions<void, ApiErro
             window.URL.revokeObjectURL(url);
         },
         onSuccess: () => {
-            showSuccessToast('Labels generated successfully');
+            // Toast removed to avoid redundancy if component handles it
         },
         onError: (error) => {
             handleApiError(error, 'Failed to generate labels');

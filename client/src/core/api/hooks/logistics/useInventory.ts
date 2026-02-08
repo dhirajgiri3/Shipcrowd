@@ -84,7 +84,7 @@ export function useAdjustStock(
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.warehouseOps.all() });
-            showSuccessToast('Stock adjusted successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -120,7 +120,7 @@ export function useImportInventory(
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.warehouseOps.all() });
-            showSuccessToast(`Import successful: ${data.success} rows processed, ${data.failed} failed.`);
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

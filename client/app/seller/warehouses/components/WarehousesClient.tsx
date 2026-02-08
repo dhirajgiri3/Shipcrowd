@@ -34,6 +34,7 @@ import { cn } from '@/src/lib/utils';
 import Link from 'next/link';
 import { useWarehouses, useUpdateWarehouse, Warehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
 import { EditWarehouseModal, DeleteWarehouseDialog } from '@/src/features/warehouse';
+import { showSuccessToast } from '@/src/lib/error';
 
 export function WarehousesClient() {
     const { data: warehouses, isLoading, isError, error, refetch } = useWarehouses();
@@ -57,6 +58,10 @@ export function WarehousesClient() {
         updateWarehouseMutation.mutate({
             warehouseId: warehouse._id,
             data: { isDefault: true },
+        }, {
+            onSuccess: () => {
+                showSuccessToast('Default warehouse updated');
+            }
         });
     };
 

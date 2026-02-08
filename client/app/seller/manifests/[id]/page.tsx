@@ -8,6 +8,7 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { toast } from 'sonner';
 import {
     useShipmentManifest,
     useDownloadManifestPDF,
@@ -76,7 +77,11 @@ export default function ManifestDetailPage() {
 
     const handleHandoverManifest = () => {
         if (!manifest) return;
-        handoverManifest(manifest._id);
+        handoverManifest(manifest._id, {
+            onSuccess: () => {
+                toast.success('Manifest marked as handed over');
+            }
+        });
     };
 
     // Loading state
@@ -124,7 +129,11 @@ export default function ManifestDetailPage() {
                 variant="warning"
                 isLoading={isClosing}
                 onConfirm={() => {
-                    closeManifest(manifest._id);
+                    closeManifest(manifest._id, {
+                        onSuccess: () => {
+                            toast.success('Manifest closed and pickup scheduled');
+                        }
+                    });
                     setIsCloseConfirmOpen(false);
                 }}
                 onCancel={() => setIsCloseConfirmOpen(false)}

@@ -143,6 +143,7 @@ export default function CreateManifestPage() {
 
         createManifest(payload, {
             onSuccess: (data) => {
+                toast.success('Manifest created successfully');
                 router.push(`/seller/manifests/${data._id}`);
             },
         });

@@ -105,7 +105,7 @@ export function usePromoteUser(options?: UseMutationOptions<ApiResponse<{ audit:
             return response.data;
         },
         onSuccess: () => {
-            showSuccessToast('User promoted successfully');
+            // Toast handled by component
             queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
         },
         onError: (error) => {
@@ -130,7 +130,7 @@ export function useDemoteUser(options?: UseMutationOptions<ApiResponse<{ audit: 
             return response.data;
         },
         onSuccess: () => {
-            showSuccessToast('User demoted successfully');
+            // Toast handled by component
             queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
         },
         onError: (error) => {

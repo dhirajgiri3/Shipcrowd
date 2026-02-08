@@ -27,7 +27,7 @@ export function useLogin() {
                 throw new Error(result.error?.message || 'Login failed');
             }
 
-            showSuccessToast('Successfully signed in!');
+
 
             const redirectTo = getLoginRedirect(result.user ?? undefined, searchParams);
             router.push(redirectTo);

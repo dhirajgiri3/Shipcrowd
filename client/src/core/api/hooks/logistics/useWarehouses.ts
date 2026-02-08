@@ -113,7 +113,7 @@ export const useCreateWarehouse = (options?: UseMutationOptions<Warehouse, ApiEr
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all() });
-            showSuccessToast('Warehouse created successfully');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
@@ -178,7 +178,7 @@ export const useUpdateWarehouse = (options?: UseMutationOptions<any, ApiError, {
                 // Fallback: invalidate if backend doesn't return warehouses array
                 await queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all() });
             }
-            showSuccessToast('Warehouse updated successfully');
+
             console.log('=== [useUpdateWarehouse] onSuccess COMPLETE ===');
         },
         onError: (error) => handleApiError(error),
@@ -219,7 +219,6 @@ export const useDeleteWarehouse = (options?: UseMutationOptions<void, ApiError, 
             queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all() });
         },
         onSuccess: () => {
-            showSuccessToast('Pickup address deleted successfully');
         },
         retry: RETRY_CONFIG.DEFAULT,
         ...options,

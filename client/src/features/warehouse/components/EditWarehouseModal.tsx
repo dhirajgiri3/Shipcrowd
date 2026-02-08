@@ -1,5 +1,7 @@
 "use client";
 
+import { showSuccessToast } from '@/src/lib/error';
+
 import React from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +22,7 @@ export function EditWarehouseModal({ warehouse, isOpen, onClose }: EditWarehouse
             { warehouseId: warehouse._id, data },
             {
                 onSuccess: () => {
+                    showSuccessToast('Warehouse updated successfully');
                     onClose();
                 },
             }
@@ -31,6 +34,7 @@ export function EditWarehouseModal({ warehouse, isOpen, onClose }: EditWarehouse
             { warehouseId: warehouse._id, data: { isDefault: true } },
             {
                 onSuccess: () => {
+                    showSuccessToast('Default warehouse updated');
                     onClose();
                 },
             }

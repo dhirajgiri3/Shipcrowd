@@ -29,6 +29,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useWarehouses, useCreateWarehouse, useDeleteWarehouse, useUpdateWarehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { showSuccessToast } from '@/src/lib/error';
 
 export function PickupAddressesClient() {
     const [showAddForm, setShowAddForm] = useState(false);
@@ -71,6 +72,10 @@ export function PickupAddressesClient() {
         updateWarehouse.mutate({
             warehouseId: id,
             data: { isDefault: true }
+        }, {
+            onSuccess: () => {
+                showSuccessToast('Default address updated');
+            }
         });
     };
 
@@ -103,6 +108,8 @@ export function PickupAddressesClient() {
                 },
                 isDefault: formData.isDefault
             });
+
+            showSuccessToast('Address added successfully');
 
             setShowAddForm(false);
             setFormData({
@@ -390,7 +397,11 @@ export function PickupAddressesClient() {
                 onCancel={() => setDeleteTarget(null)}
                 onConfirm={() => {
                     if (!deleteTarget) return;
-                    deleteWarehouse.mutate(deleteTarget);
+                    deleteWarehouse.mutate(deleteTarget, {
+                        onSuccess: () => {
+                            showSuccessToast('Address deleted successfully');
+                        }
+                    });
                     setDeleteTarget(null);
                 }}
             />

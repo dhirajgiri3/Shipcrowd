@@ -1,5 +1,7 @@
 "use client";
 
+import { showSuccessToast } from '@/src/lib/error';
+
 import React from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
@@ -19,6 +21,7 @@ export function DeleteWarehouseDialog({ warehouse, isOpen, onClose }: DeleteWare
     const handleDelete = () => {
         deleteWarehouse(warehouse._id, {
             onSuccess: () => {
+                showSuccessToast('Warehouse deleted successfully');
                 onClose();
             },
         });

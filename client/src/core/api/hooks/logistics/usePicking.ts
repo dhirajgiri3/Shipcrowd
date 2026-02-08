@@ -89,7 +89,7 @@ export function useStartPicking(
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.warehouseOps.all() });
-            showSuccessToast('Picking started');
+
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
