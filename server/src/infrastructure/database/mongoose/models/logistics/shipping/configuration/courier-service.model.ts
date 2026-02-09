@@ -44,19 +44,16 @@ const CourierServiceSchema = new Schema<ICourierService>(
             type: Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
-            index: true,
         },
         provider: {
             type: String,
             enum: ['velocity', 'delhivery', 'ekart'],
             required: true,
-            index: true,
         },
         integrationId: {
             type: Schema.Types.ObjectId,
             ref: 'Integration',
             required: true,
-            index: true,
         },
         serviceCode: {
             type: String,
@@ -77,13 +74,11 @@ const CourierServiceSchema = new Schema<ICourierService>(
             type: String,
             enum: ['surface', 'express', 'air', 'standard'],
             required: true,
-            index: true,
         },
         status: {
             type: String,
             enum: ['active', 'inactive', 'hidden'],
             default: 'active',
-            index: true,
         },
         constraints: {
             minWeightKg: {
@@ -150,7 +145,6 @@ const CourierServiceSchema = new Schema<ICourierService>(
         isDeleted: {
             type: Boolean,
             default: false,
-            index: true,
         },
     },
     {
@@ -158,10 +152,22 @@ const CourierServiceSchema = new Schema<ICourierService>(
     }
 );
 
-CourierServiceSchema.index({ companyId: 1, provider: 1, status: 1 });
-CourierServiceSchema.index({ companyId: 1, serviceCode: 1 }, { unique: true });
-CourierServiceSchema.index({ integrationId: 1, providerServiceId: 1 });
-CourierServiceSchema.index({ companyId: 1, isDeleted: 1, createdAt: -1 });
+CourierServiceSchema.index(
+    { companyId: 1, provider: 1, status: 1 },
+    { name: 'idx_courier_service_company_provider_status' }
+);
+CourierServiceSchema.index(
+    { companyId: 1, serviceCode: 1 },
+    { unique: true, name: 'uidx_courier_service_company_service_code' }
+);
+CourierServiceSchema.index(
+    { integrationId: 1, providerServiceId: 1 },
+    { name: 'idx_courier_service_integration_provider_service' }
+);
+CourierServiceSchema.index(
+    { companyId: 1, isDeleted: 1, createdAt: -1 },
+    { name: 'idx_courier_service_company_deleted_created_at' }
+);
 
 const CourierService = mongoose.model<ICourierService>('CourierService', CourierServiceSchema);
 export default CourierService;

@@ -168,6 +168,45 @@ function round2(value: number): number {
     return Number(value.toFixed(2));
 }
 
+async function verifyCompanyServiceLevelIntegrity(companyId: mongoose.Types.ObjectId): Promise<void> {
+    const activeServices = await CourierService.find({
+        companyId,
+        isDeleted: false,
+        status: 'active',
+    })
+        .select('_id serviceCode')
+        .lean<Array<{ _id: mongoose.Types.ObjectId; serviceCode: string }>>();
+
+    if (!activeServices.length) {
+        throw new Error(`No active courier services found for company ${String(companyId)}`);
+    }
+
+    for (const service of activeServices) {
+        const activeCostCard = await ServiceRateCard.exists({
+            companyId,
+            serviceId: service._id,
+            cardType: 'cost',
+            status: 'active',
+            isDeleted: false,
+        });
+        const activeSellCard = await ServiceRateCard.exists({
+            companyId,
+            serviceId: service._id,
+            cardType: 'sell',
+            status: 'active',
+            isDeleted: false,
+        });
+
+        if (!activeCostCard || !activeSellCard) {
+            throw new Error(
+                `Missing active cost/sell rate card pair for service ${service.serviceCode} in company ${String(
+                    companyId
+                )}`
+            );
+        }
+    }
+}
+
 function buildZoneRules(baseHalfKg: Record<ZoneKey, number>, multiplier = 1): any[] {
     const slabFactors = {
         slab05: 1,
@@ -392,6 +431,8 @@ export async function seedServiceLevelPricing(): Promise<void> {
                 );
                 policyCount += 1;
             }
+
+            await verifyCompanyServiceLevelIntegrity(companyId);
         }
 
         logger.complete('service-level pricing entities', serviceCount + rateCardCount + policyCount, timer.elapsed());

@@ -39,6 +39,7 @@ import emailRoutes from './communication/email.routes';
 // 4. LOGISTICS (SHIPPING & ORDERS)
 // ============================================================================
 import orderRoutes from './shipping/order.routes';
+import adminOrderRoutes from './shipping/admin-order.routes';
 import shipmentRoutes from './shipping/shipment.routes';
 import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
@@ -52,6 +53,7 @@ import labelTemplateRoutes from './shipping/label-template.routes';
 import addressRoutes from './logistics/address.routes';
 import pincodeRoutes from './logistics/pincode.routes';
 import returnsRoutes from './logistics/returns.routes';
+import adminReturnsRoutes from './logistics/admin-returns.routes';
 import integrationsRoutes from './integrations';
 
 // ============================================================================
@@ -69,6 +71,7 @@ import fraudRoutes from './fraud/fraud.routes';
 // 6. FINANCE & BILLING
 // ============================================================================
 import walletRoutes from './finance/wallet.routes';
+import adminFinanceRoutes from './finance/admin-finance.routes';
 import financialsRoutes from './finance/financials.routes';
 import billingRoutes from './finance/billing.routes';
 import invoiceRoutes from './finance/invoice.routes';
@@ -157,7 +160,7 @@ router.use('/email', emailRoutes);
 
 // 4. Logistics - Core
 router.use('/orders', orderRoutes);
-router.use('/admin/orders', orderRoutes); // Alias for frontend admin/orders calls
+router.use('/admin/orders', adminOrderRoutes); // Admin-specific order routes
 router.use('/shipments', shipmentRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
@@ -174,6 +177,7 @@ router.use('/serviceability/address', addressRoutes); // Alias for backward comp
 router.use('/serviceability', addressRoutes); // Direct mount
 router.use('/logistics/pincode', pincodeRoutes);
 router.use('/logistics/returns', returnsRoutes);
+router.use('/admin/returns', adminReturnsRoutes);
 router.use('/integrations', integrationsRoutes);
 
 // 161: // 5. Logistics - Exceptions
@@ -190,6 +194,7 @@ router.use('/disputes', disputeRoutes); // General Disputes
 router.use('/fraud', fraudRoutes);
 
 // 6. Finance
+router.use('/admin/finance', adminFinanceRoutes); // Admin-specific finance routes
 router.use('/finance/wallet', walletRoutes);
 router.use('/finance/financials', financialsRoutes);
 router.use('/finance/billing', billingRoutes);

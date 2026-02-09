@@ -7,6 +7,47 @@
 
 ---
 
+## Related Documents
+
+1. Full migration and legacy deletion playbook:
+   - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/Legacy_Decommission_and_Full_Migration_Runbook.md`
+2. Step-by-step current architecture behavior guide:
+   - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/Service_Level_Pricing_and_Order_Shipment_Architecture_Guide.md`
+3. Final courier + ratecard cleanup/refactor blueprint:
+   - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/Courier_RateCard_Final_Refactor_Blueprint.md`
+
+---
+
+## Stabilization Cleanup (Feb 2026)
+
+The service-level rollout is now followed by a cleanup/hardening pass:
+
+1. **Schema + Index Hygiene**
+   - Canonical named indexes added for service-level models.
+   - Foundation migration now normalizes stale duplicate index names before `syncIndexes()`.
+   - Runner command added: `service-level-pricing-index-hygiene`.
+2. **Type Safety Cleanup**
+   - Quote engine and reconciliation core paths removed high-risk `any` usage.
+   - Shared domain types introduced for service-level pricing contracts.
+3. **Deterministic API Bridge**
+   - Legacy bridge behavior remains feature-flag safe.
+   - Quote-path booking requires explicit `optionId` with `sessionId`.
+   - Invalid option/session mismatch standardized to `422`.
+4. **Booking Compensation Hardening**
+   - Quote booking failure now applies immutable compensation status:
+     - `booking_failed` (before AWB)
+     - `booking_partial` (after AWB)
+   - Wallet refund attempted when compensating a persisted shipment.
+5. **Verification Enhancements**
+   - Targeted integration coverage expanded for:
+     - session expiry,
+     - provider timeout partial confidence,
+     - legacy-bridge flag OFF fallback.
+   - Seeder integrity verification script added:
+     - `npm run verify:service-level-pricing-seed --prefix server`
+
+---
+
 ## Critical Fixes Applied
 
 ### 1. [HIGH] Ekart API Capabilities - FIXED ✅

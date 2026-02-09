@@ -37,7 +37,6 @@ const CarrierBillingRecordSchema = new Schema<ICarrierBillingRecord>(
             type: Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
-            index: true,
         },
         shipmentId: {
             type: Schema.Types.ObjectId,
@@ -47,13 +46,11 @@ const CarrierBillingRecordSchema = new Schema<ICarrierBillingRecord>(
             type: String,
             enum: ['velocity', 'delhivery', 'ekart'],
             required: true,
-            index: true,
         },
         awb: {
             type: String,
             required: true,
             trim: true,
-            index: true,
         },
         invoiceRef: {
             type: String,
@@ -87,12 +84,10 @@ const CarrierBillingRecordSchema = new Schema<ICarrierBillingRecord>(
             type: String,
             enum: ['api', 'webhook', 'mis', 'manual'],
             required: true,
-            index: true,
         },
         billedAt: {
             type: Date,
             required: true,
-            index: true,
         },
         metadata: {
             rawProviderPayload: Schema.Types.Mixed,
@@ -109,9 +104,22 @@ const CarrierBillingRecordSchema = new Schema<ICarrierBillingRecord>(
     }
 );
 
-CarrierBillingRecordSchema.index({ companyId: 1, awb: 1, provider: 1 });
-CarrierBillingRecordSchema.index({ companyId: 1, shipmentId: 1 });
-CarrierBillingRecordSchema.index({ companyId: 1, billedAt: -1 });
+CarrierBillingRecordSchema.index(
+    { companyId: 1, awb: 1, provider: 1 },
+    { name: 'idx_carrier_billing_company_awb_provider' }
+);
+CarrierBillingRecordSchema.index(
+    { companyId: 1, shipmentId: 1 },
+    { name: 'idx_carrier_billing_company_shipment' }
+);
+CarrierBillingRecordSchema.index(
+    { companyId: 1, billedAt: -1 },
+    { name: 'idx_carrier_billing_company_billed_at_desc' }
+);
+CarrierBillingRecordSchema.index(
+    { companyId: 1, source: 1, billedAt: -1 },
+    { name: 'idx_carrier_billing_company_source_billed_at' }
+);
 
 const CarrierBillingRecord = mongoose.model<ICarrierBillingRecord>('CarrierBillingRecord', CarrierBillingRecordSchema);
 export default CarrierBillingRecord;

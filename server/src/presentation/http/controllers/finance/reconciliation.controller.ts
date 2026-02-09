@@ -30,7 +30,12 @@ export const listReconciliationReports = async (
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
 
-        const query: any = { companyId: auth.companyId };
+        const query: {
+            companyId: string;
+            status?: string;
+            type?: string;
+            createdAt?: { $gte?: Date; $lte?: Date };
+        } = { companyId: auth.companyId };
 
         if (status) query.status = status;
         if (type) query.type = type;
@@ -137,7 +142,9 @@ export const listPricingVarianceCases = async (
         const limit = parseInt(req.query.limit as string) || 20;
         const status = req.query.status as string;
 
-        const query: any = { companyId: auth.companyId };
+        const query: { companyId: string; status?: string } = {
+            companyId: auth.companyId,
+        };
         if (status) query.status = status;
 
         const total = await PricingVarianceCase.countDocuments(query);
@@ -146,7 +153,12 @@ export const listPricingVarianceCases = async (
             .skip((page - 1) * limit)
             .limit(limit);
 
-        sendPaginated(res, items as any, calculatePagination(total, page, limit), 'Pricing variance cases retrieved');
+        sendPaginated(
+            res,
+            items,
+            calculatePagination(total, page, limit),
+            'Pricing variance cases retrieved'
+        );
     } catch (error) {
         logger.error('Error listing pricing variance cases:', error);
         next(error);

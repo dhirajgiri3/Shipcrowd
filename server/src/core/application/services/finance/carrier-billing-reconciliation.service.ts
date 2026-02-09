@@ -5,8 +5,13 @@ import Shipment from '../../../../infrastructure/database/mongoose/models/logist
 import { AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import ServiceLevelPricingMetricsService from '../metrics/service-level-pricing-metrics.service';
+import {
+    BillingImportShipmentCostSnapshot,
+    CarrierBillingBreakdown,
+    ServiceLevelProvider,
+} from '../../../domain/types/service-level-pricing.types';
 
-type Provider = 'velocity' | 'delhivery' | 'ekart';
+type Provider = ServiceLevelProvider;
 
 export interface CarrierBillingImportRecordInput {
     shipmentId?: string;
@@ -14,11 +19,11 @@ export interface CarrierBillingImportRecordInput {
     awb: string;
     invoiceRef?: string;
     remittanceRef?: string;
-    billedComponents?: Record<string, number>;
+    billedComponents?: CarrierBillingBreakdown;
     billedTotal: number;
     source?: 'api' | 'webhook' | 'mis' | 'manual';
     billedAt?: string | Date;
-    rawProviderPayload?: any;
+    rawProviderPayload?: Record<string, unknown>;
 }
 
 export interface CarrierBillingImportSummary {
@@ -32,7 +37,11 @@ export interface CarrierBillingImportSummary {
 }
 
 class CarrierBillingReconciliationService {
-    private readonly allowedProviders = new Set<Provider>(['velocity', 'delhivery', 'ekart']);
+    private readonly allowedProviders = new Set<Provider>([
+        'velocity',
+        'delhivery',
+        'ekart',
+    ]);
 
     async importRecords(args: {
         companyId: string;
@@ -71,10 +80,21 @@ class CarrierBillingReconciliationService {
             }
 
             const billedAt = record.billedAt ? new Date(record.billedAt) : new Date();
-            const source = record.source || 'manual';
+            if (Number.isNaN(billedAt.getTime())) {
+                skippedCount += 1;
+                continue;
+            }
 
-            const setOnInsert: Record<string, any> = {
+            const source = record.source || 'manual';
+            const shipmentObjectId = this.safeObjectId(record.shipmentId);
+            if (record.shipmentId && !shipmentObjectId) {
+                skippedCount += 1;
+                continue;
+            }
+
+            const setOnInsert = {
                 companyId: companyObjectId,
+                shipmentId: shipmentObjectId,
                 provider,
                 awb: record.awb,
                 source,
@@ -89,14 +109,6 @@ class CarrierBillingReconciliationService {
                     importedAt: new Date(),
                 },
             };
-            if (record.shipmentId) {
-                try {
-                    setOnInsert.shipmentId = new mongoose.Types.ObjectId(record.shipmentId);
-                } catch {
-                    skippedCount += 1;
-                    continue;
-                }
-            }
 
             const billingRecord = await CarrierBillingRecord.findOneAndUpdate(
                 {
@@ -117,13 +129,12 @@ class CarrierBillingReconciliationService {
 
             importedIds.push(String(billingRecord._id));
 
-            let shipment: any = null;
-            try {
-                shipment = await this.findShipment(companyObjectId, record.awb, record.shipmentId);
-            } catch {
-                skippedCount += 1;
-                continue;
-            }
+            const shipment = await this.findShipment({
+                companyId: companyObjectId,
+                awb: record.awb,
+                shipmentId: shipmentObjectId,
+            });
+
             if (!shipment) {
                 skippedCount += 1;
                 continue;
@@ -138,7 +149,8 @@ class CarrierBillingReconciliationService {
             }
 
             const varianceAmount = billedTotal - expectedCost;
-            const variancePercent = expectedCost > 0 ? (varianceAmount / expectedCost) * 100 : 0;
+            const variancePercent =
+                expectedCost > 0 ? (varianceAmount / expectedCost) * 100 : 0;
             const withinThreshold = Math.abs(variancePercent) <= thresholdPercent;
 
             const varianceCase = await PricingVarianceCase.findOneAndUpdate(
@@ -159,16 +171,20 @@ class CarrierBillingReconciliationService {
                         thresholdPercent,
                         status: withinThreshold ? 'resolved' : 'open',
                         metadata: { source: 'system' },
-                        ...(withinThreshold ? {
-                            resolution: {
-                                outcome: 'auto_closed_within_threshold',
-                                adjustedCost: billedTotal,
-                                refundAmount: 0,
-                                resolvedBy: userObjectId,
-                                resolvedAt: new Date(),
-                                notes: `Auto-closed because variance ${variancePercent.toFixed(2)}% is within ${thresholdPercent}% threshold.`,
-                            },
-                        } : {}),
+                        ...(withinThreshold
+                            ? {
+                                  resolution: {
+                                      outcome: 'auto_closed_within_threshold',
+                                      adjustedCost: billedTotal,
+                                      refundAmount: 0,
+                                      resolvedBy: userObjectId,
+                                      resolvedAt: new Date(),
+                                      notes: `Auto-closed because variance ${variancePercent.toFixed(
+                                          2
+                                      )}% is within ${thresholdPercent}% threshold.`,
+                                  },
+                              }
+                            : {}),
                     },
                     $setOnInsert: {
                         companyId: companyObjectId,
@@ -182,6 +198,7 @@ class CarrierBillingReconciliationService {
                 variancePercent,
                 autoClosed: withinThreshold,
             });
+
             if (withinThreshold) {
                 autoClosedCount += 1;
             } else {
@@ -208,33 +225,49 @@ class CarrierBillingReconciliationService {
         return provider;
     }
 
-    private async findShipment(companyId: mongoose.Types.ObjectId, awb: string, shipmentId?: string) {
-        const query: any = {
-            companyId,
+    private safeObjectId(value?: string): mongoose.Types.ObjectId | null {
+        if (!value) return null;
+        if (!mongoose.Types.ObjectId.isValid(value)) return null;
+        return new mongoose.Types.ObjectId(value);
+    }
+
+    private async findShipment(args: {
+        companyId: mongoose.Types.ObjectId;
+        awb: string;
+        shipmentId?: mongoose.Types.ObjectId | null;
+    }): Promise<BillingImportShipmentCostSnapshot | null> {
+        const query: {
+            companyId: mongoose.Types.ObjectId;
+            isDeleted: boolean;
+            $or: Array<
+                | { trackingNumber: string }
+                | { 'carrierDetails.carrierTrackingNumber': string }
+                | { _id: mongoose.Types.ObjectId }
+            >;
+        } = {
+            companyId: args.companyId,
             isDeleted: false,
             $or: [
-                { trackingNumber: awb },
-                { 'carrierDetails.carrierTrackingNumber': awb },
+                { trackingNumber: args.awb },
+                { 'carrierDetails.carrierTrackingNumber': args.awb },
             ],
         };
 
-        if (shipmentId) {
-            try {
-                query.$or.push({ _id: new mongoose.Types.ObjectId(shipmentId) });
-            } catch {
-                throw new AppError('Invalid shipmentId in billing import record', ErrorCode.VAL_INVALID_INPUT, 400);
-            }
+        if (args.shipmentId) {
+            query.$or.push({ _id: args.shipmentId });
         }
 
-        return Shipment.findOne(query).lean();
+        return Shipment.findOne(query).lean<BillingImportShipmentCostSnapshot | null>();
     }
 
-    private extractExpectedCost(shipment: any): number {
-        const fromQuote = Number(shipment?.pricingDetails?.selectedQuote?.expectedCostAmount || 0);
+    private extractExpectedCost(shipment: BillingImportShipmentCostSnapshot): number {
+        const fromQuote = Number(
+            shipment.pricingDetails?.selectedQuote?.expectedCostAmount || 0
+        );
         if (fromQuote > 0) {
             return fromQuote;
         }
-        return Number(shipment?.paymentDetails?.shippingCost || 0);
+        return Number(shipment.paymentDetails?.shippingCost || 0);
     }
 }
 

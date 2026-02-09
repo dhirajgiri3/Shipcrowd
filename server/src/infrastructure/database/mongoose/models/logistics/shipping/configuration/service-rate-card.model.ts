@@ -64,19 +64,16 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
             type: Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
-            index: true,
         },
         serviceId: {
             type: Schema.Types.ObjectId,
             ref: 'CourierService',
             required: true,
-            index: true,
         },
         cardType: {
             type: String,
             enum: ['cost', 'sell'],
             required: true,
-            index: true,
         },
         sourceMode: {
             type: String,
@@ -92,7 +89,6 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
             startDate: {
                 type: Date,
                 required: true,
-                index: true,
             },
             endDate: Date,
         },
@@ -100,7 +96,6 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
             type: String,
             enum: ['draft', 'active', 'inactive'],
             default: 'draft',
-            index: true,
         },
         calculation: {
             weightBasis: {
@@ -176,7 +171,6 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
         isDeleted: {
             type: Boolean,
             default: false,
-            index: true,
         },
     },
     {
@@ -184,9 +178,18 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
     }
 );
 
-ServiceRateCardSchema.index({ companyId: 1, serviceId: 1, cardType: 1, status: 1 });
-ServiceRateCardSchema.index({ companyId: 1, cardType: 1, 'effectiveDates.startDate': 1 });
-ServiceRateCardSchema.index({ companyId: 1, isDeleted: 1, createdAt: -1 });
+ServiceRateCardSchema.index(
+    { companyId: 1, serviceId: 1, cardType: 1, status: 1 },
+    { name: 'idx_service_rate_card_company_service_type_status' }
+);
+ServiceRateCardSchema.index(
+    { companyId: 1, cardType: 1, 'effectiveDates.startDate': 1 },
+    { name: 'idx_service_rate_card_company_card_type_start_date' }
+);
+ServiceRateCardSchema.index(
+    { companyId: 1, isDeleted: 1, createdAt: -1 },
+    { name: 'idx_service_rate_card_company_deleted_created_at' }
+);
 
 const ServiceRateCard = mongoose.model<IServiceRateCard>('ServiceRateCard', ServiceRateCardSchema);
 export default ServiceRateCard;

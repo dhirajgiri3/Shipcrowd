@@ -379,28 +379,43 @@ export class OrderService extends CachedService {
         currentVersion: number;
         userId: string;
         companyId: string; // Added for cache tagging
+        isAdminOverride?: boolean; // Added for admin override
     }) {
-        const { orderId, currentStatus, newStatus, currentVersion, userId, companyId } = args;
+        const { orderId, currentStatus, newStatus, currentVersion, userId, companyId, isAdminOverride } = args;
 
         // Static validation usage
-        const { valid } = validateStatusTransition(
-            currentStatus,
-            newStatus,
-            ORDER_STATUS_TRANSITIONS
-        );
+        // specific admin logic: if admin override is true, bypass validation or use relaxed rules
+        let isValidTransition = true;
+        let validationError = '';
 
-        if (!valid) {
+        if (!isAdminOverride) {
+            const { valid } = validateStatusTransition(
+                currentStatus,
+                newStatus,
+                ORDER_STATUS_TRANSITIONS
+            );
+            if (!valid) {
+                isValidTransition = false;
+                validationError = `Invalid status transition from '${currentStatus}' to '${newStatus}'`;
+            }
+        }
+
+        if (!isValidTransition) {
             return {
                 success: false,
-                error: `Invalid status transition from '${currentStatus}' to '${newStatus}'`
+                error: validationError
             };
         }
 
-        const statusEntry = {
+        const statusEntry: any = {
             status: newStatus,
             timestamp: new Date(),
             updatedBy: new mongoose.Types.ObjectId(userId),
         };
+
+        if (isAdminOverride) {
+            statusEntry.notes = 'Admin Override';
+        }
 
         const updatedOrder = await Order.findOneAndUpdate(
             {

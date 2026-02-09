@@ -41,7 +41,6 @@ const PricingVarianceCaseSchema = new Schema<IPricingVarianceCase>(
             type: Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
-            index: true,
         },
         shipmentId: {
             type: Schema.Types.ObjectId,
@@ -60,7 +59,6 @@ const PricingVarianceCaseSchema = new Schema<IPricingVarianceCase>(
             type: String,
             enum: ['velocity', 'delhivery', 'ekart'],
             required: true,
-            index: true,
         },
         expectedCost: {
             type: Number,
@@ -96,7 +94,6 @@ const PricingVarianceCaseSchema = new Schema<IPricingVarianceCase>(
             type: String,
             enum: ['open', 'under_review', 'resolved', 'waived'],
             default: 'open',
-            index: true,
         },
         resolution: {
             outcome: String,
@@ -126,9 +123,26 @@ const PricingVarianceCaseSchema = new Schema<IPricingVarianceCase>(
     }
 );
 
-PricingVarianceCaseSchema.index({ companyId: 1, status: 1, createdAt: -1 });
-PricingVarianceCaseSchema.index({ shipmentId: 1 });
-PricingVarianceCaseSchema.index({ companyId: 1, provider: 1, awb: 1 });
+PricingVarianceCaseSchema.index(
+    { companyId: 1, status: 1, createdAt: -1 },
+    { name: 'idx_pricing_variance_company_status_created_at' }
+);
+PricingVarianceCaseSchema.index(
+    { shipmentId: 1 },
+    { name: 'idx_pricing_variance_shipment_id' }
+);
+PricingVarianceCaseSchema.index(
+    { companyId: 1, provider: 1, awb: 1 },
+    { name: 'idx_pricing_variance_company_provider_awb' }
+);
+PricingVarianceCaseSchema.index(
+    { companyId: 1, billingRecordId: 1 },
+    {
+        unique: true,
+        sparse: true,
+        name: 'uidx_pricing_variance_company_billing_record',
+    }
+);
 
 const PricingVarianceCase = mongoose.model<IPricingVarianceCase>('PricingVarianceCase', PricingVarianceCaseSchema);
 export default PricingVarianceCase;

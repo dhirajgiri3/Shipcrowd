@@ -26,13 +26,11 @@ const SellerCourierPolicySchema = new Schema<ISellerCourierPolicy>(
             type: Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
-            index: true,
         },
         sellerId: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,
-            index: true,
         },
         allowedProviders: [
             {
@@ -77,7 +75,6 @@ const SellerCourierPolicySchema = new Schema<ISellerCourierPolicy>(
         isActive: {
             type: Boolean,
             default: true,
-            index: true,
         },
         metadata: {
             notes: String,
@@ -93,8 +90,14 @@ const SellerCourierPolicySchema = new Schema<ISellerCourierPolicy>(
     }
 );
 
-SellerCourierPolicySchema.index({ companyId: 1, sellerId: 1 }, { unique: true });
-SellerCourierPolicySchema.index({ companyId: 1, isActive: 1 });
+SellerCourierPolicySchema.index(
+    { companyId: 1, sellerId: 1 },
+    { unique: true, name: 'uidx_seller_courier_policy_company_seller' }
+);
+SellerCourierPolicySchema.index(
+    { companyId: 1, isActive: 1 },
+    { name: 'idx_seller_courier_policy_company_active' }
+);
 
 const SellerCourierPolicy = mongoose.model<ISellerCourierPolicy>('SellerCourierPolicy', SellerCourierPolicySchema);
 export default SellerCourierPolicy;

@@ -1,8 +1,40 @@
 # ShipCrowd Courier + RateCard Target Architecture (Enhanced v3 - Production Ready)
 
 **Date:** February 8, 2026
-**Status:** Implementation Blueprint - **APPROVED FOR IMPLEMENTATION**
+**Status:** Implemented (Feature-Flagged) + Stabilization Cleanup Applied
 **Scope:** End-to-end courier management, service-level quoting, rate-card management, booking, and reconciliation
+
+---
+
+## Related Documents
+
+1. Full legacy decommission runbook:
+   - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/Legacy_Decommission_and_Full_Migration_Runbook.md`
+2. Detailed runtime architecture guide:
+   - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/Service_Level_Pricing_and_Order_Shipment_Architecture_Guide.md`
+3. Final courier + ratecard refactor blueprint:
+   - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/Courier_RateCard_Final_Refactor_Blueprint.md`
+
+---
+
+## 0.1 Current Code Reality (Post-Implementation, Feb 2026)
+
+This document now reflects implemented behavior in `codex/feature/service-level-pricing`:
+
+1. Service-level entities are active in code:
+   - `CourierService`, `ServiceRateCard`, `SellerCourierPolicy`, `QuoteSession`
+   - `CarrierBillingRecord`, `PricingVarianceCase`
+2. Legacy bridge endpoints are intentionally kept behind feature flag fallback:
+   - `GET /api/v1/orders/courier-rates`
+   - `POST /api/v1/orders/:orderId/ship`
+3. Canonical quote contract is active:
+   - `sessionId`, `options[]`, `recommendation`, `expiresAt`, `confidence`, `providerTimeouts`
+4. Canonical error/status behavior:
+   - Expired quote session: `410`
+   - Invalid option/session mismatch: `422`
+5. Reconciliation threshold behavior:
+   - `<= 5%` -> auto-resolved variance case
+   - `> 5%` -> open `PricingVarianceCase`
 
 ---
 
@@ -328,6 +360,18 @@ Service-scoped pricing matrix (supports cost and sell).
   updatedAt: Date
 }
 ```
+
+---
+
+## Legacy Deprecation Trigger Checklist
+
+Legacy pricing/booking code should be removed only when all conditions below stay true for at least one full release cycle:
+
+1. Feature flag `enable_service_level_pricing` is enabled for 100% target companies.
+2. `GET /orders/courier-rates` bridge path serves service-level quotes without regression reports.
+3. `POST /orders/:orderId/ship` bridge path books from quote sessions without fallback usage.
+4. Variance auto-close/open pipeline is stable at expected thresholds.
+5. No unresolved P1/P2 incidents tied to service-level pricing rollout in the last release window.
 
 **Indexes:**
 - `{ companyId: 1, serviceId: 1, cardType: 1, status: 1 }`

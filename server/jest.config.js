@@ -44,8 +44,7 @@ module.exports = {
     maxWorkers: 1,
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
-            useESM: false,
-            isolatedModules: true
+            useESM: false
         }]
     },
     // Transform ESM packages that Jest cannot handle natively

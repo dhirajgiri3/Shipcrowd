@@ -592,7 +592,10 @@ type StatusConfigMap =
   | typeof ORDER_STATUS_CONFIG
   | typeof COMMISSION_STATUS_CONFIG
   | typeof BILLING_STATUS_CONFIG
-  | typeof SALES_REP_STATUS_CONFIG;
+  | typeof BILLING_STATUS_CONFIG
+  | typeof SALES_REP_STATUS_CONFIG
+  | typeof PICKUP_STATUS_CONFIG
+  | typeof QC_STATUS_CONFIG;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BILLING STATUS CONFIGURATIONS
@@ -887,6 +890,60 @@ export const PAYMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PICKUP STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const PICKUP_STATUS_CONFIG: Record<string, StatusConfig> = {
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'Pickup pending',
+  },
+  scheduled: {
+    label: 'Scheduled',
+    color: 'info',
+    description: 'Pickup scheduled',
+  },
+  completed: {
+    label: 'Completed',
+    color: 'success',
+    description: 'Pickup completed',
+  },
+  failed: {
+    label: 'Failed',
+    color: 'error',
+    description: 'Pickup failed',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    color: 'neutral',
+    description: 'Pickup cancelled',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QC STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const QC_STATUS_CONFIG: Record<string, StatusConfig> = {
+  pending: {
+    label: 'Pending',
+    color: 'warning',
+    description: 'QC pending',
+  },
+  passed: {
+    label: 'Passed',
+    color: 'success',
+    description: 'QC passed',
+  },
+  failed: {
+    label: 'Failed',
+    color: 'error',
+    description: 'QC failed',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TRANSACTION TYPE CONFIGURATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -932,7 +989,10 @@ export function getStatusConfig(
     | 'shipment'
     | 'payment'
     | 'rto'
-    | 'transaction_type',
+    | 'rto'
+    | 'transaction_type'
+    | 'pickup'
+    | 'qc',
   status: string
 ): StatusConfig | undefined {
   const configs: Record<string, StatusConfigMap> = {
@@ -962,6 +1022,8 @@ export function getStatusConfig(
     payment: PAYMENT_STATUS_CONFIG,
     rto: RTO_STATUS_CONFIG,
     transaction_type: TRANSACTION_TYPE_CONFIG,
+    pickup: PICKUP_STATUS_CONFIG,
+    qc: QC_STATUS_CONFIG,
   };
 
   const domainConfig = configs[domain];
@@ -1025,4 +1087,6 @@ export const STATUS_CONFIGS = {
   payment: PAYMENT_STATUS_CONFIG,
   rto: RTO_STATUS_CONFIG,
   transaction_type: TRANSACTION_TYPE_CONFIG,
+  pickup: PICKUP_STATUS_CONFIG,
+  qc: QC_STATUS_CONFIG,
 } as const;

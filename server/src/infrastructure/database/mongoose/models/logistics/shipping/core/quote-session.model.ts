@@ -36,6 +36,26 @@ export interface IQuoteSession extends Document {
         confidence: 'high' | 'medium' | 'low';
         rankScore?: number;
         tags?: string[];
+        sellBreakdown?: {
+            baseCharge?: number;
+            weightCharge?: number;
+            subtotal?: number;
+            codCharge?: number;
+            fuelCharge?: number;
+            rtoCharge?: number;
+            gst?: number;
+            total?: number;
+        };
+        costBreakdown?: {
+            baseCharge?: number;
+            weightCharge?: number;
+            subtotal?: number;
+            codCharge?: number;
+            fuelCharge?: number;
+            rtoCharge?: number;
+            gst?: number;
+            total?: number;
+        };
     }>;
     recommendation?: string;
     selectedOptionId?: string;
@@ -51,13 +71,11 @@ const QuoteSessionSchema = new Schema<IQuoteSession>(
             type: Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
-            index: true,
         },
         sellerId: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,
-            index: true,
         },
         input: {
             fromPincode: { type: String, required: true, trim: true },
@@ -116,6 +134,26 @@ const QuoteSessionSchema = new Schema<IQuoteSession>(
                 },
                 rankScore: Number,
                 tags: [String],
+                sellBreakdown: {
+                    baseCharge: Number,
+                    weightCharge: Number,
+                    subtotal: Number,
+                    codCharge: Number,
+                    fuelCharge: Number,
+                    rtoCharge: Number,
+                    gst: Number,
+                    total: Number,
+                },
+                costBreakdown: {
+                    baseCharge: Number,
+                    weightCharge: Number,
+                    subtotal: Number,
+                    codCharge: Number,
+                    fuelCharge: Number,
+                    rtoCharge: Number,
+                    gst: Number,
+                    total: Number,
+                },
             },
         ],
         recommendation: String,
@@ -134,9 +172,18 @@ const QuoteSessionSchema = new Schema<IQuoteSession>(
     }
 );
 
-QuoteSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-QuoteSessionSchema.index({ companyId: 1, sellerId: 1, createdAt: -1 });
-QuoteSessionSchema.index({ companyId: 1, recommendation: 1 });
+QuoteSessionSchema.index(
+    { expiresAt: 1 },
+    { expireAfterSeconds: 0, name: 'idx_quote_session_ttl_expires_at' }
+);
+QuoteSessionSchema.index(
+    { companyId: 1, sellerId: 1, createdAt: -1 },
+    { name: 'idx_quote_session_company_seller_created_at' }
+);
+QuoteSessionSchema.index(
+    { companyId: 1, recommendation: 1 },
+    { name: 'idx_quote_session_company_recommendation' }
+);
 
 const QuoteSession = mongoose.model<IQuoteSession>('QuoteSession', QuoteSessionSchema);
 export default QuoteSession;

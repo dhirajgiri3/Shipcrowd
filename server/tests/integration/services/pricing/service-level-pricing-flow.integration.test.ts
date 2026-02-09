@@ -3,6 +3,7 @@ import CarrierBillingReconciliationService from '@/core/application/services/fin
 import QuoteEngineService from '@/core/application/services/pricing/quote-engine.service';
 import BookFromQuoteService from '@/core/application/services/shipping/book-from-quote.service';
 import { ShipmentService } from '@/core/application/services/shipping/shipment.service';
+import WalletService from '@/core/application/services/wallet/wallet.service';
 import { ErrorCode } from '@/shared/errors/errorCodes';
 import {
     CarrierBillingRecord,
@@ -104,12 +105,13 @@ describe('Service-Level Pricing Flow Integration', () => {
 
     it('rejects expired quote session lookups', async () => {
         const session = await createQuoteSession(new Date(Date.now() - 5 * 60 * 1000));
+        const sessionId = String(session._id);
 
         await expect(
             QuoteEngineService.getSelectedOption(
                 companyId.toString(),
                 sellerId.toString(),
-                session._id.toString(),
+                sessionId,
                 'opt-1'
             )
         ).rejects.toMatchObject({
@@ -121,6 +123,8 @@ describe('Service-Level Pricing Flow Integration', () => {
     it('books shipment from quote and locks selected option into session', async () => {
         const order = await createBaseOrder();
         const session = await createQuoteSession(new Date(Date.now() + 30 * 60 * 1000));
+        const sessionId = String(session._id);
+        const orderId = String(order._id);
 
         const validateSpy = jest
             .spyOn(ShipmentService, 'validateOrderForShipment')
@@ -145,9 +149,9 @@ describe('Service-Level Pricing Flow Integration', () => {
             companyId: companyId.toString(),
             sellerId: sellerId.toString(),
             userId: userId.toString(),
-            sessionId: session._id.toString(),
+            sessionId,
             optionId: 'opt-1',
-            orderId: order._id.toString(),
+            orderId,
             instructions: 'Handle with care',
         });
 
@@ -182,6 +186,8 @@ describe('Service-Level Pricing Flow Integration', () => {
     it('rejects booking when quote session is expired and does not create shipment', async () => {
         const order = await createBaseOrder();
         const session = await createQuoteSession(new Date(Date.now() - 60 * 1000));
+        const sessionId = String(session._id);
+        const orderId = String(order._id);
 
         const createSpy = jest.spyOn(ShipmentService, 'createShipment');
 
@@ -190,9 +196,9 @@ describe('Service-Level Pricing Flow Integration', () => {
                 companyId: companyId.toString(),
                 sellerId: sellerId.toString(),
                 userId: userId.toString(),
-                sessionId: session._id.toString(),
+                sessionId,
                 optionId: 'opt-1',
-                orderId: order._id.toString(),
+                orderId,
             })
         ).rejects.toMatchObject({
             code: ErrorCode.BIZ_INVALID_STATE,
@@ -369,5 +375,162 @@ describe('Service-Level Pricing Flow Integration', () => {
         expect(varianceCase?.status).toBe('resolved');
         expect(varianceCase?.resolution?.outcome).toBe('auto_closed_within_threshold');
         expect(Math.round((varianceCase?.variancePercent || 0) * 100) / 100).toBe(4);
+    });
+
+    it('marks shipment as booking_failed and refunds wallet on booking failure before AWB', async () => {
+        const order = await createBaseOrder();
+        const session = await createQuoteSession(new Date(Date.now() + 30 * 60 * 1000));
+
+        const stagedShipment = await Shipment.create({
+            trackingNumber: `PRE-AWB-${Date.now()}`,
+            orderId: order._id,
+            companyId,
+            carrier: 'ekart',
+            serviceType: 'standard',
+            packageDetails: {
+                weight: 0.5,
+                dimensions: { length: 10, width: 10, height: 10 },
+                packageCount: 1,
+                packageType: 'box',
+                declaredValue: 1000,
+            },
+            deliveryDetails: {
+                recipientName: 'Compensation Customer',
+                recipientPhone: '9999999999',
+                address: {
+                    line1: 'Test Line 1',
+                    city: 'Delhi',
+                    state: 'Delhi',
+                    country: 'India',
+                    postalCode: '110001',
+                },
+            },
+            paymentDetails: {
+                type: 'prepaid',
+                shippingCost: 100,
+                currency: 'INR',
+            },
+            pricingDetails: {
+                selectedQuote: {
+                    quoteSessionId: session._id,
+                    optionId: 'opt-1',
+                    expectedCostAmount: 100,
+                },
+            },
+            walletTransactionId: new mongoose.Types.ObjectId(),
+            statusHistory: [],
+            currentStatus: 'created',
+            weights: {
+                declared: { value: 0.5, unit: 'kg' },
+                verified: false,
+            },
+            documents: [],
+            isDeleted: false,
+        });
+
+        jest.spyOn(ShipmentService, 'validateOrderForShipment').mockReturnValue({ canCreate: true });
+        jest.spyOn(ShipmentService, 'hasActiveShipment').mockResolvedValue(false);
+        jest.spyOn(ShipmentService, 'createShipment').mockRejectedValue(new Error('booking failed before awb'));
+        const refundSpy = jest.spyOn(WalletService, 'refund').mockResolvedValue({
+            success: true,
+            transactionId: 'refund-1',
+            newBalance: 1000,
+        });
+
+        await expect(
+            BookFromQuoteService.execute({
+                companyId: companyId.toString(),
+                sellerId: sellerId.toString(),
+                userId: userId.toString(),
+                sessionId: String(session._id),
+                optionId: 'opt-1',
+                orderId: String(order._id),
+            })
+        ).rejects.toThrow('booking failed before awb');
+
+        const updated = await Shipment.findById(stagedShipment._id).lean();
+        expect(updated?.currentStatus).toBe('booking_failed');
+        expect(updated?.statusHistory[updated.statusHistory.length - 1]?.status).toBe('booking_failed');
+        expect(refundSpy).toHaveBeenCalled();
+    });
+
+    it('marks shipment as booking_partial when failure occurs after AWB assignment', async () => {
+        const order = await createBaseOrder();
+        const session = await createQuoteSession(new Date(Date.now() + 30 * 60 * 1000));
+
+        const stagedShipment = await Shipment.create({
+            trackingNumber: `POST-AWB-${Date.now()}`,
+            orderId: order._id,
+            companyId,
+            carrier: 'delhivery',
+            serviceType: 'express',
+            packageDetails: {
+                weight: 0.5,
+                dimensions: { length: 10, width: 10, height: 10 },
+                packageCount: 1,
+                packageType: 'box',
+                declaredValue: 1000,
+            },
+            deliveryDetails: {
+                recipientName: 'Compensation Customer',
+                recipientPhone: '9999999999',
+                address: {
+                    line1: 'Test Line 1',
+                    city: 'Delhi',
+                    state: 'Delhi',
+                    country: 'India',
+                    postalCode: '110001',
+                },
+            },
+            paymentDetails: {
+                type: 'prepaid',
+                shippingCost: 100,
+                currency: 'INR',
+            },
+            pricingDetails: {
+                selectedQuote: {
+                    quoteSessionId: session._id,
+                    optionId: 'opt-1',
+                    expectedCostAmount: 100,
+                },
+            },
+            carrierDetails: {
+                carrierTrackingNumber: 'AWB-POST-123',
+            },
+            walletTransactionId: new mongoose.Types.ObjectId(),
+            statusHistory: [],
+            currentStatus: 'pending_pickup',
+            weights: {
+                declared: { value: 0.5, unit: 'kg' },
+                verified: false,
+            },
+            documents: [],
+            isDeleted: false,
+        });
+
+        jest.spyOn(ShipmentService, 'validateOrderForShipment').mockReturnValue({ canCreate: true });
+        jest.spyOn(ShipmentService, 'hasActiveShipment').mockResolvedValue(false);
+        jest.spyOn(ShipmentService, 'createShipment').mockRejectedValue(new Error('booking failed after awb'));
+        const refundSpy = jest.spyOn(WalletService, 'refund').mockResolvedValue({
+            success: true,
+            transactionId: 'refund-2',
+            newBalance: 1200,
+        });
+
+        await expect(
+            BookFromQuoteService.execute({
+                companyId: companyId.toString(),
+                sellerId: sellerId.toString(),
+                userId: userId.toString(),
+                sessionId: String(session._id),
+                optionId: 'opt-1',
+                orderId: String(order._id),
+            })
+        ).rejects.toThrow('booking failed after awb');
+
+        const updated = await Shipment.findById(stagedShipment._id).lean();
+        expect(updated?.currentStatus).toBe('booking_partial');
+        expect(updated?.statusHistory[updated.statusHistory.length - 1]?.status).toBe('booking_partial');
+        expect(refundSpy).toHaveBeenCalled();
     });
 });

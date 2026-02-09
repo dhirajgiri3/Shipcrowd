@@ -251,6 +251,32 @@ async function runSeeders(): Promise<void> {
 }
 
 /**
+ * Quick sanity checks for service-level pricing entities.
+ * This keeps local developer runs deterministic after seed:clean / seed:full.
+ */
+async function verifyServiceLevelPricingSeed(): Promise<void> {
+    logger.phase('Service-Level Pricing Seed Verification');
+
+    const { CourierService, ServiceRateCard, SellerCourierPolicy } = await import('./../mongoose/models');
+
+    const [serviceCount, rateCardCount, policyCount] = await Promise.all([
+        CourierService.countDocuments({ isDeleted: false }),
+        ServiceRateCard.countDocuments({ isDeleted: false }),
+        SellerCourierPolicy.countDocuments({ isActive: true }),
+    ]);
+
+    if (serviceCount === 0 || rateCardCount === 0) {
+        throw new Error(
+            `Service-level pricing sanity check failed (services=${serviceCount}, rateCards=${rateCardCount})`
+        );
+    }
+
+    logger.success(
+        `Service-level pricing sanity check passed (services=${serviceCount}, rateCards=${rateCardCount}, policies=${policyCount})`
+    );
+}
+
+/**
  * Print final summary
  */
 async function printSummary(): Promise<void> {
@@ -303,6 +329,9 @@ async function main(): Promise<void> {
 
         // Run all seeders
         await runSeeders();
+
+        // Quick integrity check for newly added service-level architecture data
+        await verifyServiceLevelPricingSeed();
 
         // Print summary
         await printSummary();

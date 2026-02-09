@@ -22,13 +22,18 @@ export default async function globalSetup(): Promise<void> {
         return;
     }
 
+    const explicitPort = Number(process.env.MONGO_TEST_PORT || 29017);
     const mongod = await MongoMemoryReplSet.create({
         replSet: {
             count: 1,
             storageEngine: 'wiredTiger',
-            // Some restricted environments disallow binding to 0.0.0.0; force localhost.
-            ip: '127.0.0.1'
         },
+        // Avoid getFreePort probe on 0.0.0.0 in restricted environments.
+        instanceOpts: [
+            {
+                port: explicitPort,
+            },
+        ],
     });
 
     const uri = mongod.getUri();
