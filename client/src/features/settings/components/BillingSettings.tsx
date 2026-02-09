@@ -85,6 +85,7 @@ export function BillingSettings() {
     const bankAccounts = accounts?.accounts || [];
 
     return (
+        <>
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -237,5 +238,6 @@ export function BillingSettings() {
                 setDeleteTarget(null);
             }}
         />
+        </>
     );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import {
@@ -27,15 +27,20 @@ import {
     BarChart2,
 } from 'lucide-react';
 
-export default function CourierPerformancePage({ params }: { params: { id: string } }) {
+export default function CourierPerformancePage({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}) {
+    const { id } = use(params);
     const router = useRouter();
     const [filters, setFilters] = useState<PerformanceFilters>({
         startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
     });
 
-    const { data: courier } = useCourier(params.id);
-    const { data: performance, isLoading } = useCourierPerformance(params.id, filters);
+    const { data: courier } = useCourier(id);
+    const { data: performance, isLoading } = useCourierPerformance(id, filters);
 
     const handleDateChange = (field: 'startDate' | 'endDate', value: string) => {
         setFilters((prev) => ({ ...prev, [field]: value }));
@@ -53,7 +58,7 @@ export default function CourierPerformancePage({ params }: { params: { id: strin
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => router.push(`/admin/couriers/${params.id}`)}
+                        onClick={() => router.push(`/admin/couriers/${id}`)}
                     >
                         <ChevronLeft className="h-4 w-4" />
                     </Button>

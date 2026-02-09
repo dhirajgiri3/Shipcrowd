@@ -6,7 +6,11 @@ export const metadata: Metadata = {
     description: 'View and manage zone details and pincode mappings',
 };
 
-export default function ZoneDetailPage({ params }: { params: { id: string } }) {
-    return <ZoneDetailClient id={params.id} />;
+export default async function ZoneDetailPage({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}) {
+    const { id } = await params;
+    return <ZoneDetailClient id={id} />;
 }
-

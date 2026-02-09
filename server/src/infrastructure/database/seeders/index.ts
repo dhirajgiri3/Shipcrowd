@@ -202,6 +202,7 @@ async function runSeeders(): Promise<void> {
     const { seedPayouts } = await import('./seeders/27-payouts.seeder.js');
     const { seedPincodes } = await import('./seeders/28-pincodes.seeder.js');
     const { seedCouriers } = await import('./seeders/29-couriers.seeder.js');
+    const { seedServiceLevelPricing } = await import('./seeders/30-service-level-pricing.seeder.js');
 
     // Seeder order based on dependencies
     const seeders = [
@@ -235,6 +236,7 @@ async function runSeeders(): Promise<void> {
         { name: 'Commission Payouts', fn: seedPayouts },
         { name: 'Pincodes', fn: seedPincodes },
         { name: 'Couriers', fn: seedCouriers },
+        { name: 'Service-Level Pricing', fn: seedServiceLevelPricing },
     ];
 
     for (const seeder of seeders) {

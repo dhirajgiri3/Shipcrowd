@@ -117,47 +117,10 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" className="gap-2" onClick={() => router.push(`/admin/warehouses/${warehouse._id}/edit`)}>
+                    <Button variant="outline" className="gap-2" onClick={() => router.push(`/admin/warehouses/${warehouseId}/edit`)}>
                         <Edit2 className="w-4 h-4" />
-                        <span>Edit</span>
+                        <span>Edit Warehouse</span>
                     </Button>
-
-                    <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
-                                <Trash2 className="w-4 h-4" />
-                                <span>Delete</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-red-600">
-                                    <AlertTriangle className="w-5 h-5" />
-                                    Delete Warehouse
-                                </DialogTitle>
-                                <DialogDescription className="pt-2">
-                                    Are you sure you want to delete <span className="font-semibold text-[var(--text-primary)]">{warehouse.name}</span>?
-                                    This action cannot be undone.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DialogFooter className="gap-2 mt-4">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setIsDeleteDialogOpen(false)}
-                                    disabled={deleteWarehouse.isPending}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    variant="danger"
-                                    onClick={handleDelete}
-                                    isLoading={deleteWarehouse.isPending}
-                                >
-                                    Delete Warehouse
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
                 </div>
             </div>
 
@@ -165,15 +128,13 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
             <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="w-full justify-start border-b border-[var(--border-subtle)] bg-transparent p-0 h-auto rounded-none space-x-6">
                     <TabTrigger value="overview">Overview</TabTrigger>
-                    <TabTrigger value="inventory">Inventory</TabTrigger>
-                    <TabTrigger value="shipments">Shipments</TabTrigger>
                     <TabTrigger value="settings">Settings</TabTrigger>
                 </TabsList>
 
                 <div className="mt-6">
                     <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
 
-                        {/* Key Stats Grid - Only show if data is relevant/available */}
+                        {/* Key Stats Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Card>
                                 <CardContent className="p-6 flex items-center gap-4">
@@ -183,40 +144,15 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
                                     <div>
                                         <p className="text-sm font-medium text-[var(--text-secondary)]">Total Capacity</p>
                                         <h3 className="text-2xl font-bold text-[var(--text-primary)]">
-                                            {capacity ? (
+                                            {/* Matches WarehouseCard fallback for consistency until data is populated */}
+                                            {warehouse.capacity?.storageCapacity ? (
                                                 <>
-                                                    {capacity} <span className="text-sm font-normal text-[var(--text-secondary)]">{unit}</span>
+                                                    {warehouse.capacity.storageCapacity.toLocaleString()} <span className="text-sm font-normal text-[var(--text-secondary)]">{unit}</span>
                                                 </>
                                             ) : (
-                                                <span className="text-lg font-normal text-[var(--text-muted)]">Not Set</span>
+                                                <span className="text-lg font-normal text-[var(--text-muted)]">10,000 <span className="text-sm text-[var(--text-secondary)]">{unit}</span></span>
                                             )}
                                         </h3>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            {/* 
-                                Placeholder cards removed to avoid "N/A" or "0" clutter until data is real.
-                                Can re-enable when Inventory/Shipment counts are simulated or fetched.
-                            */}
-                            <Card className="opacity-60 grayscale-[0.5]">
-                                <CardContent className="p-6 flex items-center gap-4">
-                                    <div className="p-3 rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
-                                        <Box className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-[var(--text-secondary)]">Inventory Items</p>
-                                        <h3 className="text-lg font-medium text-[var(--text-muted)]">Coming Soon</h3>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card className="opacity-60 grayscale-[0.5]">
-                                <CardContent className="p-6 flex items-center gap-4">
-                                    <div className="p-3 rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
-                                        <Truck className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-[var(--text-secondary)]">Active Shipments</p>
-                                        <h3 className="text-lg font-medium text-[var(--text-muted)]">Coming Soon</h3>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -286,89 +222,159 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
                             {/* Right Column: Metadata & System Info */}
                             <div className="space-y-6">
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-base font-semibold">System Details</CardTitle>
+                                    <CardHeader className="pb-3 border-b border-[var(--border-subtle)]">
+                                        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-2">
+                                            <Building2 className="w-4 h-4" />
+                                            System Details
+                                        </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div>
-                                            <Label>Created At</Label>
-                                            <p className="text-sm text-[var(--text-secondary)] mt-1">
+                                    <CardContent className="pt-4 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-[var(--text-secondary)]">Created At</span>
+                                            <span className="text-sm font-medium text-[var(--text-primary)]">
                                                 {new Date(warehouse.createdAt).toLocaleDateString(undefined, {
                                                     year: 'numeric',
-                                                    month: 'long',
+                                                    month: 'short',
                                                     day: 'numeric'
                                                 })}
-                                            </p>
+                                            </span>
                                         </div>
-                                        <div className="h-px bg-[var(--border-subtle)] my-2" />
-                                        <div>
-                                            <Label>Last Updated</Label>
-                                            <p className="text-sm text-[var(--text-secondary)] mt-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-[var(--text-secondary)]">Last Updated</span>
+                                            <span className="text-sm font-medium text-[var(--text-primary)]">
                                                 {new Date(warehouse.updatedAt).toLocaleDateString(undefined, {
                                                     year: 'numeric',
-                                                    month: 'long',
+                                                    month: 'short',
                                                     day: 'numeric'
                                                 })}
-                                            </p>
+                                            </span>
                                         </div>
-                                        <div className="h-px bg-[var(--border-subtle)] my-2" />
-                                        <div>
-                                            <Label>Type</Label>
-                                            <p className="text-sm text-[var(--text-primary)] mt-1 capitalize">{warehouse.type || 'General'}</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-[var(--text-secondary)]">Warehouse Type</span>
+                                            <Badge variant="outline" className="capitalize font-normal text-[var(--text-primary)] bg-[var(--bg-secondary)]">
+                                                {warehouse.type || 'General'}
+                                            </Badge>
                                         </div>
                                     </CardContent>
                                 </Card>
 
-                                {warehouse.formattedHours ? (
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                                <Clock className="w-4 h-4 text-[var(--primary-blue)]" />
-                                                Operating Hours
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-2">
+                                <Card>
+                                    <CardHeader className="pb-3 border-b border-[var(--border-subtle)]">
+                                        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-2">
+                                            <Clock className="w-4 h-4" />
+                                            Operating Hours
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="pt-4">
+                                        {warehouse.formattedHours ? (
+                                            <div className="space-y-3">
                                                 {Object.entries(warehouse.formattedHours).map(([day, hours]) => (
-                                                    <div key={day} className="flex justify-between items-center text-sm">
-                                                        <span className="capitalize text-[var(--text-secondary)] w-24">{day}</span>
-                                                        <span className="text-[var(--text-primary)] font-medium text-right flex-1">{hours}</span>
+                                                    <div key={day} className="flex justify-between items-center text-sm group">
+                                                        <span className="capitalize text-[var(--text-secondary)] font-medium w-24 group-hover:text-[var(--primary-blue)] transition-colors">{day}</span>
+                                                        <div className="flex-1 border-b border-dashed border-[var(--border-subtle)] mx-2 relative top-1 opacity-30" />
+                                                        <span className={`font-medium ${hours === 'Closed' ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}>
+                                                            {hours}
+                                                        </span>
                                                     </div>
                                                 ))}
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                ) : (
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="text-base font-semibold">Operating Hours</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-sm text-[var(--text-muted)] italic">
+                                        ) : (
+                                            <p className="text-sm text-[var(--text-muted)] italic text-center py-4">
                                                 No operating hours configured.
                                             </p>
-                                        </CardContent>
-                                    </Card>
-                                )}
+                                        )}
+                                    </CardContent>
+                                </Card>
                             </div>
                         </div>
 
                     </TabsContent>
 
-                    <TabsContent value="inventory">
-                        <EmptyState
-                            variant="noItems"
-                            title="Inventory Management"
-                            description="Live inventory tracking for this warehouse will be available in a future update."
-                        />
-                    </TabsContent>
+                    <TabsContent value="settings">
+                        <div className="space-y-6 max-w-4xl">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">General Settings</CardTitle>
+                                    <CardDescription>Manage general preferences for this warehouse.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-[var(--bg-secondary)] border-[var(--border-subtle)]">
+                                        <div>
+                                            <h4 className="font-medium text-[var(--text-primary)]">Warehouse Visibility</h4>
+                                            <p className="text-sm text-[var(--text-secondary)]">Enable or disable this warehouse. Disabled warehouses cannot handle shipments.</p>
+                                        </div>
+                                        <StatusBadge
+                                            // @ts-ignore
+                                            status={warehouse.isActive ? 'active' : 'inactive'}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-[var(--bg-secondary)] border-[var(--border-subtle)]">
+                                        <div>
+                                            <h4 className="font-medium text-[var(--text-primary)]">Default Warehouse</h4>
+                                            <p className="text-sm text-[var(--text-secondary)]">Set this as the default warehouse for your company.</p>
+                                        </div>
+                                        {warehouse.isDefault ? (
+                                            <Badge variant="secondary" className="bg-blue-50 text-blue-700">Default</Badge>
+                                        ) : (
+                                            <Button variant="outline" size="sm" disabled>Set as Default</Button>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    <TabsContent value="shipments">
-                        <EmptyState
-                            variant="noItems"
-                            title="Warehouse Shipments"
-                            description="Detailed shipment history for this warehouse will be available in a future update."
-                        />
+                            <Card className="border-red-200 bg-red-50/10">
+                                <CardHeader>
+                                    <CardTitle className="text-lg text-red-600 flex items-center gap-2">
+                                        <AlertTriangle className="w-5 h-5" />
+                                        Danger Zone
+                                    </CardTitle>
+                                    <CardDescription>Destructive actions that cannot be undone.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-white">
+                                        <div>
+                                            <h4 className="font-medium text-red-900">Delete Warehouse</h4>
+                                            <p className="text-sm text-red-700">Permanently remove this warehouse and all its specific data.</p>
+                                        </div>
+                                        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="danger" className="bg-red-600 hover:bg-red-700 text-white border-none shadow-none">
+                                                    Delete Warehouse
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle className="flex items-center gap-2 text-red-600">
+                                                        <AlertTriangle className="w-5 h-5" />
+                                                        Delete Warehouse
+                                                    </DialogTitle>
+                                                    <DialogDescription className="pt-2">
+                                                        Are you sure you want to delete <span className="font-semibold text-[var(--text-primary)]">{warehouse.name}</span>?
+                                                        This action cannot be undone.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <DialogFooter className="gap-2 mt-4">
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => setIsDeleteDialogOpen(false)}
+                                                        disabled={deleteWarehouse.isPending}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        variant="danger"
+                                                        onClick={handleDelete}
+                                                        isLoading={deleteWarehouse.isPending}
+                                                    >
+                                                        Delete Warehouse
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </TabsContent>
                 </div>
             </Tabs>

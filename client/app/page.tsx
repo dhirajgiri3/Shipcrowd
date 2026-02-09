@@ -10,7 +10,7 @@ const FeatureEcosystem = dynamic(() => import("@/src/features/landing/components
 const HowItWorks = dynamic(() => import("@/src/features/landing/components/HowItWorks"));
 const SocialProof = dynamic(() => import("@/src/features/landing/components/SocialProof"));
 
-export function LandingClient() {
+function LandingPage() {
     return (
         <main className="min-h-screen bg-[var(--bg-primary)] selection:bg-primaryBlue/20 selection:text-primaryBlue">
             <Navigation />
@@ -26,4 +26,4 @@ export function LandingClient() {
     );
 }
 
-export default LandingClient;
+export default LandingPage;

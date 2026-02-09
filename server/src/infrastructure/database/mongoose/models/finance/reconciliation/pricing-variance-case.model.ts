@@ -46,7 +46,6 @@ const PricingVarianceCaseSchema = new Schema<IPricingVarianceCase>(
         shipmentId: {
             type: Schema.Types.ObjectId,
             ref: 'Shipment',
-            index: true,
         },
         billingRecordId: {
             type: Schema.Types.ObjectId,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import {
@@ -38,13 +38,18 @@ import Link from 'next/link';
 import { Loader, StatusBadge } from '@/src/components/ui';
 import { EkartSetupModal } from '../../integrations/components/modals/EkartSetupModal';
 
-export default function CourierDetailPage({ params }: { params: { id: string } }) {
+export default function CourierDetailPage({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}) {
+    const { id } = use(params);
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
     const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
     const [editForm, setEditForm] = useState<UpdateCourierRequest>({});
 
-    const { data: courier, isLoading } = useCourier(params.id);
+    const { data: courier, isLoading } = useCourier(id);
     const updateCourier = useUpdateCourier();
     const toggleStatus = useToggleCourierStatus();
     const testIntegration = useTestCourierIntegration();
@@ -62,7 +67,7 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
 
     const handleSave = async () => {
         try {
-            await updateCourier.mutateAsync({ id: params.id, data: editForm });
+            await updateCourier.mutateAsync({ id, data: editForm });
             setIsEditing(false);
         } catch (error) {
             // Error handled by mutation
@@ -71,7 +76,7 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
 
     const handleToggleStatus = async () => {
         try {
-            await toggleStatus.mutateAsync(params.id);
+            await toggleStatus.mutateAsync(id);
         } catch (error) {
             // Error handled by mutation
         }
@@ -79,7 +84,7 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
 
     const handleTestIntegration = async () => {
         try {
-            await testIntegration.mutateAsync(params.id);
+            await testIntegration.mutateAsync(id);
         } catch (error) {
             // Error handled by mutation
         }
@@ -350,7 +355,7 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
                             <CardDescription>
                                 View detailed performance metrics{' '}
                                 <Link
-                                    href={`/admin/couriers/${params.id}/performance`}
+                                    href={`/admin/couriers/${id}/performance`}
                                     className="text-primary hover:underline"
                                 >
                                     View Full Report →

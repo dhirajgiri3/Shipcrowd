@@ -13,7 +13,7 @@ import {
 import { Button } from '@/src/components/ui/core/Button';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { OrderTable } from './OrderTable'; // New component
-import { useAdminOrders, useGetCourierRates, useShipOrder, useDeleteOrder, useOrderExport } from '@/src/core/api/hooks/admin';
+import { useAdminOrders, useGetCourierRates, useShipOrder, useAdminDeleteOrder, useOrderExport } from '@/src/core/api/hooks/admin';
 import { useWarehouses } from '@/src/core/api/hooks/logistics';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
 import { showSuccessToast, showErrorToast } from '@/src/lib/error';
@@ -116,7 +116,7 @@ export default function OrdersClient() {
 
     const getCourierRatesMutation = useGetCourierRates();
     const shipOrderMutation = useShipOrder();
-    const deleteOrderMutation = useDeleteOrder();
+    const deleteOrderMutation = useAdminDeleteOrder();
     const exportOrderMutation = useOrderExport();
 
     const orders = ordersResponse?.data || [];

@@ -13,7 +13,12 @@ export default function FraudDetectionPage() {
         <div className="space-y-6">
             <PageHeader
                 title="Fraud Detection"
-                description="Configure automated risk rules and monitor suspicious activities."
+                subtitle="Configure automated risk rules and monitor suspicious activities."
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/admin' },
+                    { label: 'Security', href: '/admin/security' },
+                    { label: 'Fraud Detection', active: true },
+                ]}
             />
 
             {/* Feature Disabled Banner */}

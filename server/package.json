@@ -13,6 +13,7 @@
     "seed:admins": "npx tsx src/scripts/seed-admin-users.ts",
     "seed:full": "npx tsx src/infrastructure/database/seeders/index.ts",
     "seed:clean": "npx tsx src/infrastructure/database/seeders/index.ts --clean",
+    "seed:service-level-pricing": "npx tsx src/infrastructure/database/seeders/seeders/30-service-level-pricing.seeder.ts",
     "seed:verify": "npx tsx src/infrastructure/database/seeders/utils/validation.utils.ts",
     "verify-seed": "npx tsx src/scripts/verify-seed.ts",
     "test:velocity:live": "npx tsx src/scripts/testVelocityLive.ts",

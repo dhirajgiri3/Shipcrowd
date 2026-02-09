@@ -2,9 +2,9 @@
 import { WarehouseDetailClient } from './components/WarehouseDetailClient';
 
 interface WarehouseDetailPageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function WarehouseDetailPage({ params }: WarehouseDetailPageProps) {

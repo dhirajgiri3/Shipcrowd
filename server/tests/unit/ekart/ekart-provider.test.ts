@@ -192,6 +192,56 @@ describe('EkartProvider - New Methods', () => {
         });
     });
 
+    describe('getLaneServiceability', () => {
+        it('should return lane-level result with high confidence when API succeeds', async () => {
+            const mockLaneOptions = [
+                {
+                    courierGroup: 'Ekart Standard',
+                    forwardDeliveredCharges: {
+                        zone: 'D',
+                        total: '120',
+                    },
+                    tat: {
+                        minDays: 3,
+                        maxDays: 5,
+                    },
+                },
+            ];
+
+            jest.spyOn(provider['axiosInstance'], 'post').mockResolvedValue({ data: mockLaneOptions } as any);
+
+            const result = await provider.getLaneServiceability({
+                pickupPincode: '560001',
+                dropPincode: '110001',
+                weight: 0.5,
+                paymentMode: 'cod',
+            });
+
+            expect(result.serviceable).toBe(true);
+            expect(result.source).toBe('lane');
+            expect(result.confidence).toBe('high');
+            expect(result.zone).toBe('D');
+            expect(result.options).toHaveLength(1);
+        });
+
+        it('should fallback to pincode check with medium confidence when lane API fails', async () => {
+            jest.spyOn(provider['axiosInstance'], 'post').mockRejectedValue(new Error('lane endpoint down'));
+            jest.spyOn(provider as any, 'checkServiceability').mockResolvedValue(true);
+
+            const result = await provider.getLaneServiceability({
+                pickupPincode: '560001',
+                dropPincode: '110001',
+                weight: 1,
+                paymentMode: 'prepaid',
+            });
+
+            expect(result.serviceable).toBe(true);
+            expect(result.source).toBe('pincode');
+            expect(result.confidence).toBe('medium');
+            expect(result.options).toEqual([]);
+        });
+    });
+
     describe('getLabel', () => {
         it('should return PDF buffer for pdf format', async () => {
             const trackingIds = ['AWB001', 'AWB002'];

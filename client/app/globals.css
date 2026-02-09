@@ -65,6 +65,9 @@
 }
 
 :root {
+   --font-inter: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+   --font-jetbrains-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
    /* ========================================
      BASE PALETTE (HSL)
      ======================================== */

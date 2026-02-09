@@ -127,7 +127,6 @@ const QuoteSessionSchema = new Schema<IQuoteSession>(
         expiresAt: {
             type: Date,
             required: true,
-            index: true,
         },
     },
     {

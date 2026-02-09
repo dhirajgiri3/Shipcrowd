@@ -100,7 +100,7 @@ export const useBulkShipOrders = () => {
 /**
  * Delete an order (Admin only)
  */
-export const useDeleteOrder = () => {
+export const useAdminDeleteOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<

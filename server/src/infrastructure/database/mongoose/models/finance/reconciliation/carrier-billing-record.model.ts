@@ -42,7 +42,6 @@ const CarrierBillingRecordSchema = new Schema<ICarrierBillingRecord>(
         shipmentId: {
             type: Schema.Types.ObjectId,
             ref: 'Shipment',
-            index: true,
         },
         provider: {
             type: String,

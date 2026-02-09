@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/features/auth";
 import { Providers as QueryProviders } from "@/src/core/providers/query-provider";
@@ -7,25 +6,6 @@ import { Toaster } from "@/src/components/ui/feedback/Toaster";
 import { ErrorBoundary } from '@/src/components/shared/ErrorBoundary';
 import { GlobalErrorProvider } from "@/src/core/providers/GlobalErrorProvider";
 import { NetworkStatusProvider } from "@/src/core/providers/NetworkStatusProvider";
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FONT OPTIMIZATION
-// Using display: 'swap' for better LCP, preloading subset
-// ═══════════════════════════════════════════════════════════════════════════
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-  preload: true,
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  display: "swap",
-  preload: false, // Only load when needed
-});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SEO METADATA
@@ -126,14 +106,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="light scroll-smooth" suppressHydrationWarning>
-      <head>
-        {/* Preconnect to external domains for faster loading */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <ErrorBoundary>
           <GlobalErrorProvider>
             <NetworkStatusProvider>

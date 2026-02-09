@@ -226,7 +226,7 @@ export function FinancialsClient() {
                             <Button
                                 key={item}
                                 size="sm"
-                                variant={varianceStatusFilter === item ? 'default' : 'outline'}
+                                variant={varianceStatusFilter === item ? 'primary' : 'outline'}
                                 onClick={() => {
                                     setVarianceStatusFilter(item);
                                     setVariancePage(1);

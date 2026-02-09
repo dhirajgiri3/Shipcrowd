@@ -1,6 +1,12 @@
 import { RateCardSettings } from './components/RateCardSettings';
 
-export default function CompanySettingsPage({ params }: { params: { companyId: string } }) {
+export default async function CompanySettingsPage({
+    params,
+}: {
+    params: Promise<{ companyId: string }>;
+}) {
+    const { companyId } = await params;
+
     return (
         <div className="space-y-6 p-6">
             <div>
@@ -8,7 +14,7 @@ export default function CompanySettingsPage({ params }: { params: { companyId: s
                 <p className="text-gray-600 mt-1">Manage company configuration and preferences</p>
             </div>
 
-            <RateCardSettings companyId={params.companyId} />
+            <RateCardSettings companyId={companyId} />
         </div>
     );
 }
