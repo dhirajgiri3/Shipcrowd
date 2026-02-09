@@ -5,25 +5,12 @@ import { sendCreated, sendSuccess, sendPaginated, calculatePagination } from '..
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
+import ServiceRateCardFormulaService from '../../../../core/application/services/pricing/service-rate-card-formula.service';
 import {
     importServiceRateCardSchema,
     simulateServiceRateCardSchema,
     upsertServiceRateCardSchema,
 } from '../../../../shared/validation/schemas';
-
-const calculateSimulation = (card: any, weight: number, zoneKey: string): number => {
-    const zoneRule = (card.zoneRules || []).find((rule: any) => String(rule.zoneKey).toLowerCase() === zoneKey.toLowerCase()) || card.zoneRules?.[0];
-    if (!zoneRule) return 0;
-
-    const slab = (zoneRule.slabs || []).find((s: any) => weight >= Number(s.minKg) && weight <= Number(s.maxKg));
-    if (slab) return Number(slab.charge || 0);
-
-    const lastSlab = (zoneRule.slabs || [])[zoneRule.slabs.length - 1];
-    if (!lastSlab) return 0;
-
-    const extraWeight = Math.max(0, weight - Number(lastSlab.maxKg || 0));
-    return Number(lastSlab.charge || 0) + extraWeight * Number(zoneRule.additionalPerKg || 0);
-};
 
 export const listServiceRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -191,7 +178,16 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
             throw new ValidationError('Validation failed', errors);
         }
 
-        const { weight, zoneKey } = validation.data;
+        const {
+            weight,
+            dimensions,
+            zone,
+            paymentMode = 'prepaid',
+            orderValue = 0,
+            provider = 'delhivery',
+            fromPincode = '560001',
+            toPincode = '110001',
+        } = validation.data;
         const card = await ServiceRateCard.findOne({
             _id: req.params.id,
             companyId: auth.companyId,
@@ -202,8 +198,35 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
             throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
         }
 
-        const amount = calculateSimulation(card, Number(weight || 0), String(zoneKey || ''));
-        sendSuccess(res, { amount, currency: card.currency }, 'Service rate card simulation completed');
+        const result = ServiceRateCardFormulaService.calculatePricing({
+            serviceRateCard: card,
+            weight: Number(weight || 0),
+            dimensions: dimensions || {
+                length: 10,
+                width: 10,
+                height: 10,
+            },
+            zone,
+            paymentMode,
+            orderValue: Number(orderValue || 0),
+            provider,
+            fromPincode,
+            toPincode,
+        });
+        sendSuccess(
+            res,
+            {
+                card: {
+                    id: String(card._id),
+                    serviceId: String(card.serviceId),
+                    cardType: card.cardType,
+                    currency: card.currency,
+                    sourceMode: card.sourceMode,
+                },
+                pricing: result,
+            },
+            'Service rate card simulation completed'
+        );
     } catch (error) {
         logger.error('Error simulating service rate card:', error);
         next(error);

@@ -18,6 +18,33 @@ import type {
   BulkShipOrdersRequest,
 } from '@/src/types/domain/order';
 
+type QuoteOptionsApiResponse = {
+  success: boolean;
+  data: {
+    sessionId: string;
+    expiresAt: string;
+    recommendation?: string;
+    confidence?: 'high' | 'medium' | 'low';
+    options: Array<{
+      optionId: string;
+      provider: 'velocity' | 'delhivery' | 'ekart';
+      serviceName: string;
+      chargeableWeight: number;
+      zone?: string;
+      quotedAmount: number;
+      costAmount: number;
+      estimatedMargin: number;
+      estimatedMarginPercent: number;
+      confidence?: 'high' | 'medium' | 'low';
+      pricingSource?: 'live' | 'table' | 'hybrid';
+      tags?: string[];
+      eta?: { maxDays?: number };
+      sellBreakdown?: CourierRate['sellBreakdown'];
+      costBreakdown?: CourierRate['costBreakdown'];
+    }>;
+  };
+};
+
 /**
  * Order API Service
  * Handles all order-related API calls
@@ -268,7 +295,48 @@ export const orderApi = {
     height?: number;
   }): Promise<{ success: boolean; data: CourierRate[] }> => {
     const response = await apiClient.get('/orders/courier-rates', { params });
-    return response.data;
+    const payload = response.data as QuoteOptionsApiResponse | { success: boolean; data: CourierRate[] };
+
+    if (Array.isArray((payload as { data: CourierRate[] }).data)) {
+      return payload as { success: boolean; data: CourierRate[] };
+    }
+
+    const quotePayload = payload as QuoteOptionsApiResponse;
+    const quoteData = quotePayload.data;
+    const rates: CourierRate[] = (quoteData.options || []).map((option) => {
+      const normalizedService = (option.serviceName || '').toLowerCase();
+      const serviceType = normalizedService.includes('express') || normalizedService.includes('air')
+        ? 'express'
+        : 'standard';
+
+      return {
+        courierId: option.provider,
+        courierName: option.serviceName,
+        serviceType,
+        rate: Number(option.quotedAmount || 0),
+        estimatedDeliveryDays: Number(option.eta?.maxDays || 0),
+        provider: option.provider,
+        serviceName: option.serviceName,
+        quotedAmount: Number(option.quotedAmount || 0),
+        costAmount: Number(option.costAmount || 0),
+        estimatedMargin: Number(option.estimatedMargin || 0),
+        estimatedMarginPercent: Number(option.estimatedMarginPercent || 0),
+        chargeableWeight: Number(option.chargeableWeight || 0),
+        pricingSource: option.pricingSource || 'table',
+        zone: option.zone,
+        sessionId: quoteData.sessionId,
+        optionId: option.optionId,
+        expiresAt: quoteData.expiresAt,
+        recommendation: quoteData.recommendation,
+        isRecommended: option.optionId === quoteData.recommendation,
+        confidence: option.confidence || quoteData.confidence || 'medium',
+        tags: option.tags || [],
+        sellBreakdown: option.sellBreakdown,
+        costBreakdown: option.costBreakdown,
+      };
+    });
+
+    return { success: quotePayload.success, data: rates };
   },
 
   /**

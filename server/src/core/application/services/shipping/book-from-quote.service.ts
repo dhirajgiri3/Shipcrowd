@@ -7,6 +7,7 @@ import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import ServiceLevelPricingMetricsService from '../metrics/service-level-pricing-metrics.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { QuoteOptionOutput } from '../../../domain/types/service-level-pricing.types';
 
 type BookingFailureStage = 'before_awb' | 'after_awb' | 'unknown';
 
@@ -17,6 +18,12 @@ type ShipmentCompensationHint = {
     shipment?: {
         _id?: string;
     };
+};
+
+const FALLBACK_CONFIG = {
+    enabled: true,
+    maxRetries: 3,
+    retryOnlyPreAWB: true,
 };
 
 export interface BookFromQuoteInput {
@@ -71,113 +78,248 @@ class BookFromQuoteService {
             );
         }
 
-        const serviceType = this.mapServiceType(option.serviceName);
-        const idempotencyKey = `quote-${session._id.toString()}-${option.optionId}`;
+        const fallbackOptions = this.getRankedFallbackOptions(
+            session.options,
+            option.optionId,
+            FALLBACK_CONFIG.maxRetries
+        );
+        const attemptedOptionIds: string[] = [];
+        let lastError: unknown;
 
-        let result: Awaited<ReturnType<typeof ShipmentService.createShipment>> | undefined;
+        for (let index = 0; index < fallbackOptions.length; index += 1) {
+            const attemptNumber = index + 1;
+            const attemptOption = fallbackOptions[index];
+            attemptedOptionIds.push(attemptOption.optionId);
 
-        try {
-            result = await ShipmentService.createShipment({
-                order,
-                companyId: new mongoose.Types.ObjectId(input.companyId),
-                userId: input.userId,
-                idempotencyKey,
-                payload: {
-                    serviceType,
-                    carrierOverride: option.provider,
+            try {
+                const result = await this.attemptBookingWithOption({
+                    companyId: input.companyId,
+                    userId: input.userId,
+                    order,
+                    sessionId: session._id.toString(),
+                    option: attemptOption,
+                    attemptNumber,
                     instructions: input.instructions,
                     warehouseId: input.warehouseId,
-                },
-                pricingDetails: {
-                    selectedQuote: {
-                        quoteSessionId: session._id,
-                        optionId: option.optionId,
-                        provider: option.provider,
-                        serviceId: option.serviceId,
-                        serviceName: option.serviceName,
-                        quotedSellAmount: option.quotedAmount,
-                        expectedCostAmount: option.costAmount,
-                        expectedMarginAmount: option.estimatedMargin,
-                        expectedMarginPercent: option.estimatedMarginPercent,
-                        chargeableWeight: option.chargeableWeight,
-                        zone: option.zone,
-                        pricingSource: option.pricingSource,
-                        confidence: option.confidence,
-                        calculatedAt: new Date(),
-                        sellBreakdown: option.sellBreakdown || {
-                            total: option.quotedAmount,
-                        },
-                        costBreakdown: option.costBreakdown || {
-                            total: option.costAmount,
-                        },
+                });
+
+                try {
+                    await QuoteEngineService.selectOption(
+                        input.companyId,
+                        input.sellerId,
+                        input.sessionId,
+                        attemptOption.optionId
+                    );
+                } catch (selectionError) {
+                    logger.warn('Shipment booked, but quote selection lock failed', {
+                        sessionId: input.sessionId,
+                        optionId: attemptOption.optionId,
+                        error:
+                            selectionError instanceof Error
+                                ? selectionError.message
+                                : selectionError,
+                    });
+                }
+
+                ServiceLevelPricingMetricsService.recordBookingSuccess({
+                    attemptNumber,
+                    provider: attemptOption.provider,
+                    fallbackUsed: attemptNumber > 1,
+                });
+
+                return {
+                    sessionId: input.sessionId,
+                    optionId: attemptOption.optionId,
+                    shipment: result.shipment,
+                    carrierSelection: result.carrierSelection,
+                    pricingSnapshot: {
+                        quotedAmount: attemptOption.quotedAmount,
+                        expectedCost: attemptOption.costAmount,
+                        expectedMargin: attemptOption.estimatedMargin,
                     },
-                    rateCardName: 'Quote Session',
-                    totalPrice: option.quotedAmount,
-                    subtotal: option.quotedAmount,
-                    codCharge: 0,
-                    gstAmount: 0,
-                    baseRate: option.quotedAmount,
-                    weightCharge: 0,
-                    zoneCharge: 0,
-                    zone: option.zone,
-                    customerDiscount: 0,
-                    calculatedAt: new Date(),
-                    calculationMethod: 'override',
-                },
-            });
-        } catch (error) {
-            const stage = await this.applyCompensation({
-                companyId: input.companyId,
-                userId: input.userId,
-                orderId: input.orderId,
-                quoteSessionId: session._id.toString(),
-                optionId: option.optionId,
-                error,
-            });
-            ServiceLevelPricingMetricsService.recordBookingFailure(stage);
-            throw error;
+                    fallbackInfo: {
+                        attemptNumber,
+                        fallbackUsed: attemptNumber > 1,
+                        totalOptionsAvailable: session.options.length,
+                        attemptedOptionIds,
+                    },
+                };
+            } catch (error) {
+                lastError = error;
+                const stage = await this.applyCompensation({
+                    companyId: input.companyId,
+                    userId: input.userId,
+                    orderId: input.orderId,
+                    quoteSessionId: session._id.toString(),
+                    optionId: attemptOption.optionId,
+                    error,
+                });
+                const recoverable = this.isRecoverableError(error);
+                const isLastAttempt = attemptNumber >= fallbackOptions.length;
+
+                ServiceLevelPricingMetricsService.recordBookingFailure(stage, {
+                    attemptNumber,
+                    fallbackAttempted: attemptNumber > 1,
+                    allOptionsExhausted: recoverable && isLastAttempt,
+                    nonRecoverableStop: !recoverable,
+                });
+
+                if (!recoverable || isLastAttempt || !FALLBACK_CONFIG.enabled) {
+                    throw error;
+                }
+
+                const nextOption = fallbackOptions[index + 1];
+                if (nextOption) {
+                    ServiceLevelPricingMetricsService.recordFallbackEvent({
+                        sessionId: input.sessionId,
+                        initialProvider: attemptOption.provider,
+                        fallbackProvider: nextOption.provider,
+                        attemptNumber: attemptNumber + 1,
+                        reason: this.errorReason(error),
+                    });
+                }
+            }
         }
 
-        if (!result) {
-            ServiceLevelPricingMetricsService.recordBookingFailure('unknown');
-            throw new AppError(
+        ServiceLevelPricingMetricsService.recordBookingFailure('unknown', {
+            allOptionsExhausted: true,
+        });
+        throw (
+            lastError ||
+            new AppError(
                 'Shipment booking failed before completion',
                 ErrorCode.SYS_INTERNAL_ERROR,
                 500
-            );
+            )
+        );
+    }
+
+    private getRankedFallbackOptions(
+        sessionOptions: QuoteOptionOutput[],
+        selectedOptionId: string,
+        maxRetries: number
+    ): QuoteOptionOutput[] {
+        const selected =
+            sessionOptions.find((item) => item.optionId === selectedOptionId) ||
+            sessionOptions[0];
+        if (!selected) {
+            return [];
         }
 
-        try {
-            await QuoteEngineService.selectOption(
-                input.companyId,
-                input.sellerId,
-                input.sessionId,
-                option.optionId
-            );
-        } catch (selectionError) {
-            logger.warn('Shipment booked, but quote selection lock failed', {
-                sessionId: input.sessionId,
-                optionId: option.optionId,
-                error:
-                    selectionError instanceof Error
-                        ? selectionError.message
-                        : selectionError,
-            });
-        }
+        const remaining = sessionOptions
+            .filter((item) => item.optionId !== selected.optionId)
+            .sort((a, b) => (b.rankScore || 0) - (a.rankScore || 0));
 
-        ServiceLevelPricingMetricsService.recordBookingSuccess();
+        return [selected, ...remaining].slice(0, Math.max(1, maxRetries));
+    }
 
-        return {
-            sessionId: input.sessionId,
-            optionId: option.optionId,
-            shipment: result.shipment,
-            carrierSelection: result.carrierSelection,
-            pricingSnapshot: {
-                quotedAmount: option.quotedAmount,
-                expectedCost: option.costAmount,
-                expectedMargin: option.estimatedMargin,
+    private async attemptBookingWithOption(args: {
+        companyId: string;
+        userId: string;
+        order: Awaited<ReturnType<typeof Order.findOne>>;
+        sessionId: string;
+        option: QuoteOptionOutput;
+        attemptNumber: number;
+        instructions?: string;
+        warehouseId?: string;
+    }) {
+        const { option, sessionId, attemptNumber } = args;
+        const serviceType = this.mapServiceType(option.serviceName);
+        const idempotencyKey = `quote-${sessionId}-${option.optionId}-a${attemptNumber}`;
+
+        return ShipmentService.createShipment({
+            order: args.order,
+            companyId: new mongoose.Types.ObjectId(args.companyId),
+            userId: args.userId,
+            idempotencyKey,
+            payload: {
+                serviceType,
+                carrierOverride: option.provider,
+                instructions: args.instructions,
+                warehouseId: args.warehouseId,
             },
-        };
+            pricingDetails: {
+                selectedQuote: {
+                    quoteSessionId: new mongoose.Types.ObjectId(sessionId),
+                    optionId: option.optionId,
+                    provider: option.provider,
+                    serviceId: option.serviceId,
+                    serviceName: option.serviceName,
+                    quotedSellAmount: option.quotedAmount,
+                    expectedCostAmount: option.costAmount,
+                    expectedMarginAmount: option.estimatedMargin,
+                    expectedMarginPercent: option.estimatedMarginPercent,
+                    chargeableWeight: option.chargeableWeight,
+                    zone: option.zone,
+                    pricingSource: option.pricingSource,
+                    confidence: option.confidence,
+                    calculatedAt: new Date(),
+                    sellBreakdown: option.sellBreakdown || {
+                        total: option.quotedAmount,
+                    },
+                    costBreakdown: option.costBreakdown || {
+                        total: option.costAmount,
+                    },
+                },
+                rateCardName: 'Quote Session',
+                totalPrice: option.quotedAmount,
+                subtotal: option.quotedAmount,
+                codCharge: 0,
+                gstAmount: 0,
+                baseRate: option.quotedAmount,
+                weightCharge: 0,
+                zoneCharge: 0,
+                zone: option.zone,
+                customerDiscount: 0,
+                calculatedAt: new Date(),
+                calculationMethod: 'override',
+            },
+        });
+    }
+
+    private isRecoverableError(error: unknown): boolean {
+        if (!FALLBACK_CONFIG.retryOnlyPreAWB) {
+            return true;
+        }
+
+        const hint = this.extractCompensationHint(error);
+        if (hint.awbGenerated || hint.carrierTrackingNumber) {
+            return false;
+        }
+
+        if (error instanceof AppError) {
+            if (error.statusCode >= 500) return true;
+            if (
+                error.code === ErrorCode.SYS_TIMEOUT ||
+                error.code === ErrorCode.EXT_SERVICE_ERROR ||
+                error.code === ErrorCode.EXT_SERVICE_UNAVAILABLE ||
+                error.code === ErrorCode.EXT_COURIER_FAILURE ||
+                error.code === ErrorCode.VAL_PINCODE_NOT_SERVICEABLE
+            ) {
+                return true;
+            }
+            return false;
+        }
+
+        const message = error instanceof Error ? error.message.toLowerCase() : String(error || '').toLowerCase();
+        return (
+            message.includes('timeout') ||
+            message.includes('timed out') ||
+            message.includes('temporarily unavailable') ||
+            message.includes('serviceable') ||
+            message.includes('econn') ||
+            message.includes('etimedout')
+        );
+    }
+
+    private errorReason(error: unknown): string {
+        if (error instanceof AppError) {
+            return `${error.code}:${error.message}`;
+        }
+        if (error instanceof Error) {
+            return error.message;
+        }
+        return 'unknown_error';
     }
 
     private async applyCompensation(args: {

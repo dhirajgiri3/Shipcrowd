@@ -64,6 +64,7 @@ export default function OrdersClient() {
     const [courierRates, setCourierRates] = useState<CourierRate[]>([]);
     const [quoteExpiresAt, setQuoteExpiresAt] = useState<Date | null>(null);
     const [quoteTimeLeftSec, setQuoteTimeLeftSec] = useState<number>(0);
+    const [selectedRateBreakdown, setSelectedRateBreakdown] = useState<CourierRate | null>(null);
 
     // -- Debounce Search --
     useEffect(() => {
@@ -549,6 +550,18 @@ export default function OrdersClient() {
                                                             {courier.tags.join(' • ')}
                                                         </p>
                                                     )}
+                                                    {!!courier.sellBreakdown && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setSelectedRateBreakdown(courier);
+                                                            }}
+                                                            className="mt-2 text-[11px] font-semibold text-[var(--primary-blue)] hover:underline"
+                                                        >
+                                                            View Breakdown
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right relative z-10">
@@ -603,6 +616,51 @@ export default function OrdersClient() {
                     }
                 }}
             />
+
+            <Modal
+                isOpen={!!selectedRateBreakdown}
+                onClose={() => setSelectedRateBreakdown(null)}
+                title="Quote Breakdown"
+            >
+                {selectedRateBreakdown && (
+                    <div className="space-y-4 text-sm">
+                        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
+                            <p className="font-semibold text-[var(--text-primary)]">{selectedRateBreakdown.courierName}</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                Source: {(selectedRateBreakdown.pricingSource || 'table').toUpperCase()} • Confidence: {(selectedRateBreakdown.confidence || 'medium').toUpperCase()}
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-lg border border-[var(--border-subtle)] p-3">
+                                <p className="text-xs text-[var(--text-muted)]">Chargeable Weight</p>
+                                <p className="font-semibold text-[var(--text-primary)]">{selectedRateBreakdown.chargeableWeight || 0} kg</p>
+                            </div>
+                            <div className="rounded-lg border border-[var(--border-subtle)] p-3">
+                                <p className="text-xs text-[var(--text-muted)]">Quoted Total</p>
+                                <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(selectedRateBreakdown.quotedAmount || selectedRateBreakdown.rate)}</p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-[var(--border-subtle)] p-4">
+                            <p className="font-semibold text-[var(--text-primary)] mb-3">Sell Breakdown</p>
+                            <div className="space-y-2 text-[var(--text-secondary)]">
+                                <div className="flex items-center justify-between"><span>Base Charge</span><span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.baseCharge || 0)}</span></div>
+                                <div className="flex items-center justify-between"><span>Weight Charge</span><span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.weightCharge || 0)}</span></div>
+                                <div className="flex items-center justify-between"><span>Subtotal</span><span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.subtotal || 0)}</span></div>
+                                <div className="flex items-center justify-between"><span>COD</span><span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.codCharge || 0)}</span></div>
+                                <div className="flex items-center justify-between"><span>Fuel</span><span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.fuelCharge || 0)}</span></div>
+                                <div className="flex items-center justify-between"><span>RTO</span><span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.rtoCharge || 0)}</span></div>
+                                <div className="flex items-center justify-between"><span>GST</span><span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.gst || 0)}</span></div>
+                                <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-2 font-semibold text-[var(--text-primary)]">
+                                    <span>Total</span>
+                                    <span>{formatCurrency(selectedRateBreakdown.sellBreakdown?.total || selectedRateBreakdown.quotedAmount || selectedRateBreakdown.rate)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

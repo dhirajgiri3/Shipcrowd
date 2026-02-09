@@ -4,16 +4,13 @@ import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import { connectTestDb, closeTestDb, clearTestDb } from '../../../setup/testDatabase';
 import QuoteEngineService from '@/core/application/services/pricing/quote-engine.service';
+import ServiceRateCardFormulaService from '@/core/application/services/pricing/service-rate-card-formula.service';
 import BookFromQuoteService from '@/core/application/services/shipping/book-from-quote.service';
-import { FeatureFlag, KYC, Order } from '@/infrastructure/database/mongoose/models';
+import { KYC, Order, ServiceRateCard } from '@/infrastructure/database/mongoose/models';
 import { KYCState } from '@/core/domain/types/kyc-state';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/errorCodes';
-import FeatureFlagService from '@/core/application/services/system/feature-flag.service';
-import ratecardController from '@/presentation/http/controllers/shipping/ratecard.controller';
-import shipmentController from '@/presentation/http/controllers/shipping/shipment.controller';
 
-// Mock email sends during auth flows in tests
 jest.mock('@/core/application/services/communication/email.service', () => ({
     sendNewDeviceLoginEmail: jest.fn().mockResolvedValue(true),
     sendVerificationEmail: jest.fn().mockResolvedValue(true),
@@ -24,7 +21,6 @@ jest.mock('@/core/application/services/communication/email.service', () => ({
 const TEST_USER_ID = new mongoose.Types.ObjectId().toString();
 const TEST_COMPANY_ID = new mongoose.Types.ObjectId().toString();
 
-// Deterministic auth context for API-level route tests
 jest.mock('@/presentation/http/middleware/auth/auth', () => {
     const actual = jest.requireActual('@/presentation/http/middleware/auth/auth');
     return {
@@ -67,11 +63,10 @@ describe('Service-Level Pricing API Integration', () => {
 
     afterEach(async () => {
         jest.restoreAllMocks();
-        await FeatureFlagService.clearAllCaches();
         await clearTestDb();
     });
 
-    const seedAccessContext = async (enableFeatureFlag: boolean = true) => {
+    const seedAccessContext = async () => {
         await KYC.create({
             userId: new mongoose.Types.ObjectId(TEST_USER_ID),
             companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
@@ -79,22 +74,48 @@ describe('Service-Level Pricing API Integration', () => {
             status: 'verified',
             documents: {},
         });
-
-        if (enableFeatureFlag) {
-            await FeatureFlag.create({
-                key: 'enable_service_level_pricing',
-                name: 'Enable Service Level Pricing',
-                description: 'Test flag for service-level pricing routes',
-                type: 'boolean',
-                isEnabled: true,
-                rules: [],
-                createdBy: new mongoose.Types.ObjectId(TEST_USER_ID),
-                isArchived: false,
-            });
-        }
     };
 
-    it('POST /api/v1/quotes/courier-options returns quote options when feature flag is ON', async () => {
+    const createOrder = async (suffix: string) =>
+        Order.create({
+            orderNumber: `API-ORDER-${suffix}-${Date.now()}`,
+            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
+            customerInfo: {
+                name: 'Test Customer',
+                phone: '9999999999',
+                address: {
+                    line1: 'Test Line',
+                    city: 'Bangalore',
+                    state: 'Karnataka',
+                    country: 'India',
+                    postalCode: '560001',
+                },
+            },
+            products: [
+                {
+                    name: 'Test Product',
+                    quantity: 1,
+                    price: 1000,
+                    weight: 0.5,
+                },
+            ],
+            shippingDetails: { shippingCost: 0 },
+            paymentStatus: 'pending',
+            paymentMethod: 'prepaid',
+            source: 'manual',
+            currentStatus: 'pending',
+            statusHistory: [],
+            totals: {
+                subtotal: 1000,
+                tax: 0,
+                shipping: 0,
+                discount: 0,
+                total: 1000,
+            },
+            isDeleted: false,
+        });
+
+    it('POST /api/v1/quotes/courier-options returns quote options', async () => {
         await seedAccessContext();
 
         jest.spyOn(QuoteEngineService, 'generateQuotes').mockResolvedValue({
@@ -114,6 +135,7 @@ describe('Service-Level Pricing API Integration', () => {
                     pricingSource: 'table',
                     confidence: 'high',
                     tags: ['RECOMMENDED'],
+                    rankScore: 1,
                 },
             ] as any,
             recommendation: 'opt-ekart-1',
@@ -150,11 +172,11 @@ describe('Service-Level Pricing API Integration', () => {
         );
     });
 
-    it('POST /api/v1/quotes/courier-options returns partial results with provider timeout confidence', async () => {
+    it('GET /api/v1/orders/courier-rates returns canonical quote session payload', async () => {
         await seedAccessContext();
 
         jest.spyOn(QuoteEngineService, 'generateQuotes').mockResolvedValue({
-            sessionId: 'session-timeout-1',
+            sessionId: 'session-rates-1',
             expiresAt: new Date(Date.now() + 30 * 60 * 1000),
             options: [
                 {
@@ -175,66 +197,31 @@ describe('Service-Level Pricing API Integration', () => {
             recommendation: 'opt-delhivery-1',
             confidence: 'medium',
             providerTimeouts: { ekart: true },
-        });
+        } as any);
 
         const res = await request(app)
-            .post('/api/v1/quotes/courier-options')
-            .send({
+            .get('/api/v1/orders/courier-rates')
+            .query({
                 fromPincode: '560001',
                 toPincode: '110001',
                 weight: 0.5,
-                dimensions: { length: 10, width: 10, height: 10 },
+                length: 10,
+                width: 10,
+                height: 10,
                 paymentMode: 'prepaid',
                 orderValue: 1000,
-                shipmentType: 'forward',
             });
 
-        expect(res.status).toBe(201);
+        expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        expect(res.body.data.confidence).toBe('medium');
-        expect(res.body.data.providerTimeouts.ekart).toBe(true);
+        expect(res.body.data.sessionId).toBe('session-rates-1');
+        expect(Array.isArray(res.body.data.options)).toBe(true);
+        expect(res.body.data.options[0].optionId).toBe('opt-delhivery-1');
     });
 
-    it('POST /api/v1/orders/:orderId/ship uses quote-based booking path when sessionId is provided and flag is ON', async () => {
+    it('POST /api/v1/orders/:orderId/ship uses quote-based booking path', async () => {
         await seedAccessContext();
-
-        const order = await Order.create({
-            orderNumber: `API-ORDER-${Date.now()}`,
-            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
-            customerInfo: {
-                name: 'Test Customer',
-                phone: '9999999999',
-                address: {
-                    line1: 'Test Line',
-                    city: 'Bangalore',
-                    state: 'Karnataka',
-                    country: 'India',
-                    postalCode: '560001',
-                },
-            },
-            products: [
-                {
-                    name: 'Test Product',
-                    quantity: 1,
-                    price: 1000,
-                    weight: 0.5,
-                },
-            ],
-            shippingDetails: { shippingCost: 0 },
-            paymentStatus: 'pending',
-            paymentMethod: 'prepaid',
-            source: 'manual',
-            currentStatus: 'pending',
-            statusHistory: [],
-            totals: {
-                subtotal: 1000,
-                tax: 0,
-                shipping: 0,
-                discount: 0,
-                total: 1000,
-            },
-            isDeleted: false,
-        });
+        const order = await createOrder('BOOK');
         const orderId = String(order._id);
 
         jest.spyOn(BookFromQuoteService, 'execute').mockResolvedValue({
@@ -279,46 +266,35 @@ describe('Service-Level Pricing API Integration', () => {
         );
     });
 
+    it('POST /api/v1/orders/:orderId/ship rejects missing sessionId', async () => {
+        await seedAccessContext();
+        const order = await createOrder('MISSING-SESSION');
+
+        const res = await request(app)
+            .post(`/api/v1/orders/${String(order._id)}/ship`)
+            .send({
+                optionId: 'opt-ekart-1',
+            });
+
+        expect(res.status).toBe(422);
+    });
+
+    it('POST /api/v1/orders/:orderId/ship rejects missing optionId', async () => {
+        await seedAccessContext();
+        const order = await createOrder('MISSING-OPTION');
+
+        const res = await request(app)
+            .post(`/api/v1/orders/${String(order._id)}/ship`)
+            .send({
+                sessionId: 'session-test',
+            });
+
+        expect(res.status).toBe(422);
+    });
+
     it('POST /api/v1/orders/:orderId/ship returns 410 when quote session is expired', async () => {
         await seedAccessContext();
-
-        const order = await Order.create({
-            orderNumber: `API-ORDER-EXPIRED-${Date.now()}`,
-            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
-            customerInfo: {
-                name: 'Expired Session Customer',
-                phone: '9999999999',
-                address: {
-                    line1: 'Test Line',
-                    city: 'Bangalore',
-                    state: 'Karnataka',
-                    country: 'India',
-                    postalCode: '560001',
-                },
-            },
-            products: [
-                {
-                    name: 'Test Product',
-                    quantity: 1,
-                    price: 1000,
-                    weight: 0.5,
-                },
-            ],
-            shippingDetails: { shippingCost: 0 },
-            paymentStatus: 'pending',
-            paymentMethod: 'prepaid',
-            source: 'manual',
-            currentStatus: 'pending',
-            statusHistory: [],
-            totals: {
-                subtotal: 1000,
-                tax: 0,
-                shipping: 0,
-                discount: 0,
-                total: 1000,
-            },
-            isDeleted: false,
-        });
+        const order = await createOrder('EXPIRED');
 
         jest.spyOn(BookFromQuoteService, 'execute').mockRejectedValue(
             new AppError('Quote session expired', ErrorCode.BIZ_INVALID_STATE, 410)
@@ -334,91 +310,126 @@ describe('Service-Level Pricing API Integration', () => {
         expect(res.status).toBe(410);
     });
 
-    it('GET /api/v1/orders/courier-rates uses legacy controller path when flag is OFF', async () => {
-        await seedAccessContext(false);
+    it('POST /api/v1/admin/service-ratecards/:id/simulate returns formula pricing breakdown', async () => {
+        await seedAccessContext();
 
-        const legacySpy = jest
-            .spyOn(ratecardController, 'calculateRate')
-            .mockImplementation(async (_req: any, res: any) => {
-                res.status(200).json({
-                    success: true,
-                    data: [{ carrier: 'legacy', rate: 99 }],
-                    message: 'legacy fallback hit',
-                });
-            });
-
-        const res = await request(app)
-            .get('/api/v1/orders/courier-rates')
-            .query({
-                fromPincode: '560001',
-                toPincode: '110001',
-                weight: 0.5,
-            });
-
-        expect(res.status).toBe(200);
-        expect(res.body.message).toBe('legacy fallback hit');
-        expect(legacySpy).toHaveBeenCalled();
-    });
-
-    it('POST /api/v1/orders/:orderId/ship uses legacy shipment path when flag is OFF', async () => {
-        await seedAccessContext(false);
-
-        const order = await Order.create({
-            orderNumber: `API-ORDER-LEGACY-${Date.now()}`,
+        const card = await ServiceRateCard.create({
             companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
-            customerInfo: {
-                name: 'Legacy Customer',
-                phone: '9999999999',
-                address: {
-                    line1: 'Test Line',
-                    city: 'Bangalore',
-                    state: 'Karnataka',
-                    country: 'India',
-                    postalCode: '560001',
-                },
+            serviceId: new mongoose.Types.ObjectId(),
+            cardType: 'sell',
+            sourceMode: 'TABLE',
+            currency: 'INR',
+            effectiveDates: { startDate: new Date(Date.now() - 60_000) },
+            status: 'active',
+            calculation: {
+                weightBasis: 'max',
+                roundingUnitKg: 0.5,
+                roundingMode: 'ceil',
+                dimDivisor: 5000,
             },
-            products: [
+            zoneRules: [
                 {
-                    name: 'Legacy Product',
-                    quantity: 1,
-                    price: 1000,
-                    weight: 0.5,
+                    zoneKey: 'zoneD',
+                    slabs: [
+                        { minKg: 0, maxKg: 0.5, charge: 100 },
+                        { minKg: 0.5, maxKg: 1, charge: 130 },
+                    ],
+                    additionalPerKg: 50,
+                    fuelSurcharge: { percentage: 10, base: 'freight' },
                 },
             ],
-            shippingDetails: { shippingCost: 0 },
-            paymentStatus: 'pending',
-            paymentMethod: 'prepaid',
-            source: 'manual',
-            currentStatus: 'pending',
-            statusHistory: [],
-            totals: {
-                subtotal: 1000,
-                tax: 0,
-                shipping: 0,
-                discount: 0,
-                total: 1000,
-            },
             isDeleted: false,
         });
 
-        const legacyShipmentSpy = jest
-            .spyOn(shipmentController, 'createShipment')
-            .mockImplementation(async (_req: any, res: any) => {
-                res.status(201).json({
-                    success: true,
-                    data: { shipment: { trackingNumber: 'LEGACY-TRK-1' } },
-                    message: 'legacy shipment path',
-                });
-            });
+        jest.spyOn(ServiceRateCardFormulaService, 'calculatePricing').mockReturnValue({
+            chargeableWeight: 0.8,
+            baseCharge: 130,
+            weightCharge: 0,
+            subtotal: 130,
+            codCharge: 0,
+            fuelCharge: 13,
+            rtoCharge: 0,
+            gstBreakdown: {
+                cgst: 12.87,
+                sgst: 12.87,
+                igst: 0,
+                total: 25.74,
+            },
+            totalAmount: 168.74,
+            breakdown: {
+                weight: {
+                    actualWeight: 0.8,
+                    volumetricWeight: 0.2,
+                    chargeableWeight: 0.8,
+                    weightBasisUsed: 'max',
+                    chargedBy: 'actual',
+                    dimDivisorUsed: 5000,
+                },
+                zone: {
+                    inputZone: 'zoneD',
+                    resolvedZone: 'zoned',
+                    source: 'input',
+                    matchedZoneRule: 'zoneD',
+                },
+                slab: {
+                    minKg: 0.5,
+                    maxKg: 1,
+                    slabCharge: 130,
+                    beyondMaxSlab: false,
+                    additionalPerKg: 50,
+                    extraWeightKg: 0,
+                    roundedExtraWeightKg: 0,
+                    roundingUnitKg: 0.5,
+                    roundingMode: 'ceil',
+                },
+                cod: {
+                    paymentMode: 'prepaid',
+                    ruleType: 'not_applicable',
+                    fallbackApplied: false,
+                    charge: 0,
+                },
+                fuel: {
+                    percentage: 0.1,
+                    base: 'freight',
+                    baseAmount: 130,
+                    charge: 13,
+                },
+                rto: {
+                    charge: 0,
+                    calculationMode: 'not_applicable',
+                },
+                gst: {
+                    fromStateCode: '29',
+                    toStateCode: '29',
+                    intraState: true,
+                    taxableAmount: 143,
+                    breakdown: {
+                        cgst: 12.87,
+                        sgst: 12.87,
+                        igst: 0,
+                        total: 25.74,
+                    },
+                },
+            },
+        });
 
         const res = await request(app)
-            .post(`/api/v1/orders/${String(order._id)}/ship`)
+            .post(`/api/v1/admin/service-ratecards/${String(card._id)}/simulate`)
             .send({
-                serviceType: 'standard',
+                weight: 0.8,
+                dimensions: { length: 10, width: 10, height: 10 },
+                zone: 'zoneD',
+                paymentMode: 'prepaid',
+                orderValue: 1200,
+                provider: 'delhivery',
+                fromPincode: '560001',
+                toPincode: '110001',
             });
 
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('legacy shipment path');
-        expect(legacyShipmentSpy).toHaveBeenCalled();
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.pricing.totalAmount).toBeGreaterThan(0);
+        expect(res.body.data.pricing.breakdown.weight.chargeableWeight).toBeGreaterThan(0);
+        expect(res.body.data.card.id).toBe(String(card._id));
     });
 });

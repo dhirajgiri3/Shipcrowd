@@ -36,6 +36,13 @@ interface ServiceLevelPricingMetrics {
         success: number;
         failures: number;
         failureStages: Record<BookingFailureStage, number>;
+        fallback: {
+            fallbackAttempts: number;
+            fallbackSuccess: number;
+            fallbackExhausted: number;
+            nonRecoverableStops: number;
+            fallbackEvents: number;
+        };
     };
     reconciliation: {
         varianceCasesTotal: number;
@@ -86,6 +93,13 @@ class ServiceLevelPricingMetricsService {
                 after_awb: 0,
                 unknown: 0,
             } as Record<BookingFailureStage, number>,
+            fallback: {
+                fallbackAttempts: 0,
+                fallbackSuccess: 0,
+                fallbackExhausted: 0,
+                nonRecoverableStops: 0,
+                fallbackEvents: 0,
+            },
         },
         reconciliation: {
             varianceCasesTotal: 0,
@@ -128,14 +142,42 @@ class ServiceLevelPricingMetricsService {
         this.metrics.lastUpdatedAt = new Date();
     }
 
-    recordBookingSuccess(): void {
+    recordBookingSuccess(meta?: { attemptNumber?: number; provider?: Provider; fallbackUsed?: boolean }): void {
         this.metrics.bookings.success += 1;
+        if (meta?.attemptNumber && meta.attemptNumber > 1) {
+            this.metrics.bookings.fallback.fallbackSuccess += 1;
+        } else if (meta?.fallbackUsed) {
+            this.metrics.bookings.fallback.fallbackSuccess += 1;
+        }
         this.metrics.lastUpdatedAt = new Date();
     }
 
-    recordBookingFailure(stage: BookingFailureStage = 'unknown'): void {
+    recordBookingFailure(
+        stage: BookingFailureStage = 'unknown',
+        meta?: { attemptNumber?: number; fallbackAttempted?: boolean; allOptionsExhausted?: boolean; nonRecoverableStop?: boolean }
+    ): void {
         this.metrics.bookings.failures += 1;
         this.metrics.bookings.failureStages[stage] += 1;
+        if ((meta?.attemptNumber && meta.attemptNumber > 1) || meta?.fallbackAttempted) {
+            this.metrics.bookings.fallback.fallbackAttempts += 1;
+        }
+        if (meta?.allOptionsExhausted) {
+            this.metrics.bookings.fallback.fallbackExhausted += 1;
+        }
+        if (meta?.nonRecoverableStop) {
+            this.metrics.bookings.fallback.nonRecoverableStops += 1;
+        }
+        this.metrics.lastUpdatedAt = new Date();
+    }
+
+    recordFallbackEvent(_input: {
+        sessionId: string;
+        initialProvider: Provider;
+        fallbackProvider: Provider;
+        attemptNumber: number;
+        reason: string;
+    }): void {
+        this.metrics.bookings.fallback.fallbackEvents += 1;
         this.metrics.lastUpdatedAt = new Date();
     }
 
@@ -194,6 +236,7 @@ class ServiceLevelPricingMetricsService {
                 success: this.metrics.bookings.success,
                 failures: this.metrics.bookings.failures,
                 failureStages: { ...this.metrics.bookings.failureStages },
+                fallback: { ...this.metrics.bookings.fallback },
             },
             reconciliation: {
                 varianceCasesTotal: this.metrics.reconciliation.varianceCasesTotal,
@@ -237,6 +280,13 @@ class ServiceLevelPricingMetricsService {
                     before_awb: 0,
                     after_awb: 0,
                     unknown: 0,
+                },
+                fallback: {
+                    fallbackAttempts: 0,
+                    fallbackSuccess: 0,
+                    fallbackExhausted: 0,
+                    nonRecoverableStops: 0,
+                    fallbackEvents: 0,
                 },
             },
             reconciliation: {

@@ -4,7 +4,6 @@ import { requireAccess } from '../../../middleware';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import quoteController from '../../../controllers/shipping/quote.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
-import { requireFeatureFlag } from '../../../middleware/system/feature-flag.middleware';
 
 const router = express.Router();
 
@@ -16,7 +15,6 @@ const router = express.Router();
 router.post(
     '/courier-options',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.SANDBOX }),
     asyncHandler(quoteController.getCourierOptions)
 );
@@ -29,7 +27,6 @@ router.post(
 router.post(
     '/:sessionId/select',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.SANDBOX }),
     asyncHandler(quoteController.selectCourierOption)
 );

@@ -96,11 +96,39 @@ export const useImportServiceRateCard = (
 };
 
 export const useSimulateServiceRateCard = (
-    options?: UseMutationOptions<{ amount: number; currency: string }, ApiError, { id: string; weight: number; zoneKey: string }>
+    options?: UseMutationOptions<
+        { card: Record<string, unknown>; pricing: Record<string, unknown> },
+        ApiError,
+        {
+            id: string;
+            weight: number;
+            dimensions?: { length: number; width: number; height: number };
+            zone?: string;
+            paymentMode?: 'cod' | 'prepaid';
+            orderValue?: number;
+            provider?: 'velocity' | 'delhivery' | 'ekart';
+            fromPincode?: string;
+            toPincode?: string;
+        }
+    >
 ) => {
-    return useMutation<{ amount: number; currency: string }, ApiError, { id: string; weight: number; zoneKey: string }>({
-        mutationFn: async ({ id, weight, zoneKey }) => {
-            const response = await apiClient.post(`/admin/service-ratecards/${id}/simulate`, { weight, zoneKey });
+    return useMutation<
+        { card: Record<string, unknown>; pricing: Record<string, unknown> },
+        ApiError,
+        {
+            id: string;
+            weight: number;
+            dimensions?: { length: number; width: number; height: number };
+            zone?: string;
+            paymentMode?: 'cod' | 'prepaid';
+            orderValue?: number;
+            provider?: 'velocity' | 'delhivery' | 'ekart';
+            fromPincode?: string;
+            toPincode?: string;
+        }
+    >({
+        mutationFn: async ({ id, ...payload }) => {
+            const response = await apiClient.post(`/admin/service-ratecards/${id}/simulate`, payload);
             return response.data.data || response.data;
         },
         onError: (error) => handleApiError(error),

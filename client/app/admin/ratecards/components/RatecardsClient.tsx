@@ -262,6 +262,11 @@ export function RatecardsClient() {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    <Link href="/admin/pricing-studio">
+                        <Button variant="outline">
+                            <TrendingUp className="h-4 w-4 mr-2" /> Pricing Studio
+                        </Button>
+                    </Link>
                     <Button
                         variant="outline"
                         onClick={() => {

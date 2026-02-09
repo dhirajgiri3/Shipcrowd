@@ -4,14 +4,12 @@ import { requireAccess } from '../../../middleware';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import serviceRateCardController from '../../../controllers/shipping/service-ratecard.controller';
-import { requireFeatureFlag } from '../../../middleware/system/feature-flag.middleware';
 
 const router = express.Router();
 
 router.get(
     '/',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.SANDBOX }),
     asyncHandler(serviceRateCardController.listServiceRateCards)
 );
@@ -19,7 +17,6 @@ router.get(
 router.post(
     '/',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(serviceRateCardController.createServiceRateCard)
 );
@@ -27,7 +24,6 @@ router.post(
 router.get(
     '/:id',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.SANDBOX }),
     asyncHandler(serviceRateCardController.getServiceRateCardById)
 );
@@ -35,7 +31,6 @@ router.get(
 router.put(
     '/:id',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(serviceRateCardController.updateServiceRateCard)
 );
@@ -43,7 +38,6 @@ router.put(
 router.post(
     '/:id/import',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(serviceRateCardController.importServiceRateCard)
 );
@@ -51,7 +45,6 @@ router.post(
 router.post(
     '/:id/simulate',
     authenticate,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireAccess({ tier: AccessTier.SANDBOX }),
     asyncHandler(serviceRateCardController.simulateServiceRateCard)
 );

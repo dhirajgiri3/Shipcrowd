@@ -8,7 +8,6 @@ import labelRoutes from '../shipments/label.routes';
 import manifestRoutes from '../shipments/manifest.routes';
 import bulkRoutes from '../shipments/bulk.routes';
 import podRoutes from '../shipments/pod.routes';
-import { requireFeatureFlag } from '../../../middleware/system/feature-flag.middleware';
 
 const router = express.Router();
 
@@ -47,7 +46,6 @@ router.post(
     '/book-from-quote',
     authenticate,
     csrfProtection,
-    requireFeatureFlag('enable_service_level_pricing'),
     requireCompleteCompany,
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(shipmentController.bookFromQuote)

@@ -222,6 +222,14 @@ export interface CourierRate {
   serviceType: string;
   rate: number;
   estimatedDeliveryDays: number;
+  provider?: 'velocity' | 'delhivery' | 'ekart';
+  serviceName?: string;
+  quotedAmount?: number;
+  costAmount?: number;
+  estimatedMargin?: number;
+  estimatedMarginPercent?: number;
+  chargeableWeight?: number;
+  pricingSource?: 'live' | 'table' | 'hybrid';
   zone?: string;
   rating?: { average: number; totalReviews: number };
   sessionId?: string;
@@ -231,6 +239,26 @@ export interface CourierRate {
   isRecommended?: boolean;
   confidence?: 'high' | 'medium' | 'low';
   tags?: string[];
+  sellBreakdown?: {
+    baseCharge?: number;
+    weightCharge?: number;
+    subtotal?: number;
+    codCharge?: number;
+    fuelCharge?: number;
+    rtoCharge?: number;
+    gst?: number;
+    total?: number;
+  };
+  costBreakdown?: {
+    baseCharge?: number;
+    weightCharge?: number;
+    subtotal?: number;
+    codCharge?: number;
+    fuelCharge?: number;
+    rtoCharge?: number;
+    gst?: number;
+    total?: number;
+  };
 }
 
 /**

@@ -350,8 +350,18 @@ export const importServiceRateCardSchema = z.object({
 export type ImportServiceRateCardInput = z.infer<typeof importServiceRateCardSchema>;
 
 export const simulateServiceRateCardSchema = z.object({
-    weight: z.number().min(0),
-    zoneKey: z.string().min(1),
+    weight: z.number().min(0.001),
+    dimensions: z.object({
+        length: z.number().min(0.1),
+        width: z.number().min(0.1),
+        height: z.number().min(0.1),
+    }).optional(),
+    zone: z.string().optional(),
+    paymentMode: z.enum(['cod', 'prepaid']).optional(),
+    orderValue: z.number().min(0).optional(),
+    provider: courierProviderSchema.optional(),
+    fromPincode: z.string().regex(/^[1-9][0-9]{5}$/).optional(),
+    toPincode: z.string().regex(/^[1-9][0-9]{5}$/).optional(),
 });
 
 export type SimulateServiceRateCardInput = z.infer<typeof simulateServiceRateCardSchema>;
