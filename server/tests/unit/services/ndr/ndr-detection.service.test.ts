@@ -20,7 +20,10 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models', () => ({
 }));
 
 jest.mock('../../../../src/core/application/services/ndr/ndr-classification.service', () => ({
-    classifyAndUpdate: jest.fn(),
+    __esModule: true,
+    default: {
+        classifyAndUpdate: jest.fn(),
+    },
 }));
 
 jest.mock('../../../../src/shared/logger/winston.logger', () => ({
@@ -61,8 +64,8 @@ describe('NDRDetectionService', () => {
             currentStatus: 'shipped',
         };
 
-        (Shipment.findOne as jest.Mock).mockReturnValue({
-            populate: jest.fn().mockResolvedValue(mockShipment),
+        (Shipment.findOne as any).mockReturnValue({
+            populate: () => Promise.resolve(mockShipment),
         } as any);
     });
 
@@ -101,9 +104,9 @@ describe('NDRDetectionService', () => {
         };
 
         it('should detect NDR and create event when valid NDR webhook is received', async () => {
-            (NDREvent.findOne as jest.Mock).mockResolvedValue(null); // No duplicate
-            (NDREvent.countDocuments as jest.Mock).mockResolvedValue(0); // 1st attempt
-            (NDREvent.createNDREvent as jest.Mock).mockResolvedValue({ _id: 'ndr_123' });
+            (NDREvent.findOne as any).mockResolvedValue(null); // No duplicate
+            (NDREvent.countDocuments as any).mockResolvedValue(0); // 1st attempt
+            (NDREvent.createNDREvent as any).mockResolvedValue({ _id: 'ndr_123' });
 
             const result = await NDRDetectionService.handleWebhookNDRDetection(webhookData);
 
@@ -115,8 +118,8 @@ describe('NDRDetectionService', () => {
         });
 
         it('should return created: false if shipment not found', async () => {
-            (Shipment.findOne as jest.Mock).mockReturnValue({
-                populate: jest.fn().mockResolvedValue(null),
+            (Shipment.findOne as any).mockReturnValue({
+                populate: () => Promise.resolve(null),
             } as any);
 
             const result = await NDRDetectionService.handleWebhookNDRDetection(webhookData);
@@ -126,7 +129,7 @@ describe('NDRDetectionService', () => {
         });
 
         it('should return created: false if duplicate NDR exists within 24h', async () => {
-            (NDREvent.findOne as jest.Mock).mockResolvedValue({ _id: 'existing_ndr' }); // Duplicate exists
+            (NDREvent.findOne as any).mockResolvedValue({ _id: 'existing_ndr' }); // Duplicate exists
 
             const result = await NDRDetectionService.handleWebhookNDRDetection(webhookData);
 

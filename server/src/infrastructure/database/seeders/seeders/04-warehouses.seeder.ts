@@ -99,8 +99,9 @@ function generateWarehouseData(
         carrierDetails: {
             velocityWarehouseId: generateCarrierWarehouseId('delhivery'),
             delhiveryWarehouseId: generateCarrierWarehouseId('delhivery'),
-            dtdcWarehouseId: generateCarrierWarehouseId('dtdc'),
-            xpressbeesWarehouseId: generateCarrierWarehouseId('xpressbees'),
+            // Legacy placeholders for non-integrated carriers are generated without strict carrier enum.
+            dtdcWarehouseId: `dtdc_wh_${randomInt(100000, 999999)}`,
+            xpressbeesWarehouseId: `xpressbees_wh_${randomInt(100000, 999999)}`,
             lastSyncedAt: new Date(Date.now() - randomInt(1, 7) * 24 * 60 * 60 * 1000),
         },
     };

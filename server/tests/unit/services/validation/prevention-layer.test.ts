@@ -50,8 +50,8 @@ describe('Prevention Layer', () => {
 
     describe('AddressValidationService', () => {
         it('should validate a correct address', async () => {
-            (PincodeLookupService.isValidPincodeFormat as jest.Mock).mockReturnValue(true);
-            (PincodeLookupService.getPincodeDetails as jest.Mock).mockReturnValue({
+            (PincodeLookupService.isValidPincodeFormat as any).mockReturnValue(true);
+            (PincodeLookupService.getPincodeDetails as any).mockReturnValue({
                 city: 'MUMBAI',
                 state: 'MAHARASHTRA'
             });
@@ -71,8 +71,8 @@ describe('Prevention Layer', () => {
         });
 
         it('should detect mismatching city/state', async () => {
-            (PincodeLookupService.isValidPincodeFormat as jest.Mock).mockReturnValue(true);
-            (PincodeLookupService.getPincodeDetails as jest.Mock).mockReturnValue({
+            (PincodeLookupService.isValidPincodeFormat as any).mockReturnValue(true);
+            (PincodeLookupService.getPincodeDetails as any).mockReturnValue({
                 city: 'DELHI',
                 state: 'DELHI'
             });
@@ -101,8 +101,8 @@ describe('Prevention Layer', () => {
                 pincode: '400053'
             };
             // Default mocks
-            (PincodeLookupService.isValidPincodeFormat as jest.Mock).mockReturnValue(true);
-            (PincodeLookupService.getPincodeDetails as jest.Mock).mockReturnValue({ city: 'MUMBAI', state: 'MAHARASHTRA' });
+            (PincodeLookupService.isValidPincodeFormat as any).mockReturnValue(true);
+            (PincodeLookupService.getPincodeDetails as any).mockReturnValue({ city: 'MUMBAI', state: 'MAHARASHTRA' });
 
 
             const result = await AddressValidationService.validate(address);
@@ -120,15 +120,15 @@ describe('Prevention Layer', () => {
         });
 
         it('should send OTP successfully', async () => {
-            (CacheService.set as jest.Mock).mockResolvedValue(true);
+            (CacheService.set as any).mockResolvedValue(true);
             const result = await PhoneVerificationService.sendOTP('9876543210', 'comp_1');
             expect(result.success).toBe(true);
             expect(CacheService.set).toHaveBeenCalled();
         });
 
         it('should verify OTP correctly', async () => {
-            (CacheService.get as jest.Mock).mockResolvedValue('123456');
-            (CacheService.delete as jest.Mock).mockResolvedValue(true);
+            (CacheService.get as any).mockResolvedValue('123456');
+            (CacheService.delete as any).mockResolvedValue(true);
 
             const result = await PhoneVerificationService.verifyOTP('9876543210', '123456', 'comp_1');
             expect(result).toBe(true);
@@ -136,7 +136,7 @@ describe('Prevention Layer', () => {
         });
 
         it('should reject invalid OTP', async () => {
-            (CacheService.get as jest.Mock).mockResolvedValue('123456');
+            (CacheService.get as any).mockResolvedValue('123456');
             const result = await PhoneVerificationService.verifyOTP('9876543210', '654321', 'comp_1');
             expect(result).toBe(false);
         });
@@ -170,7 +170,7 @@ describe('Prevention Layer', () => {
             });
 
             // Mock COD Check
-            (CODVerificationService.verify as jest.Mock).mockResolvedValue({
+            (CODVerificationService.verify as any).mockResolvedValue({
                 isAllowed: true,
                 riskScore: 0,
                 reasons: []
@@ -190,7 +190,7 @@ describe('Prevention Layer', () => {
                 issues: ['Address line too short'],
                 type: 'invalid'
             });
-            (CODVerificationService.verify as jest.Mock).mockResolvedValue({
+            (CODVerificationService.verify as any).mockResolvedValue({
                 isAllowed: true, riskScore: 0, reasons: []
             });
 
@@ -205,7 +205,7 @@ describe('Prevention Layer', () => {
             jest.spyOn(AddressValidationService, 'validate').mockResolvedValue({
                 isValid: true, score: 1, issues: [], type: 'valid'
             });
-            (CODVerificationService.verify as jest.Mock).mockResolvedValue({
+            (CODVerificationService.verify as any).mockResolvedValue({
                 isAllowed: false, // COD Risk
                 riskScore: 0.5,
                 reasons: ['High RTO pincode']

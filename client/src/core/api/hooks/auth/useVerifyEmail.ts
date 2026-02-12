@@ -36,10 +36,15 @@ export function useVerifyEmail() {
                     setMessage('Email verified successfully!');
 
                     const responseData = result.data as { redirectUrl?: string; user?: { role?: string; companyId?: string | null } } | undefined;
+                    const userForRedirect =
+                        responseData?.user?.role
+                            ? { role: responseData.user.role, companyId: responseData.user.companyId ?? null }
+                            : undefined;
+
                     const destination =
                         (responseData?.redirectUrl && isAllowedRedirectPath(responseData.redirectUrl))
                             ? responseData.redirectUrl
-                            : getDefaultRedirectForUser(responseData?.user ?? undefined) || '/seller';
+                            : getDefaultRedirectForUser(userForRedirect) || '/seller';
                     setRedirectDestination(destination.includes('admin') ? 'dashboard' : 'dashboard');
 
                     const timer = setInterval(() => {

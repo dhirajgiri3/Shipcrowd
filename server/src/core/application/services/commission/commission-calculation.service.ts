@@ -197,7 +197,9 @@ export default class CommissionCalculationService {
                     const fetchedRules = await CommissionRule.find({
                         _id: { $in: ruleIds },
                     }, null, { session });
-                    const rulesById = new Map(fetchedRules.map(rule => [rule._id.toString(), rule]));
+                    const rulesById = new Map(
+                        fetchedRules.map((rule: any) => [String(rule._id ?? rule.id), rule])
+                    );
                     rulesToCheck = ruleIds
                         .map(id => rulesById.get(id.toString()))
                         .filter(Boolean);

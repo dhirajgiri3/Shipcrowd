@@ -494,7 +494,7 @@ export class FlipkartFulfillmentService {
                 currentStatus: { $in: ['PROCESSING', 'READY_TO_SHIP', 'SHIPPED'] },
             }).limit(50);
 
-            const orderIds = orders.map(order => order._id);
+            const orderIds = orders.map((order: any) => order._id);
             const shipments = orderIds.length > 0
                 ? await Shipment.find({ orderId: { $in: orderIds } })
                     .select('orderId trackingNumber carrier')
@@ -512,13 +512,14 @@ export class FlipkartFulfillmentService {
 
             for (const order of orders) {
                 // Get shipment for this order
-                const shipment = shipmentByOrderId.get(order._id.toString());
+                const orderId = String((order as any)._id ?? (order as any).id);
+                const shipment = shipmentByOrderId.get(orderId);
 
                 if (shipment && shipment.trackingNumber) {
                     try {
-                        await this.dispatchOrder(String(order._id), {
+                        await this.dispatchOrder(orderId, {
                             awbNumber: shipment.trackingNumber,
-                            courierName: shipment.carrier,
+                            courierName: shipment.carrier || 'other',
                         });
                         syncedCount++;
 
@@ -526,7 +527,7 @@ export class FlipkartFulfillmentService {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     } catch (error) {
                         logger.warn('Failed to sync dispatch', {
-                            orderId: order._id,
+                            orderId,
                             error: (error as Error).message,
                         });
                     }

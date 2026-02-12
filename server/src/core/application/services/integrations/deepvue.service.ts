@@ -88,7 +88,8 @@ const getAccessToken = async (): Promise<string> => {
       );
 
       if (response.data && response.data.access_token) {
-        accessToken = response.data.access_token;
+        const refreshedToken = String(response.data.access_token);
+        accessToken = refreshedToken;
         const expiresIn = response.data.expires_in || 3600;
         tokenExpiryTime = Date.now() + (expiresIn * 1000) - 60000; // 1min buffer
 
@@ -96,7 +97,7 @@ const getAccessToken = async (): Promise<string> => {
           expiresIn,
           expiresAt: new Date(tokenExpiryTime).toISOString(),
         });
-        return accessToken;
+        return refreshedToken;
       }
 
       logger.error('Invalid response from DeepVue authorization endpoint:', response.data);

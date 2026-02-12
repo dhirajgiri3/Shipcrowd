@@ -113,6 +113,7 @@ export function DisputeAnalytics() {
     // Prepare high-risk sellers data
     const highRiskSellers = (analytics.highRiskSellers ?? []).map((seller) => ({
         sellerId: seller.companyId,
+        sellerName: (seller as any).sellerName ?? (seller as any).companyName,
         totalDisputes: seller.disputeCount,
         disputeRate: totalDisputes > 0 ? seller.disputeCount / totalDisputes : 0,
         averageDiscrepancy: seller.averageDiscrepancy,

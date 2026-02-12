@@ -31,9 +31,12 @@ class PODController {
 
             const extension = file.originalname.split('.').pop() || 'pdf';
             const safeName = sanitizeFilename(file.originalname);
-            const filePath = `pod/${id}/${Date.now()}-${safeName || `pod.${extension}`}`;
-
-            const storedPath = await StorageService.uploadFile(file.buffer, filePath, file.mimetype);
+            const uploadResult = await StorageService.upload(file.buffer, {
+                folder: `pod/${id}`,
+                fileName: `${Date.now()}-${safeName || `pod.${extension}`}`,
+                contentType: file.mimetype,
+            });
+            const storedPath = uploadResult.key;
             const fileUrl = await StorageService.getFileUrl(storedPath);
 
             shipment.documents.push({
@@ -128,12 +131,12 @@ class PODController {
                 }
 
                 if (response?.fileBuffer) {
-                    const filePath = `pod/${id}/${Date.now()}-courier-pod.pdf`;
-                    const storedPath = await StorageService.uploadFile(
-                        response.fileBuffer,
-                        filePath,
-                        response.mimeType || 'application/pdf'
-                    );
+                    const uploadResult = await StorageService.upload(response.fileBuffer, {
+                        folder: `pod/${id}`,
+                        fileName: `${Date.now()}-courier-pod.pdf`,
+                        contentType: response.mimeType || 'application/pdf',
+                    });
+                    const storedPath = uploadResult.key;
                     const fileUrl = await StorageService.getFileUrl(storedPath);
 
                     shipment.documents.push({

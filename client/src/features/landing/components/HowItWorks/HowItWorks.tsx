@@ -206,7 +206,7 @@ function StepCard({
 
 const StoreVisual = memo(function StoreVisual({ inView, reducedMotion }: { inView: boolean; reducedMotion: boolean }) {
     const animate = inView && !reducedMotion
-    const transition = { duration: MICRO_DURATION, ease: "easeOut" }
+    const transition = { duration: MICRO_DURATION, ease: "easeOut" as const }
     return (
         <div className="relative w-full h-full flex items-center justify-center">
             <motion.div

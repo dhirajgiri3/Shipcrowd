@@ -610,7 +610,7 @@ export class ShopifyFulfillmentService {
                 currentStatus: { $in: ['PROCESSING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED'] },
             }).limit(100);
 
-            const orderIds = orders.map(order => order._id);
+            const orderIds = orders.map((order: any) => order._id);
             const shipments = orderIds.length > 0
                 ? await Shipment.find({ orderId: { $in: orderIds } })
                     .select('orderId trackingNumber carrier')
@@ -628,20 +628,21 @@ export class ShopifyFulfillmentService {
 
             for (const order of orders) {
                 // Get shipment for this order
-                const shipment = shipmentByOrderId.get(order._id.toString());
+                const orderId = String((order as any)._id ?? (order as any).id);
+                const shipment = shipmentByOrderId.get(orderId);
 
                 if (shipment && shipment.trackingNumber) {
                     try {
-                        await this.createFulfillment(String(order._id), {
+                        await this.createFulfillment(orderId, {
                             awbNumber: shipment.trackingNumber,
-                            courierName: shipment.carrier,
+                            courierName: shipment.carrier || 'other',
                             trackingUrl: undefined, // trackingUrl not in Shipment model
                             notifyCustomer: false, // Don't notify for bulk sync
                         });
                         syncedCount++;
                     } catch (error) {
                         logger.warn('Failed to sync fulfillment', {
-                            orderId: order._id,
+                            orderId,
                             error: (error as Error).message,
                         });
                     }

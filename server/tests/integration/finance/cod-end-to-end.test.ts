@@ -28,6 +28,8 @@ describe('COD Remittance End-to-End Flow', () => {
         jest.restoreAllMocks();
     });
 
+    const oid = (value: unknown): string => String(value as any);
+
     it('Scenario 1: Happy Path - Delivered, Reconciled, Early COD Batch', async () => {
         // 1. Create Shipment
         const shipment = await Shipment.create({
@@ -86,7 +88,7 @@ describe('COD Remittance End-to-End Flow', () => {
             source: 'webhook' as const
         };
 
-        const result = await CODReconciliationService.reconcileDeliveredShipment(shipment._id.toString(), courierData);
+        const result = await CODReconciliationService.reconcileDeliveredShipment(oid((shipment as any)._id), courierData);
 
         expect(result.reconciled).toBe(true);
         expect(result.discrepancy).toBeUndefined();
@@ -139,7 +141,7 @@ describe('COD Remittance End-to-End Flow', () => {
         // Verify Shipment Marked as Included
         const remittedShipment = await Shipment.findById(shipment._id);
         expect(remittedShipment!.remittance!.included).toBe(true);
-        expect(remittedShipment!.remittance!.remittanceId).toBe(batch._id.toString());
+        expect(remittedShipment!.remittance!.remittanceId).toBe(oid((batch as any)._id));
     });
 
     it('Scenario 2: Discrepancy Flow - Amount Mismatch', async () => {
@@ -191,13 +193,13 @@ describe('COD Remittance End-to-End Flow', () => {
             source: 'webhook' as const
         };
 
-        const result = await CODReconciliationService.reconcileDeliveredShipment(shipment._id.toString(), courierData);
+        const result = await CODReconciliationService.reconcileDeliveredShipment(oid((shipment as any)._id), courierData);
 
         expect(result.reconciled).toBe(false);
         expect(result.discrepancy).toBeDefined();
 
         // Verify Discrepancy
-        const discrepancy = await CODDiscrepancy.findById(result.discrepancy);
+        const discrepancy = await CODDiscrepancy.findById(oid((result as any).discrepancy));
         expect(discrepancy).not.toBeNull();
         expect(discrepancy!.amounts.difference).toBe(-500);
         expect(discrepancy!.status).toBe('detected');
@@ -205,7 +207,7 @@ describe('COD Remittance End-to-End Flow', () => {
         // Verify Shipment Status
         const updatedShipment2 = await Shipment.findById(shipment._id);
         expect(updatedShipment2!.paymentDetails.collectionStatus).toBe('disputed');
-        expect(updatedShipment2!.paymentDetails.discrepancyId!.toString()).toBe(discrepancy!._id.toString());
+        expect(updatedShipment2!.paymentDetails.discrepancyId!.toString()).toBe(oid((discrepancy as any)!._id));
     });
 
     it('Scenario 3: Discrepancy Resolution -> Remittance', async () => {
@@ -245,7 +247,7 @@ describe('COD Remittance End-to-End Flow', () => {
         await Shipment.updateOne({ _id: shipment._id }, { $set: { 'paymentDetails.discrepancyId': discrepancy._id } });
 
         // 2. Resolve Discrepancy (Accept Courier Amount)
-        await CODDiscrepancyService.resolveDiscrepancy(discrepancy._id.toString(), {
+        await CODDiscrepancyService.resolveDiscrepancy(oid((discrepancy as any)._id), {
             method: 'courier_adjustment',
             adjustedAmount: 800, // We accept 800
             resolvedBy: 'test_admin',

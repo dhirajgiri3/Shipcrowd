@@ -168,11 +168,12 @@ class InvoiceController {
                 const storagePath = `invoices/${period}/${filename}`;
 
                 // Upload to storage (Local Disk for now)
-                const storedPath = await StorageService.uploadFile(
-                    pdfBuffer,
-                    storagePath,
-                    'application/pdf'
-                );
+                const uploadResult = await StorageService.upload(pdfBuffer, {
+                    folder: `invoices/${period}`,
+                    fileName: filename,
+                    contentType: 'application/pdf',
+                });
+                const storedPath = uploadResult.key;
 
                 // Update invoice with PDF URL (relative path)
                 invoice.pdfUrl = storedPath;
@@ -234,13 +235,15 @@ class InvoiceController {
                 pdfBuffer = await pdfTemplate.generatePDF(invoice, company);
 
                 const period = formatFinancialPeriod(invoice.createdAt);
-                const storagePath = `invoices/${period}/${invoice.invoiceNumber}.pdf`;
+                const filename = `${invoice.invoiceNumber}.pdf`;
+                const storagePath = `invoices/${period}/${filename}`;
 
-                const storedPath = await StorageService.uploadFile(
-                    pdfBuffer,
-                    storagePath,
-                    'application/pdf'
-                );
+                const uploadResult = await StorageService.upload(pdfBuffer, {
+                    folder: `invoices/${period}`,
+                    fileName: filename,
+                    contentType: 'application/pdf',
+                });
+                const storedPath = uploadResult.key;
 
                 invoice.pdfUrl = storedPath;
                 await invoice.save();

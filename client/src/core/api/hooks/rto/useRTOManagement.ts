@@ -181,11 +181,14 @@ export function useRTODetails(
     return useQuery<RTOEventDetail, ApiError>({
         queryKey: queryKeys.rto.detail(rtoId ?? ''),
         queryFn: async () => {
-            const response = await apiClient.get<{ success: boolean; data: { data: RTOEventDetail } }>(
+            const response = await apiClient.get<{ success: boolean; data: RTOEventDetail | { data: RTOEventDetail } }>(
                 `/rto/events/${rtoId}`
             );
             const inner = response.data?.data;
-            return (inner as { data?: RTOEventDetail })?.data ?? (inner as RTOEventDetail);
+            if (inner && typeof inner === 'object' && 'data' in inner) {
+                return inner.data as RTOEventDetail;
+            }
+            return inner as RTOEventDetail;
         },
         enabled: !!rtoId,
         ...CACHE_TIMES.SHORT,

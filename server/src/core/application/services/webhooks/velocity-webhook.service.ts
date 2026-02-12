@@ -168,7 +168,7 @@ export class VelocityWebhookService implements WebhookEventHandler {
         if (internalStatus === 'delivered') {
           try {
             // Dynamic import to avoid circular dependencies
-            const { CODReconciliationService } = await import('../../finance/cod-reconciliation.service');
+            const { CODReconciliationService } = await import('../finance/cod-reconciliation.service');
 
             // Extract COD dat from payload if available
             // Note: Velocity webhook might specific fields for COD collection in 'shipment_data'

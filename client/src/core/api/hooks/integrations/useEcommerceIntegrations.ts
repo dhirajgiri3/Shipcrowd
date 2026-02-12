@@ -263,7 +263,10 @@ export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceInteg
             return response.data.data;
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(data.integrationId) });
+            const integrationId = data.integrationId ?? (data as any)._id;
+            if (integrationId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(String(integrationId)) });
+            }
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             queryClient.invalidateQueries({ queryKey: ['integrations', 'health'] });
             showSuccessToast('Integration updated successfully');

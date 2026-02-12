@@ -33,7 +33,7 @@ describe('NDRMagicLinkService', () => {
 
     describe('generateMagicLink', () => {
         it('should generate a valid magic link', () => {
-            (jwt.sign as jest.Mock).mockReturnValue('mock-token');
+            (jwt.sign as any).mockReturnValue('mock-token');
 
             const link = NDRMagicLinkService.generateMagicLink('ndr_123');
 
@@ -53,11 +53,11 @@ describe('NDRMagicLinkService', () => {
 
     describe('validateToken', () => {
         it('should return valid result for correct token', async () => {
-            (jwt.verify as jest.Mock).mockReturnValue({
+            (jwt.verify as any).mockReturnValue({
                 ndrEventId: 'ndr_123',
                 type: 'ndr_resolution'
             });
-            (NDREvent.findById as jest.Mock).mockResolvedValue({
+            (NDREvent.findById as any).mockResolvedValue({
                 _id: 'ndr_123',
                 status: 'detected'
             });
@@ -69,7 +69,7 @@ describe('NDRMagicLinkService', () => {
         });
 
         it('should return invalid if token type is wrong', async () => {
-            (jwt.verify as jest.Mock).mockReturnValue({
+            (jwt.verify as any).mockReturnValue({
                 ndrEventId: 'ndr_123',
                 type: 'other_type'
             });
@@ -81,11 +81,11 @@ describe('NDRMagicLinkService', () => {
         });
 
         it('should return invalid if NDR event not found', async () => {
-            (jwt.verify as jest.Mock).mockReturnValue({
+            (jwt.verify as any).mockReturnValue({
                 ndrEventId: 'ndr_123',
                 type: 'ndr_resolution'
             });
-            (NDREvent.findById as jest.Mock).mockResolvedValue(null);
+            (NDREvent.findById as any).mockResolvedValue(null);
 
             const result = await NDRMagicLinkService.validateToken('token');
 
@@ -94,11 +94,11 @@ describe('NDRMagicLinkService', () => {
         });
 
         it('should return invalid if NDR is already resolved', async () => {
-            (jwt.verify as jest.Mock).mockReturnValue({
+            (jwt.verify as any).mockReturnValue({
                 ndrEventId: 'ndr_123',
                 type: 'ndr_resolution'
             });
-            (NDREvent.findById as jest.Mock).mockResolvedValue({
+            (NDREvent.findById as any).mockResolvedValue({
                 status: 'resolved'
             });
 
@@ -109,7 +109,7 @@ describe('NDRMagicLinkService', () => {
         });
 
         it('should return invalid if token expired', async () => {
-            (jwt.verify as jest.Mock).mockImplementation(() => {
+            (jwt.verify as any).mockImplementation(() => {
                 const error: any = new Error('Expired');
                 error.name = 'TokenExpiredError';
                 throw error;

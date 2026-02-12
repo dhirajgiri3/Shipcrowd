@@ -414,7 +414,7 @@ export class AmazonFulfillmentService {
                 currentStatus: { $in: ['PROCESSING', 'SHIPPED', 'IN_TRANSIT'] },
             }).limit(50); // Limit to prevent overwhelming Feed API
 
-            const orderIds = orders.map(order => order._id);
+            const orderIds = orders.map((order: any) => order._id);
             const shipments = orderIds.length > 0
                 ? await Shipment.find({ orderId: { $in: orderIds } })
                     .select('orderId trackingNumber carrier')
@@ -432,13 +432,14 @@ export class AmazonFulfillmentService {
 
             for (const order of orders) {
                 // Get shipment for this order
-                const shipment = shipmentByOrderId.get(order._id.toString());
+                const orderId = String((order as any)._id ?? (order as any).id);
+                const shipment = shipmentByOrderId.get(orderId);
 
                 if (shipment && shipment.trackingNumber) {
                     try {
-                        await this.confirmShipment(String(order._id), {
+                        await this.confirmShipment(orderId, {
                             awbNumber: shipment.trackingNumber,
-                            courierName: shipment.carrier,
+                            courierName: shipment.carrier || 'other',
                         });
                         syncedCount++;
 
@@ -446,7 +447,7 @@ export class AmazonFulfillmentService {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     } catch (error) {
                         logger.warn('Failed to sync shipment', {
-                            orderId: order._id,
+                            orderId,
                             error: (error as Error).message,
                         });
                     }

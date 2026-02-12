@@ -227,7 +227,7 @@ export default function SocialProof() {
                             key={testimonial.name}
                             initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }}
                             whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true, threshold: 0.1 }}
+                            viewport={{ once: true, amount: 0.1 }}
                             transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.05 + i * 0.08 }}
                             className="rounded-2xl p-6 border border-[var(--border-default)] bg-[var(--bg-primary)] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-primaryBlue/20 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                         >

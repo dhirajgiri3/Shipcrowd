@@ -15,9 +15,10 @@ export interface BreadcrumbItem {
 
 interface PageHeaderProps {
     title: ReactNode | string;
-    breadcrumbs: BreadcrumbItem[];
+    breadcrumbs?: BreadcrumbItem[];
     actions?: ReactNode;
     subtitle?: ReactNode;
+    description?: ReactNode;
     className?: string;
     backUrl?: string; // Optional custom back URL, defaults to router.back()
     showBack?: boolean;
@@ -25,9 +26,10 @@ interface PageHeaderProps {
 
 export function PageHeader({
     title,
-    breadcrumbs,
+    breadcrumbs = [],
     actions,
     subtitle,
+    description,
     className,
     backUrl,
     showBack = true
@@ -89,9 +91,9 @@ export function PageHeader({
                     <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
                         {title}
                     </h1>
-                    {subtitle && (
+                    {(subtitle || description) && (
                         <div className="flex items-center gap-4 text-sm text-[var(--text-secondary)]">
-                            {subtitle}
+                            {subtitle ?? description}
                         </div>
                     )}
                 </div>
