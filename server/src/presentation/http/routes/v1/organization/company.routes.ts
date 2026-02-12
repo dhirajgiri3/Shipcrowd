@@ -117,16 +117,16 @@ router.patch(
 );
 
 /**
- * @route POST /companies/:companyId/assign-ratecard
- * @desc Assign a rate card to a company
- * @access Private (Owner/Admin)
+ * @route POST /companies/:companyId/seller-policies/bootstrap
+ * @desc Bootstrap seller courier policies for all active sellers in a company
+ * @access Private (Admin)
  */
 router.post(
-  '/:companyId/assign-ratecard',
+  '/:companyId/seller-policies/bootstrap',
   authenticate,
   csrfProtection,
-  requireAccess({ companyMatch: true, teamRoles: ['owner', 'admin'] }),
-  asyncHandler(companyController.assignRateCard)
+  requireAccess({ roles: ['admin'] }),
+  asyncHandler(companyController.bootstrapSellerPolicies)
 );
 
 /**

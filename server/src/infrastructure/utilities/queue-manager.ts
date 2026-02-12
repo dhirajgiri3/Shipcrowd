@@ -250,6 +250,17 @@ export class QueueManager {
       },
     });
 
+    // Create Seller Policy Bootstrap queue
+    await this.createQueue({
+      name: 'seller-policy-bootstrap',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    });
+
     logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });

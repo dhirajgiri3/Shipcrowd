@@ -8,7 +8,7 @@ import PricingMetricsService from '../metrics/pricing-metrics.service';
  * 
  * Purpose: Cache frequently accessed pricing data to improve performance
  * - Zone lookups (70-80% hit rate expected)
- * - RateCard queries (90%+ hit rate expected)
+ * - Pricing card queries (90%+ hit rate expected)
  * 
  * Performance Impact:
  * - Without cache: 50-80ms per calculation (4 DB queries)
@@ -63,7 +63,7 @@ export class PricingCacheService {
     }
 
     /**
-     * Cache RateCard by ID
+     * Cache pricing card by ID
      * Key format: ratecard:id:{rateCardId}
      */
     async cacheRateCardById(rateCardId: string, rateCard: any): Promise<void> {
@@ -77,7 +77,7 @@ export class PricingCacheService {
     }
 
     /**
-     * Get cached RateCard by ID
+     * Get cached pricing card by ID
      */
     async getRateCardById(rateCardId: string): Promise<any | null> {
         const key = `ratecard:id:${rateCardId}`;
@@ -97,7 +97,7 @@ export class PricingCacheService {
     }
 
     /**
-     * Cache Company Default RateCard (Versioned)
+     * Cache company default pricing card (versioned)
      * Key format: ratecard:default:{companyId}:{version}
      * Stores the entire rate card object + metadata
      */
@@ -123,7 +123,7 @@ export class PricingCacheService {
     }
 
     /**
-     * Get cached Company Default RateCard
+     * Get cached company default pricing card
      * Looks up the current version pointer, then fetches the actual rate card
      */
     async getDefaultRateCard(companyId: string): Promise<any | null> {
@@ -154,7 +154,7 @@ export class PricingCacheService {
     }
 
     /**
-     * Invalidate RateCard cache for a company
+     * Invalidate pricing card cache for a company
      * Deletes both the pointer and the specific version keys
      */
     async invalidateRateCard(companyId: string): Promise<void> {

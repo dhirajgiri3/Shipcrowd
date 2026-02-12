@@ -16,6 +16,7 @@ import { CarrierSyncJob } from './infrastructure/jobs/logistics/shipping/carrier
 import { ManifestPickupRetryJob } from './infrastructure/jobs/logistics/shipping/manifest-pickup-retry.job';
 import LostShipmentDetectionJob from './infrastructure/jobs/logistics/shipping/lost-shipment-detection.job';
 import { WarehouseSyncJob } from './infrastructure/jobs/logistics/warehouse-sync.job';
+import { SellerPolicyBootstrapJob } from './infrastructure/jobs/organization/seller-policy-bootstrap.job';
 
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import { initializeCRMListeners } from './core/application/listeners/crm/index';
@@ -108,6 +109,7 @@ const startServer = async (): Promise<void> => {
         // Initialize Carrier Sync Retry Job
         await CarrierSyncJob.initialize();
         await WarehouseSyncJob.initialize();
+        await SellerPolicyBootstrapJob.initialize();
         const { DelhiveryNdrStatusJob } = await import('./infrastructure/jobs/logistics/shipping/delhivery-ndr-status.job');
         await DelhiveryNdrStatusJob.initialize();
         logger.info('Carrier sync retry job initialized');

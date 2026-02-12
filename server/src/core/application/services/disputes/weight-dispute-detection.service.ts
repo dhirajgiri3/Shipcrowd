@@ -75,6 +75,7 @@ import { Shipment, Order, Company } from '../../../../infrastructure/database/mo
 import { IShipment } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import { WeightDisputeNotificationService } from './weight-dispute-notification.service';
 import skuWeightProfileService from '../sku/sku-weight-profile.service';
+import QuoteEngineService from '../pricing/quote-engine.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -291,7 +292,7 @@ class WeightDisputeDetectionService {
     /**
      * Calculate financial impact of weight discrepancy
      * 
-     * Integrates with DynamicPricingService for accurate zone-based pricing
+     * Uses service-level quote pricing for carrier/zone-aware charge impact
      * 
      * @param shipment - Shipment document with payment details
      * @param declaredKg - Original declared weight
@@ -304,10 +305,6 @@ class WeightDisputeDetectionService {
         actualKg: number
     ): Promise<FinancialImpact> {
         try {
-            // Lazy load DynamicPricingService to avoid circular dependencies
-            const { DynamicPricingService } = require('../../pricing/dynamic-pricing.service');
-            const pricingService = new DynamicPricingService();
-
             const order = await Order.findById(shipment.orderId);
             if (!order) {
                 logger.warn(`[WeightDispute] Order not found for shipment ${shipment._id}, using fallback`);
@@ -326,51 +323,91 @@ class WeightDisputeDetectionService {
                 }
             }
 
-            const baseParams = {
-                companyId: shipment.companyId.toString(),
-                fromPincode, // ✅ FIX: Use warehouse pincode
-                toPincode: shipment.deliveryDetails.address.postalCode, // ✅ FIX: Use deliveryDetails
-                paymentMode: order.paymentMethod, // ✅ FIX: paymentMethod not paymentMode
-                orderValue: order.totals?.total || 0, // ✅ FIX: Use totals.total
-                carrier: shipment.carrier, // ✅ FIX: Use carrier field directly
-                serviceType: shipment.serviceType
+            const toPincode = shipment.deliveryDetails.address.postalCode;
+            const orderValue = Number(order.totals?.total || 0);
+            const paymentMode = order.paymentMethod === 'cod' ? 'cod' : 'prepaid';
+            const providerHint = String(shipment.carrier || '').toLowerCase();
+
+            const resolveProvider = (): 'velocity' | 'delhivery' | 'ekart' | undefined => {
+                if (providerHint.includes('velocity')) return 'velocity';
+                if (providerHint.includes('delhivery')) return 'delhivery';
+                if (providerHint.includes('ekart')) return 'ekart';
+                return undefined;
             };
 
-            // Calculate cost for declared weight
-            const declaredQuote = await pricingService.calculatePricing({
-                ...baseParams,
-                weight: declaredKg,
-                dimensions: shipment.packageDetails.dimensions // ✅ FIX: Pass dimensions
-            });
+            const preferredProvider = resolveProvider();
 
-            // Calculate cost for actual weight
-            const actualQuote = await pricingService.calculatePricing({
-                ...baseParams,
-                weight: actualKg,
-                dimensions: shipment.weights.actual?.dimensions || shipment.packageDetails.dimensions // ✅ FIX: Use actual dimensions
-            });
+            const resolveQuoteAmount = async (
+                weight: number,
+                dimensions?: { length?: number; width?: number; height?: number }
+            ): Promise<{ amount: number; zone?: string }> => {
+                const quote = await QuoteEngineService.generateQuotes({
+                    companyId: shipment.companyId.toString(),
+                    // Internal system flow has no seller user context here; company fallback keeps pricing deterministic.
+                    sellerId: shipment.companyId.toString(),
+                    fromPincode,
+                    toPincode,
+                    weight,
+                    dimensions: {
+                        length: Number(dimensions?.length || 20),
+                        width: Number(dimensions?.width || 15),
+                        height: Number(dimensions?.height || 10),
+                    },
+                    paymentMode,
+                    orderValue,
+                    shipmentType: 'forward',
+                });
 
-            const difference = actualQuote.total - declaredQuote.total;
+                const matchingOption =
+                    quote.options.find((option) => preferredProvider && option.provider === preferredProvider) ||
+                    quote.options.find((option) =>
+                        String(option.serviceName || '')
+                            .toLowerCase()
+                            .includes(String(shipment.serviceType || '').toLowerCase())
+                    ) ||
+                    quote.options.find((option) => option.optionId === quote.recommendation) ||
+                    quote.options[0];
+
+                if (!matchingOption) {
+                    throw new Error('No quote options available for financial impact calculation');
+                }
+
+                return {
+                    amount: Number(matchingOption.quotedAmount || 0),
+                    zone: matchingOption.zone,
+                };
+            };
+
+            const declaredQuote = await resolveQuoteAmount(
+                declaredKg,
+                shipment.packageDetails.dimensions
+            );
+            const actualQuote = await resolveQuoteAmount(
+                actualKg,
+                shipment.weights.actual?.dimensions || shipment.packageDetails.dimensions
+            );
+
+            const difference = actualQuote.amount - declaredQuote.amount;
             const chargeDirection = difference > 0 ? 'debit' : 'credit';
 
-            logger.info('[WeightDispute] Financial impact calculated via DynamicPricingService', {
+            logger.info('[WeightDispute] Financial impact calculated via service-level quote engine', {
                 shipmentId: shipment._id,
                 declaredKg,
                 actualKg,
-                declaredCost: declaredQuote.total,
-                actualCost: actualQuote.total,
+                declaredCost: declaredQuote.amount,
+                actualCost: actualQuote.amount,
                 difference,
-                zone: declaredQuote.metadata?.zone
+                zone: declaredQuote.zone
             });
 
             return {
-                originalCharge: declaredQuote.total,
-                revisedCharge: actualQuote.total,
+                originalCharge: declaredQuote.amount,
+                revisedCharge: actualQuote.amount,
                 difference: Math.abs(difference),
                 chargeDirection,
             };
         } catch (error: any) {
-            logger.error('[WeightDispute] DynamicPricingService failed, using fallback', {
+            logger.error('[WeightDispute] Service-level quote pricing failed, using fallback', {
                 error: error.message,
                 shipmentId: shipment._id
             });
@@ -379,7 +416,7 @@ class WeightDisputeDetectionService {
     }
 
     /**
-     * Fallback linear calculation if DynamicPricingService fails
+     * Fallback linear calculation if service-level quote pricing fails
      */
     private calculateFallbackImpact(shipment: IShipment, declaredKg: number, actualKg: number): FinancialImpact {
         const originalCharge = shipment.paymentDetails.shippingCost;
@@ -494,19 +531,25 @@ class WeightDisputeDetectionService {
     ): Promise<void> {
         const declaredValue = shipment.packageDetails?.weight || 0;
 
-        shipment.set('weights', {
+        const nextWeights = {
             declared: {
                 value: declaredValue,
-                unit: 'kg'
+                unit: 'kg' as const,
             },
             actual: {
                 value: this.convertToKg(actualWeight),
-                unit: 'kg',
+                unit: 'kg' as const,
                 scannedAt: carrierData.scannedAt,
                 scannedBy: carrierData.carrierName,
             },
             verified: true,
-        });
+        };
+
+        if (typeof (shipment as any).set === 'function') {
+            shipment.set('weights', nextWeights);
+        } else {
+            (shipment as any).weights = nextWeights;
+        }
 
         shipment.weightDispute = {
             exists: true,

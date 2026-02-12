@@ -151,66 +151,15 @@ export const updateShipmentStatusSchema = z.object({
 
 export type UpdateShipmentStatusInput = z.infer<typeof updateShipmentStatusSchema>;
 
-// ============================================================================
-// RateCard Schemas
-// ============================================================================
-
-export const zonePricingEntrySchema = z.object({
-    baseWeight: z.number().min(0),
-    basePrice: z.number().min(0),
-    additionalPricePerKg: z.number().min(0),
-});
-
-export const zonePricingSchema = z.object({
-    zoneA: zonePricingEntrySchema,
-    zoneB: zonePricingEntrySchema,
-    zoneC: zonePricingEntrySchema,
-    zoneD: zonePricingEntrySchema,
-    zoneE: zonePricingEntrySchema,
-});
-
-export const rateCardStatusSchema = z.enum(['draft', 'active', 'inactive', 'expired']);
-
-export const createRateCardSchema = z.object({
-    name: z.string().min(2, 'Rate card name is required'),
-    rateCardCategory: z.string().optional(),
-    shipmentType: z.enum(['forward', 'reverse']).optional(),
-    gst: z.number().min(0).optional(),
-    minimumFare: z.number().min(0).optional(),
-    minimumFareCalculatedOn: z.enum(['freight', 'freight_overhead']).optional(),
-    zoneBType: z.enum(['state', 'distance']).optional(),
-    codPercentage: z.number().min(0).optional(),
-    codMinimumCharge: z.number().min(0).optional(),
-    fuelSurcharge: z.number().min(0).optional(),
-    fuelSurchargeBase: z.enum(['freight', 'freight_cod']).optional(),
-    zonePricing: zonePricingSchema,
-    effectiveDates: z.object({
-        startDate: z.string().transform(str => new Date(str)),
-        endDate: z.string().transform(str => new Date(str)).optional(),
-    }),
-    status: rateCardStatusSchema.default('draft'),
-});
-
-export type CreateRateCardInput = z.infer<typeof createRateCardSchema>;
-
-export const updateRateCardSchema = createRateCardSchema.partial();
-
-export const calculateRateSchema = z.object({
-    weight: z.number().min(0, 'Weight must be positive'),
-    zoneId: z.string().optional(),
-    originPincode: z.string().optional(),
-    destinationPincode: z.string().optional(),
-    carrier: z.string().optional(),
-    serviceType: serviceTypeSchema.default('standard'),
-});
-
-
-export type CalculateRateInput = z.infer<typeof calculateRateSchema>;
-
 export const recommendCourierSchema = z.object({
     pickupPincode: z.string().min(6, 'Invalid pickup pincode'),
     deliveryPincode: z.string().min(6, 'Invalid delivery pincode'),
     weight: z.number().min(0.001, 'Weight must be greater than 0'),
+    dimensions: z.object({
+        length: z.number().min(0.1),
+        width: z.number().min(0.1),
+        height: z.number().min(0.1),
+    }).optional(),
     declaredValue: z.number().min(0).optional(),
     paymentMode: z.enum(['cod', 'prepaid']).default('prepaid'),
 });

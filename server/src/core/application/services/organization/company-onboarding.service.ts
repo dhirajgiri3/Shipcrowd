@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import Zone from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/zone.model';
-import RateCard from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/rate-card.model';
-import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
+import sellerPolicyBootstrapService from './seller-policy-bootstrap.service';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -9,10 +8,9 @@ import logger from '../../../../shared/logger/winston.logger';
  *
  * Automatically sets up new companies with:
  * - 5 standard zones (A-E) following BlueShip's zone logic
- * - Default "Standard Rates" rate card with basic pricing
- * - Auto-assignment of rate card to company
+ * - Seller policy bootstrap for active sellers
  *
- * This ensures every company can start shipping immediately without manual setup.
+ * This ensures every company can start shipping immediately without legacy pricing-card dependencies.
  */
 export class CompanyOnboardingService {
     private static instance: CompanyOnboardingService;
@@ -135,75 +133,6 @@ export class CompanyOnboardingService {
     }
 
     /**
-     * Create default "Standard Rates" rate card for a company
-     * Includes basic pricing for all carriers with zone-based rates
-     */
-    async createDefaultRateCard(companyId: mongoose.Types.ObjectId): Promise<mongoose.Types.ObjectId> {
-        try {
-            const zonePricing = {
-                zoneA: { baseWeight: 0.5, basePrice: 30, additionalPricePerKg: 15 },
-                zoneB: { baseWeight: 0.5, basePrice: 40, additionalPricePerKg: 20 },
-                zoneC: { baseWeight: 0.5, basePrice: 50, additionalPricePerKg: 25 },
-                zoneD: { baseWeight: 0.5, basePrice: 65, additionalPricePerKg: 30 },
-                zoneE: { baseWeight: 0.5, basePrice: 90, additionalPricePerKg: 45 }
-            };
-
-            // Create the rate card
-            const rateCard = new RateCard({
-                name: `Standard Rates - ${companyId.toString().substring(0, 8)}`,
-                companyId,
-                zonePricing,
-                effectiveDates: {
-                    startDate: new Date()
-                },
-                status: 'active',
-                version: 'v2',
-                versionNumber: 1,
-                zoneBType: 'state',
-                minimumFare: 35,
-                minimumFareCalculatedOn: 'freight_overhead',
-                codPercentage: 2.0,
-                codMinimumCharge: 25,
-                fuelSurcharge: 8,
-                isDeleted: false
-            });
-
-            await rateCard.save();
-            logger.info(`[CompanyOnboarding] Created default rate card ${rateCard._id} for company ${companyId}`);
-
-            return rateCard._id as mongoose.Types.ObjectId;
-        } catch (error) {
-            logger.error(`[CompanyOnboarding] Failed to create rate card for company ${companyId}:`, error);
-            throw error;
-        }
-    }
-
-    /**
-     * Auto-assign the default rate card to the company
-     */
-    async assignRateCardToCompany(
-        companyId: mongoose.Types.ObjectId,
-        rateCardId: mongoose.Types.ObjectId
-    ): Promise<void> {
-        try {
-            await Company.findByIdAndUpdate(
-                companyId,
-                {
-                    $set: {
-                        'settings.defaultRateCardId': rateCardId
-                    }
-                },
-                { new: true }
-            );
-
-            logger.info(`[CompanyOnboarding] Assigned rate card ${rateCardId} to company ${companyId}`);
-        } catch (error) {
-            logger.error(`[CompanyOnboarding] Failed to assign rate card to company ${companyId}:`, error);
-            throw error;
-        }
-    }
-
-    /**
      * Complete onboarding setup for a new company
      * Called automatically after company creation
      */
@@ -214,11 +143,13 @@ export class CompanyOnboardingService {
             // Step 1: Create 5 standard zones
             await this.createDefaultZones(companyId);
 
-            // Step 2: Create default rate card
-            const rateCardId = await this.createDefaultRateCard(companyId);
-
-            // Step 3: Assign rate card to company
-            await this.assignRateCardToCompany(companyId, rateCardId);
+            // Step 2: Bootstrap seller courier policies for active sellers.
+            // For newly created companies this is typically zero and remains safe/idempotent.
+            await sellerPolicyBootstrapService.bootstrapForCompany(
+                companyId.toString(),
+                companyId.toString(),
+                { preserveExisting: true }
+            );
 
             logger.info(`[CompanyOnboarding] Completed onboarding for company ${companyId}`);
         } catch (error) {

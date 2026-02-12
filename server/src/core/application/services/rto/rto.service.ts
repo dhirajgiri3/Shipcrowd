@@ -23,7 +23,7 @@ import WhatsAppService from '../../../../infrastructure/external/communication/w
 import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
 import WalletService from '../wallet/wallet.service';
 import { RTONotificationService } from './rto-notification.service';
-import RateCardService from './rate-card.service';
+import ServiceRatePricingService from './rate-card.service';
 import InventoryService from '../warehouse/inventory.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
@@ -504,7 +504,7 @@ export default class RTOService {
     /**
      * Calculate RTO charges
      *
-     * Phase 5 Implementation: Dynamic calculation based on RateCard configuration.
+     * Phase 5 Implementation: Dynamic calculation based on service-level pricing configuration.
      * Falls back to flat rate if no rate card configured.
      */
     private static async calculateRTOCharges(shipment: ShipmentInfo): Promise<number> {
@@ -530,8 +530,8 @@ export default class RTOService {
                 destinationPincode: fullShipment.pickupDetails?.warehouseId?.toString() // Will need warehouse lookup for actual pincode
             };
 
-            // Calculate charges using RateCardService
-            const calculation = await RateCardService.calculateRTOCharges(rateInput);
+            // Calculate charges using service-level pricing helper
+            const calculation = await ServiceRatePricingService.calculateRTOCharges(rateInput);
 
             logger.info('RTO charges calculated', {
                 shipmentId: shipment._id,

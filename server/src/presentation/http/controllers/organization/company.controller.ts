@@ -14,6 +14,8 @@ import { AuthenticationError, ValidationError, DatabaseError, AuthorizationError
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import CompanyOnboardingService from '../../../../core/application/services/organization/company-onboarding.service';
+import sellerPolicyBootstrapService from '../../../../core/application/services/organization/seller-policy-bootstrap.service';
+import SellerPolicyBootstrapJob from '../../../../infrastructure/jobs/organization/seller-policy-bootstrap.job';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 const createCompanySchema = z.object({
@@ -44,7 +46,6 @@ const createCompanySchema = z.object({
 
 const updateCompanySchema = createCompanySchema.partial().extend({
   settings: z.object({
-    defaultRateCardId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
     defaultWarehouseId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
     notificationEmail: z.string().email().optional(),
     notificationPhone: z.string().optional(),
@@ -67,8 +68,8 @@ const updateCompanySchema = createCompanySchema.partial().extend({
   }).optional(),
 });
 
-const assignRateCardSchema = z.object({
-  rateCardId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid rate card ID'),
+const bootstrapSellerPoliciesSchema = z.object({
+  preserveExisting: z.boolean().optional().default(true),
 });
 
 export const getCompanyById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -409,58 +410,61 @@ export const getCompanyStats = async (req: Request, res: Response, next: NextFun
   }
 };
 
-export const assignRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const bootstrapSellerPolicies = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
+    if (!isPlatformAdmin(req.user)) {
+      throw new AuthorizationError('Only admins can bootstrap seller policies', ErrorCode.AUTHZ_FORBIDDEN);
+    }
+
     const companyId = req.params.companyId;
-    if (!mongoose.Types.ObjectId.isValid(companyId)) {
+    if (!companyId || !mongoose.Types.ObjectId.isValid(companyId)) {
       throw new ValidationError('Invalid company ID format', ErrorCode.VAL_INVALID_INPUT);
     }
 
-    const validation = assignRateCardSchema.safeParse(req.body);
+    const validation = bootstrapSellerPoliciesSchema.safeParse(req.body || {});
     if (!validation.success) {
       throw new ValidationError(validation.error.errors[0].message, ErrorCode.VAL_INVALID_INPUT);
     }
 
-    // Verify rate card exists
-    const RateCard = (await import('../../../../infrastructure/database/mongoose/models/index.js')).RateCard;
-    const rateCard = await RateCard.findOne({
-      _id: validation.data.rateCardId,
-      isDeleted: false,
-      status: 'active'
-    });
+    const sellerCount = await sellerPolicyBootstrapService.countActiveSellers(companyId);
+    const preserveExisting = validation.data.preserveExisting;
+    const triggeredBy = String(req.user._id);
 
-    if (!rateCard) {
-      throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+    if (sellerCount >= sellerPolicyBootstrapService.getAsyncThreshold()) {
+      await SellerPolicyBootstrapJob.enqueue({
+        companyId,
+        triggeredBy,
+        preserveExisting,
+      });
+
+      sendSuccess(
+        res,
+        {
+          companyId,
+          totalSellers: sellerCount,
+          created: 0,
+          skipped: 0,
+          errors: [],
+          queued: true,
+        },
+        'Seller policy bootstrap queued'
+      );
+      return;
     }
 
-    // Update company
-    const company = await Company.findOneAndUpdate(
-      { _id: companyId, isDeleted: false },
-      { $set: { 'settings.defaultRateCardId': validation.data.rateCardId } },
-      { new: true }
+    const result = await sellerPolicyBootstrapService.bootstrapForCompany(
+      companyId,
+      triggeredBy,
+      { preserveExisting }
     );
 
-    if (!company) {
-      throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
-    }
-
-    await createAuditLog(
-      req.user._id,
-      companyId,
-      'update',
-      'company',
-      companyId,
-      { message: 'Rate card assigned', rateCardId: validation.data.rateCardId },
-      req
-    );
-
-    sendSuccess(res, { company }, 'Rate card assigned successfully');
+    sendSuccess(res, { ...result, queued: false }, 'Seller policy bootstrap completed');
   } catch (error) {
-    logger.error('Error assigning rate card:', error);
+    logger.error('Error bootstrapping seller policies:', error);
     next(error);
   }
 };
@@ -473,5 +477,5 @@ export default {
   inviteCompanyOwner,
   updateCompanyStatus,
   getCompanyStats,
-  assignRateCard,
+  bootstrapSellerPolicies,
 };
