@@ -59,6 +59,7 @@ describe('ServiceRateCardFormulaService', () => {
     let pincodeLookup: MockedPincodeLookup;
     let gstService: MockedGSTService;
     let service: ServiceRateCardFormulaService;
+    const originalRtoFlag = process.env.SERVICE_LEVEL_RTO_PRICING_ENABLED;
 
     beforeEach(() => {
         pincodeLookup = {
@@ -85,6 +86,14 @@ describe('ServiceRateCardFormulaService', () => {
         };
 
         service = new ServiceRateCardFormulaService(pincodeLookup, gstService);
+    });
+
+    afterEach(() => {
+        if (originalRtoFlag === undefined) {
+            delete process.env.SERVICE_LEVEL_RTO_PRICING_ENABLED;
+        } else {
+            process.env.SERVICE_LEVEL_RTO_PRICING_ENABLED = originalRtoFlag;
+        }
     });
 
     it('uses actual weight when actual is higher than volumetric', () => {
@@ -261,6 +270,62 @@ describe('ServiceRateCardFormulaService', () => {
             createInput({ serviceRateCard: freightCodCard, paymentMode: 'cod', orderValue: 1000 })
         );
         expect(freightCodResult.fuelCharge).toBe(13); // subtotal(100) + cod(30)
+    });
+
+    it('applies forward_mirror fallback RTO when rtoRule is missing', () => {
+        const card = createBaseCard();
+        delete card.zoneRules[0].rtoRule;
+
+        const result = service.calculatePricing(createInput({ serviceRateCard: card }));
+
+        expect(result.rtoCharge).toBe(100);
+        expect(result.breakdown.rto.calculationMode).toBe('forward_mirror');
+        expect(result.breakdown.rto.fallbackApplied).toBe(true);
+    });
+
+    it('applies flat RTO rule over forward_mirror fallback', () => {
+        const card = createBaseCard();
+        card.zoneRules[0].rtoRule = { type: 'flat', amount: 45 };
+
+        const result = service.calculatePricing(createInput({ serviceRateCard: card }));
+
+        expect(result.rtoCharge).toBe(45);
+        expect(result.breakdown.rto.calculationMode).toBe('flat');
+        expect(result.breakdown.rto.fallbackApplied).toBe(false);
+    });
+
+    it('applies percentage RTO with min/max clamps', () => {
+        const cardMin = createBaseCard();
+        cardMin.zoneRules[0].rtoRule = { type: 'percentage', percentage: 10, minCharge: 20, maxCharge: 30 };
+        cardMin.zoneRules[0].slabs = [{ minKg: 0, maxKg: 1, charge: 100 }];
+
+        const minResult = service.calculatePricing(createInput({ serviceRateCard: cardMin }));
+        expect(minResult.rtoCharge).toBe(20);
+
+        const cardMax = createBaseCard();
+        cardMax.zoneRules[0].rtoRule = { type: 'percentage', percentage: 50, minCharge: 10, maxCharge: 30 };
+        cardMax.zoneRules[0].slabs = [{ minKg: 0, maxKg: 1, charge: 100 }];
+
+        const maxResult = service.calculatePricing(createInput({ serviceRateCard: cardMax }));
+        expect(maxResult.rtoCharge).toBe(30);
+        expect(maxResult.breakdown.rto.calculationMode).toBe('percentage');
+    });
+
+    it('excludes RTO from taxable total when SERVICE_LEVEL_RTO_PRICING_ENABLED is false', () => {
+        process.env.SERVICE_LEVEL_RTO_PRICING_ENABLED = 'false';
+
+        const card = createBaseCard();
+        card.zoneRules[0].rtoRule = { type: 'flat', amount: 20 };
+        card.zoneRules[0].fuelSurcharge = { percentage: 0, base: 'freight' };
+        delete card.zoneRules[0].codRule;
+        card.zoneRules[0].slabs = [{ minKg: 0, maxKg: 1, charge: 100 }];
+
+        const result = service.calculatePricing(createInput({ serviceRateCard: card, paymentMode: 'prepaid' }));
+
+        expect(result.rtoCharge).toBe(20);
+        expect(result.breakdown.rto.includedInQuoteTotal).toBe(false);
+        expect(result.breakdown.gst.taxableAmount).toBe(100);
+        expect(result.totalAmount).toBe(118);
     });
 
     it('calculates GST as intra-state and inter-state correctly', () => {

@@ -20,6 +20,8 @@ import {
 } from '../../../../infrastructure/external/couriers/base/courier.adapter';
 import ServiceLevelPricingMetricsService from '../metrics/service-level-pricing-metrics.service';
 import ServiceRateCardFormulaService from './service-rate-card-formula.service';
+import { getPricingFeatureFlags } from './pricing-feature-flags';
+import PricingStrategyService from './pricing-strategy.service';
 import {
     AutoPriority,
     PricingSource,
@@ -45,14 +47,22 @@ const PROVIDER_TO_FACTORY_KEY: Record<Provider, string> = {
 };
 
 const PROVIDER_TIMEOUT_MS: Record<Provider, number> = {
-    ekart: 2000,
-    delhivery: 1500,
-    velocity: 1500,
+    ekart: 35000,
+    delhivery: 20000,
+    velocity: 35000,
+};
+
+const SERVICEABILITY_TIMEOUT_MS: Record<Provider, number> = {
+    ekart: 2500,
+    delhivery: 2500,
+    velocity: 0,
 };
 
 type CourierServiceLean = {
     _id: mongoose.Types.ObjectId;
     provider: Provider;
+    serviceType: ICourierService['serviceType'];
+    providerServiceId?: string;
     displayName: string;
     constraints?: ICourierService['constraints'];
     sla?: ICourierService['sla'];
@@ -111,6 +121,13 @@ interface ResolvedCost extends NormalizedRateResult {
     chargeableWeight: number;
 }
 
+interface ServiceLiveRate {
+    amount: number;
+    zone?: string;
+    confidence: PricingConfidence;
+    chargeableWeight: number;
+}
+
 export interface QuoteEngineInput {
     companyId: string;
     sellerId: string;
@@ -128,7 +145,28 @@ export interface QuoteEngineInput {
 }
 
 class QuoteEngineService {
+    private shouldCountAsProviderFailure(error: unknown): boolean {
+        const statusCode = Number((error as any)?.statusCode || (error as any)?.status);
+        const code = String((error as any)?.code || '');
+
+        // Non-fatal provider outcomes: treat as "no options", not platform outage.
+        if (statusCode === 404 || statusCode === 422) return false;
+        if (
+            code === ErrorCode.BIZ_NOT_FOUND ||
+            code === ErrorCode.VAL_PINCODE_NOT_SERVICEABLE ||
+            code === ErrorCode.VAL_INVALID_INPUT
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
     async generateQuotes(input: QuoteEngineInput): Promise<QuoteSessionOutput> {
+        // Wiring point for phased rollout flags. Behavior remains unchanged in this PR.
+        const pricingFeatureFlags = this.getPricingFeatureFlags();
+        void pricingFeatureFlags;
+
         const startedAt = Date.now();
         let providerEntries: Provider[] = [];
         const providerTimeouts: Partial<Record<Provider, boolean>> = {};
@@ -151,6 +189,12 @@ class QuoteEngineService {
             }).lean<CourierServiceLean[]>();
 
             services = this.applyPolicyFilters(services, policy || undefined);
+            logger.debug('Quote engine service pool prepared', {
+                companyId: input.companyId,
+                sellerId: input.sellerId,
+                policyApplied: Boolean(policy),
+                servicesCount: services.length,
+            });
 
             if (!services.length) {
                 throw new AppError(
@@ -175,25 +219,60 @@ class QuoteEngineService {
             providerEntries = SUPPORTED_PROVIDERS.filter(
                 (provider) => groupedByProvider[provider].length > 0
             );
+            logger.debug('Quote engine provider entries resolved', {
+                companyId: input.companyId,
+                sellerId: input.sellerId,
+                providerEntries,
+                providerServiceCounts: Object.fromEntries(
+                    SUPPORTED_PROVIDERS.map((provider) => [
+                        provider,
+                        groupedByProvider[provider].length,
+                    ])
+                ),
+            });
 
             const providerResults = await Promise.all(
                 providerEntries.map(async (provider) => {
                     const providerServices = groupedByProvider[provider];
                     try {
+                        const providerAvailable = await CourierFactory.isProviderAvailable(
+                            PROVIDER_TO_FACTORY_KEY[provider],
+                            companyObjectId
+                        );
+                        if (!providerAvailable) {
+                            logger.warn('Quote engine skipped provider due to inactive/missing integration', {
+                                companyId: input.companyId,
+                                provider,
+                            });
+                            return {
+                                provider,
+                                providerOptions: [] as QuoteOptionOutput[],
+                                failed: false,
+                            };
+                        }
+
                         const providerOptions = await this.withTimeout(
                             this.buildProviderOptions(provider, providerServices, input, now),
                             PROVIDER_TIMEOUT_MS[provider],
                             provider
                         );
-                        return { provider, providerOptions };
+                        return { provider, providerOptions, failed: false };
                     } catch (error) {
+                        const hardFailure = this.shouldCountAsProviderFailure(error);
                         logger.warn('Provider quote generation failed', {
                             provider,
                             companyId: input.companyId,
+                            hardFailure,
                             error: error instanceof Error ? error.message : error,
                         });
-                        providerTimeouts[provider] = true;
-                        return { provider, providerOptions: [] as QuoteOptionOutput[] };
+                        if (hardFailure) {
+                            providerTimeouts[provider] = true;
+                        }
+                        return {
+                            provider,
+                            providerOptions: [] as QuoteOptionOutput[],
+                            failed: hardFailure,
+                        };
                     }
                 })
             );
@@ -201,8 +280,35 @@ class QuoteEngineService {
             const options: QuoteOptionOutput[] = providerResults.flatMap(
                 (result) => result.providerOptions
             );
+            logger.debug('Quote engine provider option results', {
+                companyId: input.companyId,
+                sellerId: input.sellerId,
+                providerOptionCounts: providerResults.map((result) => ({
+                    provider: result.provider,
+                    count: result.providerOptions.length,
+                    failed: result.failed,
+                })),
+                totalOptions: options.length,
+            });
+            const failedProviders = providerResults.filter((result) => result.failed);
+            const allProvidersFailed =
+                providerEntries.length > 0 && failedProviders.length === providerEntries.length;
 
             if (!options.length) {
+                if (allProvidersFailed) {
+                    throw new AppError(
+                        'Courier rates unavailable from all configured live providers',
+                        ErrorCode.EXT_SERVICE_UNAVAILABLE,
+                        503,
+                        true,
+                        {
+                            providerFailures: failedProviders.map((result) => result.provider),
+                            fromPincode: input.fromPincode,
+                            toPincode: input.toPincode,
+                        }
+                    );
+                }
+
                 throw new AppError(
                     'No quote options could be generated',
                     ErrorCode.VAL_PINCODE_NOT_SERVICEABLE,
@@ -386,6 +492,10 @@ class QuoteEngineService {
         return SUPPORTED_PROVIDERS.includes(value as Provider);
     }
 
+    private getPricingFeatureFlags() {
+        return getPricingFeatureFlags();
+    }
+
     private applyPolicyFilters(
         services: CourierServiceLean[],
         policy?: SellerPolicyLean
@@ -450,21 +560,63 @@ class QuoteEngineService {
             provider === 'ekart' &&
             typeof providerClient.getLaneServiceability === 'function'
         ) {
-            const laneResult = await providerClient.getLaneServiceability({
-                pickupPincode: input.fromPincode,
-                dropPincode: input.toPincode,
-                weight: input.weight,
-                paymentMode: input.paymentMode,
-            });
-            serviceable = Boolean(laneResult.serviceable);
-            zone = laneResult.zone;
-            defaultConfidence = laneResult.confidence;
-        } else {
-            serviceable = await providerClient.checkServiceability(
-                input.toPincode,
-                'delivery'
-            );
+            try {
+                const laneResult = await this.withTimeout(
+                    providerClient.getLaneServiceability({
+                        pickupPincode: input.fromPincode,
+                        dropPincode: input.toPincode,
+                        weight: input.weight,
+                        paymentMode: input.paymentMode,
+                    }),
+                    SERVICEABILITY_TIMEOUT_MS.ekart,
+                    provider
+                );
+                serviceable = Boolean(laneResult.serviceable);
+                zone = laneResult.zone;
+                defaultConfidence = laneResult.confidence;
+            } catch (error) {
+                logger.warn(
+                    'Quote engine Ekart lane serviceability failed, continuing with fallback pricing',
+                    {
+                        companyId: input.companyId,
+                        fromPincode: input.fromPincode,
+                        toPincode: input.toPincode,
+                        error: error instanceof Error ? error.message : error,
+                    }
+                );
+                serviceable = true;
+                defaultConfidence = 'low';
+            }
+        } else if (provider === 'velocity') {
+            // Velocity checkServiceability uses a default origin and can reject valid lanes
+            // for the current quote origin. Use live-rate call per service as the source of truth.
+            serviceable = true;
             defaultConfidence = 'medium';
+        } else {
+            try {
+                serviceable = await this.withTimeout(
+                    providerClient.checkServiceability(
+                        input.toPincode,
+                        'delivery'
+                    ),
+                    SERVICEABILITY_TIMEOUT_MS[provider],
+                    provider
+                );
+                defaultConfidence = 'medium';
+            } catch (error) {
+                logger.warn(
+                    'Quote engine provider serviceability check failed, continuing with fallback pricing',
+                    {
+                        provider,
+                        companyId: input.companyId,
+                        fromPincode: input.fromPincode,
+                        toPincode: input.toPincode,
+                        error: error instanceof Error ? error.message : error,
+                    }
+                );
+                serviceable = true;
+                defaultConfidence = 'low';
+            }
         }
 
         if (!serviceable) {
@@ -484,74 +636,141 @@ class QuoteEngineService {
             orderValue: input.orderValue,
             shipmentType: input.shipmentType === 'reverse' ? 'return' : 'forward',
         };
+        const liveRateCache = new Map<string, ServiceLiveRate>();
+        const candidates = await Promise.all(
+            services.map(async (service) => {
+                try {
+                    const liveRate = await this.getLiveRateForService(
+                        provider,
+                        providerClient,
+                        rateRequest,
+                        service,
+                        zone,
+                        defaultConfidence,
+                        liveRateCache
+                    );
+                    const liveRateZone = liveRate.zone || zone;
+                    if (!this.isServiceEligibleForRequest(service, input, liveRateZone)) {
+                        return null;
+                    }
+
+                    const cost = await this.resolveCost(
+                        provider,
+                        service._id,
+                        input,
+                        liveRate.amount,
+                        liveRateZone,
+                        liveRate.confidence,
+                        now
+                    );
+                    const sell = await this.resolveSell(
+                        provider,
+                        service._id,
+                        input,
+                        cost.amount,
+                        liveRateZone,
+                        now
+                    );
+                    const estimatedMargin = sell.amount - cost.amount;
+                    const estimatedMarginPercent =
+                        sell.amount > 0 ? (estimatedMargin / sell.amount) * 100 : 0;
+
+                    return {
+                        optionId: `opt-${provider}-${service._id.toString()}`,
+                        provider,
+                        serviceId: service._id,
+                        serviceName: service.displayName,
+                        chargeableWeight: Math.max(
+                            cost.chargeableWeight,
+                            sell.chargeableWeight,
+                            liveRate.chargeableWeight
+                        ),
+                        zone: liveRateZone,
+                        quotedAmount: Number(sell.amount.toFixed(2)),
+                        costAmount: Number(cost.amount.toFixed(2)),
+                        estimatedMargin: Number(estimatedMargin.toFixed(2)),
+                        estimatedMarginPercent: Number(estimatedMarginPercent.toFixed(2)),
+                        eta: {
+                            minDays: service.sla?.eddMinDays,
+                            maxDays: service.sla?.eddMaxDays,
+                        },
+                        pricingSource: sell.source,
+                        confidence: cost.confidence,
+                        rankScore: 0,
+                        tags: [],
+                        sellBreakdown: sell.breakdown,
+                        costBreakdown: cost.quoteBreakdown,
+                    } as QuoteOptionOutput;
+                } catch (error) {
+                    logger.warn('Quote engine skipped provider service due to service-level failure', {
+                        provider,
+                        serviceId: String(service._id),
+                        serviceCode: service.providerServiceId,
+                        serviceType: service.serviceType,
+                        error: error instanceof Error ? error.message : error,
+                    });
+                    return null;
+                }
+            })
+        );
+
+        return candidates.filter((item): item is QuoteOptionOutput => item !== null);
+    }
+
+    private async getLiveRateForService(
+        provider: Provider,
+        providerClient: ICourierAdapter,
+        baseRateRequest: CourierRateRequest,
+        service: CourierServiceLean,
+        fallbackZone: string | undefined,
+        defaultConfidence: PricingConfidence,
+        cache: Map<string, ServiceLiveRate>
+    ): Promise<ServiceLiveRate> {
+        const cacheKey = `${service.serviceType}:${service.providerServiceId || ''}`;
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
+
+        if (
+            provider === 'ekart' &&
+            (service.serviceType === 'express' || service.serviceType === 'air') &&
+            !service.providerServiceId
+        ) {
+            logger.warn('Courier service missing providerServiceId for Ekart express/air mapping', {
+                provider,
+                serviceId: String(service._id),
+                serviceType: service.serviceType,
+            });
+        }
+
+        const rateRequest: CourierRateRequest = {
+            ...baseRateRequest,
+            serviceType: service.serviceType,
+            providerServiceId: service.providerServiceId,
+        };
 
         const rateResults = await providerClient
             .getRates(rateRequest)
             .catch((error: unknown) => {
                 logger.warn('Provider live rate failed, switching to table fallback', {
                     provider,
+                    serviceId: String(service._id),
+                    serviceType: service.serviceType,
                     error: error instanceof Error ? error.message : error,
                 });
                 return [] as CourierRateResponse[];
             });
 
         const liveRate = this.pickPrimaryRate(rateResults);
-        const liveRateAmount = Number(liveRate?.total || 0);
-        const liveRateZone = liveRate?.zone || zone;
-        const chargeableWeight = input.weight;
-
-        const options: QuoteOptionOutput[] = [];
-        for (const service of services) {
-            if (!this.isServiceEligibleForRequest(service, input, liveRateZone)) {
-                continue;
-            }
-
-            const cost = await this.resolveCost(
-                provider,
-                service._id,
-                input,
-                liveRateAmount,
-                liveRateZone,
-                defaultConfidence,
-                now
-            );
-            const sell = await this.resolveSell(
-                provider,
-                service._id,
-                input,
-                cost.amount,
-                liveRateZone,
-                now
-            );
-            const estimatedMargin = sell.amount - cost.amount;
-            const estimatedMarginPercent =
-                sell.amount > 0 ? (estimatedMargin / sell.amount) * 100 : 0;
-
-            options.push({
-                optionId: `opt-${provider}-${service._id.toString()}`,
-                provider,
-                serviceId: service._id,
-                serviceName: service.displayName,
-                chargeableWeight: Math.max(cost.chargeableWeight, sell.chargeableWeight, chargeableWeight),
-                zone: liveRateZone,
-                quotedAmount: Number(sell.amount.toFixed(2)),
-                costAmount: Number(cost.amount.toFixed(2)),
-                estimatedMargin: Number(estimatedMargin.toFixed(2)),
-                estimatedMarginPercent: Number(estimatedMarginPercent.toFixed(2)),
-                eta: {
-                    minDays: service.sla?.eddMinDays,
-                    maxDays: service.sla?.eddMaxDays,
-                },
-                pricingSource: sell.source,
-                confidence: cost.confidence,
-                rankScore: 0,
-                tags: [],
-                sellBreakdown: sell.breakdown,
-                costBreakdown: cost.quoteBreakdown,
-            });
-        }
-
-        return options;
+        const resolved: ServiceLiveRate = {
+            amount: Number(liveRate?.total || 0),
+            zone: liveRate?.zone || fallbackZone,
+            confidence: defaultConfidence,
+            chargeableWeight: baseRateRequest.package.weight,
+        };
+        cache.set(cacheKey, resolved);
+        return resolved;
     }
 
     private pickPrimaryRate(
@@ -666,34 +885,34 @@ class QuoteEngineService {
         defaultConfidence: PricingConfidence,
         now: Date
     ): Promise<ResolvedCost> {
-        const card = await ServiceRateCard.findOne(
-            this.buildRateCardQuery(serviceId, 'cost', now)
-        ).lean<ServiceRateCardLean | null>();
+        const card = await this.findActiveRateCard(serviceId, 'cost', now);
+        const strategy = PricingStrategyService.resolveCost({
+            hasCard: Boolean(card),
+            cardSourceMode: card?.sourceMode,
+            hasLiveRate: liveRateAmount > 0,
+        });
 
-        if (card) {
-            if (
-                (card.sourceMode === 'LIVE_API' || card.sourceMode === 'HYBRID') &&
-                liveRateAmount > 0
-            ) {
-                return {
-                    provider,
-                    amount: liveRateAmount,
-                    currency: 'INR',
-                    source: card.sourceMode === 'LIVE_API' ? 'live' : 'hybrid',
-                    confidence: defaultConfidence,
-                    zone,
-                    breakdown: {
-                        freight: liveRateAmount,
-                        total: liveRateAmount,
-                    },
-                    quoteBreakdown: {
-                        subtotal: liveRateAmount,
-                        total: liveRateAmount,
-                    },
-                    chargeableWeight: input.weight,
-                };
-            }
+        if (strategy.mode === 'live') {
+            return {
+                provider,
+                amount: liveRateAmount,
+                currency: 'INR',
+                source: strategy.source,
+                confidence: defaultConfidence,
+                zone,
+                breakdown: {
+                    freight: liveRateAmount,
+                    total: liveRateAmount,
+                },
+                quoteBreakdown: {
+                    subtotal: liveRateAmount,
+                    total: liveRateAmount,
+                },
+                chargeableWeight: input.weight,
+            };
+        }
 
+        if (strategy.mode === 'formula' && card) {
             const formulaResult = ServiceRateCardFormulaService.calculatePricing({
                 serviceRateCard: card,
                 weight: input.weight,
@@ -709,32 +928,12 @@ class QuoteEngineService {
                 provider,
                 amount: formulaResult.totalAmount,
                 currency: 'INR',
-                source: card.sourceMode === 'HYBRID' ? 'hybrid' : 'table',
-                confidence: 'medium',
+                source: strategy.source,
+                confidence: strategy.confidence,
                 zone,
                 breakdown: this.toNormalizedBreakdown(formulaResult),
                 quoteBreakdown: this.toQuoteBreakdown(formulaResult),
                 chargeableWeight: formulaResult.chargeableWeight,
-            };
-        }
-
-        if (liveRateAmount > 0) {
-            return {
-                provider,
-                amount: liveRateAmount,
-                currency: 'INR',
-                source: 'live',
-                confidence: defaultConfidence,
-                zone,
-                breakdown: {
-                    freight: liveRateAmount,
-                    total: liveRateAmount,
-                },
-                quoteBreakdown: {
-                    subtotal: liveRateAmount,
-                    total: liveRateAmount,
-                },
-                chargeableWeight: input.weight,
             };
         }
 
@@ -743,8 +942,8 @@ class QuoteEngineService {
             provider,
             amount: fallback,
             currency: 'INR',
-            source: 'table',
-            confidence: 'low',
+            source: strategy.source,
+            confidence: strategy.confidence,
             zone,
             breakdown: {
                 freight: fallback,
@@ -766,14 +965,16 @@ class QuoteEngineService {
         zone: string | undefined,
         now: Date
     ): Promise<ResolvedSell> {
-        const card = await ServiceRateCard.findOne(
-            this.buildRateCardQuery(serviceId, 'sell', now)
-        ).lean<ServiceRateCardLean | null>();
+        const card = await this.findActiveRateCard(serviceId, 'sell', now);
+        const strategy = PricingStrategyService.resolveSell({
+            hasCard: Boolean(card),
+            cardSourceMode: card?.sourceMode,
+        });
 
-        if (!card) {
+        if (strategy.mode === 'fallback' || !card) {
             return {
                 amount: fallbackFromCost * 1.1,
-                source: 'table',
+                source: strategy.source,
                 breakdown: {
                     subtotal: fallbackFromCost * 1.1,
                     total: fallbackFromCost * 1.1,
@@ -796,7 +997,7 @@ class QuoteEngineService {
 
         return {
             amount: formulaResult.totalAmount,
-            source: this.mapCardSourceModeToPricingSource(card.sourceMode),
+            source: strategy.source,
             breakdown: this.toQuoteBreakdown(formulaResult),
             chargeableWeight: formulaResult.chargeableWeight,
         };
@@ -846,12 +1047,26 @@ class QuoteEngineService {
         };
     }
 
-    private mapCardSourceModeToPricingSource(
-        sourceMode: IServiceRateCard['sourceMode']
-    ): PricingSource {
-        if (sourceMode === 'LIVE_API') return 'live';
-        if (sourceMode === 'HYBRID') return 'hybrid';
-        return 'table';
+    private async findActiveRateCard(
+        serviceId: mongoose.Types.ObjectId,
+        cardType: 'cost' | 'sell',
+        now: Date
+    ): Promise<ServiceRateCardLean | null> {
+        const query = this.buildRateCardQuery(serviceId, cardType, now);
+        const cards = await ServiceRateCard.find(query)
+            .sort({ 'effectiveDates.startDate': -1, createdAt: -1 })
+            .limit(2)
+            .lean<ServiceRateCardLean[]>();
+
+        if (cards.length > 1) {
+            logger.warn('Multiple active service rate cards matched deterministic selection', {
+                serviceId: String(serviceId),
+                cardType,
+                selectedBy: ['effectiveDates.startDate desc', 'createdAt desc'],
+            });
+        }
+
+        return cards[0] || null;
     }
 
     private calculateFromCard(

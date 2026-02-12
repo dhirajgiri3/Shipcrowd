@@ -6,7 +6,7 @@ import { connectTestDb, closeTestDb, clearTestDb } from '../../../setup/testData
 import QuoteEngineService from '@/core/application/services/pricing/quote-engine.service';
 import ServiceRateCardFormulaService from '@/core/application/services/pricing/service-rate-card-formula.service';
 import BookFromQuoteService from '@/core/application/services/shipping/book-from-quote.service';
-import { KYC, Order, ServiceRateCard } from '@/infrastructure/database/mongoose/models';
+import { Integration, KYC, Order, ServiceRateCard, CourierService } from '@/infrastructure/database/mongoose/models';
 import { KYCState } from '@/core/domain/types/kyc-state';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/errorCodes';
@@ -476,6 +476,9 @@ describe('Service-Level Pricing API Integration', () => {
                 rto: {
                     charge: 0,
                     calculationMode: 'not_applicable',
+                    fallbackApplied: false,
+                    baseAmount: 0,
+                    includedInQuoteTotal: true,
                 },
                 gst: {
                     fromStateCode: '29',
@@ -538,5 +541,185 @@ describe('Service-Level Pricing API Integration', () => {
             });
 
         expect(res.status).toBe(400);
+    });
+
+    it('POST /api/v1/admin/service-ratecards rejects overlapping active effective windows', async () => {
+        await seedAccessContext();
+
+        const serviceId = new mongoose.Types.ObjectId();
+        await ServiceRateCard.create({
+            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
+            serviceId,
+            cardType: 'sell',
+            sourceMode: 'TABLE',
+            currency: 'INR',
+            effectiveDates: { startDate: new Date('2026-01-01T00:00:00.000Z') },
+            status: 'active',
+            calculation: {
+                weightBasis: 'max',
+                roundingUnitKg: 0.5,
+                roundingMode: 'ceil',
+                dimDivisor: 5000,
+            },
+            zoneRules: [
+                {
+                    zoneKey: 'zoneD',
+                    slabs: [{ minKg: 0, maxKg: 1, charge: 100 }],
+                },
+            ],
+            isDeleted: false,
+        });
+
+        const res = await request(app)
+            .post('/api/v1/admin/service-ratecards')
+            .send({
+                serviceId: String(serviceId),
+                cardType: 'sell',
+                sourceMode: 'TABLE',
+                currency: 'INR',
+                effectiveDates: { startDate: '2026-01-15T00:00:00.000Z' },
+                status: 'active',
+                calculation: {
+                    weightBasis: 'max',
+                    roundingUnitKg: 0.5,
+                    roundingMode: 'ceil',
+                    dimDivisor: 5000,
+                },
+                zoneRules: [
+                    {
+                        zoneKey: 'zoneD',
+                        slabs: [{ minKg: 0, maxKg: 1, charge: 110 }],
+                    },
+                ],
+            });
+
+        expect(res.status).toBe(409);
+    });
+
+    it('GET /api/v1/admin/courier-services returns providerServiceId and constraint fields', async () => {
+        await seedAccessContext();
+        const companyObjectId = new mongoose.Types.ObjectId(TEST_COMPANY_ID);
+
+        const integration = await Integration.create({
+            companyId: companyObjectId,
+            type: 'courier',
+            provider: 'ekart',
+            settings: {
+                isActive: true,
+            },
+            credentials: {
+                apiKey: 'test-key',
+            },
+            isDeleted: false,
+        });
+
+        await CourierService.create({
+            companyId: companyObjectId,
+            provider: 'ekart',
+            integrationId: integration._id,
+            serviceCode: 'EK_SURF',
+            providerServiceId: 'SURFACE',
+            displayName: 'Ekart Surface',
+            serviceType: 'surface',
+            status: 'active',
+            constraints: {
+                maxCodValue: 30000,
+                maxPrepaidValue: 60000,
+                paymentModes: ['cod', 'prepaid'],
+            },
+            sla: {
+                eddMinDays: 2,
+                eddMaxDays: 5,
+            },
+            zoneSupport: ['A', 'B', 'C'],
+            source: 'manual',
+            isDeleted: false,
+        });
+
+        const res = await request(app).get('/api/v1/admin/courier-services');
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(Array.isArray(res.body.data)).toBe(true);
+        expect(res.body.data[0]).toMatchObject({
+            serviceCode: 'EK_SURF',
+            providerServiceId: 'SURFACE',
+            constraints: {
+                maxCodValue: 30000,
+                maxPrepaidValue: 60000,
+                paymentModes: ['cod', 'prepaid'],
+            },
+        });
+    });
+
+    it('POST /api/v1/admin/service-ratecards stores COD/Fuel/RTO rules with effective window', async () => {
+        await seedAccessContext();
+
+        const serviceId = new mongoose.Types.ObjectId();
+        const payload = {
+            serviceId: String(serviceId),
+            cardType: 'sell',
+            sourceMode: 'TABLE',
+            currency: 'INR',
+            effectiveDates: {
+                startDate: '2026-02-01T00:00:00.000Z',
+                endDate: '2026-03-01T00:00:00.000Z',
+            },
+            status: 'active',
+            calculation: {
+                weightBasis: 'max',
+                roundingUnitKg: 0.5,
+                roundingMode: 'ceil',
+                dimDivisor: 5000,
+            },
+            zoneRules: [
+                {
+                    zoneKey: 'zoneD',
+                    slabs: [{ minKg: 0, maxKg: 1, charge: 120 }],
+                    additionalPerKg: 50,
+                    codRule: {
+                        type: 'slab',
+                        basis: 'orderValue',
+                        slabs: [
+                            { min: 0, max: 1000, value: 25, type: 'flat' },
+                            { min: 1000, max: 5000, value: 1.5, type: 'percentage' },
+                        ],
+                    },
+                    fuelSurcharge: {
+                        percentage: 10,
+                        base: 'freight_cod',
+                    },
+                    rtoRule: {
+                        type: 'percentage',
+                        percentage: 55,
+                        minCharge: 30,
+                        maxCharge: 200,
+                    },
+                },
+            ],
+        };
+
+        const res = await request(app).post('/api/v1/admin/service-ratecards').send(payload);
+
+        expect(res.status).toBe(201);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.effectiveDates.startDate).toBe(payload.effectiveDates.startDate);
+        expect(res.body.data.effectiveDates.endDate).toBe(payload.effectiveDates.endDate);
+        expect(res.body.data.zoneRules[0]).toMatchObject({
+            codRule: {
+                type: 'slab',
+                basis: 'orderValue',
+            },
+            fuelSurcharge: {
+                percentage: 10,
+                base: 'freight_cod',
+            },
+            rtoRule: {
+                type: 'percentage',
+                percentage: 55,
+                minCharge: 30,
+                maxCharge: 200,
+            },
+        });
     });
 });

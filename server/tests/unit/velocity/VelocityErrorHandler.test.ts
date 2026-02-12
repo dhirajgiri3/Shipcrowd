@@ -1,8 +1,10 @@
 /**
  * VelocityErrorHandler Unit Tests
  *
- * Tests error classification, retry logic, and rate limiting
- * Coverage targets: 85%+
+ * Tests error classification, retry logic, rate limiting,
+ * and Shipfast-specific error code mapping.
+ *
+ * Coverage targets: 90%+
  */
 
 import {
@@ -11,7 +13,7 @@ import {
   RateLimiter,
   VelocityRateLimiters
 } from '../../../src/infrastructure/external/couriers/velocity/velocity-error-handler';
-import { VelocityError } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
+import { VelocityError, VelocityErrorType } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
 
 describe('VelocityErrorHandler', () => {
   describe('handleVelocityError()', () => {
@@ -19,7 +21,8 @@ describe('VelocityErrorHandler', () => {
       const originalError = new VelocityError(
         400,
         { message: 'Test error', status_code: 400 },
-        false
+        false,
+        VelocityErrorType.VALIDATION_ERROR
       );
 
       const result = handleVelocityError(originalError);
@@ -27,9 +30,10 @@ describe('VelocityErrorHandler', () => {
       expect(result).toBe(originalError);
       expect(result.statusCode).toBe(400);
       expect(result.isRetryable).toBe(false);
+      expect(result.errorType).toBe(VelocityErrorType.VALIDATION_ERROR);
     });
 
-    it('should handle 401 authentication error', () => {
+    it('should handle 401 authentication error with errorType', () => {
       const axiosError = {
         response: {
           status: 401,
@@ -45,10 +49,11 @@ describe('VelocityErrorHandler', () => {
       expect(result).toBeInstanceOf(VelocityError);
       expect(result.statusCode).toBe(401);
       expect(result.isRetryable).toBe(false);
-      expect(result.message).toContain('authentication failed');
+      expect(result.errorType).toBe(VelocityErrorType.AUTHENTICATION_ERROR);
+      expect(result.message).toContain('Authentication failed');
     });
 
-    it('should handle 400 validation error', () => {
+    it('should handle 400 validation error with field-level details', () => {
       const axiosError = {
         response: {
           status: 400,
@@ -66,7 +71,26 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(400);
       expect(result.isRetryable).toBe(false);
-      expect(result.message).toContain('Validation failed');
+      expect(result.errorType).toBe(VelocityErrorType.VALIDATION_ERROR);
+      expect(result.message).toContain('pincode');
+      expect(result.message).toContain('phone');
+    });
+
+    it('should handle 400 warehouse-related validation as WAREHOUSE_NOT_FOUND', () => {
+      const axiosError = {
+        response: {
+          status: 400,
+          data: {
+            message: 'Invalid warehouse_id provided',
+            errors: { warehouse_id: 'Warehouse does not exist' }
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError);
+
+      expect(result.statusCode).toBe(400);
+      expect(result.errorType).toBe(VelocityErrorType.WAREHOUSE_NOT_FOUND);
     });
 
     it('should handle 404 not found error', () => {
@@ -87,6 +111,36 @@ describe('VelocityErrorHandler', () => {
       expect(result.message).toContain('not found');
     });
 
+    it('should classify 404 as SHIPMENT_NOT_FOUND for shipment-related errors', () => {
+      const axiosError = {
+        response: {
+          status: 404,
+          data: { message: 'Shipment not found for given AWB' }
+        }
+      };
+
+      const result = handleVelocityError(axiosError);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.errorType).toBe(VelocityErrorType.SHIPMENT_NOT_FOUND);
+    });
+
+    it('should classify 404 as WAREHOUSE_NOT_FOUND for warehouse-related errors', () => {
+      const axiosError = {
+        response: {
+          status: 404,
+          data: { message: 'Warehouse not found with given ID' }
+        }
+      };
+
+      const result = handleVelocityError(axiosError);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.errorType).toBe(VelocityErrorType.WAREHOUSE_NOT_FOUND);
+    });
+
+    // ── Shipfast 422 Sub-Classification ──
+
     it('should handle 422 not serviceable error', () => {
       const axiosError = {
         response: {
@@ -102,8 +156,110 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(422);
       expect(result.isRetryable).toBe(false);
-      expect(result.message).toContain('serviceable');
+      expect(result.errorType).toBe(VelocityErrorType.NOT_SERVICEABLE);
     });
+
+    it('should classify 422 as CANNOT_CANCEL for cancellation failures', () => {
+      const axiosError = {
+        response: {
+          status: 422,
+          data: {
+            message: 'Cancellation failed - shipment already picked up',
+            error: 'Cannot cancel shipment in current state'
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError, 'cancel-order');
+
+      expect(result.statusCode).toBe(422);
+      expect(result.errorType).toBe(VelocityErrorType.CANNOT_CANCEL);
+      expect(result.isRetryable).toBe(false);
+    });
+
+    it('should classify 422 as WAYBILL_FAILED for waybill operation failures', () => {
+      const axiosError = {
+        response: {
+          status: 422,
+          data: {
+            message: 'AWB generation failed for the shipment',
+            error: 'Waybill assignment error'
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError, 'forward-order-shipment');
+
+      expect(result.statusCode).toBe(422);
+      expect(result.errorType).toBe(VelocityErrorType.WAYBILL_FAILED);
+    });
+
+    it('should classify 422 as ORDER_CREATION_FAILED for duplicate orders', () => {
+      const axiosError = {
+        response: {
+          status: 422,
+          data: {
+            message: 'Order already exists with this order_id',
+            error: 'Duplicate order'
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError);
+
+      expect(result.statusCode).toBe(422);
+      expect(result.errorType).toBe(VelocityErrorType.ORDER_CREATION_FAILED);
+    });
+
+    it('should classify 422 as WAREHOUSE_NOT_FOUND for warehouse issues', () => {
+      const axiosError = {
+        response: {
+          status: 422,
+          data: {
+            message: 'Invalid warehouse_id provided',
+            errors: { pickup_location: 'Warehouse not active' }
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError);
+
+      expect(result.statusCode).toBe(422);
+      expect(result.errorType).toBe(VelocityErrorType.WAREHOUSE_NOT_FOUND);
+    });
+
+    it('should classify 422 using context when body is generic', () => {
+      const axiosError = {
+        response: {
+          status: 422,
+          data: {
+            message: 'Operation failed',
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError, 'cancel-order');
+
+      expect(result.errorType).toBe(VelocityErrorType.CANNOT_CANCEL);
+    });
+
+    it('should default to API_ERROR for unrecognizable 422 errors', () => {
+      const axiosError = {
+        response: {
+          status: 422,
+          data: {
+            message: 'Something went wrong',
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError);
+
+      expect(result.statusCode).toBe(422);
+      expect(result.errorType).toBe(VelocityErrorType.API_ERROR);
+    });
+
+    // ── Standard HTTP errors ──
 
     it('should handle 429 rate limit error as retryable', () => {
       const axiosError = {
@@ -119,6 +275,7 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(429);
       expect(result.isRetryable).toBe(true);
+      expect(result.errorType).toBe(VelocityErrorType.RATE_LIMIT_EXCEEDED);
       expect(result.message).toContain('Rate limit');
     });
 
@@ -136,6 +293,7 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(500);
       expect(result.isRetryable).toBe(true);
+      expect(result.errorType).toBe(VelocityErrorType.API_ERROR);
     });
 
     it('should handle 502 bad gateway as retryable', () => {
@@ -182,7 +340,7 @@ describe('VelocityErrorHandler', () => {
       expect(result.isRetryable).toBe(true);
     });
 
-    it('should handle timeout error as retryable', () => {
+    it('should handle timeout error as retryable with TIMEOUT_ERROR type', () => {
       const timeoutError = {
         code: 'ECONNABORTED',
         message: 'Request timeout after 30000ms'
@@ -192,10 +350,11 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(408);
       expect(result.isRetryable).toBe(true);
+      expect(result.errorType).toBe(VelocityErrorType.TIMEOUT_ERROR);
       expect(result.message).toContain('timeout');
     });
 
-    it('should handle network connection errors as retryable', () => {
+    it('should handle network connection errors as retryable with NETWORK_ERROR type', () => {
       const networkError = {
         code: 'ENOTFOUND',
         message: 'getaddrinfo ENOTFOUND shazam.velocity.in'
@@ -205,6 +364,7 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(503);
       expect(result.isRetryable).toBe(true);
+      expect(result.errorType).toBe(VelocityErrorType.NETWORK_ERROR);
       expect(result.message).toContain('Network error');
     });
 
@@ -218,6 +378,7 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(503);
       expect(result.isRetryable).toBe(true);
+      expect(result.errorType).toBe(VelocityErrorType.NETWORK_ERROR);
     });
 
     it('should handle generic error with default behavior', () => {
@@ -229,6 +390,7 @@ describe('VelocityErrorHandler', () => {
 
       expect(result.statusCode).toBe(500);
       expect(result.isRetryable).toBe(true);
+      expect(result.errorType).toBe(VelocityErrorType.API_ERROR);
       expect(result.message).toContain('Generic Context');
     });
 
@@ -242,7 +404,29 @@ describe('VelocityErrorHandler', () => {
 
       const result = handleVelocityError(error, 'Forward Order');
 
-      expect(result.message).toContain('Velocity API');
+      expect(result.message).toContain('Server error');
+    });
+
+    it('should parse field-level errors from Shipfast status:0 response', () => {
+      const axiosError = {
+        response: {
+          status: 400,
+          data: {
+            status: 0,
+            message: 'Validation failed',
+            errors: {
+              billing_pincode: 'Must be a valid 6-digit pincode',
+              weight: 'Weight must be greater than 0'
+            }
+          }
+        }
+      };
+
+      const result = handleVelocityError(axiosError);
+
+      expect(result.message).toContain('billing_pincode');
+      expect(result.message).toContain('weight');
+      expect(result.velocityError.errors).toBeDefined();
     });
   });
 
@@ -567,6 +751,27 @@ describe('VelocityErrorHandler', () => {
       const error = new VelocityError(400, errorDetails, false);
 
       expect(error.message).toContain('Validation failed');
+    });
+
+    it('should include errorType on VelocityError', () => {
+      const error = new VelocityError(
+        422,
+        { message: 'AWB failed', status_code: 422 },
+        false,
+        VelocityErrorType.WAYBILL_FAILED
+      );
+
+      expect(error.errorType).toBe(VelocityErrorType.WAYBILL_FAILED);
+    });
+
+    it('should default errorType to API_ERROR', () => {
+      const error = new VelocityError(
+        500,
+        { message: 'Server error', status_code: 500 },
+        true
+      );
+
+      expect(error.errorType).toBe(VelocityErrorType.API_ERROR);
     });
   });
 });

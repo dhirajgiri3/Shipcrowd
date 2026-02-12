@@ -10,6 +10,7 @@ import {
     ServiceRateCardFormulaInput,
     ServiceRateCardFormulaOutput,
 } from '../../../domain/types/service-level-pricing.types';
+import { getPricingFeatureFlags } from './pricing-feature-flags';
 
 type FormulaCard = ServiceRateCardFormulaInput['serviceRateCard'];
 type ZoneRule = FormulaCard['zoneRules'][number];
@@ -86,6 +87,8 @@ class ServiceRateCardFormulaService {
     ) {}
 
     calculatePricing(input: ServiceRateCardFormulaInput): ServiceRateCardFormulaOutput {
+        const pricingFeatureFlags = this.getPricingFeatureFlags();
+
         this.validateInput(input);
 
         const weightBreakdown = this.calculateChargeableWeight(input);
@@ -100,9 +103,10 @@ class ServiceRateCardFormulaService {
 
         const cod = this.calculateCODCharge(zoneRule, input.paymentMode, input.orderValue);
         const fuel = this.calculateFuelSurcharge(zoneRule, subtotal, cod.charge);
-        const rtoCharge = 0;
+        const rto = this.calculateRTOCharge(zoneRule, subtotal);
+        const rtoTaxableComponent = pricingFeatureFlags.serviceLevelRtoPricingEnabled ? rto.charge : 0;
 
-        const gstTaxableAmount = this.round2(subtotal + cod.charge + fuel.charge + rtoCharge);
+        const gstTaxableAmount = this.round2(subtotal + cod.charge + fuel.charge + rtoTaxableComponent);
         const gst = this.calculateGST(gstTaxableAmount, input.fromPincode, input.toPincode);
         const totalAmount = this.round2(gstTaxableAmount + gst.breakdown.total);
 
@@ -145,8 +149,11 @@ class ServiceRateCardFormulaService {
                 charge: fuel.charge,
             },
             rto: {
-                charge: rtoCharge,
-                calculationMode: 'not_applicable',
+                charge: rto.charge,
+                calculationMode: rto.calculationMode,
+                fallbackApplied: rto.fallbackApplied,
+                baseAmount: rto.baseAmount,
+                includedInQuoteTotal: pricingFeatureFlags.serviceLevelRtoPricingEnabled,
             },
             gst: {
                 fromStateCode: gst.fromStateCode,
@@ -164,7 +171,7 @@ class ServiceRateCardFormulaService {
             subtotal,
             codCharge: cod.charge,
             fuelCharge: fuel.charge,
-            rtoCharge,
+            rtoCharge: rto.charge,
             gstBreakdown: gst.breakdown,
             totalAmount,
             breakdown,
@@ -479,6 +486,102 @@ class ServiceRateCardFormulaService {
         };
     }
 
+    private calculateRTOCharge(
+        zoneRule: ZoneRule,
+        subtotal: number
+    ): {
+        charge: number;
+        calculationMode: 'flat' | 'percentage' | 'forward_mirror' | 'not_applicable';
+        fallbackApplied: boolean;
+        baseAmount: number;
+    } {
+        const rtoRule = zoneRule.rtoRule;
+        const baseAmount = this.round2(subtotal);
+        const hasLegacyPercentageConfig =
+            !!rtoRule &&
+            (Number.isFinite(Number(rtoRule.percentage)) ||
+                Number.isFinite(Number(rtoRule.minCharge)) ||
+                Number.isFinite(Number(rtoRule.maxCharge)));
+
+        if (!rtoRule) {
+            return {
+                charge: baseAmount,
+                calculationMode: 'forward_mirror',
+                fallbackApplied: true,
+                baseAmount,
+            };
+        }
+
+        if (!rtoRule.type && hasLegacyPercentageConfig) {
+            const percentage = this.normalizePercentage(Number(rtoRule.percentage || 0));
+            let charge = baseAmount * percentage;
+            if (Number.isFinite(Number(rtoRule.minCharge))) {
+                charge = Math.max(charge, Number(rtoRule.minCharge));
+            }
+            if (Number.isFinite(Number(rtoRule.maxCharge)) && Number(rtoRule.maxCharge) > 0) {
+                charge = Math.min(charge, Number(rtoRule.maxCharge));
+            }
+            return {
+                charge: this.round2(charge),
+                calculationMode: 'percentage',
+                fallbackApplied: false,
+                baseAmount,
+            };
+        }
+
+        if (!rtoRule.type) {
+            return {
+                charge: baseAmount,
+                calculationMode: 'forward_mirror',
+                fallbackApplied: true,
+                baseAmount,
+            };
+        }
+
+        if (rtoRule.type === 'forward_mirror') {
+            return {
+                charge: baseAmount,
+                calculationMode: 'forward_mirror',
+                fallbackApplied: false,
+                baseAmount,
+            };
+        }
+
+        if (rtoRule.type === 'flat') {
+            const amount = this.round2(Number(rtoRule.amount || 0));
+            return {
+                charge: amount,
+                calculationMode: 'flat',
+                fallbackApplied: false,
+                baseAmount,
+            };
+        }
+
+        if (rtoRule.type === 'percentage') {
+            const percentage = this.normalizePercentage(Number(rtoRule.percentage || 0));
+            let charge = baseAmount * percentage;
+            if (Number.isFinite(Number(rtoRule.minCharge))) {
+                charge = Math.max(charge, Number(rtoRule.minCharge));
+            }
+            if (Number.isFinite(Number(rtoRule.maxCharge)) && Number(rtoRule.maxCharge) > 0) {
+                charge = Math.min(charge, Number(rtoRule.maxCharge));
+            }
+            return {
+                charge: this.round2(charge),
+                calculationMode: 'percentage',
+                fallbackApplied: false,
+                baseAmount,
+            };
+        }
+
+        return {
+            charge: 0,
+            calculationMode: 'not_applicable',
+            fallbackApplied: false,
+            baseAmount,
+        };
+    }
+
     private calculateGST(
         taxableAmount: number,
         fromPincode: string,
@@ -555,6 +658,10 @@ class ServiceRateCardFormulaService {
 
     private round4(value: number): number {
         return Math.round(value * 10000) / 10000;
+    }
+
+    private getPricingFeatureFlags() {
+        return getPricingFeatureFlags();
     }
 }
 

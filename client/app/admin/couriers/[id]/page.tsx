@@ -18,7 +18,6 @@ import {
     useCourier,
     useUpdateCourier,
     useToggleCourierStatus,
-    useTestCourierIntegration,
 } from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import type { UpdateCourierRequest } from '@/src/types/api/logistics';
 import {
@@ -31,12 +30,12 @@ import {
     CheckCircle2,
     XCircle,
     AlertCircle,
-    TestTube,
     Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Loader, StatusBadge } from '@/src/components/ui';
-import { EkartSetupModal } from '../../integrations/components/modals/EkartSetupModal';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { CourierCredentialsModal } from '../components/CourierCredentialsModal';
 
 export default function CourierDetailPage({
     params,
@@ -52,7 +51,6 @@ export default function CourierDetailPage({
     const { data: courier, isLoading } = useCourier(id);
     const updateCourier = useUpdateCourier();
     const toggleStatus = useToggleCourierStatus();
-    const testIntegration = useTestCourierIntegration();
 
     const handleEdit = () => {
         if (courier) {
@@ -82,14 +80,6 @@ export default function CourierDetailPage({
         }
     };
 
-    const handleTestIntegration = async () => {
-        try {
-            await testIntegration.mutateAsync(id);
-        } catch (error) {
-            // Error handled by mutation
-        }
-    };
-
     if (isLoading) {
         return <Loader variant="spinner" size="lg" message="Loading courier details..." centered />;
     }
@@ -107,25 +97,15 @@ export default function CourierDetailPage({
         );
     }
 
-    const getIntegrationStatusBadge = (status: string) => {
+    const getOperationalStatusBadge = (status: string) => {
         const config = {
-            HEALTHY: {
-                variant: 'success' as const,
-                icon: CheckCircle2,
-                text: 'Healthy',
-            },
-            WARNING: {
-                variant: 'warning' as const,
-                icon: AlertCircle,
-                text: 'Warning',
-            },
-            ERROR: {
-                variant: 'error' as const,
-                icon: XCircle,
-                text: 'Error',
-            },
+            OPERATIONAL: { variant: 'success' as const, icon: CheckCircle2, text: 'Operational' },
+            DEGRADED: { variant: 'warning' as const, icon: AlertCircle, text: 'Degraded' },
+            DOWN: { variant: 'error' as const, icon: XCircle, text: 'Down' },
+            UNKNOWN: { variant: 'secondary' as const, icon: AlertCircle, text: 'Unknown' },
         };
-        const { variant, icon: Icon, text } = config[status as keyof typeof config] || config.ERROR;
+        const { variant, icon: Icon, text } =
+            config[status as keyof typeof config] || config.UNKNOWN;
         return (
             <Badge variant={variant} className="flex items-center gap-1">
                 <Icon className="h-3 w-3" />
@@ -153,26 +133,25 @@ export default function CourierDetailPage({
                                 domain="courier"
                                 status={courier.isActive ? 'active' : 'inactive'}
                             />
-                            {getIntegrationStatusBadge(courier.integrationStatus)}
+                            {getOperationalStatusBadge(courier.operationalStatus)}
                         </h1>
                         <p className="text-muted-foreground mt-1">
                             Code: <span className="font-mono">{courier.code}</span>
                         </p>
+                        {courier.operationalStatus === 'DEGRADED' && (
+                            <p className="text-xs text-amber-500 mt-1">
+                                Courier is enabled but not fully configured. Add live credentials in Configure API.
+                            </p>
+                        )}
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    {courier.code.toLowerCase() === 'ekart' && (
-                        <Button variant="outline" onClick={() => setIsSetupModalOpen(true)}>
-                            <Settings className="h-4 w-4 mr-2" />
-                            Configure API
-                        </Button>
-                    )}
+                    <Button variant="outline" onClick={() => setIsSetupModalOpen(true)}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configure API
+                    </Button>
                     {!isEditing ? (
                         <>
-                            <Button variant="outline" onClick={handleTestIntegration}>
-                                <TestTube className="h-4 w-4 mr-2" />
-                                Test Connection
-                            </Button>
                             <Button
                                 variant={courier.isActive ? 'danger' : 'primary'}
                                 onClick={handleToggleStatus}
@@ -199,14 +178,11 @@ export default function CourierDetailPage({
                 </div>
             </div>
 
-            {/* Ekart Setup Modal */}
-            {courier.code.toLowerCase() === 'ekart' && (
-                <EkartSetupModal
-                    isOpen={isSetupModalOpen}
-                    onClose={() => setIsSetupModalOpen(false)}
-                    integration={{ status: courier.integrationStatus === 'HEALTHY' ? 'connected' : 'disconnected' }}
-                />
-            )}
+            <CourierCredentialsModal
+                isOpen={isSetupModalOpen}
+                onClose={() => setIsSetupModalOpen(false)}
+                courier={courier}
+            />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -222,7 +198,7 @@ export default function CourierDetailPage({
                     <CardHeader className="pb-3">
                         <CardDescription>SLA (Today)</CardDescription>
                         <CardTitle className="text-3xl">
-                            {courier.slaCompliance.today}%
+                            {courier.slaCompliance.today === null ? 'N/A' : `${courier.slaCompliance.today}%`}
                         </CardTitle>
                     </CardHeader>
                 </Card>
@@ -230,7 +206,7 @@ export default function CourierDetailPage({
                     <CardHeader className="pb-3">
                         <CardDescription>SLA (Week)</CardDescription>
                         <CardTitle className="text-3xl">
-                            {courier.slaCompliance.week}%
+                            {courier.slaCompliance.week === null ? 'N/A' : `${courier.slaCompliance.week}%`}
                         </CardTitle>
                     </CardHeader>
                 </Card>
@@ -238,7 +214,7 @@ export default function CourierDetailPage({
                     <CardHeader className="pb-3">
                         <CardDescription>SLA (Month)</CardDescription>
                         <CardTitle className="text-3xl">
-                            {courier.slaCompliance.month}%
+                            {courier.slaCompliance.month === null ? 'N/A' : `${courier.slaCompliance.month}%`}
                         </CardTitle>
                     </CardHeader>
                 </Card>
@@ -285,21 +261,9 @@ export default function CourierDetailPage({
                                             }
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="apiKey">API Key (Optional)</Label>
-                                        <Input
-                                            id="apiKey"
-                                            type="password"
-                                            placeholder="Enter new API key to update"
-                                            value={editForm.apiKey || ''}
-                                            onChange={(e) =>
-                                                setEditForm({ ...editForm, apiKey: e.target.value })
-                                            }
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Leave blank to keep existing key
-                                        </p>
-                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Update secure credentials from <span className="font-medium">Configure API</span>.
+                                    </p>
                                 </>
                             ) : (
                                 <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -380,28 +344,31 @@ export default function CourierDetailPage({
                                     {courier.services.map((service) => (
                                         <div
                                             key={service._id}
-                                            className="border rounded-lg p-4 space-y-2"
+                                            className="border border-[var(--border-subtle)] rounded-lg p-4 space-y-2 bg-[var(--bg-primary)] hover:border-[var(--border-default)] transition-colors"
                                         >
                                             <div className="flex items-center justify-between">
-                                                <h4 className="font-medium">{service.name}</h4>
+                                                <h4 className="font-medium text-[var(--text-primary)]">{service.name}</h4>
                                                 <StatusBadge
                                                     domain="courier"
                                                     status={service.isActive ? 'active' : 'inactive'}
                                                 />
                                             </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                Code: <span className="font-mono">{service.code}</span>
+                                            <p className="text-sm text-[var(--text-secondary)]">
+                                                Code: <span className="font-mono text-[var(--text-primary)]">{service.code}</span>
                                             </p>
-                                            <p className="text-sm">
-                                                Type: <span className="font-medium">{service.type}</span>
+                                            <p className="text-sm text-[var(--text-secondary)]">
+                                                Type: <span className="font-medium text-[var(--text-primary)]">{service.type}</span>
                                             </p>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-muted-foreground text-center py-8">
-                                    No services configured
-                                </p>
+                                <EmptyState
+                                    variant="noData"
+                                    title="No services configured"
+                                    description="There are no services currently configured for this courier."
+                                    compact
+                                />
                             )}
                         </CardContent>
                     </Card>

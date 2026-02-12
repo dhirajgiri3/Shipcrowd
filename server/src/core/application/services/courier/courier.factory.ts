@@ -21,10 +21,38 @@ import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
+type CourierProviderBuilder = (companyId: mongoose.Types.ObjectId) => ICourierAdapter;
+
 export class CourierFactory {
   // Provider cache: Map<providerKey, providerInstance>
   // Key format: "${providerName}-${companyId}"
   private static providers = new Map<string, ICourierAdapter>();
+  private static providerBuilders = new Map<string, CourierProviderBuilder>([
+    ['velocity-shipfast', (companyId) => new VelocityShipfastProvider(companyId)],
+    ['velocity', (companyId) => new VelocityShipfastProvider(companyId)],
+    ['delhivery', (companyId) => new DelhiveryProvider(companyId)],
+    ['ekart', (companyId) => new EkartProvider(companyId)],
+  ]);
+
+  static registerProvider(providerName: string, builder: CourierProviderBuilder): void {
+    this.providerBuilders.set(providerName.toLowerCase(), builder);
+  }
+
+  private static resolveProviderAliases(providerName: string): string[] {
+    const normalized = providerName.toLowerCase();
+    if (normalized === 'velocity' || normalized === 'velocity-shipfast') {
+      return ['velocity', 'velocity-shipfast'];
+    }
+    return [normalized];
+  }
+
+  private static buildProviderMatch(providerName: string): Record<string, unknown> {
+    const aliases = this.resolveProviderAliases(providerName);
+    if (aliases.length === 1) {
+      return { provider: aliases[0] };
+    }
+    return { $or: aliases.map((provider) => ({ provider })) };
+  }
 
   /**
    * Get or create a courier provider instance
@@ -45,11 +73,12 @@ export class CourierFactory {
       return this.providers.get(providerKey)!;
     }
 
-    // Verify integration exists and is active
-    const integration = await Integration.findOne({
+    // Verify integration exists and is active.
+    // Use raw collection query to avoid decrypting credentials when we only need existence.
+    const integration = await Integration.collection.findOne({
       companyId,
       type: 'courier',
-      provider: providerName,
+      ...this.buildProviderMatch(providerName),
       'settings.isActive': true
     });
 
@@ -60,34 +89,11 @@ export class CourierFactory {
       );
     }
 
-    // Create provider instance based on provider name
-    let provider: ICourierAdapter;
-
-    switch (providerName.toLowerCase()) {
-      case 'velocity-shipfast':
-      case 'velocity':
-        provider = new VelocityShipfastProvider(companyId);
-        break;
-
-      case 'delhivery':
-        provider = new DelhiveryProvider(companyId);
-        break;
-
-      case 'ekart':
-        provider = new EkartProvider(companyId);
-        break;
-      //
-      // case 'dtdc':
-      //   provider = new DtdcProvider(companyId);
-      //   break;
-      //
-      // case 'xpressbees':
-      //   provider = new XpressbeesProvider(companyId);
-      //   break;
-
-      default:
-        throw new ValidationError(`Unknown courier provider: ${providerName}`);
+    const providerBuilder = this.providerBuilders.get(providerName.toLowerCase());
+    if (!providerBuilder) {
+      throw new ValidationError(`Unknown courier provider: ${providerName}`);
     }
+    const provider = providerBuilder(companyId);
 
     // Cache the provider instance
     this.providers.set(providerKey, provider);
@@ -107,11 +113,12 @@ export class CourierFactory {
    * @returns Array of provider instances
    */
   static async getAllProviders(companyId: mongoose.Types.ObjectId): Promise<ICourierAdapter[]> {
-    const integrations = await Integration.find({
+    // Use raw collection query to avoid decrypting credentials for listing.
+    const integrations = await Integration.collection.find({
       companyId,
       type: 'courier',
       'settings.isActive': true
-    });
+    }).project({ provider: 1 }).toArray();
 
     const providers: ICourierAdapter[] = [];
 
@@ -178,10 +185,11 @@ export class CourierFactory {
     providerName: string,
     companyId: mongoose.Types.ObjectId
   ): Promise<boolean> {
-    const integration = await Integration.findOne({
+    // Use raw collection query to avoid decrypting credentials for availability checks.
+    const integration = await Integration.collection.findOne({
       companyId,
       type: 'courier',
-      provider: providerName,
+      ...this.buildProviderMatch(providerName),
       'settings.isActive': true
     });
 

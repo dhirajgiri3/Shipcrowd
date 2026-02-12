@@ -120,8 +120,22 @@ const CourierServiceSchema = new Schema<ICourierService>(
             },
         },
         zoneSupport: {
-            type: [String],
+            type: [
+                {
+                    type: String,
+                    enum: {
+                        values: ['A', 'B', 'C', 'D', 'E'],
+                        message: 'Zone must be one of: A, B, C, D, E',
+                    },
+                },
+            ],
             default: [],
+            validate: {
+                validator: function (zones: string[]) {
+                    return zones.every((zone) => /^[A-E]$/.test(zone));
+                },
+                message: 'All zones must be uppercase letters A-E',
+            },
         },
         rating: {
             type: Number,
@@ -151,6 +165,22 @@ const CourierServiceSchema = new Schema<ICourierService>(
         timestamps: true,
     }
 );
+
+// Pre-save hook to normalize zone names
+CourierServiceSchema.pre('save', function (next) {
+    if (this.isModified('zoneSupport') && this.zoneSupport) {
+        this.zoneSupport = this.zoneSupport.map((zone: string) => {
+            // Convert 'zoneA' -> 'A', 'zonea' -> 'A', 'a' -> 'A'
+            const match = zone.match(/^(?:zone)?([a-e])$/i);
+            if (match) {
+                return match[1].toUpperCase();
+            }
+            // Already in correct format or invalid (will be caught by validation)
+            return zone.toUpperCase();
+        });
+    }
+    next();
+});
 
 CourierServiceSchema.index(
     { companyId: 1, provider: 1, status: 1 },

@@ -89,6 +89,55 @@ export class EkartAuth {
         });
     }
 
+    private decodeCredentialValue(value: unknown): string | undefined {
+        if (typeof value !== 'string') {
+            return undefined;
+        }
+        const normalized = value.trim();
+        if (!normalized) {
+            return undefined;
+        }
+
+        try {
+            return decryptData(normalized);
+        } catch {
+            // Backward compatibility for legacy plaintext credentials.
+            return normalized;
+        }
+    }
+
+    private async getEkartIntegration() {
+        return Integration.collection.findOne({
+            companyId: this.companyId,
+            type: 'courier',
+            $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
+            'settings.isActive': true,
+        }, {
+            projection: { credentials: 1, settings: 1, provider: 1, platform: 1, type: 1 }
+        });
+    }
+
+    private async hydrateIntegrationConfig(): Promise<void> {
+        const integration = await this.getEkartIntegration();
+        if (!integration) {
+            return;
+        }
+
+        const savedClientId = (integration as any).credentials?.clientId;
+        const savedUsername = this.decodeCredentialValue((integration as any).credentials?.username) || '';
+        const savedPassword = this.decodeCredentialValue((integration as any).credentials?.password) || '';
+        const savedBaseUrl = (integration as any).settings?.baseUrl;
+
+        if (!this.clientId && savedClientId) this.clientId = String(savedClientId);
+        if (!this.username && savedUsername) this.username = savedUsername;
+        if (!this.password && savedPassword) this.password = savedPassword;
+        if (!this.baseUrl && savedBaseUrl) this.baseUrl = String(savedBaseUrl);
+
+        if (savedBaseUrl && this.axiosInstance.defaults.baseURL !== savedBaseUrl) {
+            this.axiosInstance.defaults.baseURL = String(savedBaseUrl);
+        }
+    }
+
     /**
      * Get valid authentication token
      * 
@@ -99,6 +148,8 @@ export class EkartAuth {
      * @throws EkartError if authentication fails
      */
     async getValidToken(): Promise<string> {
+        await this.hydrateIntegrationConfig();
+
         // 1. Check in-memory cache first (fastest)
         if (this.cachedToken && this.isTokenValid(this.cachedToken.expiresAt)) {
             logger.debug('Using cached Ekart token from memory', {
@@ -192,6 +243,19 @@ export class EkartAuth {
      * @throws EkartError on authentication failure
      */
     private async authenticate(): Promise<string> {
+        await this.hydrateIntegrationConfig();
+
+        if (!this.clientId || !this.username || !this.password) {
+            throw new EkartError(
+                500,
+                {
+                    message: 'Ekart credentials are not configured',
+                    status_code: 500,
+                },
+                false
+            );
+        }
+
         logger.info('Authenticating with Ekart API', {
             companyId: this.companyId.toString(),
             clientId: this.clientId,
@@ -279,24 +343,30 @@ export class EkartAuth {
      */
     private async getStoredToken(): Promise<CachedToken | null> {
         try {
-            const integration = await Integration.findOne({
+            const integration = await Integration.collection.findOne({
                 companyId: this.companyId,
-                platform: 'ekart',
-            }).lean();
+                type: 'courier',
+                $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
+            }, {
+                projection: { credentials: 1 }
+            });
 
-            if (!integration?.credentials?.ekart_access_token) {
+            if (!(integration as any)?.credentials?.ekart_access_token) {
                 return null;
             }
 
-            const encryptedToken = integration.credentials.ekart_access_token;
-            const expiresAt = integration.credentials.ekart_token_expires_at;
+            const encryptedToken = (integration as any).credentials.ekart_access_token;
+            const expiresAt = (integration as any).credentials.ekart_token_expires_at;
 
             if (!expiresAt) {
                 return null;
             }
 
             // Decrypt token
-            const token = decryptData(encryptedToken);
+            const token = this.decodeCredentialValue(encryptedToken);
+            if (!token) {
+                return null;
+            }
 
             return {
                 token,
@@ -324,13 +394,17 @@ export class EkartAuth {
             // Encrypt token before storing
             const encryptedToken = encryptData(token);
 
-            await Integration.findOneAndUpdate(
+            await Integration.collection.updateOne(
                 {
                     companyId: this.companyId,
-                    platform: 'ekart',
+                    type: 'courier',
+                    $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
                 },
                 {
                     $set: {
+                        provider: 'ekart',
+                        platform: 'ekart',
+                        type: 'courier',
                         'credentials.ekart_access_token': encryptedToken,
                         'credentials.ekart_token_expires_at': expiresAt,
                     },
@@ -360,10 +434,11 @@ export class EkartAuth {
         this.cachedToken = null;
 
         try {
-            await Integration.findOneAndUpdate(
+            await Integration.collection.updateOne(
                 {
                     companyId: this.companyId,
-                    platform: 'ekart',
+                    type: 'courier',
+                    $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
                 },
                 {
                     $unset: {

@@ -11,7 +11,6 @@ import {
     Package,
     MapPin,
     Truck,
-    IndianRupee,
     Scale,
     Box,
     ArrowRight,
@@ -25,7 +24,8 @@ import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
 import { TruckLoader } from '@/src/components/ui';
 import { useCalculateRates } from '@/src/core/api/hooks/seller/useSellerRates';
-import { RateCalculationPayload, CourierRate } from '@/src/core/api/clients/shipping/ratesApi';
+import type { RateCalculationPayload } from '@/src/core/api/hooks/seller/useSellerRates';
+import type { CourierRate } from '@/src/types/domain/order';
 
 export function B2bRatesClient() {
     const [fromPincode, setFromPincode] = useState('');
@@ -68,7 +68,7 @@ export function B2bRatesClient() {
 
         calculateRates(payload, {
             onSuccess: (data) => {
-                setCalculatedRates(data.rates);
+                setCalculatedRates(data.data);
                 setShowResults(true);
                 addToast('Rates calculated successfully', 'success');
             },
@@ -321,12 +321,12 @@ export function B2bRatesClient() {
                                         key={index}
                                         className={cn(
                                             "p-4 rounded-xl border transition-all",
-                                            rate.recommended
+                                            rate.isRecommended
                                                 ? "border-[var(--success)] bg-[var(--success-bg)]/50"
                                                 : "border-[var(--border-default)] hover:border-[var(--border-hover)]"
                                         )}
                                     >
-                                        {rate.recommended && (
+                                        {rate.isRecommended && (
                                             <Badge variant="success" className="mb-3">
                                                 <Zap className="h-3 w-3 mr-1" />
                                                 Best Value
@@ -339,23 +339,17 @@ export function B2bRatesClient() {
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(rate.rate)}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">+ GST ({formatCurrency(rate.breakdown.tax)})</p>
+                                                <p className="text-xs text-[var(--text-muted)]">+ GST ({formatCurrency(rate.sellBreakdown?.gst || 0)})</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4 mb-3 text-sm text-[var(--text-muted)]">
                                             <span className="flex items-center gap-1">
                                                 <Clock className="h-3.5 w-3.5" />
-                                                {rate.eta.text}
+                                                {(rate.estimatedDeliveryDays || 0)} days
                                             </span>
-                                            {rate.breakdown.handlingCharge ? (
-                                                <span className="flex items-center gap-1">
-                                                    <IndianRupee className="h-3.5 w-3.5" />
-                                                    Handling: {formatCurrency(rate.breakdown.handlingCharge)}
-                                                </span>
-                                            ) : null}
                                         </div>
                                         <div className="flex flex-wrap gap-1 mb-4">
-                                            {rate.features?.map((f, i) => (
+                                            {(rate.tags || []).map((f, i) => (
                                                 <Badge key={i} variant="outline" className="text-xs">
                                                     <CheckCircle className="h-3 w-3 mr-1" />
                                                     {f}
@@ -364,7 +358,7 @@ export function B2bRatesClient() {
                                         </div>
                                         <Button
                                             className="w-full"
-                                            variant={rate.recommended ? 'primary' : 'outline'}
+                                            variant={rate.isRecommended ? 'primary' : 'outline'}
                                             onClick={() => handleBookNow(rate.courierName)}
                                         >
                                             Book Now

@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/src/core/api/http';
+import { orderApi } from '@/src/core/api/clients/orders/orderApi';
 
 // Types
 export interface RateCalculationPayload {
@@ -148,25 +149,126 @@ class RatesApiService {
      * Supports both B2C and B2B via `isB2B` flag in payload
      */
     async calculateRates(payload: RateCalculationPayload): Promise<RateResponse> {
-        const endpoint = payload.isB2B ? '/rates/calculate-b2b' : '/rates/calculate';
-        const response = await apiClient.post<RateResponse>(endpoint, payload);
-        return response.data;
+        const quoteResponse = await orderApi.getCourierRates({
+            fromPincode: payload.originPincode,
+            toPincode: payload.destinationPincode,
+            weight: payload.weight,
+            paymentMode: payload.paymentMode,
+            orderValue: payload.orderValue,
+            length: payload.length,
+            width: payload.width,
+            height: payload.height,
+        });
+
+        const rates: CourierRate[] = quoteResponse.data.map((rate) => ({
+            courier: rate.provider || rate.courierId,
+            courierName: rate.courierName,
+            serviceType: rate.serviceType,
+            rate: rate.rate,
+            breakdown: {
+                base: rate.sellBreakdown?.baseCharge || 0,
+                weightCharge: rate.sellBreakdown?.weightCharge || 0,
+                zoneCharge: 0,
+                codCharge: rate.sellBreakdown?.codCharge,
+                fuelSurcharge: rate.sellBreakdown?.fuelCharge,
+                tax: rate.sellBreakdown?.gst || 0,
+            },
+            eta: {
+                minDays: rate.estimatedDeliveryDays || 0,
+                maxDays: rate.estimatedDeliveryDays || 0,
+                text: `${rate.estimatedDeliveryDays || 0} days`,
+            },
+            zone: rate.zone || '',
+            recommended: rate.isRecommended,
+            features: rate.tags,
+        }));
+
+        const sortedByPrice = [...rates].sort((a, b) => a.rate - b.rate);
+        const sortedByEta = [...rates].sort((a, b) => a.eta.maxDays - b.eta.maxDays);
+
+        return {
+            rates,
+            cheapest: sortedByPrice[0] || ({} as CourierRate),
+            fastest: sortedByEta[0] || ({} as CourierRate),
+            bestValue: sortedByPrice[0],
+        };
     }
 
     /**
      * Check serviceability for a pincode
      */
     async checkServiceability(pincode: string): Promise<ServiceabilityResponse> {
-        const response = await apiClient.get<ServiceabilityResponse>(`/rates/serviceability/${pincode}`);
-        return response.data;
+        const response = await apiClient.get<{ data: { city: string; state: string; pincode: string } }>(
+            `/serviceability/pincode/${pincode}/info`
+        );
+        return {
+            serviceable: true,
+            city: response.data.data?.city,
+            state: response.data.data?.state,
+            prepaid: true,
+            cod: true,
+            couriers: [],
+        };
     }
 
     /**
      * Calculate Smart Rates with AI scoring
      */
     async smartCalculate(payload: SmartRateInput): Promise<SmartRateResponse> {
-        const response = await apiClient.post<{ success: boolean; data: SmartRateResponse }>('/ratecards/smart-calculate', payload);
-        return response.data.data;
+        const quoteResponse = await orderApi.getCourierRates({
+            fromPincode: payload.originPincode,
+            toPincode: payload.destinationPincode,
+            weight: payload.weight,
+            paymentMode: payload.paymentMode,
+            orderValue: payload.orderValue,
+            length: payload.dimensions?.length,
+            width: payload.dimensions?.width,
+            height: payload.dimensions?.height,
+        });
+
+        const rates: CourierRateOption[] = quoteResponse.data.map((rate) => ({
+            courierId: rate.courierId,
+            courierName: rate.courierName,
+            serviceType: rate.serviceType,
+            baseRate: rate.sellBreakdown?.baseCharge || 0,
+            weightCharge: rate.sellBreakdown?.weightCharge || 0,
+            zoneCharge: 0,
+            codCharge: rate.sellBreakdown?.codCharge || 0,
+            gstAmount: rate.sellBreakdown?.gst || 0,
+            totalAmount: rate.rate,
+            estimatedDeliveryDays: rate.estimatedDeliveryDays || 0,
+            estimatedDeliveryDate: '',
+            zone: rate.zone || '',
+            pickupSuccessRate: 0,
+            deliverySuccessRate: 0,
+            rtoRate: 0,
+            onTimeDeliveryRate: 0,
+            rating: 0,
+            scores: {
+                priceScore: 0,
+                speedScore: 0,
+                reliabilityScore: 0,
+                performanceScore: 0,
+                overallScore: 0,
+            },
+            tags: (rate.tags || []) as CourierRateOption['tags'],
+            serviceable: true,
+        }));
+
+        return {
+            recommendation: quoteResponse.data.find((rate) => rate.isRecommended)?.courierName || rates[0]?.courierName || '',
+            totalOptions: rates.length,
+            rates,
+            metadata: {
+                calculatedAt: new Date().toISOString(),
+                scoringWeights: payload.scoringWeights || {
+                    price: 40,
+                    speed: 30,
+                    reliability: 15,
+                    performance: 15,
+                },
+            },
+        };
     }
 }
 

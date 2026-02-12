@@ -7,12 +7,13 @@ export interface Courier {
     apiEndpoint: string;
     apiKey?: string; // Masked in responses
     isActive: boolean;
-    integrationStatus: 'HEALTHY' | 'WARNING' | 'ERROR';
+    credentialsConfigured?: boolean;
+    operationalStatus: 'OPERATIONAL' | 'DEGRADED' | 'DOWN' | 'UNKNOWN';
     activeShipments: number;
     slaCompliance: {
-        today: number;
-        week: number;
-        month: number;
+        today: number | null;
+        week: number | null;
+        month: number | null;
     };
     services: CourierService[];
     createdAt: string;
@@ -61,6 +62,12 @@ export interface UpdateCourierRequest {
     apiEndpoint?: string;
     apiKey?: string;
     isActive?: boolean;
+    credentials?: {
+        apiKey?: string;
+        clientId?: string;
+        username?: string;
+        password?: string;
+    };
 }
 
 export interface PerformanceFilters {

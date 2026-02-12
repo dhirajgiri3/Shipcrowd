@@ -161,7 +161,10 @@ export interface ServiceRateCardFormulaBreakdown {
     };
     rto: {
         charge: number;
-        calculationMode: 'not_applicable';
+        calculationMode: 'flat' | 'percentage' | 'forward_mirror' | 'not_applicable';
+        fallbackApplied: boolean;
+        baseAmount: number;
+        includedInQuoteTotal: boolean;
     };
     gst: {
         fromStateCode: string;

@@ -237,6 +237,96 @@ export const updateCourierServiceSchema = createCourierServiceSchema.partial().r
 
 export type UpdateCourierServiceInput = z.infer<typeof updateCourierServiceSchema>;
 
+const codRuleSlabEntrySchema = z.object({
+    min: z.number().min(0),
+    max: z.number().min(0),
+    value: z.number().min(0),
+    type: z.enum(['flat', 'percentage']),
+}).strict().refine((value) => value.max >= value.min, {
+    message: 'codRule.slab.max must be greater than or equal to codRule.slab.min',
+});
+
+const codRulePercentageSchema = z.object({
+    type: z.literal('percentage'),
+    percentage: z.number().min(0),
+    minCharge: z.number().min(0).optional(),
+    maxCharge: z.number().min(0).optional(),
+}).strict();
+
+const codRuleFlatSchema = z.object({
+    type: z.literal('flat'),
+    minCharge: z.number().min(0),
+}).strict();
+
+const codRuleSlabSchema = z.object({
+    type: z.literal('slab'),
+    basis: z.enum(['orderValue', 'codAmount']).default('orderValue'),
+    slabs: z.array(codRuleSlabEntrySchema).min(1),
+}).strict();
+
+const codRuleSchema = z.preprocess((raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const value = raw as Record<string, unknown>;
+    if (value.type !== 'flat') return raw;
+
+    const hasAmount = Object.prototype.hasOwnProperty.call(value, 'amount');
+    const hasMinCharge = Object.prototype.hasOwnProperty.call(value, 'minCharge');
+
+    if (hasAmount && !hasMinCharge) {
+        return {
+            type: 'flat',
+            minCharge: value.amount,
+        };
+    }
+
+    return raw;
+}, z.discriminatedUnion('type', [
+    codRulePercentageSchema,
+    codRuleFlatSchema,
+    codRuleSlabSchema,
+]));
+
+const rtoRulePercentageSchema = z.object({
+    type: z.literal('percentage'),
+    percentage: z.number().min(0),
+    minCharge: z.number().min(0).optional(),
+    maxCharge: z.number().min(0).optional(),
+}).strict();
+
+const rtoRuleFlatSchema = z.object({
+    type: z.literal('flat'),
+    amount: z.number().min(0),
+}).strict();
+
+const rtoRuleForwardMirrorSchema = z.object({
+    type: z.literal('forward_mirror'),
+}).strict();
+
+const rtoRuleSchema = z.preprocess((raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const value = raw as Record<string, unknown>;
+    if (typeof value.type === 'string') return raw;
+
+    const hasLegacyPercentage = Object.prototype.hasOwnProperty.call(value, 'percentage');
+    const hasLegacyMin = Object.prototype.hasOwnProperty.call(value, 'minCharge');
+    const hasLegacyMax = Object.prototype.hasOwnProperty.call(value, 'maxCharge');
+
+    if (hasLegacyPercentage || hasLegacyMin || hasLegacyMax) {
+        return {
+            type: 'percentage',
+            percentage: value.percentage ?? 0,
+            minCharge: value.minCharge,
+            maxCharge: value.maxCharge,
+        };
+    }
+
+    return raw;
+}, z.discriminatedUnion('type', [
+    rtoRulePercentageSchema,
+    rtoRuleFlatSchema,
+    rtoRuleForwardMirrorSchema,
+]));
+
 const serviceRateCardZoneRuleSchema = z.object({
     zoneKey: z.string().min(1),
     slabs: z.array(
@@ -247,20 +337,12 @@ const serviceRateCardZoneRuleSchema = z.object({
         })
     ).min(1),
     additionalPerKg: z.number().min(0).optional(),
-    codRule: z.object({
-        type: z.enum(['percentage', 'flat', 'slab']),
-        percentage: z.number().min(0).optional(),
-        minCharge: z.number().min(0).optional(),
-        maxCharge: z.number().min(0).optional(),
-    }).optional(),
+    codRule: codRuleSchema.optional(),
     fuelSurcharge: z.object({
         percentage: z.number().min(0).optional(),
         base: z.enum(['freight', 'freight_cod']).optional(),
     }).optional(),
-    rtoRule: z.object({
-        percentage: z.number().min(0).optional(),
-        minCharge: z.number().min(0).optional(),
-    }).optional(),
+    rtoRule: rtoRuleSchema.optional(),
 });
 
 export const upsertServiceRateCardSchema = z.object({

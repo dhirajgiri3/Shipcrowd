@@ -117,6 +117,8 @@ export interface CourierRateRequest {
     paymentMode: 'prepaid' | 'cod';
     orderValue?: number;  // For COD charge calculation
     shipmentType?: 'forward' | 'return';
+    serviceType?: string;
+    providerServiceId?: string;
 }
 
 export interface CourierRateResponse {

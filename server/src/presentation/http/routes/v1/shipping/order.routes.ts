@@ -1,5 +1,6 @@
 import express from 'express';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { authenticate } from '../../../middleware/auth/auth';
+import { csrfProtection } from '../../../middleware/auth/csrf';
 import { requireAccess, requireCompleteCompany } from '../../../middleware/index';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import orderController from '../../../controllers/shipping/order.controller';

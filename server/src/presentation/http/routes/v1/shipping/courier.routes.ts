@@ -42,13 +42,14 @@ router.post(
     courierController.toggleStatus
 );
 
-router.post(
-    '/:id/test-connection',
+router.get(
+    '/:id/performance',
     authenticate,
-    courierController.testConnection
+    courierController.getPerformance
 );
 
-router.get(
+// Backward-compatible alias for legacy clients still using POST
+router.post(
     '/:id/performance',
     authenticate,
     courierController.getPerformance

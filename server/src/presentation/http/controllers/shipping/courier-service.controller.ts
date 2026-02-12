@@ -38,9 +38,20 @@ export const listCourierServices = async (req: Request, res: Response, next: Nex
         }
 
         const [items, total] = await Promise.all([
-            CourierService.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            CourierService.find(query)
+                .select('provider serviceCode providerServiceId displayName serviceType status zoneSupport constraints sla') // Only needed fields
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
             CourierService.countDocuments(query),
         ]);
+
+        // Add cache headers for better client-side caching
+        res.set({
+            'Cache-Control': 'private, max-age=300',
+            'Vary': 'Authorization',
+        });
 
         sendPaginated(res, items, calculatePagination(total, page, limit), 'Courier services retrieved');
     } catch (error) {
@@ -273,11 +284,40 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
     }
 };
 
+export const deleteCourierService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+
+        const item = await CourierService.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                companyId: auth.companyId,
+                isDeleted: false,
+            },
+            {
+                $set: { isDeleted: true },
+            },
+            { new: true }
+        ).lean();
+
+        if (!item) {
+            throw new NotFoundError('Courier service', ErrorCode.RES_NOT_FOUND);
+        }
+
+        sendSuccess(res, null, 'Courier service deleted');
+    } catch (error) {
+        logger.error('Error deleting courier service:', error);
+        next(error);
+    }
+};
+
 export default {
     listCourierServices,
     createCourierService,
     getCourierServiceById,
     updateCourierService,
     toggleCourierServiceStatus,
+    deleteCourierService,
     syncProviderServices,
 };

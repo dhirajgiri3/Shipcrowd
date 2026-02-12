@@ -367,6 +367,29 @@ export class ShipmentService {
         };
     }
 
+    private static mergeCarrierDetails(
+        currentCarrierDetails: any,
+        patch: Record<string, unknown>
+    ): Record<string, unknown> {
+        const base =
+            currentCarrierDetails && typeof currentCarrierDetails.toObject === 'function'
+                ? currentCarrierDetails.toObject()
+                : currentCarrierDetails || {};
+
+        const merged: Record<string, unknown> = {
+            ...base,
+            ...patch,
+        };
+
+        if (merged.charges == null) {
+            delete merged.charges;
+        }
+
+        return Object.fromEntries(
+            Object.entries(merged).filter(([, value]) => value !== undefined)
+        );
+    }
+
     /**
      * Create a new shipment
      * @param args Shipment creation parameters
@@ -633,7 +656,8 @@ export class ShipmentService {
             // ========================================================================
             const isVelocityCarrier = selectedOption.carrier.toLowerCase().includes('velocity');
             const isDelhiveryCarrier = selectedOption.carrier.toLowerCase().includes('delhivery');
-            const shouldCallCarrierApi = (isVelocityCarrier && (useApiRates || process.env.USE_VELOCITY_API_RATES === 'true')) || isDelhiveryCarrier;
+            const isEkartCarrier = selectedOption.carrier.toLowerCase().includes('ekart');
+            const shouldCallCarrierApi = isVelocityCarrier || isDelhiveryCarrier || isEkartCarrier;
 
             if (shouldCallCarrierApi && warehouseId) {
                 try {
@@ -643,7 +667,11 @@ export class ShipmentService {
                         warehouseId: warehouseId.toString()
                     });
 
-                    const providerName = isVelocityCarrier ? 'velocity-shipfast' : 'delhivery';
+                    const providerName = isVelocityCarrier
+                        ? 'velocity-shipfast'
+                        : isDelhiveryCarrier
+                            ? 'delhivery'
+                            : 'ekart';
                     const courierProvider = await CourierFactory.getProvider(providerName, companyId);
 
                     // Build proper CourierShipmentData structure for Carrier API
@@ -703,13 +731,15 @@ export class ShipmentService {
 
                     // Update shipment with AWB and label from provider response
                     if (providerResponse.trackingNumber) {
-                        shipment.carrierDetails = {
-                            ...shipment.carrierDetails,
-                            carrierTrackingNumber: providerResponse.trackingNumber,
-                            carrierServiceType: providerName,
-                            providerShipmentId: providerResponse.providerShipmentId,
-                            retryCount: 0, // Reset retry count on success
-                        };
+                        shipment.carrierDetails = ShipmentService.mergeCarrierDetails(
+                            shipment.carrierDetails,
+                            {
+                                carrierTrackingNumber: providerResponse.trackingNumber,
+                                carrierServiceType: providerName,
+                                providerShipmentId: providerResponse.providerShipmentId,
+                                retryCount: 0, // Reset retry count on success
+                            }
+                        );
 
                         // Add label to documents if provided
                         if (providerResponse.labelUrl) {
@@ -747,10 +777,12 @@ export class ShipmentService {
 
                     // Mark shipment as awaiting_carrier_sync for explicit retry handling
                     shipment.currentStatus = 'awaiting_carrier_sync';
-                    shipment.carrierDetails = {
-                        ...shipment.carrierDetails,
-                        retryCount: 0,
-                    };
+                    shipment.carrierDetails = ShipmentService.mergeCarrierDetails(
+                        shipment.carrierDetails,
+                        {
+                            retryCount: 0,
+                        }
+                    );
                     shipment.statusHistory.push({
                         status: 'awaiting_carrier_sync',
                         timestamp: new Date(),
@@ -1101,6 +1133,7 @@ export class ShipmentService {
         const carrierName = (shipment.carrier || '').toLowerCase();
         const isVelocityCarrier = carrierName.includes('velocity');
         const isDelhiveryCarrier = carrierName.includes('delhivery');
+        const isEkartCarrier = carrierName.includes('ekart');
 
         if (warehouseId) {
             warehouse = await Warehouse.findById(warehouseId).lean();
@@ -1115,7 +1148,9 @@ export class ShipmentService {
                 ? warehouse.carrierDetails?.velocity?.status
                 : isDelhiveryCarrier
                     ? warehouse.carrierDetails?.delhivery?.status
-                    : undefined;
+                    : isEkartCarrier
+                        ? warehouse.carrierDetails?.ekart?.status
+                        : undefined;
 
             if (!syncStatus || syncStatus === 'pending' || syncStatus === 'failed') {
                 logger.info('Warehouse not synced with carrier, attempting sync', {
@@ -1131,6 +1166,8 @@ export class ShipmentService {
                         await WarehouseSyncService.syncWithCarrier(warehouse as any, 'velocity');
                     } else if (isDelhiveryCarrier) {
                         await WarehouseSyncService.syncWithCarrier(warehouse as any, 'delhivery');
+                    } else if (isEkartCarrier) {
+                        await WarehouseSyncService.syncWithCarrier(warehouse as any, 'ekart');
                     }
 
                     // Refresh warehouse data after sync
@@ -1198,7 +1235,14 @@ export class ShipmentService {
                 retryAttempt: retryCount + 1
             });
 
-            const provider = await CourierFactory.getProvider(shipment.carrier, shipment.companyId);
+            const providerLookupName = isVelocityCarrier
+                ? 'velocity-shipfast'
+                : isDelhiveryCarrier
+                    ? 'delhivery'
+                    : isEkartCarrier
+                        ? 'ekart'
+                        : shipment.carrier;
+            const provider = await CourierFactory.getProvider(providerLookupName, shipment.companyId);
 
             // ✅ Use shipment ID as idempotency key for deterministic retries
             const idempotencyKey = `${shipment.companyId}-${shipment._id}`;
@@ -1215,14 +1259,16 @@ export class ShipmentService {
 
                 try {
                     // Update shipment with carrier details
-                    shipment.carrierDetails = {
-                        ...shipment.carrierDetails,
-                        carrierTrackingNumber: providerResponse.trackingNumber,
-                        carrierServiceType: shipment.carrier,
-                        providerShipmentId: providerResponse.providerShipmentId,
-                        retryCount: 0, // Reset on success
-                        lastRetryAttempt: new Date(),
-                    };
+                    shipment.carrierDetails = ShipmentService.mergeCarrierDetails(
+                        shipment.carrierDetails,
+                        {
+                            carrierTrackingNumber: providerResponse.trackingNumber,
+                            carrierServiceType: shipment.carrier,
+                            providerShipmentId: providerResponse.providerShipmentId,
+                            retryCount: 0, // Reset on success
+                            lastRetryAttempt: new Date(),
+                        }
+                    );
 
                     if (providerResponse.labelUrl) {
                         shipment.documents.push({
@@ -1283,11 +1329,13 @@ export class ShipmentService {
         } catch (error: any) {
             // Increment retry count and update last attempt time
             const newRetryCount = retryCount + 1;
-            shipment.carrierDetails = {
-                ...shipment.carrierDetails,
-                retryCount: newRetryCount,
-                lastRetryAttempt: new Date(),
-            };
+            shipment.carrierDetails = ShipmentService.mergeCarrierDetails(
+                shipment.carrierDetails,
+                {
+                    retryCount: newRetryCount,
+                    lastRetryAttempt: new Date(),
+                }
+            );
             await shipment.save();
 
             logger.error('Shipment creation retry failed', {

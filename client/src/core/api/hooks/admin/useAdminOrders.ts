@@ -36,7 +36,7 @@ export const useGetCourierRates = () => {
       fromPincode: string;
       toPincode: string;
       weight: number;
-      paymentMode?: 'COD' | 'Prepaid';
+      paymentMode?: 'COD' | 'Prepaid' | 'cod' | 'prepaid';
       orderValue?: number;
       length?: number;
       width?: number;

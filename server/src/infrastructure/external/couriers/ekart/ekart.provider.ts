@@ -61,6 +61,8 @@ export class EkartProvider implements ICourierAdapter {
     private axiosInstance: AxiosInstance;
     private circuitBreaker: CircuitBreaker;
     private baseUrl: string;
+    private static readonly RATE_TIMEOUT_MS = Number(process.env.EKART_RATE_TIMEOUT_MS || 12000);
+    private static readonly SERVICEABILITY_TIMEOUT_MS = Number(process.env.EKART_SERVICEABILITY_TIMEOUT_MS || 8000);
 
     constructor(
         private companyId: mongoose.Types.ObjectId,
@@ -297,6 +299,7 @@ export class EkartProvider implements ICourierAdapter {
     async getRates(request: CourierRateRequest): Promise<CourierRateResponse[]> {
         return this.circuitBreaker.execute(async () => {
             try {
+                const serviceType = this.mapRateRequestServiceType(request);
                 // Map to Ekart Rate Request
                 const ekartRequest: EkartRateRequest = {
                     pickupPincode: parseInt(request.origin.pincode, 10),
@@ -305,7 +308,7 @@ export class EkartProvider implements ICourierAdapter {
                     length: request.package.length,
                     width: request.package.width,
                     height: request.package.height,
-                    serviceType: 'SURFACE', // Defaulting to Surface
+                    serviceType,
                     shippingDirection: 'FORWARD', // REQUIRED: Default to forward shipment
                     codAmount: request.paymentMode === 'cod' ? (request.orderValue || 0) : 0,
                     invoiceAmount: request.orderValue,
@@ -315,9 +318,10 @@ export class EkartProvider implements ICourierAdapter {
                 const response = await retryWithBackoff(async () => {
                     return await this.axiosInstance.post<EkartRateResponse>(
                         EKART_ENDPOINTS.RATE_ESTIMATE,
-                        ekartRequest
+                        ekartRequest,
+                        { timeout: EkartProvider.RATE_TIMEOUT_MS }
                     );
-                });
+                }, 1, 500);
 
                 const rateData = response.data;
 
@@ -327,7 +331,7 @@ export class EkartProvider implements ICourierAdapter {
                     taxes: parseFloat(rateData.taxes),
                     total: parseFloat(rateData.total),
                     currency: 'INR',
-                    serviceType: 'Surface', // Mapped from request
+                    serviceType: serviceType === 'EXPRESS' ? 'Express' : 'Surface',
                     estimatedDeliveryDays: undefined, // API might not return EDD in rate response
                     zone: rateData.zone
                 }];
@@ -337,6 +341,20 @@ export class EkartProvider implements ICourierAdapter {
                 throw handleEkartError(error);
             }
         });
+    }
+
+    private mapRateRequestServiceType(request: CourierRateRequest): 'SURFACE' | 'EXPRESS' {
+        const providerServiceId = String(request.providerServiceId || '').trim().toUpperCase();
+        if (providerServiceId === 'SURFACE' || providerServiceId === 'EXPRESS') {
+            return providerServiceId;
+        }
+
+        const hint = String(request.serviceType || '').trim().toLowerCase();
+        if (hint.includes('express') || hint.includes('air')) {
+            return 'EXPRESS';
+        }
+
+        return 'SURFACE';
     }
 
     /**
@@ -384,8 +402,10 @@ export class EkartProvider implements ICourierAdapter {
                 const url = `${EKART_ENDPOINTS.SERVICEABILITY}/${pincode}`;
 
                 const response = await retryWithBackoff(async () => {
-                    return await this.axiosInstance.get<EkartServiceabilityResponse>(url);
-                });
+                    return await this.axiosInstance.get<EkartServiceabilityResponse>(url, {
+                        timeout: EkartProvider.SERVICEABILITY_TIMEOUT_MS,
+                    });
+                }, 1, 500);
 
                 // FIXED: Correct response property
                 return response.data.status || false;
@@ -425,9 +445,10 @@ export class EkartProvider implements ICourierAdapter {
                 const response = await retryWithBackoff(async () => {
                     return await this.axiosInstance.post<EkartLaneServiceabilityOption[]>(
                         EKART_ENDPOINTS.SERVICEABILITY_LANE,
-                        payload
+                        payload,
+                        { timeout: EkartProvider.SERVICEABILITY_TIMEOUT_MS }
                     );
-                });
+                }, 1, 500);
 
                 const raw = response.data;
                 const options = Array.isArray(raw)

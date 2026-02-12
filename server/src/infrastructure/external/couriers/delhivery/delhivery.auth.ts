@@ -13,22 +13,41 @@ export class DelhiveryAuth {
         this.companyId = companyId;
     }
 
+    private decodeCredentialValue(value: unknown): string | undefined {
+        if (typeof value !== 'string') {
+            return undefined;
+        }
+        const normalized = value.trim();
+        if (!normalized) {
+            return undefined;
+        }
+
+        try {
+            return decryptData(normalized);
+        } catch {
+            // Backward compatibility for legacy plaintext credentials.
+            return normalized;
+        }
+    }
+
     private async getIntegrationToken(): Promise<string | undefined> {
         if (!this.companyId) return undefined;
 
-        const integration = await Integration.findOne({
+        const integration = await Integration.collection.findOne({
             companyId: this.companyId,
             type: 'courier',
             provider: 'delhivery',
             'settings.isActive': true
-        }).lean();
+        }, {
+            projection: { credentials: 1 }
+        });
 
         if (!integration) return undefined;
 
-        const token = integration.credentials?.apiKey;
+        const token = (integration as any).credentials?.apiKey;
         if (!token) return undefined;
 
-        return decryptData(token);
+        return this.decodeCredentialValue(token);
     }
 
     async getToken(): Promise<string> {

@@ -62,12 +62,21 @@ const getBaseURL = (): string => {
             );
         }
 
-        // ✅ Warn if using HTTP in production (should use HTTPS)
+        // ✅ Warn if using HTTP in production for non-local hosts (localhost is allowed for local builds)
         if (process.env.NODE_ENV === 'production' && apiUrl.startsWith('http://')) {
-            console.warn(
-                '⚠️  WARNING: Using HTTP in production is insecure.\n' +
-                'Please use HTTPS for production API URL.'
-            );
+            const parsedUrl = new URL(apiUrl);
+            const hostname = parsedUrl.hostname.toLowerCase();
+            const isLocalHost =
+                hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
+                hostname === '::1';
+
+            if (!isLocalHost) {
+                console.warn(
+                    '⚠️  WARNING: Using HTTP in production is insecure.\n' +
+                    'Please use HTTPS for production API URL.'
+                );
+            }
         }
     }
 

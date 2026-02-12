@@ -203,13 +203,20 @@ export class VelocityError extends Error {
   statusCode: number;
   velocityError: VelocityAPIError;
   isRetryable: boolean;
+  errorType: VelocityErrorType;
 
-  constructor(statusCode: number, velocityError: VelocityAPIError, isRetryable: boolean = false) {
+  constructor(
+    statusCode: number,
+    velocityError: VelocityAPIError,
+    isRetryable: boolean = false,
+    errorType: VelocityErrorType = VelocityErrorType.API_ERROR
+  ) {
     super(velocityError.message);
     this.name = 'VelocityError';
     this.statusCode = statusCode;
     this.velocityError = velocityError;
     this.isRetryable = isRetryable;
+    this.errorType = errorType;
 
     // Maintains proper stack trace for where our error was thrown (only available on V8)
     if (Error.captureStackTrace) {
@@ -224,6 +231,9 @@ export enum VelocityErrorType {
   AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   NOT_SERVICEABLE = 'NOT_SERVICEABLE',
+  WAYBILL_FAILED = 'WAYBILL_FAILED',
+  ORDER_CREATION_FAILED = 'ORDER_CREATION_FAILED',
+  COURIER_ASSIGNMENT_FAILED = 'COURIER_ASSIGNMENT_FAILED',
   WAREHOUSE_NOT_FOUND = 'WAREHOUSE_NOT_FOUND',
   SHIPMENT_NOT_FOUND = 'SHIPMENT_NOT_FOUND',
   CANNOT_CANCEL = 'CANNOT_CANCEL',

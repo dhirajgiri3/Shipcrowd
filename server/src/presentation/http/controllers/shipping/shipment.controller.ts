@@ -30,6 +30,25 @@ import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, Con
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import BookFromQuoteService from '../../../../core/application/services/shipping/book-from-quote.service';
 
+const toShipmentResponseWithCompat = (shipment: any) => {
+    if (!shipment) return shipment;
+
+    const data = typeof shipment.toObject === 'function' ? shipment.toObject() : shipment;
+    const computedFinalCharge =
+        data.finalCharge ??
+        data.paymentDetails?.shippingCost ??
+        data.pricingDetails?.totalPrice ??
+        data.pricingDetails?.selectedQuote?.quotedSellAmount ??
+        null;
+
+    return {
+        ...data,
+        service: data.service ?? data.serviceType ?? null,
+        status: data.status ?? data.currentStatus ?? null,
+        finalCharge: computedFinalCharge,
+    };
+};
+
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
@@ -132,7 +151,7 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
         }, req);
 
         sendCreated(res, {
-            shipment: result.shipment,
+            shipment: toShipmentResponseWithCompat(result.shipment),
             carrierSelection: result.carrierSelection,
         }, 'Shipment created successfully');
     } catch (error) {
@@ -174,7 +193,14 @@ export const bookFromQuote = async (req: Request, res: Response, next: NextFunct
             instructions: validation.data.instructions,
         });
 
-        sendCreated(res, result, 'Shipment booked from quote successfully');
+        sendCreated(
+            res,
+            {
+                ...result,
+                shipment: toShipmentResponseWithCompat(result.shipment),
+            },
+            'Shipment booked from quote successfully'
+        );
     } catch (error) {
         logger.error('Error booking shipment from quote:', error);
         next(error);

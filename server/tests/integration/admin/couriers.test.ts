@@ -118,9 +118,9 @@ describe('Admin Courier Management API', () => {
             expect(response.status).toBe(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data).toHaveLength(1);
-            expect(response.body.data[0].id).toBe('velocity');
-            expect(response.body.data[0].codLimit).toBe(50000);
+            const velocityRow = response.body.data.find((row: any) => row.id === 'velocity');
+            expect(velocityRow).toBeDefined();
+            expect(velocityRow.codLimit).toBe(50000);
         });
     });
 

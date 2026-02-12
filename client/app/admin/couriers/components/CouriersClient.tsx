@@ -12,13 +12,61 @@ import {
     Search,
     RotateCw,
     AlertCircle,
-    CheckCircle,
 } from 'lucide-react';
 import { useCouriersPage } from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import { cn } from '@/src/lib/utils';
+import { getCourierLogoPath } from '@/src/lib/courier-logos';
 import { useRouter } from 'next/navigation';
+
+// Skeleton loader for courier cards
+function CourierCardSkeleton() {
+    return (
+        <Card className="border-[var(--border-default)]">
+            <CardContent className="p-5">
+                <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                            <Skeleton className="h-12 w-12 rounded-lg" />
+                            <div>
+                                <Skeleton className="h-5 w-32 mb-2" />
+                                <Skeleton className="h-3 w-16" />
+                            </div>
+                        </div>
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[var(--bg-secondary)] p-3 rounded-lg border border-[var(--border-subtle)]">
+                            <Skeleton className="h-3 w-16 mb-2" />
+                            <Skeleton className="h-4 w-20" />
+                        </div>
+                        <div className="bg-[var(--bg-secondary)] p-3 rounded-lg border border-[var(--border-subtle)]">
+                            <Skeleton className="h-3 w-16 mb-2" />
+                            <div className="space-y-1.5">
+                                <Skeleton className="h-3 w-12" />
+                                <Skeleton className="h-3 w-16" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-[var(--border-subtle)] grid grid-cols-2 gap-4">
+                        <div>
+                            <Skeleton className="h-3 w-20 mb-1" />
+                            <Skeleton className="h-4 w-16" />
+                        </div>
+                        <div>
+                            <Skeleton className="h-3 w-20 mb-1" />
+                            <Skeleton className="h-4 w-20" />
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export function CouriersClient() {
     const { addToast } = useToast();
@@ -59,29 +107,77 @@ export function CouriersClient() {
     }
 
     if (isLoading) {
-        return <Loader message="Loading carriers..." />;
+        return (
+            <div className="space-y-6 animate-in fade-in duration-500">
+                {/* Header Skeleton */}
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <Skeleton className="h-8 w-64 mb-2" />
+                            <Skeleton className="h-4 w-80" />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Skeleton className="h-10 w-48" />
+                            <Skeleton className="h-10 w-40" />
+                            <Skeleton className="h-10 w-32" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filters Skeleton */}
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+                            <Skeleton className="h-10 w-full lg:w-80" />
+                            <div className="flex gap-2">
+                                <Skeleton className="h-10 w-20" />
+                                <Skeleton className="h-10 w-20" />
+                                <Skeleton className="h-10 w-24" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Courier Cards Skeleton */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <CourierCardSkeleton key={i} />
+                    ))}
+                </div>
+            </div>
+        );
     }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                        <Truck className="h-6 w-6 text-[var(--primary-blue)]" />
-                        Courier Partners
-                    </h1>
-                    <p className="text-sm mt-1 text-[var(--text-secondary)]">
-                        Manage your shipping partners and configurations
-                    </p>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                            <Truck className="h-6 w-6 text-[var(--primary-blue)]" />
+                            Courier Partners
+                        </h1>
+                        <p className="text-sm mt-1 text-[var(--text-secondary)]">
+                            Manage your shipping partners and configurations
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={() => router.push('/admin/couriers/services')}>
+                            Manage Courier Services
+                        </Button>
+                        <Button variant="outline" onClick={() => router.push('/admin/rate-cards')}>
+                            Manage Rate Cards
+                        </Button>
+                        <Button variant="outline" onClick={() => {
+                            addToast('Syncing carriers...', 'info');
+                            refetch();
+                        }}>
+                            <RotateCw className="h-4 w-4 mr-2" />
+                            Sync Partners
+                        </Button>
+                    </div>
                 </div>
-                <Button variant="outline" onClick={() => {
-                    addToast('Syncing carriers...', 'info');
-                    refetch();
-                }}>
-                    <RotateCw className="h-4 w-4 mr-2" />
-                    Sync Partners
-                </Button>
             </div>
 
             {/* Filters */}
@@ -98,18 +194,15 @@ export function CouriersClient() {
                         </div>
                         <div className="flex gap-2">
                             {(['all', 'active', 'inactive'] as const).map((status) => (
-                                <button
+                                <Button
                                     key={status}
+                                    variant={selectedStatus === status ? 'primary' : 'outline'}
+                                    size="sm"
                                     onClick={() => setSelectedStatus(status)}
-                                    className={cn(
-                                        "px-4 py-2 text-sm font-medium rounded-md transition-all capitalize",
-                                        selectedStatus === status
-                                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
-                                            : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-                                    )}
+                                    className="capitalize"
                                 >
                                     {status}
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     </div>
@@ -125,10 +218,12 @@ export function CouriersClient() {
                 />
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredCouriers.map((courier) => (
+                    {filteredCouriers.map((courier) => {
+                        const logoPath = getCourierLogoPath(courier.code, courier.name);
+                        return (
                         <Card
                             key={courier.id}
-                            className="hover:shadow-lg transition-all group cursor-pointer border-[var(--border-subtle)] hover:border-[var(--primary-blue-soft)]"
+                            className="transition-all group cursor-pointer border-[var(--border-default)] hover:border-[var(--border-strong)]"
                             onClick={() => router.push(`/admin/couriers/${courier.id}`)}
                         >
                             <CardContent className="p-5">
@@ -136,9 +231,8 @@ export function CouriersClient() {
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center font-bold text-[var(--text-secondary)] border border-[var(--border-subtle)]">
-                                                {/* Logo placeholder or image logic if available */}
-                                                {courier.logo ? (
-                                                    <img src={courier.logo} alt={courier.name} className="h-8 w-8 object-contain" />
+                                                {logoPath ? (
+                                                    <img src={logoPath} alt={courier.name} className="h-8 w-8 object-contain" />
                                                 ) : (
                                                     courier.name.slice(0, 2).toUpperCase()
                                                 )}
@@ -192,7 +286,8 @@ export function CouriersClient() {
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

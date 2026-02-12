@@ -2,18 +2,134 @@
  * Velocity Shipfast Error Handler
  *
  * Handles:
- * - Error classification and mapping
+ * - Error classification and mapping (Shipfast-specific error codes)
  * - Retry logic with exponential backoff
  * - Rate limiting (token bucket algorithm)
  *
- * @see docs/Development/Backend/Integrations/VELOCITY_SHIPFAST_INTEGRATION.md Section 6-7
+ * Shipfast API Error Codes:
+ *   400 → Validation error in request parameters
+ *   401 → Authorization failed (invalid/missing credentials)
+ *   422 → Waybill operation failed OR Cancellation failed
+ *
+ * @see docs/Resources/API/Courier/Shipfast/Shipfast_API.md
  */
 
 import { VelocityError, VelocityErrorType, VelocityAPIError } from './velocity.types';
 import logger from '../../../../shared/logger/winston.logger';
 
+// ──────────────────────────────────────────────
+// Shipfast 422 Sub-Classification
+// ──────────────────────────────────────────────
+
+/**
+ * Context keywords used to classify 422 errors by operation.
+ * Shipfast returns 422 for multiple distinct failure modes:
+ *   - Waybill operations (AWB generation, shipment assignment)
+ *   - Cancellation failures (shipment already picked up, delivered, etc.)
+ *   - Serviceability (pincode not serviceable)
+ *   - Order creation (duplicate order_id, invalid warehouse_id)
+ */
+const CANCEL_KEYWORDS = ['cancel', 'cancellation'];
+const WAYBILL_KEYWORDS = ['waybill', 'awb', 'shipment_id', 'assign', 'courier'];
+const SERVICEABILITY_KEYWORDS = ['pincode', 'serviceab', 'not serviceable', 'no carriers'];
+const ORDER_KEYWORDS = ['order', 'duplicate', 'already exists'];
+const WAREHOUSE_KEYWORDS = ['warehouse', 'pickup_location'];
+
+function matchesKeywords(text: string, keywords: string[]): boolean {
+  const lower = text.toLowerCase();
+  return keywords.some(kw => lower.includes(kw));
+}
+
+/**
+ * Classify a Shipfast 422 error into a specific VelocityErrorType.
+ *
+ * Inspects both the response body and calling context to determine
+ * whether the 422 is a waybill failure, cancellation failure,
+ * serviceability issue, or order creation issue.
+ */
+function classifyShipfast422(data: any, context?: string): VelocityErrorType {
+  const errorMsg = String(data?.message || data?.error || '');
+  const errorsObj = JSON.stringify(data?.errors || {});
+  const combined = `${errorMsg} ${errorsObj} ${context || ''}`;
+
+  // Priority 1: Cancellation failure
+  if (matchesKeywords(combined, CANCEL_KEYWORDS)) {
+    return VelocityErrorType.CANNOT_CANCEL;
+  }
+
+  // Priority 2: Waybill / shipment assignment failure
+  if (matchesKeywords(combined, WAYBILL_KEYWORDS)) {
+    return VelocityErrorType.WAYBILL_FAILED;
+  }
+
+  // Priority 3: Serviceability / pincode issue
+  if (matchesKeywords(combined, SERVICEABILITY_KEYWORDS)) {
+    return VelocityErrorType.NOT_SERVICEABLE;
+  }
+
+  // Priority 4: Order creation failure (duplicate, invalid fields)
+  if (matchesKeywords(combined, ORDER_KEYWORDS)) {
+    return VelocityErrorType.ORDER_CREATION_FAILED;
+  }
+
+  // Priority 5: Warehouse-related
+  if (matchesKeywords(combined, WAREHOUSE_KEYWORDS)) {
+    return VelocityErrorType.WAREHOUSE_NOT_FOUND;
+  }
+
+  // Default: generic API error
+  return VelocityErrorType.API_ERROR;
+}
+
+/**
+ * Classify a Shipfast 400 validation error into a specific VelocityErrorType.
+ * Most 400s are validation, but some carry warehouse/order-specific context.
+ */
+function classifyShipfast400(data: any, context?: string): VelocityErrorType {
+  const errorMsg = String(data?.message || data?.error || '');
+  const errorsObj = JSON.stringify(data?.errors || {});
+  const combined = `${errorMsg} ${errorsObj} ${context || ''}`;
+
+  if (matchesKeywords(combined, WAREHOUSE_KEYWORDS)) {
+    return VelocityErrorType.WAREHOUSE_NOT_FOUND;
+  }
+
+  return VelocityErrorType.VALIDATION_ERROR;
+}
+
+// ──────────────────────────────────────────────
+// Build structured error message
+// ──────────────────────────────────────────────
+
+/**
+ * Build a human-readable error message from Shipfast response data.
+ * Extracts field-level validation errors when available.
+ */
+function buildErrorMessage(data: any, fallback: string): string {
+  const msg = data?.message || data?.error || fallback;
+
+  // Shipfast sometimes returns field-level errors in `errors` object
+  if (data?.errors && typeof data.errors === 'object') {
+    const fieldErrors = Object.entries(data.errors)
+      .map(([field, err]) => `${field}: ${err}`)
+      .join('; ');
+    if (fieldErrors) {
+      return `${msg} [${fieldErrors}]`;
+    }
+  }
+
+  return msg;
+}
+
+// ──────────────────────────────────────────────
+// Main Error Handler
+// ──────────────────────────────────────────────
+
 /**
  * Handle Velocity API errors and convert to VelocityError
+ *
+ * Maps HTTP status codes and Shipfast-specific response bodies
+ * to typed, retryable VelocityError instances.
  */
 export function handleVelocityError(error: any, context?: string): VelocityError {
   const errorContext = context || 'Velocity API';
@@ -23,55 +139,75 @@ export function handleVelocityError(error: any, context?: string): VelocityError
     return error;
   }
 
-  // Axios error
+  // Axios error with HTTP response
   if (error.response) {
     const status = error.response.status;
     const data = error.response.data;
+
+    logger.debug('Velocity API error response', {
+      context: errorContext,
+      status,
+      data: typeof data === 'object' ? JSON.stringify(data).slice(0, 500) : data,
+    });
 
     switch (status) {
       case 401:
         return new VelocityError(
           401,
           {
-            message: 'Velocity authentication failed',
-            error: data.error || data.message,
+            message: buildErrorMessage(data, 'Velocity authentication failed'),
+            error: data?.error || data?.message,
             status_code: 401
           },
-          false // Not retryable - need to refresh token
+          false, // Not retryable — need to refresh token
+          VelocityErrorType.AUTHENTICATION_ERROR
         );
 
       case 400:
         return new VelocityError(
           400,
           {
-            message: 'Validation failed',
-            errors: data.errors || {},
-            error: data.message,
+            message: buildErrorMessage(data, 'Validation failed'),
+            errors: data?.errors || {},
+            error: data?.message,
             status_code: 400
           },
-          false // Not retryable - fix validation errors
+          false, // Not retryable — fix validation errors
+          classifyShipfast400(data, context)
         );
 
-      case 404:
+      case 404: {
+        // Determine if this is a shipment or warehouse not found
+        const msg404 = String(data?.message || data?.error || '');
+        const type404 = matchesKeywords(msg404, WAREHOUSE_KEYWORDS)
+          ? VelocityErrorType.WAREHOUSE_NOT_FOUND
+          : matchesKeywords(msg404, WAYBILL_KEYWORDS.concat(['shipment', 'order']))
+            ? VelocityErrorType.SHIPMENT_NOT_FOUND
+            : VelocityErrorType.API_ERROR;
+
         return new VelocityError(
           404,
           {
-            message: data.message || 'Resource not found',
-            error: data.error,
+            message: data?.message || 'Resource not found',
+            error: data?.error,
             status_code: 404
           },
-          false // Not retryable
+          false, // Not retryable
+          type404
         );
+      }
 
       case 422:
         return new VelocityError(
           422,
           {
-            message: 'Pincode not serviceable or validation failed',
-            error: data.message || data.error,
+            message: buildErrorMessage(data, 'Operation failed'),
+            errors: data?.errors,
+            error: data?.error || data?.message,
             status_code: 422
           },
-          false // Not retryable
+          false, // Not retryable
+          classifyShipfast422(data, context)
         );
 
       case 429:
@@ -82,7 +218,8 @@ export function handleVelocityError(error: any, context?: string): VelocityError
             error: 'Too many requests',
             status_code: 429
           },
-          true // Retryable after delay
+          true, // Retryable after delay
+          VelocityErrorType.RATE_LIMIT_EXCEEDED
         );
 
       case 500:
@@ -92,22 +229,24 @@ export function handleVelocityError(error: any, context?: string): VelocityError
         return new VelocityError(
           status,
           {
-            message: 'Velocity API server error',
-            error: data.error || data.message || 'Internal server error',
+            message: buildErrorMessage(data, 'Velocity API server error'),
+            error: data?.error || data?.message || 'Internal server error',
             status_code: status
           },
-          true // Retryable
+          true, // Retryable
+          VelocityErrorType.API_ERROR
         );
 
       default:
         return new VelocityError(
           status,
           {
-            message: `${errorContext} error`,
-            error: data.error || data.message || 'Unknown error',
+            message: buildErrorMessage(data, `${errorContext} error`),
+            error: data?.error || data?.message || 'Unknown error',
             status_code: status
           },
-          status >= 500 // Retryable only for server errors
+          status >= 500, // Retryable only for server errors
+          VelocityErrorType.API_ERROR
         );
     }
   }
@@ -121,7 +260,8 @@ export function handleVelocityError(error: any, context?: string): VelocityError
         error: error.message,
         status_code: 408
       },
-      true // Retryable
+      true, // Retryable
+      VelocityErrorType.TIMEOUT_ERROR
     );
   }
 
@@ -134,7 +274,8 @@ export function handleVelocityError(error: any, context?: string): VelocityError
         error: error.message,
         status_code: 503
       },
-      true // Retryable
+      true, // Retryable
+      VelocityErrorType.NETWORK_ERROR
     );
   }
 
@@ -146,7 +287,8 @@ export function handleVelocityError(error: any, context?: string): VelocityError
       error: error.message || 'Unknown error',
       status_code: 500
     },
-    true // Retryable by default
+    true, // Retryable by default
+    VelocityErrorType.API_ERROR
   );
 }
 
@@ -193,7 +335,8 @@ export async function retryWithBackoff<T>(
         maxRetries,
         delay: totalDelay,
         error: velocityError.message,
-        statusCode: velocityError.statusCode
+        statusCode: velocityError.statusCode,
+        errorType: velocityError.errorType,
       });
 
       await sleep(totalDelay);

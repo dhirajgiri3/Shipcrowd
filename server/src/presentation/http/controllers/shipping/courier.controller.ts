@@ -2,10 +2,11 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import asyncHandler from '../../../../shared/utils/asyncHandler';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { encryptData } from '../../../../shared/utils/encryption';
 import {
     Integration,
-    CourierPerformance,
     CourierService,
+    Shipment,
 } from '../../../../infrastructure/database/mongoose/models';
 import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 
@@ -14,6 +15,22 @@ const PROVIDER_LABELS: Record<string, string> = {
     delhivery: 'Delhivery',
     ekart: 'Ekart',
 };
+const SUPPORTED_PROVIDERS = ['velocity', 'delhivery', 'ekart'] as const;
+type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
+const ACTIVE_SHIPMENT_STATUSES = [
+    'picked',
+    'picked_up',
+    'in_transit',
+    'out_for_delivery',
+    'PICKED',
+    'PICKED_UP',
+    'IN_TRANSIT',
+    'OUT_FOR_DELIVERY',
+];
+const DELIVERED_SHIPMENT_STATUSES = ['delivered', 'DELIVERED'];
+const RTO_SHIPMENT_STATUSES = ['rto', 'returned', 'rto_delivered', 'return_initiated', 'RTO', 'RETURNED', 'RTO_DELIVERED', 'RETURN_INITIATED'];
+const NDR_SHIPMENT_STATUSES = ['ndr', 'NDR'];
+const SLA_MIN_SAMPLE_SIZE = Number(process.env.COURIER_SLA_MIN_SAMPLE_SIZE || 10);
 
 function getCompanyId(req: Request): string {
     const companyId = (req as any).user?.companyId;
@@ -39,24 +56,405 @@ function toIntegrationProvider(provider: string): string {
     return provider === 'velocity' ? 'velocity-shipfast' : provider;
 }
 
-async function getProviderSnapshot(companyId: string, provider: string) {
-    const [services, integration] = await Promise.all([
-        CourierService.find({
+function integrationInsertFields(companyId: string, provider: string) {
+    return { companyId, type: 'courier', isDeleted: false };
+}
+
+function integrationProviderPatch(provider: string) {
+    return provider === 'ekart'
+        ? { provider: 'ekart', platform: 'ekart' }
+        : { provider: toIntegrationProvider(provider) };
+}
+
+function buildIntegrationQuery(companyId: string, provider: string) {
+    if (provider === 'ekart') {
+        return {
             companyId,
-            provider,
-            isDeleted: false,
-        }).lean(),
-        Integration.findOne({
-            companyId,
-            provider: toIntegrationProvider(provider),
             type: 'courier',
             isDeleted: false,
-        }).lean(),
-    ]);
+            $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
+        };
+    }
 
-    if (!services.length) {
+    return {
+        companyId,
+        provider: toIntegrationProvider(provider),
+        type: 'courier',
+        isDeleted: false,
+    };
+}
+
+function toSupportedProvider(provider: string): SupportedProvider | null {
+    const normalized = normalizeProvider(provider);
+    if (!normalized) return null;
+    if (normalized === 'velocity-shipfast') return 'velocity';
+    if ((SUPPORTED_PROVIDERS as readonly string[]).includes(normalized)) {
+        return normalized as SupportedProvider;
+    }
+    return null;
+}
+
+function requireSupportedProvider(provider: string): SupportedProvider {
+    const supported = toSupportedProvider(provider);
+    if (!supported) {
+        throw new NotFoundError('Courier');
+    }
+    return supported;
+}
+
+function buildCarrierCandidates(provider: SupportedProvider): string[] {
+    const candidates: string[] = [provider];
+    if (provider === 'velocity') {
+        candidates.push('velocity-shipfast');
+        candidates.push('velocity shipfast');
+        candidates.push('shipfast');
+    }
+    return candidates;
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function encodeCredential(value: unknown): string {
+    const normalized = String(value ?? '').trim();
+    if (!normalized) {
+        return normalized;
+    }
+    return encryptData(normalized);
+}
+
+function buildShipmentMatch(companyId: string, provider: SupportedProvider) {
+    const carrierRegexes = buildCarrierCandidates(provider).map(
+        (candidate) => new RegExp(`^${escapeRegExp(candidate)}$`, 'i')
+    );
+    const carrierClauses = carrierRegexes.map((regex) => ({ carrier: regex }));
+    const providerClauses = carrierRegexes.map((regex) => ({ 'shippingDetails.provider': regex }));
+
+    return {
+        companyId: new mongoose.Types.ObjectId(companyId),
+        $or: [...carrierClauses, ...providerClauses],
+        isDeleted: false,
+    };
+}
+
+async function getActiveShipmentsCount(companyId: string, provider: SupportedProvider): Promise<number> {
+    const match = buildShipmentMatch(companyId, provider);
+    return Shipment.countDocuments({
+        ...match,
+        currentStatus: { $in: ACTIVE_SHIPMENT_STATUSES },
+    });
+}
+
+async function getSlaComplianceForWindow(
+    companyId: string,
+    provider: SupportedProvider,
+    windowStart: Date
+): Promise<number | null> {
+    const match = buildShipmentMatch(companyId, provider);
+    const deliveredShipments = await Shipment.find({
+        ...match,
+        currentStatus: { $in: DELIVERED_SHIPMENT_STATUSES },
+        estimatedDelivery: { $exists: true, $ne: null },
+        actualDelivery: { $exists: true, $ne: null, $gte: windowStart },
+    })
+        .select('estimatedDelivery actualDelivery')
+        .lean();
+
+    if (deliveredShipments.length < SLA_MIN_SAMPLE_SIZE) {
         return null;
     }
+
+    const onTime = deliveredShipments.filter((shipment: any) => {
+        const estimated = new Date(shipment.estimatedDelivery);
+        const actual = new Date(shipment.actualDelivery);
+        return actual.getTime() <= estimated.getTime();
+    }).length;
+
+    return Number(((onTime / deliveredShipments.length) * 100).toFixed(2));
+}
+
+async function getSlaCompliance(companyId: string, provider: SupportedProvider): Promise<{
+    today: number | null;
+    week: number | null;
+    month: number | null;
+}> {
+    const now = new Date();
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - 7);
+
+    const monthStart = new Date(now);
+    monthStart.setDate(now.getDate() - 30);
+
+    const [today, week, month] = await Promise.all([
+        getSlaComplianceForWindow(companyId, provider, dayStart),
+        getSlaComplianceForWindow(companyId, provider, weekStart),
+        getSlaComplianceForWindow(companyId, provider, monthStart),
+    ]);
+
+    return { today, week, month };
+}
+
+function parseDateInput(value?: string): Date | null {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function normalizeServiceType(value?: string): string | null {
+    if (!value) return null;
+    const normalized = String(value).trim().toLowerCase();
+    return normalized || null;
+}
+
+function resolveServiceTypeAliases(serviceType: string): string[] {
+    const normalized = serviceType.trim().toLowerCase();
+    if (!normalized) return [];
+    if (normalized === 'standard') return ['standard', 'surface'];
+    if (normalized === 'surface') return ['surface', 'standard'];
+    if (normalized === 'economy') return ['economy', 'standard', 'surface'];
+    if (normalized === 'express') return ['express'];
+    return [normalized];
+}
+
+function resolveZoneAliases(zone: string): string[] {
+    const normalized = zone.trim().toUpperCase();
+    if (!normalized) return [];
+    if (normalized === 'LOCAL') return ['LOCAL', 'ZONEA'];
+    if (normalized === 'REGIONAL') return ['REGIONAL', 'ZONEB'];
+    if (normalized === 'NATIONAL') return ['NATIONAL', 'ZONEC'];
+    return [normalized];
+}
+
+function normalizeProviderFromCarrier(carrier: string): SupportedProvider | null {
+    const value = String(carrier || '').toLowerCase();
+    if (value.includes('velocity') || value.includes('shipfast')) return 'velocity';
+    if (value.includes('delhivery')) return 'delhivery';
+    if (value.includes('ekart')) return 'ekart';
+    return null;
+}
+
+async function buildPerformanceFromShipments(params: {
+    companyId: string;
+    provider: SupportedProvider;
+    startDate?: string;
+    endDate?: string;
+    zone?: string;
+    serviceType?: string;
+}) {
+    const startDate = parseDateInput(params.startDate || '');
+    const endDate = parseDateInput(params.endDate || '');
+    const normalizedZone = params.zone ? String(params.zone).toUpperCase() : null;
+    const normalizedServiceType = normalizeServiceType(params.serviceType || '');
+
+    const match: Record<string, unknown> = buildShipmentMatch(params.companyId, params.provider);
+    if (startDate || endDate) {
+        const createdAtFilter: Record<string, Date> = {};
+        if (startDate) createdAtFilter.$gte = startDate;
+        if (endDate) createdAtFilter.$lte = endDate;
+        match.createdAt = createdAtFilter;
+    }
+    if (normalizedServiceType) {
+        const aliases = resolveServiceTypeAliases(normalizedServiceType);
+        const regexes = aliases.map((value) => new RegExp(`^${escapeRegExp(value)}$`, 'i'));
+        match.serviceType = { $in: regexes };
+    }
+    if (normalizedZone) {
+        const zoneAliases = resolveZoneAliases(normalizedZone);
+        const zoneRegexes = zoneAliases.map((value) => new RegExp(`^${escapeRegExp(value)}$`, 'i'));
+        match['pricingDetails.selectedQuote.zone'] = { $in: zoneRegexes };
+    }
+
+    const shipments = await Shipment.find(match)
+        .select('currentStatus createdAt actualDelivery serviceType pricingDetails paymentDetails')
+        .lean();
+
+    const totalShipments = shipments.length;
+    const deliveredShipments = shipments.filter((shipment: any) =>
+        DELIVERED_SHIPMENT_STATUSES.includes(String(shipment.currentStatus))
+    );
+    const deliveredCount = deliveredShipments.length;
+    const rtoCount = shipments.filter((shipment: any) =>
+        RTO_SHIPMENT_STATUSES.includes(String(shipment.currentStatus))
+    ).length;
+    const ndrCount = shipments.filter((shipment: any) =>
+        NDR_SHIPMENT_STATUSES.includes(String(shipment.currentStatus))
+    ).length;
+
+    const successRate = totalShipments > 0 ? (deliveredCount / totalShipments) * 100 : 0;
+    const rtoPercentage = totalShipments > 0 ? (rtoCount / totalShipments) * 100 : 0;
+    const ndrPercentage = totalShipments > 0 ? (ndrCount / totalShipments) * 100 : 0;
+
+    const deliveryHours = deliveredShipments
+        .filter((shipment: any) => shipment.actualDelivery && shipment.createdAt)
+        .map((shipment: any) => {
+            const createdAt = new Date(shipment.createdAt).getTime();
+            const deliveredAt = new Date(shipment.actualDelivery).getTime();
+            return Math.max(0, (deliveredAt - createdAt) / (1000 * 60 * 60));
+        });
+    const avgDeliveryTime =
+        deliveryHours.length > 0
+            ? deliveryHours.reduce((sum, value) => sum + value, 0) / deliveryHours.length
+            : 0;
+
+    const shipmentCosts = shipments
+        .map((shipment: any) =>
+            Number(
+                shipment.pricingDetails?.totalPrice ??
+                    shipment.paymentDetails?.shippingCost ??
+                    0
+            )
+        )
+        .filter((value: number) => Number.isFinite(value));
+    const costPerShipment =
+        shipmentCosts.length > 0
+            ? shipmentCosts.reduce((sum, value) => sum + value, 0) / shipmentCosts.length
+            : 0;
+
+    const zoneMap = new Map<
+        string,
+        { total: number; delivered: number; totalHours: number; deliveredWithHours: number }
+    >();
+    shipments.forEach((shipment: any) => {
+        const zone = String(shipment.pricingDetails?.selectedQuote?.zone || 'UNKNOWN').toUpperCase();
+        const status = String(shipment.currentStatus);
+        const entry = zoneMap.get(zone) || {
+            total: 0,
+            delivered: 0,
+            totalHours: 0,
+            deliveredWithHours: 0,
+        };
+        entry.total += 1;
+        if (DELIVERED_SHIPMENT_STATUSES.includes(status)) {
+            entry.delivered += 1;
+            if (shipment.actualDelivery && shipment.createdAt) {
+                const createdAt = new Date(shipment.createdAt).getTime();
+                const deliveredAt = new Date(shipment.actualDelivery).getTime();
+                entry.totalHours += Math.max(0, (deliveredAt - createdAt) / (1000 * 60 * 60));
+                entry.deliveredWithHours += 1;
+            }
+        }
+        zoneMap.set(zone, entry);
+    });
+
+    const zonePerformance = Array.from(zoneMap.entries()).map(([zone, entry]) => ({
+        zone,
+        successRate: entry.total > 0 ? Number(((entry.delivered / entry.total) * 100).toFixed(2)) : 0,
+        avgDeliveryTime:
+            entry.deliveredWithHours > 0
+                ? Number((entry.totalHours / entry.deliveredWithHours).toFixed(2))
+                : 0,
+        totalShipments: entry.total,
+        deliveredShipments: entry.delivered,
+    }));
+
+    const dailyBuckets = new Map<
+        string,
+        { total: number; delivered: number; totalHours: number; deliveredWithHours: number }
+    >();
+    shipments.forEach((shipment: any) => {
+        const bucketDate = new Date(shipment.createdAt).toISOString().split('T')[0];
+        const status = String(shipment.currentStatus);
+        const entry = dailyBuckets.get(bucketDate) || {
+            total: 0,
+            delivered: 0,
+            totalHours: 0,
+            deliveredWithHours: 0,
+        };
+        entry.total += 1;
+        if (DELIVERED_SHIPMENT_STATUSES.includes(status)) {
+            entry.delivered += 1;
+            if (shipment.actualDelivery && shipment.createdAt) {
+                const createdAt = new Date(shipment.createdAt).getTime();
+                const deliveredAt = new Date(shipment.actualDelivery).getTime();
+                entry.totalHours += Math.max(0, (deliveredAt - createdAt) / (1000 * 60 * 60));
+                entry.deliveredWithHours += 1;
+            }
+        }
+        dailyBuckets.set(bucketDate, entry);
+    });
+
+    const timeSeriesData = Array.from(dailyBuckets.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, entry]) => ({
+            date,
+            successRate: entry.total > 0 ? Number(((entry.delivered / entry.total) * 100).toFixed(2)) : 0,
+            shipments: entry.total,
+            avgDeliveryTime:
+                entry.deliveredWithHours > 0
+                    ? Number((entry.totalHours / entry.deliveredWithHours).toFixed(2))
+                    : 0,
+        }));
+
+    const rankingMatch: Record<string, unknown> = {
+        companyId: new mongoose.Types.ObjectId(params.companyId),
+        isDeleted: false,
+    };
+    if (startDate || endDate) {
+        const createdAtFilter: Record<string, Date> = {};
+        if (startDate) createdAtFilter.$gte = startDate;
+        if (endDate) createdAtFilter.$lte = endDate;
+        rankingMatch.createdAt = createdAtFilter;
+    }
+    const rankingShipments = await Shipment.find(rankingMatch)
+        .select('carrier shippingDetails.provider currentStatus')
+        .lean();
+    const providerStats = new Map<SupportedProvider, { total: number; delivered: number }>();
+    rankingShipments.forEach((shipment: any) => {
+        const provider = normalizeProviderFromCarrier(
+            shipment.carrier || shipment.shippingDetails?.provider
+        );
+        if (!provider) return;
+        const entry = providerStats.get(provider) || { total: 0, delivered: 0 };
+        entry.total += 1;
+        if (DELIVERED_SHIPMENT_STATUSES.includes(String(shipment.currentStatus))) {
+            entry.delivered += 1;
+        }
+        providerStats.set(provider, entry);
+    });
+    const providerScores = Array.from(providerStats.entries()).map(([provider, entry]) => ({
+        provider,
+        successRate: entry.total > 0 ? (entry.delivered / entry.total) * 100 : 0,
+    }));
+    providerScores.sort((a, b) => b.successRate - a.successRate);
+    const rankingIndex = providerScores.findIndex((item) => item.provider === params.provider);
+    const ranking = rankingIndex >= 0 ? rankingIndex + 1 : providerScores.length + 1;
+    const totalCouriers = Math.max(providerScores.length, 1);
+
+    return {
+        successRate: Number(successRate.toFixed(2)),
+        avgDeliveryTime: Number(avgDeliveryTime.toFixed(2)),
+        rtoPercentage: Number(rtoPercentage.toFixed(2)),
+        ndrPercentage: Number(ndrPercentage.toFixed(2)),
+        costPerShipment: Number(costPerShipment.toFixed(2)),
+        totalShipments,
+        deliveredShipments: deliveredCount,
+        zonePerformance,
+        timeSeriesData,
+        ranking,
+        totalCouriers,
+    };
+}
+
+async function getProviderSnapshot(companyId: string, provider: string) {
+    const supportedProvider = toSupportedProvider(provider);
+    if (!supportedProvider) {
+        return null;
+    }
+
+    const [services, integration, activeShipments, slaCompliance] = await Promise.all([
+        CourierService.find({
+            companyId,
+            provider: supportedProvider,
+            isDeleted: false,
+        }).lean(),
+        Integration.findOne(buildIntegrationQuery(companyId, supportedProvider)).lean(),
+        getActiveShipmentsCount(companyId, supportedProvider),
+        getSlaCompliance(companyId, supportedProvider),
+    ]);
 
     const activeServices = services.filter(isServiceActive);
     const maxCod = services.reduce((max, service: any) => {
@@ -74,15 +472,29 @@ async function getProviderSnapshot(companyId: string, provider: string) {
     });
 
     const integrationActive = Boolean(integration?.settings?.isActive);
-    const displayName = formatProviderName(provider);
+    const servicesActive = activeServices.length > 0;
+    const isEnabled = integrationActive && servicesActive;
+    const displayName = formatProviderName(supportedProvider);
+    const credentialsConfigured =
+        supportedProvider === 'velocity'
+            ? Boolean(integration?.credentials?.username && integration?.credentials?.password)
+            : supportedProvider === 'ekart'
+              ? Boolean(
+                    integration?.credentials?.clientId &&
+                        integration?.credentials?.username &&
+                        integration?.credentials?.password
+                )
+              : Boolean(integration?.credentials?.apiKey);
+    const operationalStatus =
+        !isEnabled ? 'DOWN' : credentialsConfigured ? 'OPERATIONAL' : 'DEGRADED';
 
     return {
         listItem: {
-            id: provider,
+            id: supportedProvider,
             name: displayName,
-            code: provider,
+            code: supportedProvider,
             logo: displayName.slice(0, 2).toUpperCase(),
-            status: activeServices.length > 0 ? 'active' : 'inactive',
+            status: isEnabled ? 'active' : 'inactive',
             services: Array.from(new Set(serviceNames)),
             zones: Array.from(zoneSet),
             apiIntegrated: integrationActive,
@@ -91,20 +503,18 @@ async function getProviderSnapshot(companyId: string, provider: string) {
             trackingEnabled: true,
             codLimit: maxCod,
             weightLimit: maxWeight,
+            credentialsConfigured,
         },
         detail: {
-            _id: provider,
+            _id: supportedProvider,
             name: displayName,
-            code: provider,
+            code: supportedProvider,
             apiEndpoint: integration?.settings?.baseUrl || '',
-            isActive: activeServices.length > 0,
-            integrationStatus: integrationActive ? 'HEALTHY' : 'WARNING',
-            activeShipments: 0,
-            slaCompliance: {
-                today: 100,
-                week: 100,
-                month: 100,
-            },
+            isActive: isEnabled,
+            operationalStatus,
+            credentialsConfigured,
+            activeShipments,
+            slaCompliance,
             services: services.map((service: any) => ({
                 _id: String(service._id),
                 name: service.displayName,
@@ -112,14 +522,16 @@ async function getProviderSnapshot(companyId: string, provider: string) {
                 type: String(service.serviceType || 'standard').toUpperCase(),
                 isActive: service.status === 'active',
             })),
-            createdAt: services.reduce((min, service: any) => {
-                if (!min) return service.createdAt;
-                return new Date(service.createdAt) < new Date(min) ? service.createdAt : min;
-            }, null as any),
-            updatedAt: services.reduce((max, service: any) => {
-                if (!max) return service.updatedAt;
-                return new Date(service.updatedAt) > new Date(max) ? service.updatedAt : max;
-            }, null as any),
+            createdAt:
+                services.reduce((min, service: any) => {
+                    if (!min) return service.createdAt;
+                    return new Date(service.createdAt) < new Date(min) ? service.createdAt : min;
+                }, null as any) || integration?.createdAt || null,
+            updatedAt:
+                services.reduce((max, service: any) => {
+                    if (!max) return service.updatedAt;
+                    return new Date(service.updatedAt) > new Date(max) ? service.updatedAt : max;
+                }, null as any) || integration?.updatedAt || null,
         },
     };
 }
@@ -128,16 +540,32 @@ export class CourierController {
     getCouriers = asyncHandler(async (req: Request, res: Response) => {
         const companyId = getCompanyId(req);
 
-        const services = await CourierService.find({
-            companyId,
-            isDeleted: false,
-        })
-            .select('provider')
-            .lean();
+        const [services, integrations] = await Promise.all([
+            CourierService.find({
+                companyId,
+                isDeleted: false,
+            })
+                .select('provider')
+                .lean(),
+            Integration.find({
+                companyId,
+                type: 'courier',
+                isDeleted: false,
+            })
+                .select('provider platform')
+                .lean(),
+        ]);
 
-        const providers = Array.from(
-            new Set(services.map((service: any) => normalizeProvider(service.provider)).filter(Boolean))
-        );
+        const discovered = new Set<string>(SUPPORTED_PROVIDERS);
+        services.forEach((service: any) => {
+            const provider = toSupportedProvider(service.provider);
+            if (provider) discovered.add(provider);
+        });
+        integrations.forEach((integration: any) => {
+            const provider = toSupportedProvider(integration.provider || integration.platform);
+            if (provider) discovered.add(provider);
+        });
+        const providers = Array.from(discovered);
 
         const snapshots = await Promise.all(
             providers.map((provider) => getProviderSnapshot(companyId, provider))
@@ -151,7 +579,7 @@ export class CourierController {
 
     getCourier = asyncHandler(async (req: Request, res: Response) => {
         const companyId = getCompanyId(req);
-        const provider = normalizeProvider(req.params.id);
+        const provider = requireSupportedProvider(req.params.id);
 
         const snapshot = await getProviderSnapshot(companyId, provider);
         if (!snapshot) {
@@ -166,18 +594,9 @@ export class CourierController {
 
     updateCourier = asyncHandler(async (req: Request, res: Response) => {
         const companyId = getCompanyId(req);
-        const provider = normalizeProvider(req.params.id);
-        const { name, apiEndpoint, apiKey, isActive } = req.body || {};
-
-        const services = await CourierService.find({
-            companyId,
-            provider,
-            isDeleted: false,
-        });
-
-        if (!services.length) {
-            throw new NotFoundError('Courier');
-        }
+        const provider = requireSupportedProvider(req.params.id);
+        const { name, apiEndpoint, apiKey, isActive, credentials } = req.body || {};
+        const companyObjectId = new mongoose.Types.ObjectId(companyId);
 
         if (typeof isActive === 'boolean') {
             await CourierService.updateMany(
@@ -188,38 +607,56 @@ export class CourierController {
 
         if (typeof name === 'string' && name.trim().length > 0) {
             await Integration.updateOne(
-                {
-                    companyId,
-                    provider: toIntegrationProvider(provider),
-                    type: 'courier',
-                    isDeleted: false,
-                },
+                buildIntegrationQuery(companyId, provider),
                 {
                     $set: {
+                        ...integrationProviderPatch(provider),
                         'metadata.displayName': name.trim(),
                     },
-                }
+                    $setOnInsert: integrationInsertFields(companyId, provider),
+                },
+                { upsert: true }
             );
         }
 
-        if (apiEndpoint || apiKey || typeof isActive === 'boolean') {
+        const credentialPatch: Record<string, string> = {};
+        if (provider === 'velocity') {
+            if (credentials?.username) credentialPatch['credentials.username'] = encodeCredential(credentials.username);
+            if (credentials?.password) credentialPatch['credentials.password'] = encodeCredential(credentials.password);
+            if (apiKey || credentials?.apiKey) {
+                credentialPatch['credentials.apiKey'] = encodeCredential(credentials?.apiKey || apiKey);
+            }
+        } else if (provider === 'delhivery') {
+            if (apiKey || credentials?.apiKey) {
+                credentialPatch['credentials.apiKey'] = encodeCredential(credentials?.apiKey || apiKey);
+            }
+        } else if (provider === 'ekart') {
+            if (credentials?.clientId) credentialPatch['credentials.clientId'] = String(credentials.clientId);
+            if (credentials?.username) credentialPatch['credentials.username'] = encodeCredential(credentials.username);
+            if (credentials?.password) credentialPatch['credentials.password'] = encodeCredential(credentials.password);
+        }
+
+        if (apiEndpoint || Object.keys(credentialPatch).length || typeof isActive === 'boolean') {
             await Integration.updateOne(
-                {
-                    companyId,
-                    provider: toIntegrationProvider(provider),
-                    type: 'courier',
-                    isDeleted: false,
-                },
+                buildIntegrationQuery(companyId, provider),
                 {
                     $set: {
+                        ...integrationProviderPatch(provider),
                         ...(apiEndpoint ? { 'settings.baseUrl': String(apiEndpoint) } : {}),
-                        ...(apiKey ? { 'credentials.apiKey': String(apiKey) } : {}),
                         ...(typeof isActive === 'boolean'
                             ? { 'settings.isActive': isActive }
                             : {}),
+                        ...credentialPatch,
                     },
-                }
+                    $setOnInsert: integrationInsertFields(companyId, provider),
+                },
+                { upsert: true }
             );
+        }
+
+        CourierFactory.clearCache(companyObjectId, toIntegrationProvider(provider));
+        if (provider === 'velocity') {
+            CourierFactory.clearCache(companyObjectId, 'velocity');
         }
 
         const snapshot = await getProviderSnapshot(companyId, provider);
@@ -235,20 +672,26 @@ export class CourierController {
 
     toggleStatus = asyncHandler(async (req: Request, res: Response) => {
         const companyId = getCompanyId(req);
-        const provider = normalizeProvider(req.params.id);
+        const provider = requireSupportedProvider(req.params.id);
+        const companyObjectId = new mongoose.Types.ObjectId(companyId);
 
         const services = await CourierService.find({
             companyId,
             provider,
             isDeleted: false,
         }).lean();
+        const integration = await Integration.findOne(
+            buildIntegrationQuery(companyId, provider)
+        ).lean();
 
         if (!services.length) {
             throw new NotFoundError('Courier');
         }
 
-        const hasActive = services.some(isServiceActive);
-        const nextStatus = hasActive ? 'inactive' : 'active';
+        const hasActiveServices = services.some(isServiceActive);
+        const integrationActive = Boolean(integration?.settings?.isActive);
+        const isCurrentlyEnabled = hasActiveServices && integrationActive;
+        const nextStatus = isCurrentlyEnabled ? 'inactive' : 'active';
 
         await Promise.all([
             CourierService.updateMany(
@@ -256,15 +699,22 @@ export class CourierController {
                 { $set: { status: nextStatus } }
             ),
             Integration.updateOne(
+                buildIntegrationQuery(companyId, provider),
                 {
-                    companyId,
-                    provider: toIntegrationProvider(provider),
-                    type: 'courier',
-                    isDeleted: false,
+                    $set: {
+                        ...integrationProviderPatch(provider),
+                        'settings.isActive': nextStatus === 'active',
+                    },
+                    $setOnInsert: integrationInsertFields(companyId, provider),
                 },
-                { $set: { 'settings.isActive': nextStatus === 'active' } }
+                { upsert: true }
             ),
         ]);
+
+        CourierFactory.clearCache(companyObjectId, toIntegrationProvider(provider));
+        if (provider === 'velocity') {
+            CourierFactory.clearCache(companyObjectId, 'velocity');
+        }
 
         res.status(200).json({
             success: true,
@@ -276,72 +726,28 @@ export class CourierController {
         });
     });
 
-    testConnection = asyncHandler(async (req: Request, res: Response) => {
-        const provider = normalizeProvider(req.params.id);
-        const companyId = getCompanyId(req);
-
-        try {
-            await CourierFactory.getProvider(
-                toIntegrationProvider(provider),
-                new mongoose.Types.ObjectId(companyId)
-            );
-            res.status(200).json({ success: true, message: 'Connection successful' });
-        } catch (error) {
-            res.status(400).json({
-                success: false,
-                message: error instanceof Error ? error.message : 'Connection failed',
-            });
-        }
-    });
-
     getPerformance = asyncHandler(async (req: Request, res: Response) => {
-        const provider = normalizeProvider(req.params.id);
+        const provider = requireSupportedProvider(req.params.id);
         const companyId = getCompanyId(req);
-
-        const performance = await CourierPerformance.findOne({
-            courierId: provider,
-            companyId,
-        }).lean();
-
-        if (!performance) {
-            return res.status(200).json({
-                success: true,
-                data: {
-                    courierId: provider,
-                    overallMetrics: {
-                        avgDeliveryDays: 0,
-                        pickupSuccessRate: 0,
-                        deliverySuccessRate: 0,
-                        rtoRate: 0,
-                        ndrRate: 0,
-                        totalShipments: 0,
-                        rating: 0,
-                    },
-                    trends: {
-                        deliverySpeedTrend: 'stable',
-                        reliabilityTrend: 'stable',
-                        volumeTrend: 'stable',
-                    },
-                    slaCompliance: {
-                        today: 100,
-                        week: 100,
-                        month: 100,
-                    },
-                    activeShipments: 0,
-                },
-            });
-        }
+        const [activeShipments, slaCompliance, performance] = await Promise.all([
+            getActiveShipmentsCount(companyId, provider),
+            getSlaCompliance(companyId, provider),
+            buildPerformanceFromShipments({
+                companyId,
+                provider,
+                startDate: req.query.startDate as string | undefined,
+                endDate: req.query.endDate as string | undefined,
+                zone: req.query.zone as string | undefined,
+                serviceType: req.query.serviceType as string | undefined,
+            }),
+        ]);
 
         return res.status(200).json({
             success: true,
             data: {
                 ...performance,
-                slaCompliance: {
-                    today: 98,
-                    week: 97,
-                    month: 96,
-                },
-                activeShipments: performance.overallMetrics?.totalShipments || 0,
+                slaCompliance,
+                activeShipments,
             },
         });
     });

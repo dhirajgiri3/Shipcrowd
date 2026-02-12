@@ -21,7 +21,25 @@ export const getSellerCourierPolicy = async (req: Request, res: Response, next: 
             companyId: auth.companyId,
             sellerId,
             isActive: true,
-        }).lean();
+        })
+            .select('companyId sellerId allowedProviders allowedServiceIds blockedProviders blockedServiceIds selectionMode autoPriority balancedDeltaPercent isActive')
+            .hint({ companyId: 1, sellerId: 1, isActive: 1 }) // Index hint for performance
+            .lean();
+
+        // Generate ETag for caching
+        const etag = policy ? `"${policy._id}"` : null;
+
+        // Check If-None-Match header for conditional requests
+        if (etag && req.headers['if-none-match'] === etag) {
+            res.status(304).send(); // Not Modified
+            return;
+        }
+
+        // Set Cache-Control and ETag headers
+        res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+        if (etag) {
+            res.set('ETag', etag);
+        }
 
         sendSuccess(
             res,

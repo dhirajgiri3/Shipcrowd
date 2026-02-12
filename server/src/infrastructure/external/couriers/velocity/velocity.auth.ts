@@ -14,7 +14,7 @@ import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
 import Integration from '../../../database/mongoose/models/system/integrations/integration.model';
 import { encryptData, decryptData } from '../../../../shared/utils/encryption';
-import { VelocityAuthRequest, VelocityAuthResponse, VelocityError, VelocityErrorType } from './velocity.types';
+import { VelocityAuthRequest, VelocityAuthResponse, VelocityError } from './velocity.types';
 import logger from '../../../../shared/logger/winston.logger';
 
 export class VelocityAuth {
@@ -23,6 +23,38 @@ export class VelocityAuth {
   private httpClient: AxiosInstance;
   private tokenCache: { token: string; expiresAt: Date } | null = null;
   private authPromise: Promise<string> | null = null; // Deduplication promise
+
+  private async findIntegrationRaw(requireActive: boolean = true) {
+    const query: Record<string, unknown> = {
+      companyId: this.companyId,
+      type: 'courier',
+      $or: [{ provider: 'velocity-shipfast' }, { provider: 'velocity' }],
+    };
+    if (requireActive) {
+      query['settings.isActive'] = true;
+    }
+
+    return Integration.collection.findOne(query, {
+      projection: { credentials: 1, settings: 1, metadata: 1 }
+    });
+  }
+
+  private decodeCredentialValue(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+      return undefined;
+    }
+
+    try {
+      return decryptData(normalized);
+    } catch {
+      // Backward compatibility for legacy plaintext credential rows.
+      return normalized;
+    }
+  }
 
   constructor(companyId: mongoose.Types.ObjectId, baseUrl: string = 'https://shazam.velocity.in') {
     this.companyId = companyId;
@@ -40,12 +72,7 @@ export class VelocityAuth {
    * Get credentials from Integration model
    */
   private async getCredentials(): Promise<{ username: string; password: string }> {
-    const integration = await Integration.findOne({
-      companyId: this.companyId,
-      type: 'courier',
-      provider: 'velocity-shipfast',
-      'settings.isActive': true
-    });
+    const integration = await this.findIntegrationRaw(true);
 
     if (!integration) {
       throw new VelocityError(
@@ -59,13 +86,8 @@ export class VelocityAuth {
     }
 
     // Decrypt credentials
-    const username = integration.credentials.username
-      ? decryptData(integration.credentials.username)
-      : process.env.VELOCITY_USERNAME;
-
-    const password = integration.credentials.password
-      ? decryptData(integration.credentials.password)
-      : process.env.VELOCITY_PASSWORD;
+    const username = this.decodeCredentialValue((integration as any).credentials?.username) || process.env.VELOCITY_USERNAME;
+    const password = this.decodeCredentialValue((integration as any).credentials?.password) || process.env.VELOCITY_PASSWORD;
 
     if (!username || !password) {
       throw new VelocityError(
@@ -172,13 +194,7 @@ export class VelocityAuth {
    * Store token in Integration model (encrypted)
    */
   private async storeToken(token: string, expiresAt: Date): Promise<void> {
-    const integration = await Integration.findOne(
-      {
-        companyId: this.companyId,
-        type: 'courier',
-        provider: 'velocity-shipfast'
-      }
-    );
+    const integration = await this.findIntegrationRaw(false);
 
     if (!integration) {
       throw new VelocityError(
@@ -191,40 +207,39 @@ export class VelocityAuth {
       );
     }
 
-    integration.credentials = {
-      ...(integration.credentials || {}),
-      accessToken: encryptData(token),
-    };
-    integration.metadata = {
-      ...(integration.metadata || {}),
-      tokenExpiresAt: expiresAt,
-      lastTokenRefresh: new Date(),
-    };
-
-    await integration.save();
+    await Integration.collection.updateOne(
+      {
+        companyId: this.companyId,
+        type: 'courier',
+        $or: [{ provider: 'velocity-shipfast' }, { provider: 'velocity' }]
+      },
+      {
+        $set: {
+          'credentials.accessToken': encryptData(token),
+          'metadata.tokenExpiresAt': expiresAt,
+          'metadata.lastTokenRefresh': new Date(),
+        }
+      }
+    );
   }
 
   /**
    * Get token from database
    */
   private async getStoredToken(): Promise<{ token: string; expiresAt: Date } | null> {
-    const integration = await Integration.findOne({
-      companyId: this.companyId,
-      type: 'courier',
-      provider: 'velocity-shipfast',
-      'settings.isActive': true
-    });
+    const integration = await this.findIntegrationRaw(true);
 
-    if (!integration || !integration.credentials.accessToken) {
+    const encryptedToken = (integration as any)?.credentials?.accessToken;
+    if (!integration || !encryptedToken) {
       return null;
     }
 
-    const token = decryptData(integration.credentials.accessToken);
-    const expiresAt = integration.metadata?.tokenExpiresAt
-      ? new Date(integration.metadata.tokenExpiresAt)
+    const token = this.decodeCredentialValue(encryptedToken);
+    const expiresAt = (integration as any).metadata?.tokenExpiresAt
+      ? new Date((integration as any).metadata.tokenExpiresAt)
       : null;
 
-    if (!expiresAt) {
+    if (!token || !expiresAt) {
       return null;
     }
 
@@ -292,11 +307,11 @@ export class VelocityAuth {
   async clearToken(): Promise<void> {
     this.tokenCache = null;
 
-    await Integration.findOneAndUpdate(
+    await Integration.collection.updateOne(
       {
         companyId: this.companyId,
         type: 'courier',
-        provider: 'velocity-shipfast'
+        $or: [{ provider: 'velocity-shipfast' }, { provider: 'velocity' }]
       },
       {
         $unset: {

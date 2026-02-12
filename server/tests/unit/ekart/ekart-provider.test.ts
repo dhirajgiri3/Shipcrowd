@@ -301,4 +301,56 @@ describe('EkartProvider - New Methods', () => {
             await expect(provider.getLabel(trackingIds)).rejects.toThrow();
         });
     });
+
+    describe('getRates service type mapping', () => {
+        it('maps express serviceType hint to EXPRESS request payload', async () => {
+            const postSpy = jest.spyOn(provider['axiosInstance'], 'post').mockResolvedValue({
+                data: {
+                    shippingCharge: '100',
+                    taxes: '18',
+                    total: '118',
+                    zone: 'D',
+                },
+            } as any);
+
+            const result = await provider.getRates({
+                origin: { pincode: '560001' },
+                destination: { pincode: '110001' },
+                package: { weight: 1, length: 10, width: 10, height: 10 },
+                paymentMode: 'prepaid',
+                serviceType: 'express',
+            });
+
+            expect(postSpy).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({ serviceType: 'EXPRESS' })
+            );
+            expect(result[0].serviceType).toBe('Express');
+        });
+
+        it('prefers providerServiceId when it is a valid Ekart service type', async () => {
+            const postSpy = jest.spyOn(provider['axiosInstance'], 'post').mockResolvedValue({
+                data: {
+                    shippingCharge: '120',
+                    taxes: '21.6',
+                    total: '141.6',
+                    zone: 'A',
+                },
+            } as any);
+
+            await provider.getRates({
+                origin: { pincode: '560001' },
+                destination: { pincode: '110001' },
+                package: { weight: 1, length: 10, width: 10, height: 10 },
+                paymentMode: 'prepaid',
+                serviceType: 'express',
+                providerServiceId: 'SURFACE',
+            });
+
+            expect(postSpy).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({ serviceType: 'SURFACE' })
+            );
+        });
+    });
 });

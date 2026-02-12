@@ -264,10 +264,12 @@ export function CommissionListClient() {
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end">
                                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                                    <DropdownMenuItem className="text-[var(--success)]">
+                                                                    <DropdownMenuItem>
+                                                                        <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
                                                                         Approve
                                                                     </DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-[var(--error)]">
+                                                                    <DropdownMenuItem destructive>
+                                                                        <XCircle className="h-4 w-4" />
                                                                         Reject
                                                                     </DropdownMenuItem>
                                                                 </DropdownMenuContent>

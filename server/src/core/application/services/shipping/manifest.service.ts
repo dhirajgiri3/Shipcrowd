@@ -245,8 +245,7 @@ class ManifestService {
         return new Promise(async (resolve, reject) => {
             try {
                 const manifest = await Manifest.findById(manifestId)
-                    .populate('warehouseId')
-                    .populate('companyId');
+                    .populate('warehouseId');
 
                 if (!manifest) {
                     throw new NotFoundError('Manifest not found');

@@ -30,20 +30,3 @@ export const useCourierRecommendations = (
         retry: RETRY_CONFIG.DEFAULT,
     });
 };
-
-/**
- * Hook to check courier serviceability
- */
-export const useCourierServiceability = (
-    pickupPincode: string,
-    deliveryPincode: string,
-    options?: { enabled?: boolean }
-) => {
-    return useQuery({
-        queryKey: ['courier', 'serviceability', pickupPincode, deliveryPincode],
-        queryFn: () => courierRecommendationApi.checkServiceability(pickupPincode, deliveryPincode),
-        enabled: options?.enabled !== false && !!pickupPincode && !!deliveryPincode,
-        staleTime: 600000, // 10 minutes - serviceability is relatively stable
-        retry: RETRY_CONFIG.DEFAULT,
-    });
-};

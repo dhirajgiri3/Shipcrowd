@@ -31,6 +31,7 @@ export interface CourierListItem {
     trackingEnabled: boolean;
     codLimit: number;
     weightLimit: number;
+    credentialsConfigured?: boolean;
     totalShipments?: number;
     avgDeliveryTime?: string;
     successRate?: number;
@@ -45,13 +46,12 @@ interface CouriersListResponse {
 
 /**
  * Fetch all couriers (List View)
- * Uses the /admin/carriers endpoint which matches CourierListItem shape
  */
 export const useCouriers = (options?: UseQueryOptions<CourierListItem[], ApiError>) => {
     return useQuery<CourierListItem[], ApiError>({
-        queryKey: ['carriers'], // Keeping legacy key for list to match previous behavior
+        queryKey: queryKeys.couriers.list(),
         queryFn: async () => {
-            const { data } = await apiClient.get<CouriersListResponse>('/admin/carriers');
+            const { data } = await apiClient.get<CouriersListResponse>('/admin/couriers');
             return data.data;
         },
         ...CACHE_TIMES.LONG,
@@ -119,9 +119,7 @@ export const useUpdateCourier = (options?: UseMutationOptions<Courier, ApiError,
         onSuccess: (_, variables) => {
             // Invalidate detail query
             queryClient.invalidateQueries({ queryKey: queryKeys.couriers.detail(variables.id) });
-            // Should potentially invalidate list too, but shapes differ. 
-            // If list depends on updated data, we might need to invalidate 'carriers' key too.
-            queryClient.invalidateQueries({ queryKey: ['carriers'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.couriers.list() });
             showSuccessToast('Courier updated successfully');
         },
         onError: (error) => handleApiError(error),
@@ -145,33 +143,11 @@ export const useToggleCourierStatus = (options?: UseMutationOptions<Courier, Api
         },
         onSuccess: (data, id) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.couriers.detail(id) });
-            queryClient.invalidateQueries({ queryKey: ['carriers'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.couriers.list() });
             showSuccessToast(`Courier ${data.isActive ? 'activated' : 'deactivated'} successfully`);
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
-        ...options,
-    });
-};
-
-/**
- * Test courier integration connection
- */
-export const useTestCourierIntegration = (options?: UseMutationOptions<{ success: boolean; message: string }, ApiError, string>) => {
-    return useMutation<{ success: boolean; message: string }, ApiError, string>({
-        mutationFn: async (id: string) => {
-            const response = await apiClient.post<{ success: boolean; message: string }>(
-                `/admin/couriers/${id}/test-connection`
-            );
-            return response.data;
-        },
-        onSuccess: (data) => {
-            if (data.success) {
-                showSuccessToast('Integration test successful');
-            }
-        },
-        onError: (error) => handleApiError(error),
-        retry: RETRY_CONFIG.NO_RETRY,
         ...options,
     });
 };

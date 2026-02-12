@@ -14,9 +14,7 @@ import {
     Settings,
     LogOut,
     Boxes,
-    Sparkles,
     PackageX,
-    Plug,
     Users,
     CreditCard,
     Receipt,
@@ -24,34 +22,47 @@ import {
     Headphones,
     Scale as ScaleIcon,
     ChevronRight,
-    Zap,
     UserCog
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/core/Button';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 
-const navItems = [
-    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { label: 'Sellers', href: '/admin/sellers', icon: Users },
-    { label: 'KYC Analytics', href: '/admin/kyc', icon: Boxes },
-    // { label: 'Intelligence', href: '/admin/intelligence', icon: Zap }, // Archived
-    { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-    { label: 'Shipments', href: '/admin/shipments', icon: Package },
-    { label: 'Warehouses', href: '/admin/warehouses', icon: Building2 },
-    { label: 'Returns & NDR', href: '/admin/returns', icon: PackageX },
-    { label: 'Weight Discrepancy', href: '/admin/weight', icon: ScaleIcon },
-    { label: 'Courier Partners', href: '/admin/couriers', icon: Truck },
-    { label: 'Pricing Studio', href: '/admin/pricing-studio', icon: CreditCard },
-    { label: 'Financials', href: '/admin/financials', icon: Wallet },
-    { label: 'Billing', href: '/admin/billing', icon: Receipt },
-    { label: 'Profit', href: '/admin/profit', icon: BarChart3 },
-    { label: 'Sales Team', href: '/admin/sales', icon: Users },
-    { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
-    { label: 'User Management', href: '/admin/users', icon: UserCog, superAdminOnly: true },
-    { label: 'Support Tickets', href: '/admin/support', icon: Headphones },
-    { label: 'Integrations', href: '/admin/integrations', icon: Plug },
-    { label: 'Settings', href: '/admin/settings', icon: Settings },
+type NavSection = 'core' | 'operations' | 'finance' | 'system';
+type NavItem = {
+    label: string;
+    href: string;
+    icon: LucideIcon;
+    section: NavSection;
+    superAdminOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
+    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, section: 'core' },
+    { label: 'Sellers', href: '/admin/sellers', icon: Users, section: 'core' },
+    { label: 'KYC Analytics', href: '/admin/kyc', icon: Boxes, section: 'core' },
+
+    { label: 'Orders', href: '/admin/orders', icon: ShoppingCart, section: 'operations' },
+    { label: 'Shipments', href: '/admin/shipments', icon: Package, section: 'operations' },
+    { label: 'Warehouses', href: '/admin/warehouses', icon: Building2, section: 'operations' },
+    { label: 'Returns & NDR', href: '/admin/returns', icon: PackageX, section: 'operations' },
+    { label: 'Weight Discrepancy', href: '/admin/weight', icon: ScaleIcon, section: 'operations' },
+    { label: 'Courier Partners', href: '/admin/couriers', icon: Truck, section: 'operations' },
+    { label: 'Courier Services', href: '/admin/couriers/services', icon: Settings, section: 'operations' },
+    { label: 'Rate Cards', href: '/admin/rate-cards', icon: CreditCard, section: 'operations' },
+    { label: 'Courier Policies', href: '/admin/courier-policies', icon: UserCog, section: 'operations' },
+
+    { label: 'Pricing Studio', href: '/admin/pricing-studio', icon: CreditCard, section: 'finance' },
+    { label: 'Financials', href: '/admin/financials', icon: Wallet, section: 'finance' },
+    { label: 'Billing', href: '/admin/billing', icon: Receipt, section: 'finance' },
+    { label: 'Profit', href: '/admin/profit', icon: BarChart3, section: 'finance' },
+    { label: 'Sales Team', href: '/admin/sales', icon: Users, section: 'finance' },
+    { label: 'Coupons', href: '/admin/coupons', icon: Ticket, section: 'finance' },
+
+    { label: 'User Management', href: '/admin/users', icon: UserCog, section: 'system', superAdminOnly: true },
+    { label: 'Support Tickets', href: '/admin/support', icon: Headphones, section: 'system' },
+    { label: 'Settings', href: '/admin/settings', icon: Settings, section: 'system' },
 ];
 
 export const Sidebar = React.memo(SidebarComponent);
@@ -79,11 +90,10 @@ function SidebarComponent({ isOpen, onClose }: { isOpen?: boolean; onClose?: () 
         return true;
     });
 
-    // Group navigation items
-    const coreItems = filteredNavItems.slice(0, 4); // Dashboard, Sellers, KYC, Intelligence
-    const operationsItems = filteredNavItems.slice(4, 9); // Orders, Shipments, Warehouses, Returns, Weight
-    const financeItems = filteredNavItems.slice(9, 16); // Courier, Rate Cards, Financials, Billing, Profit, Sales, Coupons
-    const systemItems = filteredNavItems.slice(16); // User Management (super admin), Support, Integrations, Settings
+    const coreItems = filteredNavItems.filter((item) => item.section === 'core');
+    const operationsItems = filteredNavItems.filter((item) => item.section === 'operations');
+    const financeItems = filteredNavItems.filter((item) => item.section === 'finance');
+    const systemItems = filteredNavItems.filter((item) => item.section === 'system');
 
     const renderNavItems = (items: typeof filteredNavItems, showDivider = false) => (
         <>

@@ -395,6 +395,588 @@
    - Verify API calls still work as expected
    - Check that no console errors or warnings have been introduced
 
+## Performance Optimization Phase
+
+**Analyze and implement comprehensive performance, speed, and cost optimizations across the entire stack:**
+
+### 1. **Frontend Performance Analysis & Optimization**
+
+#### A. **Bundle Size & Code Splitting**
+   - **Analyze current bundle size** using `npm run build` and review build output
+   - **Identify large dependencies** that could be lazy-loaded or replaced with lighter alternatives
+   - **Implement code splitting** for routes and heavy components:
+     ```typescript
+     // Lazy load heavy components
+     const HeavyComponent = lazy(() => import('./HeavyComponent'));
+     
+     // Split routes
+     const OrdersPage = lazy(() => import('@/app/orders/page'));
+     ```
+   - **Dynamic imports for conditionally-used code**:
+     ```typescript
+     // Only load when needed
+     if (needsExport) {
+       const { exportToExcel } = await import('@/utils/export');
+       exportToExcel(data);
+     }
+     ```
+   - **Tree-shake unused code** by ensuring proper ESM imports (`import { specific }` not `import *`)
+   - **Analyze and remove unused dependencies** from `package.json`
+   - **Use lightweight alternatives** where possible (e.g., `date-fns` instead of `moment`, `zustand` instead of Redux if applicable)
+   - **Target**: Reduce initial bundle size by at least 20-30% for faster First Contentful Paint (FCP)
+
+#### B. **Component Rendering Optimization**
+   - **Identify unnecessary re-renders** using React DevTools Profiler
+   - **Implement memoization strategically**:
+     ```typescript
+     // Memoize expensive computations
+     const expensiveValue = useMemo(() => {
+       return computeExpensiveValue(data);
+     }, [data]);
+     
+     // Memoize callbacks passed to child components
+     const handleClick = useCallback(() => {
+       performAction(id);
+     }, [id]);
+     
+     // Memoize components that receive stable props
+     const MemoizedComponent = React.memo(ExpensiveComponent, (prev, next) => {
+       return prev.id === next.id && prev.status === next.status;
+     });
+     ```
+   - **Virtualize long lists** using `react-window` or `react-virtualized`:
+     ```typescript
+     import { FixedSizeList } from 'react-window';
+     
+     <FixedSizeList
+       height={600}
+       itemCount={items.length}
+       itemSize={50}
+       width="100%"
+     >
+       {({ index, style }) => (
+         <div style={style}>{items[index]}</div>
+       )}
+     </FixedSizeList>
+     ```
+   - **Debounce search and filter inputs** to reduce unnecessary API calls:
+     ```typescript
+     const debouncedSearch = useMemo(
+       () => debounce((value: string) => {
+         performSearch(value);
+       }, 300),
+       []
+     );
+     ```
+   - **Use pagination or infinite scroll** instead of loading all data at once
+   - **Avoid inline object/array creation in props** (causes new references on every render)
+   - **Target**: Reduce re-renders by 40-60% and improve interaction responsiveness
+
+#### C. **Image & Asset Optimization**
+   - **Use Next.js Image component** with proper sizing and lazy loading:
+     ```typescript
+     import Image from 'next/image';
+     
+     <Image
+       src="/product.jpg"
+       alt="Product"
+       width={400}
+       height={300}
+       loading="lazy"
+       placeholder="blur"
+       quality={85}
+     />
+     ```
+   - **Implement responsive images** with proper `srcset` and sizes
+   - **Compress images** before upload (WebP format for modern browsers)
+   - **Lazy load images below the fold** using native `loading="lazy"` or Intersection Observer
+   - **Use SVGs for icons** instead of icon fonts or PNGs
+   - **Implement CDN caching** for static assets with long cache headers
+   - **Target**: Reduce image payload by 50-70% and improve Largest Contentful Paint (LCP)
+
+#### D. **Client-Side Data Management**
+   - **Implement aggressive caching** with proper cache invalidation:
+     ```typescript
+     // React Query example with optimized caching
+     const { data } = useQuery({
+       queryKey: ['orders', filters],
+       queryFn: fetchOrders,
+       staleTime: 5 * 60 * 1000, // 5 minutes
+       cacheTime: 10 * 60 * 1000, // 10 minutes
+       refetchOnWindowFocus: false,
+       refetchOnMount: false,
+     });
+     ```
+   - **Use optimistic updates** to improve perceived performance:
+     ```typescript
+     const mutation = useMutation({
+       mutationFn: updateOrder,
+       onMutate: async (newOrder) => {
+         // Cancel outgoing refetches
+         await queryClient.cancelQueries({ queryKey: ['orders'] });
+         
+         // Snapshot current value
+         const previous = queryClient.getQueryData(['orders']);
+         
+         // Optimistically update
+         queryClient.setQueryData(['orders'], (old) => [...old, newOrder]);
+         
+         return { previous };
+       },
+       onError: (err, newOrder, context) => {
+         // Rollback on error
+         queryClient.setQueryData(['orders'], context.previous);
+       },
+       onSettled: () => {
+         queryClient.invalidateQueries({ queryKey: ['orders'] });
+       },
+     });
+     ```
+   - **Prefetch data for likely next actions**:
+     ```typescript
+     // Prefetch on hover
+     const handleMouseEnter = () => {
+       queryClient.prefetchQuery({
+         queryKey: ['order', orderId],
+         queryFn: () => fetchOrderDetails(orderId),
+       });
+     };
+     ```
+   - **Implement request deduplication** to prevent duplicate API calls
+   - **Use local state for ephemeral UI state** (don't store everything in global state)
+   - **Target**: Reduce API calls by 30-50% and improve perceived load time
+
+#### E. **Network Optimization**
+   - **Implement request batching** for multiple related queries
+   - **Use HTTP/2 multiplexing** (ensure server supports it)
+   - **Compress API responses** with gzip/brotli
+   - **Implement progressive loading**: load critical data first, defer non-critical
+   - **Use Service Workers** for offline capability and faster repeat visits (if applicable)
+   - **Implement resource hints**:
+     ```html
+     <link rel="preconnect" href="https://api.example.com" />
+     <link rel="dns-prefetch" href="https://cdn.example.com" />
+     <link rel="preload" href="/critical.css" as="style" />
+     ```
+   - **Target**: Reduce Time to First Byte (TTFB) by 20-40%
+
+### 2. **Backend API Performance Analysis & Optimization**
+
+#### A. **Database Query Optimization**
+   - **Analyze slow queries** using database query profiler and logging:
+     ```typescript
+     // Enable query logging in development
+     mongoose.set('debug', (collectionName, method, query, doc) => {
+       console.log(`${collectionName}.${method}`, JSON.stringify(query), doc);
+     });
+     ```
+   - **Add proper indexes** for frequently queried fields:
+     ```typescript
+     // Create compound indexes for common query patterns
+     schema.index({ sellerId: 1, status: 1, createdAt: -1 });
+     schema.index({ trackingNumber: 1 }); // Unique queries
+     schema.index({ 'address.pincode': 1 }); // Nested fields
+     ```
+   - **Use `.select()` to limit returned fields** (avoid fetching unnecessary data):
+     ```typescript
+     const orders = await Order.find({ sellerId })
+       .select('orderId status totalAmount createdAt') // Only needed fields
+       .lean(); // Return plain objects, not Mongoose documents
+     ```
+   - **Implement pagination at database level**:
+     ```typescript
+     const { page = 1, limit = 20 } = req.query;
+     const orders = await Order.find(query)
+       .skip((page - 1) * limit)
+       .limit(limit)
+       .lean();
+     ```
+   - **Use aggregation pipelines** for complex data transformations (faster than client-side processing)
+   - **Avoid N+1 queries** by using proper population or joins:
+     ```typescript
+     // BAD: N+1 queries
+     const orders = await Order.find();
+     for (const order of orders) {
+       order.seller = await Seller.findById(order.sellerId);
+     }
+     
+     // GOOD: Single query with population
+     const orders = await Order.find()
+       .populate('sellerId', 'name email')
+       .lean();
+     ```
+   - **Use `.lean()` for read-only queries** (50-70% faster than full Mongoose documents)
+   - **Implement database-level filtering and sorting** (don't fetch all and filter in code)
+   - **Target**: Reduce average query time by 50-80%
+
+#### B. **API Endpoint Optimization**
+   - **Implement field filtering** (GraphQL-style field selection for REST):
+     ```typescript
+     // Allow clients to specify needed fields
+     // GET /api/orders?fields=orderId,status,totalAmount
+     const fields = req.query.fields?.split(',').join(' ');
+     const orders = await Order.find().select(fields);
+     ```
+   - **Use HTTP caching headers** appropriately:
+     ```typescript
+     // Cache static/infrequent-change data
+     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
+     res.setHeader('ETag', generateETag(data));
+     
+     // Implement conditional requests
+     if (req.headers['if-none-match'] === etag) {
+       return res.status(304).end();
+     }
+     ```
+   - **Implement response compression** (gzip/brotli):
+     ```typescript
+     import compression from 'compression';
+     app.use(compression({ level: 6 }));
+     ```
+   - **Batch related queries** into single endpoint when possible
+   - **Use HTTP/2 server push** for predictable resource needs
+   - **Implement rate limiting** to prevent abuse and ensure fair resource allocation
+   - **Target**: Reduce API response time by 30-50%
+
+#### C. **Caching Strategy**
+   - **Implement multi-layer caching**:
+     
+     **Layer 1: In-Memory Cache (Redis/Node-cache)**
+     ```typescript
+     import NodeCache from 'node-cache';
+     const cache = new NodeCache({ stdTTL: 300 }); // 5 min default
+     
+     async function getOrderStats(sellerId: string) {
+       const cacheKey = `stats:${sellerId}`;
+       const cached = cache.get(cacheKey);
+       if (cached) return cached;
+       
+       const stats = await computeStats(sellerId);
+       cache.set(cacheKey, stats, 300); // Cache for 5 minutes
+       return stats;
+     }
+     ```
+     
+     **Layer 2: Database Query Result Cache**
+     ```typescript
+     // Use MongoDB query result caching
+     const result = await Order.find({ sellerId })
+       .cache(300) // If using mongoose-cache plugin
+       .lean();
+     ```
+     
+     **Layer 3: CDN/HTTP Cache**
+     ```typescript
+     // Cache static/public data at CDN level
+     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+     ```
+   
+   - **Implement cache invalidation strategy**:
+     ```typescript
+     // Invalidate related caches on mutation
+     async function updateOrder(orderId: string, updates: any) {
+       const order = await Order.findByIdAndUpdate(orderId, updates);
+       
+       // Invalidate related caches
+       cache.del(`order:${orderId}`);
+       cache.del(`stats:${order.sellerId}`);
+       cache.del(`orders:list:${order.sellerId}`);
+       
+       return order;
+     }
+     ```
+   - **Use stale-while-revalidate pattern** for non-critical data
+   - **Implement cache warming** for frequently accessed data
+   - **Target**: Reduce database load by 60-80% through effective caching
+
+#### D. **Background Processing & Queue Optimization**
+   - **Offload heavy operations to background jobs**:
+     ```typescript
+     // Don't process heavy tasks in request-response cycle
+     app.post('/api/orders/bulk-import', async (req, res) => {
+       const jobId = await queue.add('import-orders', {
+         file: req.file,
+         userId: req.user.id,
+       });
+       
+       // Return immediately
+       res.json({ message: 'Import started', jobId });
+     });
+     ```
+   - **Use job queues** (Bull, BullMQ) for async processing:
+     ```typescript
+     import Queue from 'bull';
+     const emailQueue = new Queue('email-notifications', redisConfig);
+     
+     // Process in background
+     emailQueue.process(async (job) => {
+       await sendEmail(job.data);
+     });
+     ```
+   - **Implement batch processing** for bulk operations
+   - **Use worker threads** for CPU-intensive tasks
+   - **Implement graceful degradation** when background services are slow
+   - **Target**: Reduce API response time for heavy operations by 70-90%
+
+#### E. **Data Serialization & Payload Optimization**
+   - **Minimize response payload size**:
+     ```typescript
+     // Transform and clean data before sending
+     const orders = await Order.find().lean();
+     
+     const optimized = orders.map(order => ({
+       id: order._id,
+       orderId: order.orderId,
+       status: order.status,
+       amount: order.totalAmount,
+       date: order.createdAt,
+       // Don't send unused fields like __v, internal flags, etc.
+     }));
+     ```
+   - **Use compression** for large payloads
+   - **Implement field projection** (only send requested fields)
+   - **Use protocol buffers or MessagePack** for binary serialization (if applicable)
+   - **Flatten nested objects** when possible to reduce parsing overhead
+   - **Target**: Reduce average response size by 40-60%
+
+### 3. **Load & Speed Optimization**
+
+#### A. **Page Load Performance**
+   - **Optimize Critical Rendering Path**:
+     - Inline critical CSS (above-the-fold styles)
+     - Defer non-critical CSS
+     - Minimize render-blocking JavaScript
+     - Use `async` or `defer` for scripts
+   - **Implement skeleton screens** for perceived performance using existing loader components
+   - **Progressive enhancement**: load core functionality first, enhancements later
+   - **Optimize Web Vitals**:
+     - **LCP (Largest Contentful Paint)**: < 2.5s
+     - **FID (First Input Delay)**: < 100ms
+     - **CLS (Cumulative Layout Shift)**: < 0.1
+   - **Use performance monitoring** (Web Vitals, Lighthouse CI) in CI/CD
+   - **Target**: Achieve Lighthouse score > 90 for Performance
+
+#### B. **Server Response Time**
+   - **Optimize cold start times** (if using serverless)
+   - **Implement connection pooling** for database connections:
+     ```typescript
+     mongoose.connect(uri, {
+       maxPoolSize: 10,
+       minPoolSize: 2,
+       serverSelectionTimeoutMS: 5000,
+     });
+     ```
+   - **Use CDN for static assets** with geo-distribution
+   - **Implement server-side caching** (Redis) for frequently accessed data
+   - **Optimize middleware chain** (remove unnecessary middleware)
+   - **Use efficient serialization** (avoid JSON.stringify for large objects)
+   - **Target**: Server response time < 200ms for p95
+
+#### C. **Concurrent Request Handling**
+   - **Implement request queueing** to prevent server overload
+   - **Use connection limits** and timeouts appropriately
+   - **Implement circuit breakers** for external service calls
+   - **Use load balancing** for horizontal scaling
+   - **Monitor and optimize memory usage** to prevent GC pauses
+   - **Target**: Handle 10x current concurrent users without degradation
+
+### 4. **Cost Optimization**
+
+#### A. **Infrastructure Cost Optimization**
+   - **Right-size server instances** based on actual usage metrics
+   - **Implement auto-scaling** based on demand (scale down during off-peak)
+   - **Use reserved instances** for predictable baseline load
+   - **Use spot instances** for batch processing and non-critical workloads
+   - **Optimize database instance size** based on query patterns
+   - **Review and eliminate unused resources** (old instances, snapshots, volumes)
+   - **Target**: Reduce infrastructure costs by 20-40%
+
+#### B. **Database Cost Optimization**
+   - **Archive old data** to cheaper storage tiers:
+     ```typescript
+     // Archive orders older than 1 year
+     const oldOrders = await Order.find({
+       createdAt: { $lt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) }
+     });
+     await archiveToS3(oldOrders);
+     await Order.deleteMany({ _id: { $in: oldOrders.map(o => o._id) } });
+     ```
+   - **Implement data retention policies** (delete what's not needed)
+   - **Use read replicas** for read-heavy workloads (cheaper than scaling primary)
+   - **Optimize indexing** (indexes consume storage and write performance)
+   - **Use compression** for text-heavy fields
+   - **Target**: Reduce database costs by 15-30%
+
+#### C. **API Call Cost Optimization**
+   - **Batch API calls** to external services (e.g., courier APIs, payment gateways)
+   - **Cache external API responses** aggressively
+   - **Implement request deduplication** for identical calls
+   - **Use webhooks** instead of polling when possible
+   - **Negotiate better rates** with API providers based on volume
+   - **Target**: Reduce third-party API costs by 30-50%
+
+#### D. **CDN & Bandwidth Cost Optimization**
+   - **Optimize asset sizes** (smaller files = less bandwidth)
+   - **Implement aggressive caching** for static assets
+   - **Use CDN for frequently accessed content** (offload from origin)
+   - **Compress all text-based content** (HTML, CSS, JS, JSON)
+   - **Implement lazy loading** to reduce unnecessary transfers
+   - **Target**: Reduce bandwidth costs by 40-60%
+
+#### E. **Development & Monitoring Cost Optimization**
+   - **Optimize logging volume** (log smart, not everything):
+     ```typescript
+     // Sample logs in production (log 1 in 100 for high-volume endpoints)
+     if (process.env.NODE_ENV === 'production' && Math.random() > 0.01) {
+       return; // Skip logging
+     }
+     logger.info('Request processed', { orderId, duration });
+     ```
+   - **Use log retention policies** (delete old logs)
+   - **Optimize monitoring metrics** (track what matters, not everything)
+   - **Use sampling for APM** in production (100% trace = expensive)
+   - **Target**: Reduce observability costs by 20-30%
+
+### 5. **Performance Monitoring & Continuous Optimization**
+
+#### A. **Establish Performance Baselines**
+   - **Measure current performance metrics**:
+     - Frontend: Page load time, bundle sizes, Core Web Vitals
+     - Backend: API response times (p50, p95, p99), database query times
+     - Infrastructure: CPU, memory, disk usage
+   - **Set performance budgets**:
+     - Max bundle size: < 200KB gzipped for initial load
+     - Max API response time: < 300ms for p95
+     - Max database query time: < 50ms for p95
+   - **Document baseline metrics** for comparison
+
+#### B. **Implement Performance Monitoring**
+   - **Frontend monitoring**:
+     ```typescript
+     // Web Vitals tracking
+     import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
+     
+     function sendToAnalytics(metric) {
+       analytics.track('web_vital', {
+         name: metric.name,
+         value: metric.value,
+         rating: metric.rating,
+       });
+     }
+     
+     getCLS(sendToAnalytics);
+     getFID(sendToAnalytics);
+     getFCP(sendToAnalytics);
+     getLCP(sendToAnalytics);
+     getTTFB(sendToAnalytics);
+     ```
+   - **Backend monitoring**:
+     ```typescript
+     // Request timing middleware
+     app.use((req, res, next) => {
+       const start = Date.now();
+       res.on('finish', () => {
+         const duration = Date.now() - start;
+         metrics.histogram('api.response_time', duration, {
+           method: req.method,
+           path: req.route?.path,
+           status: res.statusCode,
+         });
+       });
+       next();
+     });
+     ```
+   - **Database query monitoring**:
+     ```typescript
+     // Log slow queries
+     mongoose.set('debug', (collectionName, method, query, doc, options) => {
+       const start = Date.now();
+       return function() {
+         const duration = Date.now() - start;
+         if (duration > 100) { // Log queries > 100ms
+           logger.warn('Slow query detected', {
+             collection: collectionName,
+             method,
+             duration,
+             query: JSON.stringify(query),
+           });
+         }
+       };
+     });
+     ```
+
+#### C. **Set Up Performance Alerts**
+   - **Alert on performance degradation**:
+     - Page load time increases > 20%
+     - API response time p95 > 500ms
+     - Database query time p95 > 100ms
+     - Error rate > 1%
+   - **Set up automated Lighthouse CI** in deployment pipeline
+   - **Monitor Core Web Vitals** in production with real user monitoring (RUM)
+
+#### D. **Regular Performance Audits**
+   - **Weekly**: Review performance dashboards for anomalies
+   - **Monthly**: Run comprehensive Lighthouse audits on key pages
+   - **Quarterly**: Full performance audit with optimization recommendations
+   - **After major releases**: Benchmark and compare performance
+
+### 6. **Performance Optimization Validation**
+
+**Before considering optimization complete, verify:**
+
+#### Frontend Performance Checklist:
+   - [ ] Bundle size reduced and within budget (< 200KB initial)
+   - [ ] Code splitting implemented for routes and heavy components
+   - [ ] Images optimized (WebP, lazy loading, proper sizing)
+   - [ ] Memoization implemented for expensive computations
+   - [ ] Long lists virtualized
+   - [ ] Search/filter inputs debounced
+   - [ ] Lighthouse Performance score > 90
+   - [ ] Core Web Vitals in "Good" range (LCP < 2.5s, FID < 100ms, CLS < 0.1)
+   - [ ] No unnecessary re-renders (verified with React DevTools Profiler)
+   - [ ] Aggressive caching with proper invalidation
+   - [ ] Optimistic updates for mutations
+   - [ ] Prefetching for likely next actions
+
+#### Backend Performance Checklist:
+   - [ ] All database queries have proper indexes
+   - [ ] No N+1 queries exist
+   - [ ] Using `.lean()` and `.select()` appropriately
+   - [ ] Database-level pagination implemented
+   - [ ] Slow queries identified and optimized (< 50ms p95)
+   - [ ] Multi-layer caching implemented (memory, database, HTTP)
+   - [ ] Response compression enabled (gzip/brotli)
+   - [ ] Background jobs for heavy operations
+   - [ ] API response time < 300ms p95
+   - [ ] Response payload sizes optimized (minimal necessary data)
+   - [ ] Connection pooling configured
+   - [ ] Cache invalidation strategy implemented
+
+#### Load & Speed Checklist:
+   - [ ] Server response time < 200ms p95
+   - [ ] Page load time < 3s on 3G
+   - [ ] Time to Interactive < 5s
+   - [ ] Skeleton loaders implemented for all async content
+   - [ ] Critical rendering path optimized
+   - [ ] CDN configured for static assets
+
+#### Cost Optimization Checklist:
+   - [ ] Server instances right-sized
+   - [ ] Auto-scaling configured
+   - [ ] Old data archived to cheaper storage
+   - [ ] External API calls batched and cached
+   - [ ] Logging volume optimized with sampling
+   - [ ] Unused resources identified and removed
+   - [ ] Database instance optimized for workload
+
+#### Monitoring Checklist:
+   - [ ] Performance baselines documented
+   - [ ] Frontend monitoring (Web Vitals) implemented
+   - [ ] Backend monitoring (response times, queries) implemented
+   - [ ] Performance alerts configured
+   - [ ] Lighthouse CI integrated in pipeline
+   - [ ] Dashboard for real-time performance metrics
+
 ## Deliverable
 
 Provide the fully refined page with:

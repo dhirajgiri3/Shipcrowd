@@ -197,7 +197,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
 
     async getRates(request: CourierRateRequest): Promise<CourierRateResponse[]> {
         try {
-            const serviceHint = (request as any).serviceType || '';
+            const serviceHint = request.providerServiceId || request.serviceType || '';
             const md = serviceHint.toString().toLowerCase().includes('express') ? 'E' : 'S';
             const paymentType = request.paymentMode === 'cod' ? 'COD' : 'Pre-paid';
             const cgm = DelhiveryMapper.toGrams(request.package.weight);

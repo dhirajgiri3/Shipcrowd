@@ -274,7 +274,9 @@ export default class WalletService {
             }
 
             // 2. Fetch Company (State Before Update)
-            const company = await Company.findById(companyId).session(session);
+            const company = await Company.findById(companyId)
+                .select('wallet __v')
+                .session(session);
 
             if (!company) {
                 throw new AppError('Company not found', 'COMPANY_NOT_FOUND', 404);
@@ -307,13 +309,17 @@ export default class WalletService {
                     },
                 },
                 { session, new: true }
-            );
+            )
+                .select('wallet __v')
+                .session(session);
 
             // 4. Handle Update Failure (Null Result)
             if (!updateResult) {
                 // Determine if it was Insufficient Balance OR Version Conflict
                 // We fetch the LATEST state to diagnose
-                const latestCompany = await Company.findById(companyId).session(session);
+                const latestCompany = await Company.findById(companyId)
+                    .select('wallet __v')
+                    .session(session);
 
                 if (!latestCompany) {
                     throw new AppError('Company not found during Retry', 'COMPANY_NOT_FOUND', 404);
@@ -546,7 +552,9 @@ export default class WalletService {
                 session.startTransaction();
 
                 // 2. Race Condition Prevention: Atomic check-and-execute
-                const company = await Company.findById(companyId).session(session);
+                const company = await Company.findById(companyId)
+                    .select('wallet __v')
+                    .session(session);
                 if (!company) throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
 
                 // Re-verify balance condition (it might have changed)
@@ -822,7 +830,7 @@ export default class WalletService {
             companyId,
             { $set: updateData },
             { new: true }
-        );
+        ).select('wallet.autoRecharge');
 
         if (!updatedCompany) {
             throw new NotFoundError('Company not found');
@@ -1031,7 +1039,9 @@ export default class WalletService {
             const refundType = originalTransaction.type === 'debit' ? 'credit' : 'debit';
 
             // Execute refund transaction within same session
-            const company = await Company.findById(companyId).session(session);
+            const company = await Company.findById(companyId)
+                .select('wallet __v')
+                .session(session);
             if (!company) {
                 await session.abortTransaction();
                 return { success: false, error: 'Company not found' };
@@ -1075,7 +1085,9 @@ export default class WalletService {
                     $inc: { __v: 1 },
                 },
                 { session, new: true }
-            );
+            )
+                .select('wallet __v')
+                .session(session);
 
             if (!walletUpdateResult) {
                 await session.abortTransaction();
@@ -1228,7 +1240,7 @@ export default class WalletService {
                 $inc: { __v: 1 },
             },
             { new: true }
-        );
+        ).select('wallet __v');
 
         if (!updateResult) {
             throw new AppError(

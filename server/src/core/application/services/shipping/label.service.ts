@@ -65,12 +65,23 @@ class LabelService {
                 doc.fontSize(8).font('Helvetica').text(shipment.carrier.toUpperCase(), 200, 12);
 
                 // ====== Barcode (AWB Number) ======
-                const barcodeBuffer = await BarcodeService.generateCode128(shipment.awb, {
-                    height: 40,
-                    width: 2,
-                    includeText: true,
-                });
-                doc.image(barcodeBuffer, 20, 35, { width: 248 });
+                try {
+                    const barcodeBuffer = await BarcodeService.generateCode128(shipment.awb, {
+                        height: 40,
+                        width: 2,
+                        includeText: true,
+                    });
+                    doc.image(barcodeBuffer, 20, 35, { width: 248 });
+                } catch (barcodeError) {
+                    logger.warn('Barcode generation failed for label, rendering AWB as text', {
+                        awb: shipment.awb,
+                        error: barcodeError instanceof Error ? barcodeError.message : 'Unknown error'
+                    });
+                    doc.fontSize(12).font('Helvetica-Bold').text(`AWB: ${shipment.awb}`, 20, 50, {
+                        width: 248,
+                        align: 'center'
+                    });
+                }
 
                 // ====== From Address ======
                 let yPos = 90;
@@ -214,11 +225,22 @@ ${shipment.paymentMode === 'cod'
                     doc.fontSize(8).font('Helvetica').text(shipment.carrier.toUpperCase(), 200, 12);
 
                     // Barcode
-                    const barcodeBuffer = await BarcodeService.generateCode128(shipment.awb, {
-                        height: 40,
-                        width: 2,
-                    });
-                    doc.image(barcodeBuffer, 20, 35, { width: 248 });
+                    try {
+                        const barcodeBuffer = await BarcodeService.generateCode128(shipment.awb, {
+                            height: 40,
+                            width: 2,
+                        });
+                        doc.image(barcodeBuffer, 20, 35, { width: 248 });
+                    } catch (barcodeError) {
+                        logger.warn('Barcode generation failed for bulk label item, rendering AWB as text', {
+                            awb: shipment.awb,
+                            error: barcodeError instanceof Error ? barcodeError.message : 'Unknown error'
+                        });
+                        doc.fontSize(12).font('Helvetica-Bold').text(`AWB: ${shipment.awb}`, 20, 50, {
+                            width: 248,
+                            align: 'center'
+                        });
+                    }
 
                     // Addresses and details (simplified for bulk)
                     let yPos = 90;

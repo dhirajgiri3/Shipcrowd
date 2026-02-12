@@ -35,6 +35,13 @@ router.put(
     asyncHandler(courierServiceController.updateCourierService)
 );
 
+router.delete(
+    '/:id',
+    authenticate,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(courierServiceController.deleteCourierService)
+);
+
 router.post(
     '/:id/toggle-status',
     authenticate,
@@ -50,3 +57,4 @@ router.post(
 );
 
 export default router;
+

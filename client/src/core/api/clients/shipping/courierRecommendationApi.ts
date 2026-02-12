@@ -53,19 +53,6 @@ class CourierRecommendationApiService {
         const response = await apiClient.post('/courier/recommendations', request);
         return response.data;
     }
-
-    /**
-     * Get courier serviceability check
-     */
-    async checkServiceability(
-        pickupPincode: string,
-        deliveryPincode: string
-    ): Promise<{ serviceable: boolean; estimatedDays: number; availableCouriers: string[] }> {
-        const response = await apiClient.get('/courier/serviceability', {
-            params: { pickupPincode, deliveryPincode }
-        });
-        return response.data;
-    }
 }
 
 export const courierRecommendationApi = new CourierRecommendationApiService();

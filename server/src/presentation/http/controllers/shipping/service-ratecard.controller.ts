@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ServiceRateCard } from '../../../../infrastructure/database/mongoose/models';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendCreated, sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
-import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import ServiceRateCardFormulaService from '../../../../core/application/services/pricing/service-rate-card-formula.service';
@@ -11,6 +11,112 @@ import {
     simulateServiceRateCardSchema,
     upsertServiceRateCardSchema,
 } from '../../../../shared/validation/schemas';
+
+type ZoneRuleInput = {
+    zoneKey: string;
+    slabs: Array<{
+        minKg: number;
+        maxKg: number;
+        charge: number;
+    }>;
+};
+
+const toDate = (value: string | Date | undefined): Date | undefined => {
+    if (!value) return undefined;
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(parsed.getTime())) return undefined;
+    return parsed;
+};
+
+const validateZoneRuleSlabs = (zoneRules: ZoneRuleInput[]): Array<{ field: string; message: string }> => {
+    const errors: Array<{ field: string; message: string }> = [];
+
+    zoneRules.forEach((zoneRule, zoneIndex) => {
+        const slabs = [...(zoneRule.slabs || [])].sort((a, b) => Number(a.minKg) - Number(b.minKg));
+        if (!slabs.length) return;
+
+        for (let i = 0; i < slabs.length; i++) {
+            const slab = slabs[i];
+            const slabField = `zoneRules.${zoneIndex}.slabs.${i}`;
+            if (Number(slab.maxKg) <= Number(slab.minKg)) {
+                errors.push({
+                    field: slabField,
+                    message: 'Slab maxKg must be greater than minKg for [minKg, maxKg) convention',
+                });
+            }
+
+            if (i === 0) continue;
+            const previous = slabs[i - 1];
+            const previousMax = Number(previous.maxKg);
+            const currentMin = Number(slab.minKg);
+
+            if (currentMin < previousMax) {
+                errors.push({
+                    field: slabField,
+                    message: `Slab overlap detected: ${currentMin} starts before previous max ${previousMax}`,
+                });
+            } else if (currentMin > previousMax) {
+                errors.push({
+                    field: slabField,
+                    message: `Slab gap detected: previous max ${previousMax} does not match next min ${currentMin}`,
+                });
+            }
+        }
+    });
+
+    return errors;
+};
+
+const ensureNoActiveWindowOverlap = async (params: {
+    companyId: string;
+    serviceId: string;
+    cardType: 'cost' | 'sell';
+    status: 'draft' | 'active' | 'inactive';
+    startDate?: Date;
+    endDate?: Date;
+    excludeId?: string;
+}) => {
+    if (params.status !== 'active') return;
+    if (!params.startDate) return;
+    if (params.endDate && params.endDate <= params.startDate) {
+        throw new ValidationError('Validation failed', [
+            {
+                field: 'effectiveDates.endDate',
+                message: 'endDate must be greater than startDate for [startDate, endDate) convention',
+            },
+        ]);
+    }
+
+    const query: any = {
+        companyId: params.companyId,
+        serviceId: params.serviceId,
+        cardType: params.cardType,
+        status: 'active',
+        isDeleted: false,
+    };
+
+    if (params.excludeId) {
+        query._id = { $ne: params.excludeId };
+    }
+
+    if (params.endDate) {
+        query['effectiveDates.startDate'] = { $lt: params.endDate };
+    }
+
+    query.$or = [
+        { 'effectiveDates.endDate': { $exists: false } },
+        { 'effectiveDates.endDate': null },
+        { 'effectiveDates.endDate': { $gt: params.startDate } },
+    ];
+
+    const overlapping = await ServiceRateCard.findOne(query).select('_id').lean();
+    if (overlapping) {
+        throw new ConflictError(
+            'Active rate card effective window overlaps with an existing active card for this service and card type',
+            ErrorCode.BIZ_INVALID_STATE
+        );
+    }
+};
 
 export const listServiceRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -51,6 +157,22 @@ export const createServiceRateCard = async (req: Request, res: Response, next: N
             }));
             throw new ValidationError('Validation failed', errors);
         }
+
+        const slabErrors = validateZoneRuleSlabs(validation.data.zoneRules as ZoneRuleInput[]);
+        if (slabErrors.length) {
+            throw new ValidationError('Validation failed', slabErrors);
+        }
+
+        const startDate = toDate(validation.data.effectiveDates?.startDate as string | Date | undefined);
+        const endDate = toDate(validation.data.effectiveDates?.endDate as string | Date | undefined);
+        await ensureNoActiveWindowOverlap({
+            companyId: auth.companyId,
+            serviceId: validation.data.serviceId,
+            cardType: validation.data.cardType,
+            status: validation.data.status || 'draft',
+            startDate,
+            endDate,
+        });
 
         const card = await ServiceRateCard.create({
             ...validation.data,
@@ -100,6 +222,45 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
             }));
             throw new ValidationError('Validation failed', errors);
         }
+
+        const existing = await ServiceRateCard.findOne({
+            _id: req.params.id,
+            companyId: auth.companyId,
+            isDeleted: false,
+        }).lean();
+
+        if (!existing) {
+            throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
+        }
+
+        const merged = {
+            serviceId: String(validation.data.serviceId || existing.serviceId),
+            cardType: (validation.data.cardType || existing.cardType) as 'cost' | 'sell',
+            status: (validation.data.status || existing.status) as 'draft' | 'active' | 'inactive',
+            effectiveDates: {
+                startDate:
+                    validation.data.effectiveDates?.startDate || existing.effectiveDates?.startDate,
+                endDate: validation.data.effectiveDates?.endDate ?? existing.effectiveDates?.endDate,
+            },
+            zoneRules: (validation.data.zoneRules || existing.zoneRules || []) as ZoneRuleInput[],
+        };
+
+        const slabErrors = validateZoneRuleSlabs(merged.zoneRules);
+        if (slabErrors.length) {
+            throw new ValidationError('Validation failed', slabErrors);
+        }
+
+        const startDate = toDate(merged.effectiveDates.startDate as string | Date | undefined);
+        const endDate = toDate(merged.effectiveDates.endDate as string | Date | undefined);
+        await ensureNoActiveWindowOverlap({
+            companyId: auth.companyId,
+            serviceId: merged.serviceId,
+            cardType: merged.cardType,
+            status: merged.status,
+            startDate,
+            endDate,
+            excludeId: req.params.id,
+        });
 
         const updated = await ServiceRateCard.findOneAndUpdate(
             {

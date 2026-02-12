@@ -34,11 +34,13 @@ export class EkartController {
             const integration = await Integration.findOneAndUpdate(
                 {
                     companyId,
-                    platform: 'ekart',
+                    $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
                     type: 'courier'
                 },
                 {
                     $set: {
+                        provider: 'ekart',
+                        platform: 'ekart',
                         'credentials.clientId': clientId,
                         'credentials.username': username,
                         'credentials.password': password,
@@ -80,7 +82,7 @@ export class EkartController {
 
             const integration = await Integration.findOne({
                 companyId,
-                platform: 'ekart',
+                $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
                 type: 'courier'
             }).lean();
 

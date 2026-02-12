@@ -26,6 +26,19 @@ import {
     MapPin,
     BarChart2,
 } from 'lucide-react';
+import { Input } from '@/src/components/ui/core/Input';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { Select } from '@/src/components/ui/form/Select';
+import { Label } from '@/src/components/ui/core/Label';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/src/components/ui/core/Table';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
 
 export default function CourierPerformancePage({
     params,
@@ -41,10 +54,13 @@ export default function CourierPerformancePage({
 
     const { data: courier } = useCourier(id);
     const { data: performance, isLoading } = useCourierPerformance(id, filters);
-
-    const handleDateChange = (field: 'startDate' | 'endDate', value: string) => {
-        setFilters((prev) => ({ ...prev, [field]: value }));
-    };
+    const serviceTypeOptions = Array.from(
+        new Set(
+            (courier?.services || [])
+                .map((service) => String(service.type || '').toUpperCase())
+                .filter(Boolean)
+        )
+    );
 
     if (isLoading) {
         return <Loader variant="spinner" size="lg" message="Loading performance analytics..." centered />;
@@ -71,32 +87,26 @@ export default function CourierPerformancePage({
                 </div>
             </div>
 
-            {/* Date Filters */}
+            {/* Filters Bar */}
             <Card>
-                <CardContent className="pt-6">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <div className="flex-1">
-                            <label className="text-sm font-medium mb-2 block">Start Date</label>
-                            <input
-                                type="date"
-                                className="w-full h-10 px-3 py-2 text-sm border rounded-md"
-                                value={filters.startDate || ''}
-                                onChange={(e) => handleDateChange('startDate', e.target.value)}
+                <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row gap-4 items-end lg:items-center">
+                        <div className="w-full lg:w-auto flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground ml-1">Date Range</Label>
+                            <DateRangePicker
+                                className="w-full"
+                                onRangeChange={(range) =>
+                                    setFilters((prev) => ({
+                                        ...prev,
+                                        startDate: range.from.toISOString().split('T')[0],
+                                        endDate: range.to.toISOString().split('T')[0],
+                                    }))
+                                }
                             />
                         </div>
-                        <div className="flex-1">
-                            <label className="text-sm font-medium mb-2 block">End Date</label>
-                            <input
-                                type="date"
-                                className="w-full h-10 px-3 py-2 text-sm border rounded-md"
-                                value={filters.endDate || ''}
-                                onChange={(e) => handleDateChange('endDate', e.target.value)}
-                            />
-                        </div>
-                        <div className="flex-1">
-                            <label className="text-sm font-medium mb-2 block">Zone</label>
-                            <select
-                                className="w-full h-10 px-3 py-2 text-sm border rounded-md"
+                        <div className="w-full lg:w-auto flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground ml-1">Zone</Label>
+                            <Select
                                 value={filters.zone || 'all'}
                                 onChange={(e) =>
                                     setFilters((prev) => ({
@@ -104,17 +114,17 @@ export default function CourierPerformancePage({
                                         zone: e.target.value === 'all' ? undefined : e.target.value,
                                     }))
                                 }
-                            >
-                                <option value="all">All Zones</option>
-                                <option value="LOCAL">Local</option>
-                                <option value="REGIONAL">Regional</option>
-                                <option value="NATIONAL">National</option>
-                            </select>
+                                options={[
+                                    { label: 'All Zones', value: 'all' },
+                                    { label: 'Local', value: 'LOCAL' },
+                                    { label: 'Regional', value: 'REGIONAL' },
+                                    { label: 'National', value: 'NATIONAL' },
+                                ]}
+                            />
                         </div>
-                        <div className="flex-1">
-                            <label className="text-sm font-medium mb-2 block">Service Type</label>
-                            <select
-                                className="w-full h-10 px-3 py-2 text-sm border rounded-md"
+                        <div className="w-full lg:w-auto flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground ml-1">Service Type</Label>
+                            <Select
                                 value={filters.serviceType || 'all'}
                                 onChange={(e) =>
                                     setFilters((prev) => ({
@@ -125,18 +135,23 @@ export default function CourierPerformancePage({
                                                 : (e.target.value as any),
                                     }))
                                 }
-                            >
-                                <option value="all">All Services</option>
-                                <option value="EXPRESS">Express</option>
-                                <option value="STANDARD">Standard</option>
-                                <option value="ECONOMY">Economy</option>
-                            </select>
+                                options={[
+                                    { label: 'All Services', value: 'all' },
+                                    ...(serviceTypeOptions.length
+                                        ? serviceTypeOptions
+                                        : ['EXPRESS', 'SURFACE', 'STANDARD']
+                                    ).map((serviceType) => ({
+                                        label: serviceType.charAt(0) + serviceType.slice(1).toLowerCase(),
+                                        value: serviceType,
+                                    })),
+                                ]}
+                            />
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {performance ? (
+            {performance && performance.totalShipments > 0 ? (
                 <>
                     {/* Key Metrics */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -187,7 +202,7 @@ export default function CourierPerformancePage({
                                     Cost per Shipment
                                 </CardDescription>
                                 <CardTitle className="text-3xl">
-                                    ₹{performance.costPerShipment.toFixed(2)}
+                                    {formatCurrency(performance.costPerShipment)}
                                 </CardTitle>
                             </CardHeader>
                         </Card>
@@ -204,7 +219,7 @@ export default function CourierPerformancePage({
                         <CardContent>
                             <div className="flex items-center gap-4">
                                 <div className="text-center">
-                                    <div className="text-4xl font-bold text-primary">
+                                    <div className="text-4xl font-bold text-[var(--primary-blue)]">
                                         #{performance.ranking}
                                     </div>
                                     <p className="text-sm text-muted-foreground mt-1">
@@ -212,9 +227,9 @@ export default function CourierPerformancePage({
                                     </p>
                                 </div>
                                 <div className="flex-1">
-                                    <div className="h-3 bg-secondary rounded-full overflow-hidden">
+                                    <div className="h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-primary"
+                                            className="h-full bg-[var(--primary-blue)]"
                                             style={{
                                                 width: `${((performance.totalCouriers - performance.ranking + 1) /
                                                     performance.totalCouriers) *
@@ -240,8 +255,8 @@ export default function CourierPerformancePage({
                                     Shipment Volume
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-2">
-                                <div className="flex justify-between">
+                            <CardContent className="space-y-4">
+                                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--bg-subtle)]">
                                     <span className="text-sm text-muted-foreground">
                                         Total Shipments
                                     </span>
@@ -249,15 +264,15 @@ export default function CourierPerformancePage({
                                         {performance.totalShipments.toLocaleString()}
                                     </span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--bg-subtle)]">
                                     <span className="text-sm text-muted-foreground">
                                         Delivered
                                     </span>
-                                    <span className="font-medium text-green-600">
+                                    <span className="font-medium text-[var(--success)]">
                                         {performance.deliveredShipments.toLocaleString()}
                                     </span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--bg-subtle)]">
                                     <span className="text-sm text-muted-foreground">
                                         NDR Rate
                                     </span>
@@ -274,18 +289,15 @@ export default function CourierPerformancePage({
                                 <CardDescription>Last 7 data points</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     {performance.timeSeriesData.slice(-7).map((point, idx) => (
-                                        <div key={idx} className="flex items-center gap-2">
+                                        <div key={idx} className="flex items-center gap-3">
                                             <span className="text-xs text-muted-foreground w-20">
-                                                {new Date(point.date).toLocaleDateString('en-IN', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                })}
+                                                {formatDate(point.date)}
                                             </span>
-                                            <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                                            <div className="flex-1 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                                 <div
-                                                    className="h-full bg-primary"
+                                                    className="h-full bg-[var(--primary-blue)]"
                                                     style={{ width: `${point.successRate}%` }}
                                                 />
                                             </div>
@@ -311,57 +323,60 @@ export default function CourierPerformancePage({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="border-b">
-                                        <tr className="text-left text-sm text-muted-foreground">
-                                            <th className="pb-3 font-medium">Zone</th>
-                                            <th className="pb-3 font-medium">Shipments</th>
-                                            <th className="pb-3 font-medium">Delivered</th>
-                                            <th className="pb-3 font-medium">Success Rate</th>
-                                            <th className="pb-3 font-medium">Avg Time</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {performance.zonePerformance.map((zone) => (
-                                            <tr key={zone.zone} className="text-sm">
-                                                <td className="py-4">
-                                                    <Badge variant="outline">{zone.zone}</Badge>
-                                                </td>
-                                                <td className="py-4">
-                                                    {zone.totalShipments.toLocaleString()}
-                                                </td>
-                                                <td className="py-4">
-                                                    {zone.deliveredShipments.toLocaleString()}
-                                                </td>
-                                                <td className="py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-                                                            <div
-                                                                className={`h-full ${zone.successRate >= 90
-                                                                    ? 'bg-green-500'
-                                                                    : zone.successRate >= 75
-                                                                        ? 'bg-yellow-500'
-                                                                        : 'bg-red-500'
-                                                                    }`}
-                                                                style={{
-                                                                    width: `${zone.successRate}%`,
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <span className="font-medium">
-                                                            {zone.successRate.toFixed(1)}%
-                                                        </span>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-none hover:bg-transparent">
+                                        <TableHead className="text-[var(--text-muted)] font-medium">Zone</TableHead>
+                                        <TableHead className="text-[var(--text-muted)] font-medium">Shipments</TableHead>
+                                        <TableHead className="text-[var(--text-muted)] font-medium">Delivered</TableHead>
+                                        <TableHead className="text-[var(--text-muted)] font-medium">Success Rate</TableHead>
+                                        <TableHead className="text-[var(--text-muted)] font-medium">Avg Time</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {performance.zonePerformance.map((zone) => (
+                                        <TableRow key={zone.zone} className="border-none hover:bg-[var(--bg-subtle)]">
+                                            <TableCell>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-subtle)]"
+                                                >
+                                                    {zone.zone}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                {zone.totalShipments.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell>
+                                                {zone.deliveredShipments.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-24 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full ${zone.successRate >= 90
+                                                                ? 'bg-[var(--success)]'
+                                                                : zone.successRate >= 75
+                                                                    ? 'bg-[var(--warning)]'
+                                                                    : 'bg-[var(--error)]'
+                                                                }`}
+                                                            style={{
+                                                                width: `${zone.successRate}%`,
+                                                            }}
+                                                        />
                                                     </div>
-                                                </td>
-                                                <td className="py-4">
-                                                    {zone.avgDeliveryTime.toFixed(1)}h
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                    <span className="font-medium">
+                                                        {zone.successRate.toFixed(1)}%
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {zone.avgDeliveryTime.toFixed(1)}h
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
                 </>
@@ -369,7 +384,7 @@ export default function CourierPerformancePage({
                 <EmptyState
                     icon={<BarChart2 className="w-12 h-12" />}
                     title="No performance data found"
-                    description="No performance data available for the selected period"
+                    description="No shipment data available for the selected period"
                 />
             )}
         </div>

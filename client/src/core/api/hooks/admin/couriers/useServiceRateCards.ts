@@ -25,6 +25,45 @@ export interface ServiceRateCardItem {
         zoneKey: string;
         slabs: Array<{ minKg: number; maxKg: number; charge: number }>;
         additionalPerKg?: number;
+        codRule?:
+            | {
+                  type: 'flat';
+                  minCharge: number;
+              }
+            | {
+                  type: 'percentage';
+                  percentage: number;
+                  minCharge?: number;
+                  maxCharge?: number;
+              }
+            | {
+                  type: 'slab';
+                  basis?: 'orderValue' | 'codAmount';
+                  slabs: Array<{
+                      min: number;
+                      max: number;
+                      value: number;
+                      type: 'flat' | 'percentage';
+                  }>;
+              };
+        fuelSurcharge?: {
+            percentage?: number;
+            base?: 'freight' | 'freight_cod';
+        };
+        rtoRule?:
+            | {
+                  type: 'forward_mirror';
+              }
+            | {
+                  type: 'flat';
+                  amount: number;
+              }
+            | {
+                  type: 'percentage';
+                  percentage: number;
+                  minCharge?: number;
+                  maxCharge?: number;
+              };
     }>;
 }
 

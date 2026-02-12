@@ -109,6 +109,8 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     'in_transit',
     'manifested'
   ]);
+  private static readonly RATE_TIMEOUT_MS = Number(process.env.VELOCITY_RATE_TIMEOUT_MS || 12000);
+  private static readonly SERVICEABILITY_TIMEOUT_MS = Number(process.env.VELOCITY_SERVICEABILITY_TIMEOUT_MS || 8000);
 
   constructor(
     companyId: mongoose.Types.ObjectId,
@@ -237,6 +239,42 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     return responseData as T;
   }
 
+  private buildLabelUrl(labelUrl: unknown, awbCode: unknown): string | undefined {
+    if (typeof labelUrl === 'string' && labelUrl.trim()) {
+      return labelUrl.trim();
+    }
+    if (typeof awbCode === 'string' && awbCode.trim()) {
+      return `https://velocity-shazam-prod.s3.ap-south-1.amazonaws.com/${awbCode.trim()}_shipping_label.pdf`;
+    }
+    return undefined;
+  }
+
+  private isMalformedVelocityResponse(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error || '');
+    const lower = message.toLowerCase();
+    return (
+      lower.includes('unexpected end of json input') ||
+      lower.includes('invalid json') ||
+      lower.includes('json parse')
+    );
+  }
+
+  private async createShipmentViaSplitFlow(
+    data: CourierShipmentData,
+    carrierId: string | undefined,
+    reason: string
+  ): Promise<CourierShipmentResponse> {
+    logger.warn('Falling back to Velocity split shipment flow', {
+      orderId: data.orderNumber,
+      companyId: this.companyId.toString(),
+      reason,
+      carrierId
+    });
+
+    const forwardOrder = await this.createForwardOrderOnly(data);
+    return this.assignCourier(forwardOrder.shipmentId, carrierId);
+  }
+
   /**
    * 1. Create Shipment (Forward Order)
    * Maps to: POST /custom/api/v1/forward-order
@@ -348,16 +386,31 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         );
       });
     } catch (error) {
+      if (this.isMalformedVelocityResponse(error)) {
+        return this.createShipmentViaSplitFlow(
+          data,
+          velocityRequest.carrier_id,
+          'malformed_or_empty_orchestration_response'
+        );
+      }
       throw handleVelocityError(error, 'Velocity createShipment');
     }
 
     const shipment = this.unwrapResponse<VelocityShipmentResponse>(response.data);
+    if (!shipment?.awb_code) {
+      return this.createShipmentViaSplitFlow(
+        data,
+        velocityRequest.carrier_id,
+        'orchestration_response_missing_awb'
+      );
+    }
+    const resolvedLabelUrl = this.buildLabelUrl(shipment.label_url, shipment.awb_code);
 
     logger.info('Velocity shipment created successfully', {
       orderId: data.orderNumber,
       awb: shipment.awb_code,
       courier: shipment.courier_name,
-      labelUrl: shipment.label_url
+      labelUrl: resolvedLabelUrl
     });
 
     // Map response to generic format
@@ -367,7 +420,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     return {
       trackingNumber: shipment.awb_code,
-      labelUrl: shipment.label_url,
+      labelUrl: resolvedLabelUrl,
       estimatedDelivery: undefined, // Not provided in create response
       cost: totalCost || 0,
       providerShipmentId: shipment.shipment_id
@@ -506,7 +559,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     const serviceabilityRequest: VelocityServiceabilityRequest = {
       from: request.origin.pincode,
       to: request.destination.pincode,
-      payment_mode: request.paymentMode === 'cod' ? 'COD' : 'Prepaid',
+      payment_mode: request.paymentMode === 'cod' ? 'cod' : 'prepaid',
       shipment_type: request.shipmentType || 'forward'
     };
 
@@ -521,16 +574,18 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
           async () => {
             logger.debug('Checking Velocity serviceability', {
               from: request.origin.pincode,
-              to: request.destination.pincode
+              to: request.destination.pincode,
+              paymentMode: request.paymentMode
             });
 
             return await this.httpClient.post<VelocityServiceabilityResponse>(
               '/custom/api/v1/serviceability',
-              serviceabilityRequest
+              serviceabilityRequest,
+              { timeout: VelocityShipfastProvider.RATE_TIMEOUT_MS }
             );
           },
-          3,
-          1000
+          1,
+          500
         );
       });
     } catch (error) {
@@ -544,6 +599,12 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       }>;
       zone?: string;
     }>(response.data);
+    logger.debug('Velocity serviceability response parsed', {
+      from: request.origin.pincode,
+      to: request.destination.pincode,
+      carriersCount: serviceabilityData.serviceability_results?.length || 0,
+      zone: serviceabilityData.zone,
+    });
 
     // Check if any carriers are returned
     if (!serviceabilityData.serviceability_results || serviceabilityData.serviceability_results.length === 0) {
@@ -738,7 +799,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     const request: VelocityServiceabilityRequest = {
       from: type === 'delivery' ? defaultOrigin : pincode,
       to: type === 'delivery' ? pincode : defaultOrigin, // Assume return to origin for pickup check
-      payment_mode: 'COD',
+      payment_mode: 'cod',
       shipment_type: type === 'pickup' ? 'return' : 'forward'
     };
 
@@ -751,11 +812,12 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
           async () => {
             return await this.httpClient.post<VelocityServiceabilityResponse>(
               '/custom/api/v1/serviceability',
-              request
+              request,
+              { timeout: VelocityShipfastProvider.SERVICEABILITY_TIMEOUT_MS }
             );
           },
-          2, // Fewer retries for serviceability check
-          1000
+          1,
+          500
         );
       });
 
@@ -959,10 +1021,11 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     const shippingCharges = parseFloat(String(shipment.frwd_charges?.shipping_charges || 0));
     const codCharges = parseFloat(String(shipment.frwd_charges?.cod_charges || 0));
     const totalCost = shippingCharges + codCharges;
+    const resolvedLabelUrl = this.buildLabelUrl(shipment.label_url, shipment.awb_code);
 
     return {
       trackingNumber: shipment.awb_code,
-      labelUrl: shipment.label_url,
+      labelUrl: resolvedLabelUrl,
       estimatedDelivery: undefined,
       cost: totalCost || 0,
       providerShipmentId: shipment.shipment_id
@@ -1104,29 +1167,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         courierName: shipmentResponse.courier_name
       };
     } catch (error) {
-      // Strict mode: do not generate mock AWB in production
-      const allowMockFallback =
-        process.env.ALLOW_COURIER_MOCKS === 'true' || process.env.NODE_ENV === 'development';
-
-      if (allowMockFallback) {
-        const timestamp = Date.now().toString().slice(-6);
-        const mockReverseAwb = `RTO-${originalAwb}-${timestamp}`;
-
-        logger.warn('Velocity reverse shipment API failed, using mock fallback (dev only)', {
-          originalAwb,
-          orderId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-
-        return {
-          trackingNumber: mockReverseAwb,
-          labelUrl: `https://mock.velocity.in/labels/${mockReverseAwb}.pdf`,
-          orderId: orderId,
-          courierName: 'Velocity (Mock RTO)'
-        };
-      }
-
-      logger.error('Velocity reverse shipment API failed (no fallback)', {
+      logger.error('Velocity reverse shipment API failed', {
         originalAwb,
         orderId,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -1235,19 +1276,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
       return cancellation.status === 'CANCELLED';
     } catch (error) {
-      const allowMockFallback =
-        process.env.ALLOW_COURIER_MOCKS === 'true' || process.env.NODE_ENV === 'development';
-
-      if (allowMockFallback) {
-        logger.warn('Velocity cancel reverse shipment API failed, using mock fallback (dev only)', {
-          reverseAwb,
-          originalAwb,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-        return true;
-      }
-
-      logger.error('Velocity cancel reverse shipment API failed (no fallback)', {
+      logger.error('Velocity cancel reverse shipment API failed', {
         reverseAwb,
         originalAwb,
         error: error instanceof Error ? error.message : 'Unknown error'

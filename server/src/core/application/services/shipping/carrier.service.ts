@@ -2,13 +2,9 @@
  * Carrier Service (Service-Level Pricing Native)
  *
  * Uses QuoteEngineService as the single source of truth for carrier options.
- * Falls back to lightweight stub estimates when quote generation fails.
  */
 
 import QuoteEngineService from '../pricing/quote-engine.service';
-import { getDelhiveryStub } from '../../../../infrastructure/external/couriers/delhivery/delhivery-stub.adapter';
-import { getEkartStub } from '../../../../infrastructure/external/couriers/ekart/ekart-stub.adapter';
-import { getIndiaPostStub } from '../../../../infrastructure/external/couriers/india-post/india-post-stub.adapter';
 
 export interface CarrierOption {
     carrier: string;
@@ -58,10 +54,6 @@ export interface GetRatesInput {
 }
 
 export class CarrierService {
-    private delhiveryStub = getDelhiveryStub();
-    private ekartStub = getEkartStub();
-    private indiaPostStub = getIndiaPostStub();
-
     async getAllRates(input: GetRatesInput): Promise<CarrierOption[]> {
         const dimensions = input.dimensions || { length: 20, width: 15, height: 10 };
 
@@ -115,10 +107,11 @@ export class CarrierService {
                 return options.sort((a, b) => a.rate - b.rate);
             }
         } catch (error) {
-            console.warn('[CarrierService] Service-level quote generation failed, using fallback rates:', error);
+            console.warn('[CarrierService] Service-level quote generation failed:', error);
+            throw error;
         }
 
-        return this.getFallbackRates(input);
+        return [];
     }
 
     async selectBestCarrier(
@@ -155,87 +148,6 @@ export class CarrierService {
             // Keep all options so downstream selection can pick explicit override safely.
             alternativeOptions: allRates,
         };
-    }
-
-    private async getFallbackRates(input: GetRatesInput): Promise<CarrierOption[]> {
-        const serviceType = input.serviceType || 'standard';
-        const fallback: CarrierOption[] = [];
-
-        const velocityFallback = Math.max(50, Number(input.weight || 0) * 20);
-        fallback.push({
-            carrier: 'velocity',
-            rate: Number(velocityFallback.toFixed(2)),
-            deliveryTime: serviceType === 'express' ? 2 : 4,
-            score: 50,
-            serviceType,
-            isStub: true,
-            message: 'Fallback estimated rate (quote engine unavailable)',
-        });
-
-        try {
-            const delhiveryRate = await this.delhiveryStub.getRates(
-                input.fromPincode,
-                input.toPincode,
-                input.weight,
-                serviceType
-            );
-
-            fallback.push({
-                carrier: 'delhivery',
-                rate: delhiveryRate.total,
-                deliveryTime: delhiveryRate.estimatedDays,
-                score: 45,
-                serviceType,
-                isStub: true,
-                message: delhiveryRate.message,
-            });
-        } catch (error) {
-            console.warn('[CarrierService] Delhivery fallback stub failed:', error);
-        }
-
-        try {
-            const ekartRate = await this.ekartStub.getRates(
-                input.fromPincode,
-                input.toPincode,
-                input.weight,
-                serviceType
-            );
-
-            fallback.push({
-                carrier: 'ekart',
-                rate: ekartRate.total,
-                deliveryTime: ekartRate.estimatedDays,
-                score: 40,
-                serviceType,
-                isStub: true,
-                message: ekartRate.message,
-            });
-        } catch (error) {
-            console.warn('[CarrierService] Ekart fallback stub failed:', error);
-        }
-
-        try {
-            const indiaPostRate = await this.indiaPostStub.getRates(
-                input.fromPincode,
-                input.toPincode,
-                input.weight,
-                serviceType
-            );
-
-            fallback.push({
-                carrier: 'india_post',
-                rate: indiaPostRate.total,
-                deliveryTime: indiaPostRate.estimatedDays,
-                score: 35,
-                serviceType,
-                isStub: true,
-                message: indiaPostRate.message,
-            });
-        } catch (error) {
-            console.warn('[CarrierService] India Post fallback stub failed:', error);
-        }
-
-        return fallback.sort((a, b) => a.rate - b.rate);
     }
 }
 

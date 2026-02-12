@@ -27,6 +27,7 @@ export interface IServiceRateCard extends Document {
         additionalPerKg?: number;
         codRule?: {
             type: 'percentage' | 'flat' | 'slab';
+            basis?: 'orderValue' | 'codAmount';
             percentage?: number;
             minCharge?: number;
             maxCharge?: number;
@@ -42,8 +43,11 @@ export interface IServiceRateCard extends Document {
             base?: 'freight' | 'freight_cod';
         };
         rtoRule?: {
+            type?: 'flat' | 'percentage' | 'forward_mirror';
+            amount?: number;
             percentage?: number;
             minCharge?: number;
+            maxCharge?: number;
         };
     }>;
     metadata?: {
@@ -135,6 +139,11 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
                         type: String,
                         enum: ['percentage', 'flat', 'slab'],
                     },
+                    basis: {
+                        type: String,
+                        enum: ['orderValue', 'codAmount'],
+                        default: 'orderValue',
+                    },
                     percentage: { type: Number, min: 0 },
                     minCharge: { type: Number, min: 0 },
                     maxCharge: { type: Number, min: 0 },
@@ -156,8 +165,15 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
                     base: { type: String, enum: ['freight', 'freight_cod'], default: 'freight' },
                 },
                 rtoRule: {
+                    type: {
+                        type: String,
+                        enum: ['flat', 'percentage', 'forward_mirror'],
+                        default: 'percentage',
+                    },
+                    amount: { type: Number, min: 0 },
                     percentage: { type: Number, min: 0, default: 0 },
                     minCharge: { type: Number, min: 0, default: 0 },
+                    maxCharge: { type: Number, min: 0 },
                 },
             },
         ],
