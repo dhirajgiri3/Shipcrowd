@@ -1,6 +1,6 @@
 # ShipCrowd Shipping Architecture Documentation Index
 
-**Last Updated:** February 9, 2026
+**Last Updated:** February 11, 2026
 **Status:** Complete documentation set for service-level pricing architecture
 
 ---
@@ -19,6 +19,8 @@ This index guides you to the right document based on your role and task.
 | **Product/Leadership** | Understand competitive advantages | [Blueprint](./Courier_RateCard_Final_Refactor_Blueprint.md) | Section 12 |
 | **Backend Engineer** | Implement missing features | [Blueprint](./Courier_RateCard_Final_Refactor_Blueprint.md) | Section 12-15 |
 | **DevOps/SRE** | Execute legacy cleanup | [Decommission Runbook](./Legacy_Decommission_and_Full_Migration_Runbook.md) | Phase 0-8 |
+| **Backend Engineer** | Plan safe legacy deletions | [Legacy Deletion Readiness Map](./Legacy_Deletion_Readiness_Map.md) | All |
+| **Migration Owner** | Validate real dependencies before deletion | [Migration Artifacts](./migration-artifacts/) | All |
 | **QA/Tester** | Verify system behavior | [Architecture Guide](./Service_Level_Pricing_and_Order_Shipment_Architecture_Guide.md) | Section 18 |
 | **Finance/Operations** | Understand reconciliation | [Architecture Guide](./Service_Level_Pricing_and_Order_Shipment_Architecture_Guide.md) | Section 5.6F |
 | **Admin User** | Configure courier services | [Blueprint](./Courier_RateCard_Final_Refactor_Blueprint.md) | Section 5-6 |
@@ -79,6 +81,34 @@ This index guides you to the right document based on your role and task.
 
 ---
 
+### 4. [Legacy Deletion Readiness Map](./Legacy_Deletion_Readiness_Map.md)
+
+**Purpose:** Dependency-accurate map to sequence legacy removals safely
+
+**Key Content:**
+- Legacy module consumers by domain
+- Replacement target and owner per consumer
+- Staged deletion order (A-D)
+- Deletion readiness gate commands
+
+**Read this if:** You're planning or reviewing deletion PRs and need decision-complete dependency context.
+
+---
+
+### 5. [Migration Artifacts](./migration-artifacts/)
+
+**Purpose:** Reality-checked execution artifacts captured from the live codebase
+
+**Key Content:**
+- `architecture-reality-check.md` (model/contract truths)
+- `plan-vs-reality-diff.md` (assumption corrections)
+- `verified-ratecard-dependency-map.md` (server-side dependency inventory)
+- `client-ratecard-inventory.md` (C4 deletion inventory)
+
+**Read this if:** You're about to execute Stage B0/C3/C4 and need exact file-accurate cutover scope.
+
+---
+
 ## Execution Sequence (For Implementation Teams)
 
 ### Phase 0: Foundation (Current State)
@@ -91,109 +121,66 @@ This index guides you to the right document based on your role and task.
 
 ---
 
-### Phase 1: Critical Missing Features (MUST DO FIRST)
+### Phase 1: Core Stabilization (Completed)
 
-**Priority 1: Centralized Formula Service** (Blueprint Section 11, Item 1)
-- Consolidate all pricing logic (COD/fuel/RTO/GST) into `ServiceRateCardFormulaService`
-- Enforce volumetric weight calculation
-- Wire into quote engine, simulate endpoint, booking
+**Completed:**
+1. `ServiceRateCardFormulaService` centralized pricing logic.
+2. Booking fallback orchestration with pre-AWB retry boundaries.
+3. Canonical contract lock for order quote + quote-based booking.
+4. Service-ratecard simulation upgraded to formula breakdown output.
 
-**Timeline:** 2 weeks
-**Blocker:** YES - Cannot remove legacy until formula is centralized
-
-**Priority 2: Booking Fallback Orchestration** (Blueprint Section 12.5)
-- Implement automatic fallback to next-ranked option on booking failure
-- Safe boundary: only fallback pre-AWB
-- Track fallback metrics
-
-**Timeline:** 2 weeks
-**Blocker:** YES - Critical for production booking success rate
-
-**Verification Commands:**
+**Release Gate Command:**
 ```bash
-# Formula service integration (after implementation)
-npm test --prefix server -- tests/integration/services/pricing/
-
-# Booking flow (current tests - fallback tests to be added after implementation)
-npm test --prefix server -- tests/integration/services/pricing/service-level-pricing-flow.integration.test.ts
+npm run test:service-level-pricing:gate --prefix server
 ```
-
-**Exit Criteria:**
-- [ ] All quote options use centralized formula
-- [ ] Booking success rate ≥ 95% in staging with fallback enabled
-- [ ] Integration tests: 100% pass
 
 ---
 
-### Phase 2: Contract Lock (Blueprint Phase 2)
+### Phase 2: Contract Freeze and Consumer Hardening (Completed)
 
-**Actions:**
-1. Make `/quotes/courier-options` the canonical quote endpoint
-2. Make `book-from-quote` mandatory for all order shipping
-3. Ensure status codes: 410 (expired session), 422 (invalid option)
-
-**Timeline:** 1 week
-
-**Verification:**
-```bash
-# API contract tests
-npm test --prefix server -- tests/integration/services/pricing/service-level-pricing-api.integration.test.ts
-
-# Status code enforcement
-curl -X POST /api/v1/orders/:orderId/ship -d '{"sessionId":"expired"}' # Expect 410
-curl -X POST /api/v1/orders/:orderId/ship -d '{"sessionId":"valid","optionId":"invalid"}' # Expect 422
-```
-
-**Exit Criteria:**
-- [ ] Session expiry returns 410 (verified)
-- [ ] Invalid optionId returns 422 (verified)
-- [ ] All shipments use book-from-quote flow
+**Completed:**
+1. `/api/v1/orders/courier-rates` returns canonical quote-session payload.
+2. `/api/v1/orders/:orderId/ship` enforces `sessionId` and `optionId` with 422 validation.
+3. Admin shipment UI now consumes canonical quote mapping and shows breakdown.
+4. Admin Pricing Studio route exists at `/admin/pricing-studio`.
 
 ---
 
-### Phase 3: Legacy Cleanup (Decommission Runbook Phase 3-4)
+### Phase 3: Legacy Deletion Readiness (Active Now)
 
-**Prerequisites:** Phase 1-2 complete
+**Objective:**
+Build a dependency-accurate removal map before deleting legacy modules.
+
+**Reference:**
+- [Legacy_Deletion_Readiness_Map.md](./Legacy_Deletion_Readiness_Map.md)
+
+**Exit Criteria:**
+1. Every legacy module has consumer inventory by domain.
+2. Every consumer has a replacement target.
+3. Deletion order is sequenced and rollback-safe.
+
+---
+
+### Phase 4: Legacy Cleanup Execution (Next)
+
+**Prerequisite:** Phase 3 readiness map approved and tracked.
 
 **Actions:**
-1. Remove bridge logic from `order.routes.ts` (lines 143-186, 291-314)
-2. Remove feature flag `enable_service_level_pricing`
-3. Delete legacy services (PricingOrchestrator, DynamicPricing, RateCardSelector)
-4. Delete legacy models (RateCard)
-5. Delete legacy controllers/routes (ratecard.controller.ts, ratecard.routes.ts)
-
-**Timeline:** 2 weeks
+1. Migrate remaining legacy consumers off orchestrator/dynamic/selector stack.
+2. Retire legacy ratecard controller/routes.
+3. Retire legacy `RateCard` model usage in runtime/admin/onboarding/seeders.
+4. Remove exports/imports/index bindings once references hit zero.
 
 **Verification Commands:**
 ```bash
-# No legacy imports
 rg "PricingOrchestratorService|DynamicPricingService|RateCardSelectorService" server/src
-# Expected: 0 matches
-
-# No legacy route references
-rg "ratecardController\\.calculateRate|normalizeLegacyRateRequestBody" server/src
-# Expected: 0 matches
-
-# Build passes
-npm run build --prefix server
-# Expected: No TypeScript errors
-
-# All tests green
-npm test --prefix server
-# Expected: All tests pass
+rg "controllers/shipping/ratecard.controller|ratecardController" server/src
+rg "logistics/shipping/configuration/rate-card.model|\\bRateCard\\b" server/src
 ```
-
-**Exit Criteria (Decommission Runbook Section 10):**
-- [ ] No duplicate index warnings
-- [ ] Quote API returns multi-option output with confidence/providerTimeouts
-- [ ] Booking from quote locks dual-ledger snapshot
-- [ ] Session expiry → 410, Invalid option → 422
-- [ ] Reconciliation: ≤5% auto-close, >5% open case
-- [ ] No shipping runtime references to legacy RateCard stack
 
 ---
 
-### Phase 4: Enhancements (Blueprint Section 12, Post-Launch)
+### Phase 5: Enhancements (Blueprint Section 12, Post-Launch)
 
 **Sprint 7-8:** Policy autopilot presets + risk-aware constraints
 **Sprint 9-10:** Variance drift heatmaps + automated alerts
@@ -213,21 +200,21 @@ npm test --prefix server
 | **Quote Engine** | ✅ Complete | 2.1B | N/A | N/A |
 | **Book-from-Quote** | ✅ Complete | 2.1B | N/A | N/A |
 | **Reconciliation** | ✅ Complete | 2.1B | N/A | N/A |
-| **Centralized Formula** | ❌ Not Started | 11, Item 1 | Phase 1 | **YES** |
-| **Booking Fallback** | ❌ Not Started | 12.5 | Phase 1 | **YES** |
-| **Contract Lock** | ⚠️ Partial | Phase 2 | Phase 2 | No |
-| **Legacy Cleanup** | ⚠️ Pending | 7-8 | Phase 3-4 | No |
-| **Unified Pricing Studio** | ⚠️ Partial (60%) | 12.2 | N/A | No |
+| **Centralized Formula** | ✅ Complete | 11, Item 1 | Phase 1 | No |
+| **Booking Fallback** | ✅ Complete | 12.5 | Phase 1 | No |
+| **Contract Lock** | ✅ Complete | Phase 2 | Phase 2 | No |
+| **Legacy Deletion Readiness** | ⚠️ Active (Stage A/B done) | 7-8 | Phase 3 | No |
+| **Legacy Cleanup Execution** | ⚠️ Pending | 7-8 | Phase 4 | No |
+| **Unified Pricing Studio** | ✅ Initial Delivered | 12.2 | N/A | No |
 | **Explainable Quotes** | ⚠️ Partial (75%) | 12.3 | N/A | No |
 | **Policy Autopilot** | ⚠️ Partial (50%) | 12.4 | N/A | No |
 | **Margin Watch** | ⚠️ Partial (40%) | 12.6 | N/A | No |
 | **Enterprise Security** | ⚠️ Partial (55%) | 12.7 | N/A | No |
 
 **Launch-Blocking Items:**
-1. ❌ Centralized formula service (2 weeks)
-2. ❌ Booking fallback orchestration (2 weeks)
+1. None in core service-level pricing path.
 
-**Critical Path:** 4 weeks until launch-ready
+**Critical Path:** Stage C/D legacy retirement (admin/onboarding/data model cleanup).
 
 ---
 
@@ -313,5 +300,5 @@ npm test --prefix server
 
 ---
 
-**Last Verified:** February 9, 2026
-**Architecture Status:** Service-level foundation complete, 2 critical features blocking launch, legacy cleanup pending
+**Last Verified:** February 11, 2026
+**Architecture Status:** Service-level foundation complete, Stage C/D legacy retirement active

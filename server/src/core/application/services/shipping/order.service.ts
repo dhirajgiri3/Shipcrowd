@@ -6,7 +6,7 @@ import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus'
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { DynamicPricingService } from '../pricing/dynamic-pricing.service';
+import QuoteEngineService from '../pricing/quote-engine.service';
 import { CachedService } from '../../base/cached.service';
 
 /**
@@ -41,53 +41,78 @@ export class OrderService extends CachedService {
         products: Array<{ price: number; quantity: number }>,
         shipmentDetails?: {
             companyId?: string;
+            sellerId?: string;
             fromPincode?: string;
             toPincode?: string;
             paymentMode?: 'cod' | 'prepaid';
             weight?: number;
+            dimensions?: { length: number; width: number; height: number };
         }
     ) {
         // [Existing logic unchanged for brevity, but crucial to keep]
         const useDynamicPricing = process.env.USE_DYNAMIC_PRICING === 'true';
 
-        if (!useDynamicPricing || !shipmentDetails?.fromPincode || !shipmentDetails?.toPincode) {
+        if (
+            !useDynamicPricing ||
+            !shipmentDetails?.companyId ||
+            !shipmentDetails?.fromPincode ||
+            !shipmentDetails?.toPincode
+        ) {
             return this.calculateTotalsLegacy(products);
         }
 
         try {
-            const pricingService = new DynamicPricingService();
             const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
 
-            const pricing = await pricingService.calculatePricing({
-                companyId: shipmentDetails.companyId || '',
+            const quote = await QuoteEngineService.generateQuotes({
+                companyId: shipmentDetails.companyId,
+                sellerId: shipmentDetails.sellerId || shipmentDetails.companyId,
                 fromPincode: shipmentDetails.fromPincode,
                 toPincode: shipmentDetails.toPincode,
                 weight: shipmentDetails.weight || 0.5,
+                dimensions: shipmentDetails.dimensions || {
+                    length: 20,
+                    width: 15,
+                    height: 10,
+                },
                 paymentMode: shipmentDetails.paymentMode || 'prepaid',
                 orderValue: subtotal,
-                carrier: 'velocity',
-                serviceType: 'standard',
+                shipmentType: 'forward',
             });
 
-            const total = subtotal + pricing.shipping + pricing.codCharge + pricing.tax.total;
+            const selectedOption =
+                quote.options.find((option) => option.optionId === quote.recommendation) ||
+                quote.options[0];
+
+            if (!selectedOption) {
+                return this.calculateTotalsLegacy(products);
+            }
+
+            const sellBreakdown = selectedOption.sellBreakdown || {};
+            const shipping =
+                Number(sellBreakdown.subtotal || selectedOption.quotedAmount || 0) +
+                Number(sellBreakdown.fuelCharge || 0) +
+                Number(sellBreakdown.rtoCharge || 0);
+            const codCharge = Number(sellBreakdown.codCharge || 0);
+            const tax = Number(sellBreakdown.gst || 0);
+            const total = subtotal + shipping + codCharge + tax;
 
             return {
                 subtotal,
-                shipping: pricing.shipping,
-                tax: pricing.tax.total,
-                codCharge: pricing.codCharge,
+                shipping,
+                tax,
+                codCharge,
                 discount: 0,
                 total,
                 breakdown: {
-                    cgst: pricing.tax.cgst,
-                    sgst: pricing.tax.sgst,
-                    igst: pricing.tax.igst,
-                    zone: pricing.metadata.zone,
+                    zone: selectedOption.zone,
                     rateCardUsed: true,
+                    quoteSessionId: quote.sessionId,
+                    optionId: selectedOption.optionId,
                 },
             };
         } catch (error) {
-            console.error('[OrderService] Dynamic pricing failed, falling back to legacy:', error);
+            console.error('[OrderService] Service-level quote pricing failed, falling back to legacy:', error);
             return this.calculateTotalsLegacy(products);
         }
     }

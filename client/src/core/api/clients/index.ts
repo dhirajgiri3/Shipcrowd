@@ -17,7 +17,6 @@ export * from './shipping/ratesApi';
 export * from './shipping/weightApi';
 export * from './shipping/ndrApi';
 export * from './shipping/courierRecommendationApi';
-export * from './shipping/rateCardManagementApi';
 
 // Auth
 export * from './auth/authApi';

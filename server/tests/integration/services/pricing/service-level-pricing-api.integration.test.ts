@@ -219,6 +219,66 @@ describe('Service-Level Pricing API Integration', () => {
         expect(res.body.data.options[0].optionId).toBe('opt-delhivery-1');
     });
 
+    it('GET /api/v1/ratecards is no longer exposed after shipping cutover', async () => {
+        await seedAccessContext();
+
+        const res = await request(app).get('/api/v1/ratecards');
+
+        expect(res.status).toBe(404);
+    });
+
+    it('POST /api/v1/courier/recommendations uses quote-engine service-level flow', async () => {
+        await seedAccessContext();
+
+        jest.spyOn(QuoteEngineService, 'generateQuotes').mockResolvedValue({
+            sessionId: 'session-reco-1',
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+            recommendation: 'opt-reco-1',
+            confidence: 'high',
+            options: [
+                {
+                    optionId: 'opt-reco-1',
+                    provider: 'ekart',
+                    serviceName: 'Ekart Surface',
+                    quotedAmount: 149,
+                    eta: { minDays: 2, maxDays: 3 },
+                    tags: ['RECOMMENDED'],
+                },
+            ],
+        } as any);
+
+        const res = await request(app)
+            .post('/api/v1/courier/recommendations')
+            .send({
+                pickupPincode: '560001',
+                deliveryPincode: '110001',
+                weight: 1.2,
+                paymentMode: 'prepaid',
+                declaredValue: 1600,
+                dimensions: { length: 10, width: 10, height: 10 },
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(Array.isArray(res.body.data.recommendations)).toBe(true);
+        expect(res.body.data.recommendations[0].id).toBe('opt-reco-1');
+        expect(res.body.data.recommendations[0].recommended).toBe(true);
+        expect(res.body.data.metadata.sessionId).toBe('session-reco-1');
+
+        expect(QuoteEngineService.generateQuotes).toHaveBeenCalledWith(
+            expect.objectContaining({
+                companyId: TEST_COMPANY_ID,
+                sellerId: TEST_USER_ID,
+                fromPincode: '560001',
+                toPincode: '110001',
+                weight: 1.2,
+                paymentMode: 'prepaid',
+                orderValue: 1600,
+                shipmentType: 'forward',
+            })
+        );
+    });
+
     it('POST /api/v1/orders/:orderId/ship uses quote-based booking path', async () => {
         await seedAccessContext();
         const order = await createOrder('BOOK');
@@ -290,6 +350,25 @@ describe('Service-Level Pricing API Integration', () => {
             });
 
         expect(res.status).toBe(422);
+    });
+
+    it('POST /api/v1/orders/:orderId/ship rejects legacy payload format without quote identifiers', async () => {
+        await seedAccessContext();
+        const order = await createOrder('LEGACY-PAYLOAD');
+        const executeSpy = jest.spyOn(BookFromQuoteService, 'execute');
+
+        const res = await request(app)
+            .post(`/api/v1/orders/${String(order._id)}/ship`)
+            .send({
+                courierId: 'ekart',
+                courierName: 'Ekart Surface',
+                rate: 120,
+                estimatedDeliveryDays: 4,
+                specialInstructions: 'legacy payload',
+            });
+
+        expect(res.status).toBe(422);
+        expect(executeSpy).not.toHaveBeenCalled();
     });
 
     it('POST /api/v1/orders/:orderId/ship returns 410 when quote session is expired', async () => {
@@ -431,5 +510,33 @@ describe('Service-Level Pricing API Integration', () => {
         expect(res.body.data.pricing.totalAmount).toBeGreaterThan(0);
         expect(res.body.data.pricing.breakdown.weight.chargeableWeight).toBeGreaterThan(0);
         expect(res.body.data.card.id).toBe(String(card._id));
+        expect(res.body.data.card.cardType).toBe('sell');
+        expect(res.body.data.card.sourceMode).toBe('TABLE');
+        expect(res.body.data.card.currency).toBe('INR');
+    });
+
+    it('POST /api/v1/admin/service-ratecards/:id/simulate rejects invalid request payload', async () => {
+        await seedAccessContext();
+        const card = await ServiceRateCard.create({
+            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
+            serviceId: new mongoose.Types.ObjectId(),
+            cardType: 'sell',
+            sourceMode: 'TABLE',
+            currency: 'INR',
+            effectiveDates: { startDate: new Date(Date.now() - 60_000) },
+            status: 'active',
+            calculation: { weightBasis: 'max' },
+            zoneRules: [{ zoneKey: 'zoneD', slabs: [{ minKg: 0, maxKg: 1, charge: 100 }] }],
+            isDeleted: false,
+        });
+
+        const res = await request(app)
+            .post(`/api/v1/admin/service-ratecards/${String(card._id)}/simulate`)
+            .send({
+                weight: -1,
+                fromPincode: 'INVALID',
+            });
+
+        expect(res.status).toBe(400);
     });
 });

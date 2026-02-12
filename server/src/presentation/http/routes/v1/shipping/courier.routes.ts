@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import ratecardController from '../../../controllers/shipping/ratecard.controller';
+import shipmentController from '../../../controllers/shipping/shipment.controller';
 import { CourierController } from '../../../controllers/shipping/courier.controller';
 import courierServiceController from '../../../controllers/shipping/courier-service.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
@@ -62,7 +62,7 @@ router.get(
 router.post(
     '/recommendations',
     authenticate,
-    asyncHandler(ratecardController.calculateSmartRates)
+    asyncHandler(shipmentController.recommendCourier)
 );
 
 export default router;

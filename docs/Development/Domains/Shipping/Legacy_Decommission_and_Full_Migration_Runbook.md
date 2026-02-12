@@ -1,7 +1,7 @@
 # ShipCrowd Legacy Decommission and Full Migration Runbook
 
 **Document Owner:** Shipping Platform Team
-**Last Updated:** February 9, 2026
+**Last Updated:** February 11, 2026
 **Status:** Execution-ready planning document for full legacy retirement
 **Environment Assumption:** Development-first (no production users, seeded/local data)
 
@@ -16,38 +16,34 @@
 2. **Architecture Guide**: [Service_Level_Pricing_and_Order_Shipment_Architecture_Guide.md](./Service_Level_Pricing_and_Order_Shipment_Architecture_Guide.md)
    - Runtime implementation details
    - End-to-end operational flows
+3. **Legacy Deletion Readiness Map**: [Legacy_Deletion_Readiness_Map.md](./Legacy_Deletion_Readiness_Map.md)
+   - Decision-complete dependency map and staged deletion order
+4. **Migration Artifacts**: [migration-artifacts/](./migration-artifacts/)
+   - Reality-check snapshots and verified inventory used for execution gating
 
 ---
 
-## ⚠️ CRITICAL: Blueprint Alignment and Sequencing
+## ✅ CRITICAL: Blueprint Alignment and Current Execution State
 
-This runbook is **Phase 3-4** of the Blueprint execution plan. It MUST NOT be executed until:
+This runbook is now in **stabilized execution mode** after Phase 1-2 completion on branch `codex/feature/service-level-pricing` at commit `95011a33`.
 
-**Prerequisites (Blueprint Phase 1-2 MUST BE COMPLETE)**:
-1. ❌ **Centralized Formula Service**: `ServiceRateCardFormulaService` NOT YET implemented
-   - All pricing logic (COD/fuel/RTO/GST) centralized
-   - Volumetric weight calculation enforced
-   - Quote engine, simulate endpoint, booking all use same formula
-   - **STATUS:** To be built (Blueprint Section 15, Sprint 1-2, Weeks 1-2)
-2. ❌ **Booking Fallback Orchestration**: Pre-AWB retry logic NOT YET implemented
-   - Automatic fallback to next-ranked option on first provider failure
-   - Safe boundary enforced (never fallback post-AWB)
-   - **STATUS:** To be built (Blueprint Section 15, Sprint 1-2, Weeks 3-4)
-3. ⚠️ **Contract Lock**: Quote session booking is PARTIAL (bridge mode still active)
-   - `/quotes/courier-options` is canonical endpoint ✅
-   - `book-from-quote` works but NOT mandatory (legacy path still exists) ⚠️
-   - Legacy endpoints active with feature flag branching ⚠️
-   - **STATUS:** Contract lock is Blueprint Phase 2 (after Phase 1 complete)
+**Prerequisites (Blueprint Phase 1-2) are complete**:
+1. ✅ **Centralized Formula Service** implemented (`ServiceRateCardFormulaService`)
+   - Quote engine, simulate endpoint, and pricing breakdowns use unified formula contracts.
+2. ✅ **Booking Fallback Orchestration** implemented
+   - Pre-AWB fallback retries with metrics and attempt metadata are active.
+3. ✅ **Contract Lock for Orders Quote/Ship APIs** implemented
+   - `GET /api/v1/orders/courier-rates` returns canonical quote-session response.
+   - `POST /api/v1/orders/:orderId/ship` requires `sessionId` and `optionId` (422 on missing fields).
 
-**Current Status** (per Blueprint Section 14):
+**Current Status**:
 - Service-level foundation: ✅ Complete
-- Legacy bridge active: ⚠️ YES (blocking deletion)
-- Formula engine centralized: ❌ NOT YET (blocking deletion)
-- Booking fallback: ❌ NOT YET (critical for launch)
+- Formula engine centralized: ✅ Complete
+- Booking fallback: ✅ Complete
+- Order quote/ship bridge removed: ✅ Complete
+- Legacy module deletion: ⚠️ Pending dependency-driven cleanup (next phase)
 
-**DO NOT PROCEED with this runbook until above prerequisites met.**
-
-Proceed to Blueprint Section 15 (90-day roadmap) first if prerequisites incomplete.
+Proceed with **Phase 3 deletion readiness and controlled decommission**, not broad architecture changes.
 
 ---
 
@@ -94,15 +90,14 @@ References:
 - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/server/src/core/application/services/shipping/book-from-quote.service.ts`
 - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/server/src/core/application/services/finance/carrier-billing-reconciliation.service.ts`
 
-### 2.3 Bridge mode still exists (intentionally)
+### 2.3 Order quote/ship bridge has been removed
 
-Legacy bridge behavior is still present and feature-flagged:
+Order runtime now uses service-level contract directly:
 
-- `GET /api/v1/orders/courier-rates`
-- `POST /api/v1/orders/:orderId/ship`
+- `GET /api/v1/orders/courier-rates` returns canonical quote-session payload.
+- `POST /api/v1/orders/:orderId/ship` is quote-session booking only.
 
-When `enable_service_level_pricing` is ON + quote payload is present, new flow is used.
-When OFF or legacy payload is used, legacy flow still runs.
+No legacy fallback branch remains in `order.routes.ts`.
 
 Reference:
 - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/server/src/presentation/http/routes/v1/shipping/order.routes.ts`
@@ -190,16 +185,16 @@ Prioritize one clean path that is predictable over many fallback branches that a
 
 This is the practical backlog for deletion, grouped by dependency risk.
 
-## 5.1 High confidence legacy candidates (after cutover)
+## 5.1 High confidence legacy candidates (post-contract-lock)
 
-1. Legacy quote/rate bridge behavior in `order.routes.ts`.
-2. Legacy rate-calculation controller path for seller quote UI usage.
-3. Legacy pricing orchestration path if no non-service-level consumer remains.
+1. Legacy rate-calculation controller path for seller/admin legacy ratecard APIs.
+2. Legacy pricing orchestration path and its dependent dynamic pricing stack.
+3. Legacy `RateCard` model and all dependent onboarding/seeding/admin flows.
 
 Primary candidates:
 - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/server/src/presentation/http/routes/v1/shipping/order.routes.ts`
-  - **Lines to remove**: 143-186 (legacy `/courier-rates` adapter with `toLegacyRateRows` transform)
-  - **Lines to remove**: 291-314 (legacy booking path fallback in `/ship` endpoint)
+  - **Status:** ✅ Already cut over to canonical quote/book contract
+  - **Removed:** legacy `/courier-rates` transform and legacy `/ship` fallback branch
 - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/server/src/presentation/http/controllers/shipping/ratecard.controller.ts`
 - `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/server/src/core/application/services/pricing/pricing-orchestrator.service.ts` (189 lines)
   - **Current usage**: Called by legacy `shipmentController.createShipment` when feature flag OFF
@@ -212,15 +207,14 @@ Primary candidates:
 - Legacy `RateCard` model at `server/src/infrastructure/database/mongoose/models/logistics/shipping/configuration/rate-card.model.ts`
   - **NOTE**: Separate from `ServiceRateCard` - both coexist currently
 
-## 5.2 Medium risk candidates (remove only after contract lock)
+## 5.2 Medium risk candidates (next deletion wave)
 
 1. `RateCard`-centric admin flows.
 2. Legacy simulator/import endpoints that overlap service-ratecard equivalents.
-3. Client hooks/pages still reading legacy `/orders/courier-rates` responses.
-   - **Action required**: Audit client-side code for dependencies on legacy response shape
-   - **Legacy fields**: `courierId`, `courierName`, `serviceType`, `rate`, `estimatedDeliveryDays`
-   - **New contract**: Response now includes `sessionId`, `optionId`, `expiresAt`, `recommendation`, `isRecommended`
-   - **Bridge transform**: `toLegacyRateRows()` function (lines 95-110 in `order.routes.ts`) maintains backward compatibility
+3. Client hooks/pages still expecting legacy shaped rate rows.
+   - **Action required**: Continue replacing legacy assumptions with canonical quote-session mapping.
+   - **Contract now active**: `sessionId`, `optionId`, `expiresAt`, `recommendation`, `isRecommended`, breakdown fields.
+   - **Bridge transform status**: ✅ Removed from `order.routes.ts`.
 
 ## 5.3 Low risk cleanup candidates
 
@@ -1046,3 +1040,81 @@ Track these metrics to validate decommission success:
 | Production incidents related to pricing | 0 | Incident log |
 
 **Review checkpoint**: 30 days after merge, assess metrics and document lessons learned.
+
+---
+
+## 16. Execution Hardening Addendum (v3 Lock)
+
+This addendum is now mandatory for execution and addresses the final pre-execution gaps identified during migration review.
+
+### 16.1 Source-of-Truth Plan Artifacts (Stage B0)
+
+Before Stage C/D execution, keep these audited artifacts updated:
+
+1. `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/migration-artifacts/architecture-reality-check.md`
+2. `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/migration-artifacts/plan-vs-reality-diff.md`
+3. `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/migration-artifacts/verified-ratecard-dependency-map.md`
+4. `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/migration-artifacts/client-ratecard-inventory.md`
+
+### 16.2 Locked Shipment Status Sets for D1 Migration
+
+Use explicit status sets for migration branching (do not leave "terminal" undefined):
+
+```typescript
+const TERMINAL_STATUSES = [
+  'delivered',
+  'rto',
+  'rto_delivered',
+  'cancelled',
+  'lost',
+];
+
+const IN_FLIGHT_STATUSES = [
+  'created',
+  'ready_to_ship',
+  'pending_pickup',
+  'picked_up',
+  'shipped',
+  'awaiting_carrier_sync',
+  'in_transit',
+  'out_for_delivery',
+  'ndr',
+  'rto_initiated',
+  'rto_in_transit',
+];
+```
+
+Migration rule:
+1. Terminal + legacy-only shipment: preserve under `pricingDetails.legacyRateCardSnapshot`.
+2. In-flight + missing `pricingDetails.selectedQuote`: flag `migration_anomaly`, do not retro-calculate quote.
+
+### 16.3 Bootstrap Endpoint Contract (B2)
+
+Add and enforce this API contract for policy bootstrapping:
+
+- `POST /api/v1/companies/:companyId/seller-policies/bootstrap`
+
+Contract:
+1. Scope: active seller users only (`role='seller'`, `isActive=true`, `companyId=:companyId`).
+2. Conflict handling: skip existing `SellerCourierPolicy` records (`preserveExisting=true` behavior).
+3. Auth: admin-only.
+4. Scale behavior:
+   - `<100` sellers: synchronous execution.
+   - `>=100` sellers: enqueue async bootstrap job.
+5. Response payload:
+
+```json
+{
+  "created": 0,
+  "skipped": 0,
+  "errors": []
+}
+```
+
+### 16.4 Client C4 Inventory Rule
+
+Do not execute C4 based on assumed filenames. Use audited inventory:
+
+1. `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/docs/Development/Domains/Shipping/migration-artifacts/client-ratecard-inventory.md`
+2. Keep service-level files (`pricing-studio`, `useServiceRateCards`, courier service admin flows).
+3. Remove only validated legacy-ratecard consumers listed in Stage C4 inventory.

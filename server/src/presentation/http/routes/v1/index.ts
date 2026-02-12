@@ -41,7 +41,6 @@ import emailRoutes from './communication/email.routes';
 import orderRoutes from './shipping/order.routes';
 import adminOrderRoutes from './shipping/admin-order.routes';
 import shipmentRoutes from './shipping/shipment.routes';
-import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
 import quoteRoutes from './shipping/quote.routes';
 import courierServiceRoutes from './shipping/courier-service.routes';
@@ -111,7 +110,6 @@ import impersonationRoutes from './admin/impersonation.routes';
 import featureFlagRoutes from './admin/feature-flag.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
 import disputeMetricsRoutes from './admin/dispute-metrics.routes';
-import adminRatecardRoutes from './admin/admin-ratecard.routes';
 import companyGroupRoutes from './admin/company-group.routes';
 
 // ============================================================================
@@ -162,7 +160,6 @@ router.use('/email', emailRoutes);
 router.use('/orders', orderRoutes);
 router.use('/admin/orders', adminOrderRoutes); // Admin-specific order routes
 router.use('/shipments', shipmentRoutes);
-router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
 router.use('/quotes', quoteRoutes);
 router.use('/admin/courier-services', courierServiceRoutes);
@@ -232,7 +229,6 @@ router.use('/admin/impersonation', impersonationRoutes);
 router.use('/admin/feature-flags', featureFlagRoutes);
 router.use('/admin/sku-weight-profiles', skuWeightProfileRoutes);
 router.use('/admin/disputes/weight', disputeMetricsRoutes);
-router.use('/admin/ratecards', adminRatecardRoutes);
 router.use('/admin/company-groups', companyGroupRoutes);
 
 // 10. Webhooks

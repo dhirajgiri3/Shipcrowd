@@ -17,7 +17,7 @@ import {
     updateShipmentStatusSchema,
     recommendCourierSchema
 } from '../../../../shared/validation/schemas';
-import SmartRateCalculator from '../../../../core/application/services/pricing/smart-rate-calculator.service';
+import QuoteEngineService from '../../../../core/application/services/pricing/quote-engine.service';
 import {
     sendSuccess,
     sendPaginated,
@@ -28,7 +28,6 @@ import { ShipmentService } from '../../../../core/application/services/shipping/
 import CacheService from '../../../../infrastructure/utilities/cache.service';
 import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
 import BookFromQuoteService from '../../../../core/application/services/shipping/book-from-quote.service';
 
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -119,43 +118,12 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
             }
         }
 
-        // Calculate pricing
-        // Determine Warehouse Pincode (Origin)
-        let fromPincode = '110001'; // Default
-        const effectiveWarehouseId = validation.data.warehouseId || order.warehouseId;
-
-        if (effectiveWarehouseId) {
-            const wh = await Warehouse.findById(effectiveWarehouseId);
-            if (wh?.address?.postalCode) {
-                fromPincode = wh.address.postalCode;
-            }
-        }
-
-        const toPincode = order.customerInfo.address.postalCode;
-
-        // Calculate weight from order products (matching Service logic)
-        const totalWeight = order.products.reduce((sum: number, p: any) => sum + (p.weight || 0.5) * p.quantity, 0);
-
-        const pricingDetails = await PricingOrchestratorService.calculateShipmentPricing({
-            companyId: auth.companyId,
-            fromPincode,
-            toPincode,
-            weight: totalWeight,
-            dimensions: { length: 20, width: 15, height: 10 }, // Default dimensions matching Service
-            paymentMode: order.paymentMethod === 'cod' ? 'cod' : 'prepaid',
-            orderValue: order.totals.total,
-            carrier: validation.data.carrierOverride,
-            serviceType: validation.data.serviceType,
-            // customerId: order.customerId?.toString() // Order model does not have customerId, skipping overrides for now
-        });
-
         // Create shipment via service
         const result = await ShipmentService.createShipment({
             order,
             companyId: new mongoose.Types.ObjectId(auth.companyId),
             userId: auth.userId,
             payload: validation.data,
-            pricingDetails // Pass calculated pricing
         });
 
         await createAuditLog(auth.userId, auth.companyId, 'create', 'shipment', String(result.shipment._id), {
@@ -524,6 +492,7 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
 
 export const recommendCourier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+        const startedAt = Date.now();
         const auth = guardChecks(req);
         requireCompanyContext(auth);
 
@@ -536,18 +505,87 @@ export const recommendCourier = async (req: Request, res: Response, next: NextFu
             throw new ValidationError('Validation failed', errors);
         }
 
-        const { pickupPincode, deliveryPincode, weight, declaredValue, paymentMode } = validation.data;
+        const {
+            pickupPincode,
+            deliveryPincode,
+            weight,
+            declaredValue,
+            paymentMode,
+            dimensions,
+        } = validation.data;
 
-        const recommendations = await SmartRateCalculator.calculateSmartRates({
+        const quoteResult = await QuoteEngineService.generateQuotes({
             companyId: auth.companyId,
-            originPincode: pickupPincode,
-            destinationPincode: deliveryPincode,
-            weight: weight,
-            paymentMode: paymentMode,
-            orderValue: declaredValue || 0
+            sellerId: auth.userId,
+            fromPincode: pickupPincode,
+            toPincode: deliveryPincode,
+            weight,
+            dimensions: dimensions || {
+                length: 10,
+                width: 10,
+                height: 10,
+            },
+            paymentMode,
+            orderValue: declaredValue || 0,
+            shipmentType: 'forward',
         });
 
-        sendSuccess(res, { recommendations: recommendations.rates }, 'Courier recommendations retrieved');
+        const recommendations = (quoteResult.options || []).map((option) => {
+            const normalizedService = String(option.serviceName || '').toLowerCase();
+            const serviceType =
+                normalizedService.includes('express') || normalizedService.includes('air')
+                    ? 'express'
+                    : 'standard';
+
+            const minDays = option.eta?.minDays ?? option.eta?.maxDays;
+            const maxDays = option.eta?.maxDays ?? minDays;
+            const estimatedDelivery =
+                typeof minDays === 'number' && typeof maxDays === 'number'
+                    ? minDays === maxDays
+                        ? `${maxDays} day${maxDays === 1 ? '' : 's'}`
+                        : `${minDays}-${maxDays} days`
+                    : 'N/A';
+
+            const confidence = option.confidence || quoteResult.confidence || 'medium';
+            const riskLevel =
+                confidence === 'high' ? 'low' : confidence === 'low' ? 'high' : 'medium';
+            const rating = confidence === 'high' ? 4.7 : confidence === 'low' ? 4.1 : 4.4;
+            const onTimeRate = confidence === 'high' ? 97 : confidence === 'low' ? 90 : 94;
+
+            return {
+                id: option.optionId,
+                name: option.serviceName || option.provider,
+                logo: String(option.provider || '').slice(0, 2).toUpperCase(),
+                estimatedDelivery,
+                price: Number(option.quotedAmount || 0),
+                rating,
+                onTimeRate,
+                recommended: option.optionId === quoteResult.recommendation,
+                features: option.tags || [],
+                riskLevel,
+                courierCode: option.provider,
+                serviceType,
+                sessionId: quoteResult.sessionId,
+                optionId: option.optionId,
+                expiresAt: quoteResult.expiresAt,
+            };
+        });
+
+        sendSuccess(
+            res,
+            {
+                recommendations,
+                metadata: {
+                    requestedAt: new Date(startedAt).toISOString(),
+                    processingTime: Date.now() - startedAt,
+                    totalOptions: recommendations.length,
+                    sessionId: quoteResult.sessionId,
+                    recommendation: quoteResult.recommendation,
+                    expiresAt: quoteResult.expiresAt,
+                },
+            },
+            'Courier recommendations retrieved'
+        );
     } catch (error) {
         logger.error('Error getting recommendations:', error);
         next(error);

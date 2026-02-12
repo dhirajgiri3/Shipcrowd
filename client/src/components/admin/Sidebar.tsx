@@ -42,7 +42,7 @@ const navItems = [
     { label: 'Returns & NDR', href: '/admin/returns', icon: PackageX },
     { label: 'Weight Discrepancy', href: '/admin/weight', icon: ScaleIcon },
     { label: 'Courier Partners', href: '/admin/couriers', icon: Truck },
-    { label: 'Rate Cards', href: '/admin/ratecards', icon: CreditCard },
+    { label: 'Pricing Studio', href: '/admin/pricing-studio', icon: CreditCard },
     { label: 'Financials', href: '/admin/financials', icon: Wallet },
     { label: 'Billing', href: '/admin/billing', icon: Receipt },
     { label: 'Profit', href: '/admin/profit', icon: BarChart3 },
