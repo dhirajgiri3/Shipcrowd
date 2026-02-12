@@ -11,8 +11,6 @@ import dotenv from 'dotenv';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
-import Company from '../../mongoose/models/organization/core/company.model';
-import RateCard from '../../mongoose/models/logistics/shipping/configuration/rate-card.model';
 import { SEED_CONFIG } from '../config';
 import { randomInt, selectRandom, selectWeightedFromObject, maybeExecute } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -23,7 +21,6 @@ import {
     generateTrackingNumber,
     selectServiceType,
     getEstimatedDeliveryDays,
-    calculateShippingCost,
     resetTrackingCounters
 } from '../data/carrier-data';
 import { CarrierName } from '../config';
@@ -164,71 +161,7 @@ function generateAlignedStatusHistory(
 /**
  * Generate shipment data for an order
  */
-function calculatePricingDetails(rateCard: any, zoneCode: string, weight: number, paymentMode: 'prepaid' | 'cod', orderValue: number) {
-    const zonePricing = rateCard?.zonePricing?.[zoneCode];
-    if (!zonePricing) {
-        return null;
-    }
-
-    const baseWeight = zonePricing.baseWeight || 0;
-    const basePrice = zonePricing.basePrice || 0;
-    const additionalPricePerKg = zonePricing.additionalPricePerKg || 0;
-
-    const extraWeight = Math.max(0, weight - baseWeight);
-    const weightCharge = Math.round(extraWeight * additionalPricePerKg * 100) / 100;
-    const baseRate = Math.round(basePrice * 100) / 100;
-
-    let codCharge = 0;
-    if (paymentMode === 'cod') {
-        if (Array.isArray(rateCard.codSurcharges) && rateCard.codSurcharges.length > 0) {
-            const slab = rateCard.codSurcharges.find((s: any) => orderValue >= s.min && orderValue <= s.max);
-            if (slab) {
-                codCharge = slab.type === 'percentage' ? (orderValue * slab.value) / 100 : slab.value;
-            }
-        } else {
-            const pct = Number(rateCard.codPercentage || 0);
-            const min = Number(rateCard.codMinimumCharge || 0);
-            codCharge = Math.max((orderValue * pct) / 100, min);
-        }
-    }
-
-    const fuelSurcharge = Number(rateCard.fuelSurcharge || 0);
-    const fuelBaseMode = rateCard.fuelSurchargeBase === 'freight_cod' ? 'freight_cod' : 'freight';
-    const freight = baseRate + weightCharge;
-    const fuelBase = fuelBaseMode === 'freight_cod' ? freight + codCharge : freight;
-    const fuelCharge = Math.round((fuelBase * fuelSurcharge) / 100 * 100) / 100;
-
-    let freightWithFuel = freight + fuelCharge;
-    const minFare = Number(rateCard.minimumFare || 0);
-    const minCalcMode = rateCard.minimumFareCalculatedOn === 'freight_overhead' ? 'freight_overhead' : 'freight';
-    const minTarget = minCalcMode === 'freight_overhead' ? (freightWithFuel + codCharge) : freightWithFuel;
-    if (minFare > 0 && minTarget < minFare) {
-        freightWithFuel = minCalcMode === 'freight_overhead' ? (minFare - codCharge) : minFare;
-    }
-
-    const gstRate = Number(rateCard.gst || 18);
-    const subtotal = freightWithFuel + codCharge;
-    const gstAmount = Math.round((subtotal * gstRate) / 100 * 100) / 100;
-    const totalPrice = Math.round((subtotal + gstAmount) * 100) / 100;
-
-    return {
-        rateCardId: rateCard._id,
-        rateCardName: rateCard.name,
-        baseRate,
-        weightCharge,
-        zoneCharge: 0,
-        zone: zoneCode,
-        customerDiscount: 0,
-        subtotal: Math.round(freightWithFuel * 100) / 100,
-        codCharge: Math.round(codCharge * 100) / 100,
-        gstAmount,
-        totalPrice,
-        calculatedAt: new Date(),
-        calculationMethod: 'ratecard'
-    };
-}
-
-function generateShipmentData(order: any, warehouse: any, rateCard: any | null): any {
+function generateShipmentData(order: any, warehouse: any): any {
     const carrier = selectCarrier();
     const deliveryStatus = deriveDeliveryStatus(order.currentStatus);
     const isExpress = Math.random() < 0.3; // 30% express
@@ -265,12 +198,8 @@ function generateShipmentData(order: any, warehouse: any, rateCard: any | null):
 
     const paymentMode = (order.paymentMethod || 'prepaid') as 'prepaid' | 'cod';
     const orderValue = order.totals?.total || 0;
-    const pricingDetails = rateCard
-        ? calculatePricingDetails(rateCard, zoneCode, Math.round(totalWeight * 100) / 100, paymentMode, orderValue)
-        : null;
 
-    const shippingCost = pricingDetails?.totalPrice
-        || order.shippingDetails?.shippingCost
+    const shippingCost = order.shippingDetails?.shippingCost
         || order.totals?.shipping
         || 100;
 
@@ -322,7 +251,31 @@ function generateShipmentData(order: any, warehouse: any, rateCard: any | null):
             shippingCost,
             currency: 'INR',
         },
-        pricingDetails: pricingDetails || undefined,
+        pricingDetails: {
+            selectedQuote: {
+                optionId: `seed-${generateTrackingNumber(carrier)}`,
+                provider: carrier,
+                serviceName: serviceType,
+                quotedSellAmount: shippingCost,
+                expectedCostAmount: Math.round(shippingCost * 0.88 * 100) / 100,
+                expectedMarginAmount: Math.round(shippingCost * 0.12 * 100) / 100,
+                expectedMarginPercent: 12,
+                chargeableWeight: Math.round(totalWeight * 100) / 100,
+                zone: zoneCode,
+                pricingSource: 'table',
+                confidence: 'high',
+                calculatedAt: new Date(),
+            },
+            rateCardId: null,
+            rateCardName: 'service-level-pricing',
+            zone: zoneCode,
+            subtotal: shippingCost,
+            codCharge: paymentMode === 'cod' ? Math.round(orderValue * 0.02 * 100) / 100 : 0,
+            gstAmount: Math.round(shippingCost * 0.18 * 100) / 100,
+            totalPrice: shippingCost,
+            calculatedAt: new Date(),
+            calculationMethod: 'override',
+        },
         statusHistory,
         currentStatus,
         estimatedDelivery,
@@ -408,9 +361,6 @@ export async function seedShipments(): Promise<void> {
         }).lean();
 
         const warehouses = await Warehouse.find({ isActive: true, isDeleted: false }).lean();
-        const companies = await Company.find({ isDeleted: false }).lean();
-        const rateCards = await RateCard.find({ isDeleted: false, status: 'active' }).lean();
-
         if (orders.length === 0) {
             logger.warn('No eligible orders found for shipping. Skipping shipments seeder.');
             return;
@@ -420,17 +370,6 @@ export async function seedShipments(): Promise<void> {
         const warehouseMap = new Map<string, any>();
         for (const wh of warehouses) {
             warehouseMap.set(wh._id.toString(), wh);
-        }
-
-        const companyDefaultRateCardMap = new Map<string, any>();
-        for (const company of companies) {
-            const defaultId = company.settings?.defaultRateCardId?.toString();
-            const defaultRateCard = defaultId
-                ? rateCards.find((rc) => rc._id.toString() === defaultId)
-                : rateCards.find((rc) => rc.companyId?.toString() === company._id.toString());
-            if (defaultRateCard) {
-                companyDefaultRateCardMap.set(company._id.toString(), defaultRateCard);
-            }
         }
 
         const shipments: any[] = [];
@@ -443,8 +382,7 @@ export async function seedShipments(): Promise<void> {
             const order = orders[i];
             const warehouse = warehouseMap.get(order.warehouseId?.toString() || '');
 
-            const rateCard = companyDefaultRateCardMap.get(order.companyId?.toString() || '') || null;
-            const shipmentData = generateShipmentData(order, warehouse, rateCard);
+            const shipmentData = generateShipmentData(order, warehouse);
             shipments.push(shipmentData);
 
             orderUpdates.push({

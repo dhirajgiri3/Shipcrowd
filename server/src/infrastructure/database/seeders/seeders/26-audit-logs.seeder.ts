@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 import AuditLog from '../../mongoose/models/system/audit/audit-log.model';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
-import RateCard from '../../mongoose/models/logistics/shipping/configuration/rate-card.model';
+import ServiceRateCard from '../../mongoose/models/logistics/shipping/configuration/service-rate-card.model';
 import User from '../../mongoose/models/iam/users/user.model';
 import { logger, createTimer } from '../utils/logger.utils';
 import { selectRandom, randomInt } from '../utils/random.utils';
@@ -160,9 +160,9 @@ export async function seedAuditLogs(): Promise<void> {
             logsBuffer = [];
         }
 
-        // 3. Seed Rate Card Audit Logs
-        const rateCards = await RateCard.find({ isDeleted: false }).lean();
-        for (const rateCard of rateCards) {
+        // 3. Seed Service Rate Card Audit Logs
+        const rateCards = await ServiceRateCard.find({ isDeleted: false }).lean();
+        for (const rateCard of rateCards as any[]) {
             const createdBy = selectRandom(users);
             const createdAt = new Date(rateCard.createdAt);
 
@@ -170,11 +170,15 @@ export async function seedAuditLogs(): Promise<void> {
                 userId: createdBy._id,
                 companyId: rateCard.companyId,
                 action: 'create',
-                resource: 'ratecard',
+                resource: 'service-ratecard',
                 resourceId: rateCard._id,
                 details: {
-                    message: `Rate card ${rateCard.name} created`,
-                    document: { name: rateCard.name, status: rateCard.status }
+                    message: `Service rate card (${rateCard.cardType}) created`,
+                    document: {
+                        cardType: rateCard.cardType,
+                        serviceId: String(rateCard.serviceId),
+                        status: rateCard.status,
+                    },
                 },
                 timestamp: createdAt,
                 ipAddress: '192.168.1.1',
@@ -186,10 +190,10 @@ export async function seedAuditLogs(): Promise<void> {
                     userId: selectRandom(users)._id,
                     companyId: rateCard.companyId,
                     action: 'update',
-                    resource: 'ratecard',
+                    resource: 'service-ratecard',
                     resourceId: rateCard._id,
                     details: {
-                        message: `Rate card ${rateCard.name} updated`,
+                        message: `Service rate card (${rateCard.cardType}) updated`,
                         changes: { status: { from: rateCard.status, to: rateCard.status } }
                     },
                     timestamp: updatedAt,

@@ -92,8 +92,6 @@ export { default as ManifestCounter } from './logistics/shipping/manifest-counte
 export * from './logistics/shipping/manifest-counter.model';
 export { default as Zone } from './logistics/shipping/configuration/zone.model';
 export * from './logistics/shipping/configuration/zone.model';
-export { default as RateCard } from './logistics/shipping/configuration/rate-card.model';
-export * from './logistics/shipping/configuration/rate-card.model';
 export { default as ServiceRateCard } from './logistics/shipping/configuration/service-rate-card.model';
 export * from './logistics/shipping/configuration/service-rate-card.model';
 export { default as SellerCourierPolicy } from './logistics/shipping/configuration/seller-courier-policy.model';

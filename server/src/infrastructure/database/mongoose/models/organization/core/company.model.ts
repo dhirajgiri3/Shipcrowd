@@ -45,7 +45,6 @@ export interface ICompany extends Document {
   };
   settings: {
     defaultWarehouseId?: mongoose.Types.ObjectId;
-    defaultRateCardId?: mongoose.Types.ObjectId;
     notificationEmail?: string;
     notificationPhone?: string;
     notificationPreferences?: {
@@ -206,10 +205,6 @@ const CompanySchema = new Schema<ICompany>(
       defaultWarehouseId: {
         type: Schema.Types.ObjectId,
         ref: 'Warehouse',
-      },
-      defaultRateCardId: {
-        type: Schema.Types.ObjectId,
-        ref: 'RateCard',
       },
       notificationEmail: String,
       notificationPhone: String,

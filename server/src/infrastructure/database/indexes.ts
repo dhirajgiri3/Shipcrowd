@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import {
     Order,
     Shipment,
-    RateCard,
     Zone,
     Warehouse,
     User,
@@ -84,21 +83,6 @@ const SHIPMENT_INDEXES = [
 ];
 
 /**
- * RateCard Indexes
- * 
- * Primary queries:
- * - Find active rate cards for company
- * - Filter by status
- */
-const RATECARD_INDEXES = [
-    // Active rate lookup (critical for pricing)
-    { companyId: 1, status: 1, 'effectiveDates.startDate': -1 },
-
-    // List by company
-    { companyId: 1, isDeleted: 1 },
-];
-
-/**
  * Zone Indexes
  * 
  * Primary queries:
@@ -160,7 +144,6 @@ export async function createIndexes(): Promise<void> {
         await Promise.all([
             createModelIndexes(Order, ORDER_INDEXES, 'Order'),
             createModelIndexes(Shipment, SHIPMENT_INDEXES, 'Shipment'),
-            createModelIndexes(RateCard, RATECARD_INDEXES, 'RateCard'),
             createModelIndexes(Zone, ZONE_INDEXES, 'Zone'),
             createModelIndexes(Warehouse, WAREHOUSE_INDEXES, 'Warehouse'),
             createModelIndexes(User, USER_INDEXES, 'User'),
@@ -218,7 +201,6 @@ export async function dropAllIndexes(): Promise<void> {
     await Promise.all([
         Order.collection.dropIndexes(),
         Shipment.collection.dropIndexes(),
-        RateCard.collection.dropIndexes(),
         Zone.collection.dropIndexes(),
         Warehouse.collection.dropIndexes(),
         User.collection.dropIndexes(),

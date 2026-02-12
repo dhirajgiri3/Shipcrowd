@@ -150,7 +150,7 @@ export interface IShipment extends Document {
         total?: number;
       };
     };
-    rateCardId: mongoose.Types.ObjectId;
+    rateCardId?: mongoose.Types.ObjectId | null;
     rateCardName: string;
     baseRate: number;
     weightCharge: number;
@@ -534,7 +534,7 @@ const ShipmentSchema = new Schema<IShipment>(
       },
       rateCardId: {
         type: Schema.Types.ObjectId,
-        ref: 'RateCard',
+        default: null,
       },
       rateCardName: String,
       baseRate: Number,

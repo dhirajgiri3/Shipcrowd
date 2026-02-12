@@ -41,8 +41,7 @@ const PricingAuditSchema = new Schema(
             required: true
         },
         rateCardId: {
-            type: Schema.Types.ObjectId,
-            ref: 'RateCard'
+            type: Schema.Types.ObjectId
         },
         breakdown: {
             type: Schema.Types.Mixed
