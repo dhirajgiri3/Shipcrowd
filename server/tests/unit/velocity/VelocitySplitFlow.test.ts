@@ -277,6 +277,19 @@ describe('Velocity Split Flow APIs', () => {
         it('should assign courier to reverse order', async () => {
             const mockWarehouse = {
                 _id: new mongoose.Types.ObjectId(),
+                name: 'Main Warehouse',
+                contactInfo: {
+                    name: 'Warehouse Manager',
+                    phone: '9876543210',
+                    email: 'warehouse@test.com'
+                },
+                address: {
+                    line1: '123 Test St',
+                    city: 'Mumbai',
+                    state: 'Maharashtra',
+                    postalCode: '400001',
+                    country: 'India'
+                },
                 carrierDetails: { velocityWarehouseId: 'VEL-WH-123' }
             };
 
@@ -308,6 +321,19 @@ describe('Velocity Split Flow APIs', () => {
         it('should construct label URL if missing', async () => {
             const mockWarehouse = {
                 _id: new mongoose.Types.ObjectId(),
+                name: 'Main Warehouse',
+                contactInfo: {
+                    name: 'Warehouse Manager',
+                    phone: '9876543210',
+                    email: 'warehouse@test.com'
+                },
+                address: {
+                    line1: '123 Test St',
+                    city: 'Mumbai',
+                    state: 'Maharashtra',
+                    postalCode: '400001',
+                    country: 'India'
+                },
                 carrierDetails: { velocityWarehouseId: 'VEL-WH-123' }
             };
 

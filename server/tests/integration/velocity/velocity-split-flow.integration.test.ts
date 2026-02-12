@@ -17,6 +17,7 @@ describe('Velocity Split Flow Integration Tests', () => {
     let velocityProvider: VelocityShipfastProvider;
     let testCompanyId: mongoose.Types.ObjectId;
     let testWarehouseId: mongoose.Types.ObjectId;
+    const hasVelocityCredentials = Boolean(process.env.VELOCITY_USERNAME && process.env.VELOCITY_PASSWORD);
 
     beforeAll(async () => {
         await setupTestDatabase();
@@ -58,6 +59,10 @@ describe('Velocity Split Flow Integration Tests', () => {
 
     describe('Complete Forward Split Flow', () => {
         it('should complete: createOrderOnly → getRates → assignCourier', async () => {
+            if (!hasVelocityCredentials) {
+                console.warn('⚠️  Skipping Velocity split-flow integration test - no credentials found');
+                return;
+            }
             // Step 1: Create order without courier assignment
             const shipmentData: CourierShipmentData & { warehouseId: string } = {
                 origin: {
@@ -135,6 +140,10 @@ describe('Velocity Split Flow Integration Tests', () => {
 
     describe('Complete Reverse Split Flow', () => {
         it('should complete: createReverseOrderOnly → assignReverseCourier', async () => {
+            if (!hasVelocityCredentials) {
+                console.warn('⚠️  Skipping Velocity split-flow integration test - no credentials found');
+                return;
+            }
             // Step 1: Create reverse order
             const reverseData = {
                 orderId: `TEST-RTO-${Date.now()}`,
@@ -178,6 +187,10 @@ describe('Velocity Split Flow Integration Tests', () => {
 
     describe('Reports API Integration', () => {
         it('should fetch summary report for date range', async () => {
+            if (!hasVelocityCredentials) {
+                console.warn('⚠️  Skipping Velocity split-flow integration test - no credentials found');
+                return;
+            }
             const startDate = new Date('2026-01-01');
             const endDate = new Date('2026-02-01');
 
@@ -194,6 +207,10 @@ describe('Velocity Split Flow Integration Tests', () => {
 
     describe('Rate Calculation with Internal Pricing', () => {
         it('should return non-zero prices from internal rate cards', async () => {
+            if (!hasVelocityCredentials) {
+                console.warn('⚠️  Skipping Velocity split-flow integration test - no credentials found');
+                return;
+            }
             const rateRequest: CourierRateRequest = {
                 origin: { pincode: '400001' },
                 destination: { pincode: '560001' },  // Mumbai to Bangalore

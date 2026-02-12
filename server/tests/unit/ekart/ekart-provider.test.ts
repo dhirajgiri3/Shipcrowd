@@ -13,7 +13,10 @@ import mongoose from 'mongoose';
 
 // Mock dependencies
 jest.mock('@/infrastructure/external/couriers/ekart/ekart.auth');
-jest.mock('@/infrastructure/external/couriers/ekart/ekart-error-handler');
+jest.mock('@/infrastructure/external/couriers/ekart/ekart-error-handler', () => ({
+    handleEkartError: (error: any) => error,
+    waitForRateLimit: jest.fn(),
+}));
 jest.mock('@/infrastructure/database/mongoose/models/courier-idempotency.model');
 
 describe('EkartProvider - New Methods', () => {
@@ -152,7 +155,7 @@ describe('EkartProvider - New Methods', () => {
             const result = await provider.requestReattempt(trackingNumber);
 
             expect(result.success).toBe(false);
-            expect(result.message).toContain('failed');
+            expect(result.message).toContain('Network error');
         });
     });
 
@@ -285,7 +288,7 @@ describe('EkartProvider - New Methods', () => {
         it('should throw error for more than 100 AWBs', async () => {
             const trackingIds = Array.from({ length: 101 }, (_, i) => `AWB${i}`);
 
-            await expect(provider.getLabel(trackingIds)).rejects.toThrow('Maximum 100 tracking IDs allowed');
+            await expect(provider.getLabel(trackingIds)).rejects.toThrow('Maximum 100 tracking IDs allowed per request');
         });
 
         it('should handle API errors', async () => {

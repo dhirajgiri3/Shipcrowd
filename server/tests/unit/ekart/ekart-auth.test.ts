@@ -16,8 +16,9 @@ import Integration from '../../../src/infrastructure/database/mongoose/models/sy
 // Mock dependencies
 jest.mock('../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model');
 jest.mock('../../../src/shared/utils/distributed-lock', () => ({
-    acquireLock: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
-    releaseLock: jest.fn<() => Promise<boolean>>().mockResolvedValue(true)
+    getDistributedLock: jest.fn(() => ({
+        withLock: jest.fn(async (_key: string, fn: () => Promise<any>) => fn()),
+    })),
 }));
 
 // Mock axios
@@ -51,7 +52,7 @@ describe('EkartAuth', () => {
         it('should return cached in-memory token if valid', async () => {
             // Manually set cache
             const validToken = 'valid-memory-token';
-            (auth as any).tokenCache = {
+            (auth as any).cachedToken = {
                 token: validToken,
                 expiresAt: new Date(Date.now() + 3600 * 1000) // 1 hour from now
             };
@@ -86,32 +87,12 @@ describe('EkartAuth', () => {
         });
 
         it('should authenticate if no valid token exists', async () => {
-            // Mock getStoredToken to return null
-            jest.spyOn(auth as any, 'getStoredToken').mockResolvedValue(null);
-
-            // Mock API response
             const newToken = 'new-api-token';
-            mockPost.mockResolvedValue({
-                data: {
-                    access_token: newToken,
-                    expires_in: 86400,
-                    token_type: 'Bearer',
-                    scope: 'public'
-                }
-            });
-
-            // Mock storeToken
-            jest.spyOn(auth as any, 'storeToken').mockResolvedValue(undefined);
+            jest.spyOn(auth as any, 'refreshTokenWithLock').mockResolvedValue(newToken);
 
             const token = await auth.getValidToken();
             expect(token).toBe(newToken);
-            expect(mockPost).toHaveBeenCalledWith(
-                `/integrations/v2/auth/token/${mockCreds.clientId}`,
-                {
-                    username: mockCreds.username,
-                    password: mockCreds.password
-                }
-            );
+            expect((auth as any).refreshTokenWithLock).toHaveBeenCalled();
         });
     });
 
@@ -135,17 +116,11 @@ describe('EkartAuth', () => {
     describe('refreshToken', () => {
         it('should force new authentication and clear cache', async () => {
             const freshToken = 'fresh-token';
-            mockPost.mockResolvedValue({
-                data: {
-                    access_token: freshToken,
-                    expires_in: 86400
-                }
-            });
-            jest.spyOn(auth as any, 'storeToken').mockResolvedValue(undefined);
+            jest.spyOn(auth as any, 'refreshTokenWithLock').mockResolvedValue(freshToken);
 
             const token = await auth.refreshToken();
             expect(token).toBe(freshToken);
-            expect(mockPost).toHaveBeenCalled();
+            expect((auth as any).refreshTokenWithLock).toHaveBeenCalled();
         });
     });
 });

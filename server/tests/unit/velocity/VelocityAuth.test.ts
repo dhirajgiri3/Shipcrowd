@@ -7,7 +7,7 @@
 
 import mongoose from 'mongoose';
 import { VelocityAuth } from '../../../src/infrastructure/external/couriers/velocity/velocity.auth';
-import { Integration } from '../../../src/infrastructure/database/mongoose/models';
+import Integration from '../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model';
 import { encryptData, decryptData } from '../../../src/shared/utils/encryption';
 import axios from 'axios';
 
@@ -29,7 +29,7 @@ const mockAxiosInstance = {
 
 // Mock Integration model
 jest.mock('../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model');
-const MockedIntegration = Integration as jest.Mocked<typeof Integration>;
+const MockedIntegration = Integration as any;
 
 // Mock encryption utilities
 jest.mock('../../../src/shared/utils/encryption');
@@ -58,6 +58,20 @@ describe('VelocityAuth', () => {
     // Mock environment variables
     process.env.VELOCITY_USERNAME = '+918860606061';
     process.env.VELOCITY_PASSWORD = 'Velocity@123';
+
+    MockedIntegration.findOne = jest.fn().mockResolvedValue({
+      _id: new mongoose.Types.ObjectId(),
+      companyId: testCompanyId,
+      type: 'courier',
+      provider: 'velocity-shipfast',
+      settings: { isActive: true },
+      credentials: {
+        username: 'encrypted-username',
+        password: 'encrypted-password',
+      },
+      metadata: {},
+      save: jest.fn().mockResolvedValue(undefined),
+    });
   });
 
   afterEach(() => {
@@ -79,15 +93,18 @@ describe('VelocityAuth', () => {
       const mockIntegration = {
         _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
+        type: 'courier',
         provider: 'velocity-shipfast',
+        settings: { isActive: true },
         credentials: {
           username: 'encrypted-username',
           password: 'encrypted-password'
-        }
+        },
+        metadata: {},
+        save: jest.fn().mockResolvedValue(undefined),
       };
 
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-      MockedIntegration.findOneAndUpdate = jest.fn().mockResolvedValue(mockIntegration);
 
       const token = await auth.authenticate();
 
@@ -99,7 +116,7 @@ describe('VelocityAuth', () => {
           password: expect.any(String)
         }
       );
-      expect(MockedIntegration.findOneAndUpdate).toHaveBeenCalled();
+      expect(mockIntegration.save).toHaveBeenCalled();
     });
 
     it('should throw error if integration not found', async () => {
@@ -170,21 +187,23 @@ describe('VelocityAuth', () => {
       const mockIntegration = {
         _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
+        type: 'courier',
         provider: 'velocity-shipfast',
+        settings: { isActive: true },
         credentials: {
           username: 'encrypted-username',
           password: 'encrypted-password'
         },
-        metadata: {}
+        metadata: {},
+        save: jest.fn().mockResolvedValue(undefined),
       };
 
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-      MockedIntegration.findOneAndUpdate = jest.fn().mockResolvedValue(mockIntegration);
 
       await auth.authenticate();
 
       expect(mockedEncrypt).toHaveBeenCalledWith(mockToken);
-      expect(MockedIntegration.findOneAndUpdate).toHaveBeenCalled();
+      expect(mockIntegration.save).toHaveBeenCalled();
     });
 
     it('should calculate and store expiry time', async () => {
@@ -200,24 +219,25 @@ describe('VelocityAuth', () => {
       const mockIntegration = {
         _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
+        type: 'courier',
         provider: 'velocity-shipfast',
+        settings: { isActive: true },
         credentials: {
           username: 'encrypted-username',
           password: 'encrypted-password'
         },
         metadata: {}
       };
+      (mockIntegration as any).save = jest.fn().mockResolvedValue(undefined);
 
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-      MockedIntegration.findOneAndUpdate = jest.fn().mockResolvedValue(mockIntegration);
 
       const beforeTime = Date.now();
       await auth.authenticate();
       const afterTime = Date.now();
 
-      expect(MockedIntegration.findOneAndUpdate).toHaveBeenCalled();
-      const updateCall = (MockedIntegration.findOneAndUpdate as jest.Mock).mock.calls[0];
-      expect(updateCall[1].$set['metadata.tokenExpiresAt']).toBeDefined();
+      expect((mockIntegration as any).metadata.tokenExpiresAt).toBeDefined();
+      expect((mockIntegration as any).save).toHaveBeenCalled();
     });
   });
 
@@ -265,12 +285,15 @@ describe('VelocityAuth', () => {
       const mockIntegration = {
         _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
+        type: 'courier',
         provider: 'velocity-shipfast',
+        settings: { isActive: true },
         credentials: {
           username: 'encrypted-username',
           password: 'encrypted-password'
         },
-        metadata: {}
+        metadata: {},
+        save: jest.fn().mockResolvedValue(undefined),
       };
 
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
@@ -296,7 +319,9 @@ describe('VelocityAuth', () => {
       const mockIntegration = {
         _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
+        type: 'courier',
         provider: 'velocity-shipfast',
+        settings: { isActive: true },
         credentials: {
           username: 'encrypted-username',
           password: 'encrypted-password',
@@ -304,7 +329,8 @@ describe('VelocityAuth', () => {
         },
         metadata: {
           tokenExpiresAt: soonExpiry
-        }
+        },
+        save: jest.fn().mockResolvedValue(undefined),
       };
 
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
@@ -356,12 +382,15 @@ describe('VelocityAuth', () => {
       const mockIntegration = {
         _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
+        type: 'courier',
         provider: 'velocity-shipfast',
+        settings: { isActive: true },
         credentials: {
           username: 'encrypted-username',
           password: 'encrypted-password'
         },
-        metadata: {}
+        metadata: {},
+        save: jest.fn().mockResolvedValue(undefined),
       };
 
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
@@ -392,12 +421,15 @@ describe('VelocityAuth', () => {
       const mockIntegration = {
         _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
+        type: 'courier',
         provider: 'velocity-shipfast',
+        settings: { isActive: true },
         credentials: {
           username: 'encrypted-username',
           password: 'encrypted-password'
         },
-        metadata: {}
+        metadata: {},
+        save: jest.fn().mockResolvedValue(undefined),
       };
 
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);

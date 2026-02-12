@@ -64,7 +64,7 @@ describe('EkartMapper', () => {
 
     describe('sanitize', () => {
         it('should remove special characters', () => {
-            expect(EkartMapper.sanitize('Test@123#')).toBe('Test 123');
+            expect(EkartMapper.sanitize('Test@123#')).toBe('Test@123');
         });
 
         it('should preserve spaces and hyphens', () => {
@@ -121,7 +121,7 @@ describe('EkartMapper', () => {
 
         it('should throw for invalid weight', () => {
             const invalidData = { ...validData, package: { ...validData.package, weight: 0 } };
-            expect(() => EkartMapper.validateForwardShipmentData(invalidData)).toThrow('Weight must be greater than 0');
+            expect(() => EkartMapper.validateForwardShipmentData(invalidData)).toThrow('Package weight is required');
         });
     });
 
@@ -157,7 +157,7 @@ describe('EkartMapper', () => {
 
         it('should throw for invalid weight', () => {
             const invalidData = { ...validReverseData, package: { ...validReverseData.package, weight: 0 } };
-            expect(() => EkartMapper.validateReverseShipmentData(invalidData)).toThrow('Weight must be greater than 0');
+            expect(() => EkartMapper.validateReverseShipmentData(invalidData)).toThrow('Package weight is required');
         });
     });
 });

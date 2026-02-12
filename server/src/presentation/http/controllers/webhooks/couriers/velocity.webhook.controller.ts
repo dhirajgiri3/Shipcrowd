@@ -26,16 +26,16 @@ export class VelocityWebhookController {
     static async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             // 1. Verify API key
-            const isValid = this.handler.verifySignature(req);
+            const isValid = VelocityWebhookController.handler.verifySignature(req);
             if (!isValid) {
                 throw new ValidationError('Invalid webhook API key');
             }
 
             // 2. Parse webhook payload
-            const payload = this.handler.parseWebhook(req);
+            const payload = VelocityWebhookController.handler.parseWebhook(req);
 
             // 3. Process webhook (includes real-time NDR detection, DB updates, triggers events)
-            await this.handler.handleWebhook(payload);
+            await VelocityWebhookController.handler.handleWebhook(payload);
 
             // 4. Send success response
             sendSuccess(res, {
