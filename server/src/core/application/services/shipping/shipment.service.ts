@@ -241,6 +241,7 @@ export class ShipmentService {
      */
     static async selectCarrierForShipment(args: {
         companyId: string;
+        sellerId?: string;
         totalWeight: number;
         originPincode: string;
         destinationPincode: string;
@@ -248,20 +249,35 @@ export class ShipmentService {
         paymentMode?: 'cod' | 'prepaid';
         orderValue?: number;
         carrierOverride?: string;
+        dimensions?: { length: number; width: number; height: number };
         strict?: boolean;
     }): Promise<{ selectedCarrier: string; selectedOption: any; carrierResult: CarrierSelectionResult }> {
-        const { companyId, totalWeight, originPincode, destinationPincode, serviceType, paymentMode, orderValue, carrierOverride, strict } = args;
+        const {
+            companyId,
+            sellerId,
+            totalWeight,
+            originPincode,
+            destinationPincode,
+            serviceType,
+            paymentMode,
+            orderValue,
+            carrierOverride,
+            dimensions,
+            strict,
+        } = args;
 
         const carrierService = getCarrierService();
         const carrierResult: CarrierSelectionResult = await carrierService.selectBestCarrier(
             {
                 companyId,
+                sellerId,
                 fromPincode: originPincode,
                 toPincode: destinationPincode,
                 weight: totalWeight,
                 paymentMode: paymentMode || 'prepaid',
                 orderValue,
                 serviceType,
+                dimensions,
             },
             strict
         );
@@ -269,6 +285,8 @@ export class ShipmentService {
         const selectedCarrier = carrierOverride || carrierResult.selectedCarrier;
         const selectedOption = carrierResult.alternativeOptions.find(
             (opt: any) => opt.carrier.toLowerCase() === selectedCarrier.toLowerCase()
+        ) || carrierResult.alternativeOptions.find(
+            (opt: any) => opt.carrier.toLowerCase() === carrierResult.selectedCarrier.toLowerCase()
         ) || carrierResult.alternativeOptions[0];
 
         // Strict Mode Validation: Ensure we actually found the requested carrier if override was used
@@ -282,6 +300,71 @@ export class ShipmentService {
         }
 
         return { selectedCarrier, selectedOption, carrierResult };
+    }
+
+    private static buildPricingDetailsFromSelectedOption(selectedOption: any) {
+        const sellBreakdown = selectedOption.sellBreakdown || {};
+        const costBreakdown = selectedOption.costBreakdown || {};
+
+        const subtotal = Number(sellBreakdown.subtotal || selectedOption.rate || 0);
+        const codCharge = Number(sellBreakdown.codCharge || 0);
+        const gstAmount = Number(sellBreakdown.gst || 0);
+        const fuelCharge = Number(sellBreakdown.fuelCharge || 0);
+        const rtoCharge = Number(sellBreakdown.rtoCharge || 0);
+
+        return {
+            selectedQuote: {
+                quoteSessionId: selectedOption.quoteSessionId,
+                optionId: selectedOption.optionId,
+                provider: selectedOption.provider || selectedOption.carrier,
+                serviceId: selectedOption.serviceId,
+                serviceName: selectedOption.serviceName || selectedOption.carrier,
+                quotedSellAmount: Number(selectedOption.rate || 0),
+                expectedCostAmount: Number(selectedOption.costAmount || 0),
+                expectedMarginAmount: Number(selectedOption.estimatedMargin || 0),
+                expectedMarginPercent: Number(selectedOption.estimatedMarginPercent || 0),
+                chargeableWeight: Number(selectedOption.chargeableWeight || 0),
+                zone: selectedOption.zone,
+                pricingSource: selectedOption.pricingSource,
+                confidence: selectedOption.confidence,
+                calculatedAt: new Date(),
+                sellBreakdown: {
+                    baseCharge: Number(sellBreakdown.baseCharge || 0),
+                    weightCharge: Number(sellBreakdown.weightCharge || 0),
+                    zoneCharge: Number(sellBreakdown.zoneCharge || 0),
+                    codCharge,
+                    fuelSurcharge: fuelCharge,
+                    discount: Number(sellBreakdown.discount || 0),
+                    subtotal,
+                    gst: gstAmount,
+                    total: Number(sellBreakdown.total || selectedOption.rate || 0),
+                },
+                costBreakdown: {
+                    baseCharge: Number(costBreakdown.baseCharge || 0),
+                    weightCharge: Number(costBreakdown.weightCharge || 0),
+                    zoneCharge: Number(costBreakdown.zoneCharge || 0),
+                    codCharge: Number(costBreakdown.codCharge || 0),
+                    fuelSurcharge: Number(costBreakdown.fuelCharge || 0),
+                    rtoCharge: Number(costBreakdown.rtoCharge || 0),
+                    subtotal: Number(costBreakdown.subtotal || 0),
+                    gst: Number(costBreakdown.gst || 0),
+                    total: Number(costBreakdown.total || 0),
+                },
+            },
+            rateCardId: null,
+            rateCardName: 'service-level-pricing',
+            baseRate: Number(sellBreakdown.baseCharge || selectedOption.rate || 0),
+            weightCharge: Number(sellBreakdown.weightCharge || 0),
+            zoneCharge: Number(sellBreakdown.zoneCharge || 0),
+            zone: selectedOption.zone || 'zoneD',
+            customerDiscount: Number(sellBreakdown.discount || 0),
+            subtotal: subtotal + fuelCharge + rtoCharge,
+            codCharge,
+            gstAmount,
+            totalPrice: Number(selectedOption.rate || 0),
+            calculatedAt: new Date(),
+            calculationMethod: 'override' as const,
+        };
     }
 
     /**
@@ -417,6 +500,7 @@ export class ShipmentService {
 
                 const selection = await this.selectCarrierForShipment({
                     companyId: companyId.toString(),
+                    sellerId: userId,
                     totalWeight,
                     originPincode,
                     destinationPincode: order.customerInfo.address.postalCode,
@@ -424,6 +508,7 @@ export class ShipmentService {
                     paymentMode: order.paymentMethod,
                     orderValue: order.orderTotal,
                     carrierOverride: payload.carrierOverride,
+                    dimensions: { length: 20, width: 15, height: 10 },
                     strict: enforcedStrict
                 });
 
@@ -465,6 +550,9 @@ export class ShipmentService {
             const estimatedDelivery = new Date();
             estimatedDelivery.setDate(estimatedDelivery.getDate() + selectedOption.deliveryTime);
 
+            const resolvedPricingDetails =
+                pricingDetails || ShipmentService.buildPricingDetailsFromSelectedOption(selectedOption);
+
             // Create shipment
             const shipment = new Shipment({
                 trackingNumber,
@@ -501,7 +589,7 @@ export class ShipmentService {
                     },
                     verified: false
                 },
-                pricingDetails, // Store pricing breakdown
+                pricingDetails: resolvedPricingDetails, // Store pricing breakdown
                 currentStatus: 'created',
                 estimatedDelivery,
                 metadata: idempotencyKey ? { idempotencyKey } : undefined // Store idempotency key

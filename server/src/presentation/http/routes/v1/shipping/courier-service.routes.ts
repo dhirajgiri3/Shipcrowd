@@ -42,4 +42,11 @@ router.post(
     asyncHandler(courierServiceController.toggleCourierServiceStatus)
 );
 
+router.post(
+    '/:provider/services/sync',
+    authenticate,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(courierServiceController.syncProviderServices)
+);
+
 export default router;

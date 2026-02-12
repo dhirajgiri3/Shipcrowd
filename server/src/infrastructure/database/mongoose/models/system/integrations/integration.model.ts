@@ -23,14 +23,20 @@ export interface IIntegration extends Document {
   settings: {
     isActive: boolean;
     isPrimary?: boolean;
+    baseUrl?: string;
     webhookUrl?: string;
     callbackUrl?: string;
+    timeoutMs?: number;
+    rateLimitPerMinute?: number;
     [key: string]: any;
   };
   metadata: {
+    displayName?: string;
     lastSyncAt?: Date;
     lastErrorAt?: Date;
     lastError?: string;
+    tokenExpiresAt?: Date;
+    lastTokenRefresh?: Date;
     [key: string]: any;
   };
   isDeleted: boolean;
@@ -73,13 +79,19 @@ const IntegrationSchema = new Schema<IIntegration>(
         default: true,
       },
       isPrimary: Boolean,
+      baseUrl: String,
       webhookUrl: String,
       callbackUrl: String,
+      timeoutMs: Number,
+      rateLimitPerMinute: Number,
     },
     metadata: {
+      displayName: String,
       lastSyncAt: Date,
       lastErrorAt: Date,
       lastError: String,
+      tokenExpiresAt: Date,
+      lastTokenRefresh: Date,
     },
     isDeleted: {
       type: Boolean,

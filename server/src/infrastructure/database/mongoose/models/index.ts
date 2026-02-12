@@ -102,8 +102,6 @@ export { default as CourierService } from './logistics/shipping/configuration/co
 export * from './logistics/shipping/configuration/courier-service.model';
 export { default as QuoteSession } from './logistics/shipping/core/quote-session.model';
 export * from './logistics/shipping/core/quote-session.model';
-export { default as Courier } from './shipping/courier.model';
-export * from './shipping/courier.model';
 export { default as CourierPerformance } from './shipping/courier-performance.model';
 export * from './shipping/courier-performance.model';
 export { default as LabelTemplate } from './shipping/label-template.model';

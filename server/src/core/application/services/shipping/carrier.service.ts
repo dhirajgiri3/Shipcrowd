@@ -1,19 +1,14 @@
 /**
- * Carrier Service - REFACTORED (Phase 0.3)
- * 
- * Changes from original:
- * - Removed hardcoded CARRIERS array
- * - Use DynamicPricingService for Velocity (real rates from RateCard)
- * - Use stub adapters for Delhivery/Ekart/India Post (comparison only)
- * - All rates now database-driven or stub-based
+ * Carrier Service (Service-Level Pricing Native)
+ *
+ * Uses QuoteEngineService as the single source of truth for carrier options.
+ * Falls back to lightweight stub estimates when quote generation fails.
  */
 
-import mongoose from 'mongoose';
-import { DynamicPricingService } from '../pricing/dynamic-pricing.service';
+import QuoteEngineService from '../pricing/quote-engine.service';
 import { getDelhiveryStub } from '../../../../infrastructure/external/couriers/delhivery/delhivery-stub.adapter';
 import { getEkartStub } from '../../../../infrastructure/external/couriers/ekart/ekart-stub.adapter';
 import { getIndiaPostStub } from '../../../../infrastructure/external/couriers/india-post/india-post-stub.adapter';
-import { CourierFactory } from '../courier/courier.factory';
 
 export interface CarrierOption {
     carrier: string;
@@ -21,8 +16,24 @@ export interface CarrierOption {
     deliveryTime: number;
     score: number;
     serviceType: string;
-    isStub?: boolean; // True for stub adapters
-    message?: string; // Warning message for stubs
+    isRecommended?: boolean;
+    isStub?: boolean;
+    message?: string;
+    provider?: string;
+    optionId?: string;
+    serviceId?: string;
+    serviceName?: string;
+    quoteSessionId?: string;
+    quoteExpiresAt?: Date;
+    chargeableWeight?: number;
+    zone?: string;
+    pricingSource?: 'live' | 'table' | 'hybrid';
+    confidence?: 'high' | 'medium' | 'low';
+    costAmount?: number;
+    estimatedMargin?: number;
+    estimatedMarginPercent?: number;
+    sellBreakdown?: Record<string, unknown>;
+    costBreakdown?: Record<string, unknown>;
 }
 
 export interface CarrierSelectionResult {
@@ -35,174 +46,85 @@ export interface CarrierSelectionResult {
 
 export interface GetRatesInput {
     companyId: string;
+    sellerId?: string;
     fromPincode: string;
     toPincode: string;
     weight: number;
     paymentMode: 'cod' | 'prepaid';
     orderValue?: number;
     serviceType?: 'standard' | 'express';
+    dimensions?: { length: number; width: number; height: number };
     strict?: boolean;
 }
 
 export class CarrierService {
-    private pricingService: DynamicPricingService;
     private delhiveryStub = getDelhiveryStub();
     private ekartStub = getEkartStub();
     private indiaPostStub = getIndiaPostStub();
 
-    constructor() {
-        this.pricingService = new DynamicPricingService();
-    }
-
-    /**
-     * Get rates from all carriers (Velocity + Stubs)
-     * 
-     * Returns:
-     * - Velocity: Real rates from RateCard database
-     * - Delhivery/Ekart/India Post: Stub rates for comparison
-     */
     async getAllRates(input: GetRatesInput): Promise<CarrierOption[]> {
-        const serviceType = input.serviceType || 'standard';
-        const carriers: CarrierOption[] = [];
+        const dimensions = input.dimensions || { length: 20, width: 15, height: 10 };
 
         try {
-            // 1. Velocity - Real rates from DynamicPricingService
-            const velocityPricing = await this.pricingService.calculatePricing({
+            const quoteResult = await QuoteEngineService.generateQuotes({
                 companyId: input.companyId,
+                // Some internal flows do not carry a seller user id; companyId fallback preserves compatibility.
+                sellerId: input.sellerId || input.companyId,
                 fromPincode: input.fromPincode,
                 toPincode: input.toPincode,
                 weight: input.weight,
+                dimensions,
                 paymentMode: input.paymentMode,
-                orderValue: input.orderValue,
-                carrier: 'velocity',
-                serviceType,
-                strict: input.strict
+                orderValue: Number(input.orderValue || 0),
+                shipmentType: 'forward',
             });
 
-            carriers.push({
-                carrier: 'velocity',
-                rate: velocityPricing.total,
-                deliveryTime: this.estimateDeliveryDays(velocityPricing.metadata.zone, serviceType),
-                score: 100, // Velocity is preferred (only real integration)
-                serviceType,
-                isStub: false,
-            });
-        } catch (error) {
-            console.error('[CarrierService] Velocity rates failed:', error);
-        }
+            const options: CarrierOption[] = quoteResult.options.map((option) => {
+                const normalizedService = String(option.serviceName || '').toLowerCase();
+                const serviceType =
+                    normalizedService.includes('express') || normalizedService.includes('air')
+                        ? 'express'
+                        : 'standard';
 
-        try {
-            // 2. Delhivery - Live if integration active, otherwise stub
-            const companyObjectId = new mongoose.Types.ObjectId(input.companyId);
-            const isActive = await CourierFactory.isProviderAvailable(
-                'delhivery',
-                companyObjectId
-            );
-
-            if (isActive) {
-                const provider = await CourierFactory.getProvider(
-                    'delhivery',
-                    companyObjectId
-                );
-
-                const rates = await provider.getRates({
-                    origin: { pincode: input.fromPincode },
-                    destination: { pincode: input.toPincode },
-                    package: {
-                        weight: input.weight,
-                        length: 20,
-                        width: 15,
-                        height: 10
-                    },
-                    paymentMode: input.paymentMode,
-                    orderValue: input.orderValue
-                });
-
-                if (rates && rates.length > 0) {
-                    carriers.push({
-                        carrier: 'delhivery',
-                        rate: rates[0].total,
-                        deliveryTime: rates[0].estimatedDeliveryDays || 3,
-                        score: 80,
-                        serviceType,
-                        isStub: false
-                    });
-                }
-            } else {
-                const delhiveryRate = await this.delhiveryStub.getRates(
-                    input.fromPincode,
-                    input.toPincode,
-                    input.weight,
-                    serviceType
-                );
-
-                carriers.push({
-                    carrier: 'delhivery',
-                    rate: delhiveryRate.total,
-                    deliveryTime: delhiveryRate.estimatedDays,
-                    score: 70, // Lower score - stub only
+                return {
+                    carrier: option.provider,
+                    rate: Number(option.quotedAmount || 0),
+                    deliveryTime: Number(option.eta?.maxDays || option.eta?.minDays || 5),
+                    score: Number(option.rankScore || 0),
                     serviceType,
-                    isStub: true,
-                    message: delhiveryRate.message,
-                });
+                    isRecommended: option.optionId === quoteResult.recommendation,
+                    provider: option.provider,
+                    optionId: option.optionId,
+                    serviceId: option.serviceId ? String(option.serviceId) : undefined,
+                    serviceName: option.serviceName,
+                    quoteSessionId: quoteResult.sessionId,
+                    quoteExpiresAt: quoteResult.expiresAt,
+                    chargeableWeight: option.chargeableWeight,
+                    zone: option.zone,
+                    pricingSource: option.pricingSource,
+                    confidence: option.confidence,
+                    costAmount: option.costAmount,
+                    estimatedMargin: option.estimatedMargin,
+                    estimatedMarginPercent: option.estimatedMarginPercent,
+                    sellBreakdown: option.sellBreakdown as Record<string, unknown> | undefined,
+                    costBreakdown: option.costBreakdown as Record<string, unknown> | undefined,
+                };
+            });
+
+            if (options.length > 0) {
+                return options.sort((a, b) => a.rate - b.rate);
             }
         } catch (error) {
-            console.error('[CarrierService] Delhivery stub failed:', error);
+            console.warn('[CarrierService] Service-level quote generation failed, using fallback rates:', error);
         }
 
-        try {
-            // 3. Ekart - Stub rates
-            const ekartRate = await this.ekartStub.getRates(
-                input.fromPincode,
-                input.toPincode,
-                input.weight,
-                serviceType
-            );
-
-            carriers.push({
-                carrier: 'ekart',
-                rate: ekartRate.total,
-                deliveryTime: ekartRate.estimatedDays,
-                score: 65,
-                serviceType,
-                isStub: true,
-                message: ekartRate.message,
-            });
-        } catch (error) {
-            console.error('[CarrierService] Ekart stub failed:', error);
-        }
-
-        try {
-            // 4. India Post - Stub rates
-            const indiaPostRate = await this.indiaPostStub.getRates(
-                input.fromPincode,
-                input.toPincode,
-                input.weight,
-                serviceType
-            );
-
-            carriers.push({
-                carrier: 'india_post',
-                rate: indiaPostRate.total,
-                deliveryTime: indiaPostRate.estimatedDays,
-                score: 60,
-                serviceType,
-                isStub: true,
-                message: indiaPostRate.message,
-            });
-        } catch (error) {
-            console.error('[CarrierService] India Post stub failed:', error);
-        }
-
-        // Sort by rate (cheapest first)
-        return carriers.sort((a, b) => a.rate - b.rate);
+        return this.getFallbackRates(input);
     }
 
-    /**
-     * Select best carrier (Velocity preferred)
-     */
-    async selectBestCarrier(input: GetRatesInput, strict: boolean = false): Promise<CarrierSelectionResult> {
-        // Pass strict flag to getAllRates if provided separately or rely on input properties
+    async selectBestCarrier(
+        input: GetRatesInput,
+        strict: boolean = false
+    ): Promise<CarrierSelectionResult> {
         const ratesInput: GetRatesInput = { ...input, strict: input.strict || strict };
         const allRates = await this.getAllRates(ratesInput);
 
@@ -210,46 +132,113 @@ export class CarrierService {
             throw new Error('No carriers available for this route');
         }
 
-        // Always prefer Velocity (only real integration)
-        const velocity = allRates.find(c => c.carrier === 'velocity');
-        if (velocity) {
-            return {
-                selectedCarrier: velocity.carrier,
-                selectedRate: velocity.rate,
-                selectedDeliveryTime: velocity.deliveryTime,
-                selectedServiceType: velocity.serviceType,
-                alternativeOptions: allRates.filter(c => c.carrier !== 'velocity'),
-            };
+        let selectedOption = allRates.find((option) => option.isRecommended) || allRates[0];
+
+        if ((input as { carrierOverride?: string }).carrierOverride) {
+            const overrideCarrier = String((input as { carrierOverride?: string }).carrierOverride);
+            const overrideOption = allRates.find(
+                (option) => option.carrier.toLowerCase() === overrideCarrier.toLowerCase()
+            );
+
+            if (overrideOption) {
+                selectedOption = overrideOption;
+            } else if (ratesInput.strict) {
+                throw new Error(`Requested carrier '${overrideCarrier}' not available for this route`);
+            }
         }
 
-        // Fallback: cheapest carrier (but it's a stub!)
-        const cheapest = allRates[0];
         return {
-            selectedCarrier: cheapest.carrier,
-            selectedRate: cheapest.rate,
-            selectedDeliveryTime: cheapest.deliveryTime,
-            selectedServiceType: cheapest.serviceType,
-            alternativeOptions: allRates.slice(1),
+            selectedCarrier: selectedOption.carrier,
+            selectedRate: selectedOption.rate,
+            selectedDeliveryTime: selectedOption.deliveryTime,
+            selectedServiceType: selectedOption.serviceType,
+            // Keep all options so downstream selection can pick explicit override safely.
+            alternativeOptions: allRates,
         };
     }
 
-    /**
-     * Estimate delivery days based on zone
-     */
-    private estimateDeliveryDays(zone: string, serviceType: string): number {
-        const deliveryMap: Record<string, { standard: number; express: number }> = {
-            zoneA: { standard: 1, express: 1 },
-            zoneB: { standard: 2, express: 1 },
-            zoneC: { standard: 3, express: 2 },
-            zoneD: { standard: 4, express: 2 },
-            zoneE: { standard: 6, express: 4 },
-        };
+    private async getFallbackRates(input: GetRatesInput): Promise<CarrierOption[]> {
+        const serviceType = input.serviceType || 'standard';
+        const fallback: CarrierOption[] = [];
 
-        return deliveryMap[zone]?.[serviceType as 'standard' | 'express'] || 5;
+        const velocityFallback = Math.max(50, Number(input.weight || 0) * 20);
+        fallback.push({
+            carrier: 'velocity',
+            rate: Number(velocityFallback.toFixed(2)),
+            deliveryTime: serviceType === 'express' ? 2 : 4,
+            score: 50,
+            serviceType,
+            isStub: true,
+            message: 'Fallback estimated rate (quote engine unavailable)',
+        });
+
+        try {
+            const delhiveryRate = await this.delhiveryStub.getRates(
+                input.fromPincode,
+                input.toPincode,
+                input.weight,
+                serviceType
+            );
+
+            fallback.push({
+                carrier: 'delhivery',
+                rate: delhiveryRate.total,
+                deliveryTime: delhiveryRate.estimatedDays,
+                score: 45,
+                serviceType,
+                isStub: true,
+                message: delhiveryRate.message,
+            });
+        } catch (error) {
+            console.warn('[CarrierService] Delhivery fallback stub failed:', error);
+        }
+
+        try {
+            const ekartRate = await this.ekartStub.getRates(
+                input.fromPincode,
+                input.toPincode,
+                input.weight,
+                serviceType
+            );
+
+            fallback.push({
+                carrier: 'ekart',
+                rate: ekartRate.total,
+                deliveryTime: ekartRate.estimatedDays,
+                score: 40,
+                serviceType,
+                isStub: true,
+                message: ekartRate.message,
+            });
+        } catch (error) {
+            console.warn('[CarrierService] Ekart fallback stub failed:', error);
+        }
+
+        try {
+            const indiaPostRate = await this.indiaPostStub.getRates(
+                input.fromPincode,
+                input.toPincode,
+                input.weight,
+                serviceType
+            );
+
+            fallback.push({
+                carrier: 'india_post',
+                rate: indiaPostRate.total,
+                deliveryTime: indiaPostRate.estimatedDays,
+                score: 35,
+                serviceType,
+                isStub: true,
+                message: indiaPostRate.message,
+            });
+        } catch (error) {
+            console.warn('[CarrierService] India Post fallback stub failed:', error);
+        }
+
+        return fallback.sort((a, b) => a.rate - b.rate);
     }
 }
 
-// Singleton instance
 let carrierServiceInstance: CarrierService | null = null;
 
 export function getCarrierService(): CarrierService {
@@ -259,7 +248,6 @@ export function getCarrierService(): CarrierService {
     return carrierServiceInstance;
 }
 
-// Default export for convenience
 export default {
     CarrierService,
     getCarrierService,

@@ -14,7 +14,7 @@ export const VELOCITY_STATUS_MAPPINGS: CourierMappingConfig = {
         // Initial/Pending States
         {
             externalStatus: 'NEW',
-            internalStatus: 'pending',
+            internalStatus: 'created',
             statusCategory: 'pending',
             isTerminal: false,
             allowsReattempt: false,
@@ -27,6 +27,54 @@ export const VELOCITY_STATUS_MAPPINGS: CourierMappingConfig = {
             isTerminal: false,
             allowsReattempt: false,
             allowsCancellation: true
+        },
+        {
+            externalStatus: 'PKP',
+            internalStatus: 'picked_up',
+            statusCategory: 'in_transit',
+            isTerminal: false,
+            allowsReattempt: false,
+            allowsCancellation: true
+        },
+        {
+            externalStatus: 'IT',
+            internalStatus: 'in_transit',
+            statusCategory: 'in_transit',
+            isTerminal: false,
+            allowsReattempt: false,
+            allowsCancellation: false
+        },
+        {
+            externalStatus: 'OFD',
+            internalStatus: 'out_for_delivery',
+            statusCategory: 'in_transit',
+            isTerminal: false,
+            allowsReattempt: true,
+            allowsCancellation: false
+        },
+        {
+            externalStatus: 'DEL',
+            internalStatus: 'delivered',
+            statusCategory: 'delivered',
+            isTerminal: true,
+            allowsReattempt: false,
+            allowsCancellation: false
+        },
+        {
+            externalStatus: 'NDR',
+            internalStatus: 'ndr',
+            statusCategory: 'failed',
+            isTerminal: false,
+            allowsReattempt: true,
+            allowsCancellation: false
+        },
+        {
+            externalStatus: 'RTO',
+            internalStatus: 'rto_initiated',
+            statusCategory: 'rto',
+            isTerminal: false,
+            allowsReattempt: false,
+            allowsCancellation: false
         },
         {
             externalStatus: 'MANIFESTED',

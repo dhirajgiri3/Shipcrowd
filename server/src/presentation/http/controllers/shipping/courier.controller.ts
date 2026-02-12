@@ -1,226 +1,313 @@
 import { Request, Response } from 'express';
-import { Courier } from '../../../../infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
 import asyncHandler from '../../../../shared/utils/asyncHandler';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
-import { Integration, CourierPerformance } from '../../../../infrastructure/database/mongoose/models';
+import {
+    Integration,
+    CourierPerformance,
+    CourierService,
+} from '../../../../infrastructure/database/mongoose/models';
 import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 
+const PROVIDER_LABELS: Record<string, string> = {
+    velocity: 'Velocity',
+    delhivery: 'Delhivery',
+    ekart: 'Ekart',
+};
+
+function getCompanyId(req: Request): string {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+        throw new ValidationError('Company ID required');
+    }
+    return String(companyId);
+}
+
+function normalizeProvider(id: string): string {
+    return String(id || '').trim().toLowerCase();
+}
+
+function formatProviderName(provider: string): string {
+    return PROVIDER_LABELS[provider] || provider.toUpperCase();
+}
+
+function isServiceActive(service: any): boolean {
+    return service.status === 'active';
+}
+
+function toIntegrationProvider(provider: string): string {
+    return provider === 'velocity' ? 'velocity-shipfast' : provider;
+}
+
+async function getProviderSnapshot(companyId: string, provider: string) {
+    const [services, integration] = await Promise.all([
+        CourierService.find({
+            companyId,
+            provider,
+            isDeleted: false,
+        }).lean(),
+        Integration.findOne({
+            companyId,
+            provider: toIntegrationProvider(provider),
+            type: 'courier',
+            isDeleted: false,
+        }).lean(),
+    ]);
+
+    if (!services.length) {
+        return null;
+    }
+
+    const activeServices = services.filter(isServiceActive);
+    const maxCod = services.reduce((max, service: any) => {
+        return Math.max(max, Number(service.constraints?.maxCodValue || 0));
+    }, 0);
+    const maxWeight = services.reduce((max, service: any) => {
+        return Math.max(max, Number(service.constraints?.maxWeightKg || 0));
+    }, 0);
+
+    const zoneSet = new Set<string>();
+    const serviceNames: string[] = [];
+    services.forEach((service: any) => {
+        (service.zoneSupport || []).forEach((zone: string) => zoneSet.add(String(zone).toUpperCase()));
+        serviceNames.push(service.serviceCode || service.displayName || service.serviceType);
+    });
+
+    const integrationActive = Boolean(integration?.settings?.isActive);
+    const displayName = formatProviderName(provider);
+
+    return {
+        listItem: {
+            id: provider,
+            name: displayName,
+            code: provider,
+            logo: displayName.slice(0, 2).toUpperCase(),
+            status: activeServices.length > 0 ? 'active' : 'inactive',
+            services: Array.from(new Set(serviceNames)),
+            zones: Array.from(zoneSet),
+            apiIntegrated: integrationActive,
+            pickupEnabled: true,
+            codEnabled: maxCod > 0,
+            trackingEnabled: true,
+            codLimit: maxCod,
+            weightLimit: maxWeight,
+        },
+        detail: {
+            _id: provider,
+            name: displayName,
+            code: provider,
+            apiEndpoint: integration?.settings?.baseUrl || '',
+            isActive: activeServices.length > 0,
+            integrationStatus: integrationActive ? 'HEALTHY' : 'WARNING',
+            activeShipments: 0,
+            slaCompliance: {
+                today: 100,
+                week: 100,
+                month: 100,
+            },
+            services: services.map((service: any) => ({
+                _id: String(service._id),
+                name: service.displayName,
+                code: service.serviceCode,
+                type: String(service.serviceType || 'standard').toUpperCase(),
+                isActive: service.status === 'active',
+            })),
+            createdAt: services.reduce((min, service: any) => {
+                if (!min) return service.createdAt;
+                return new Date(service.createdAt) < new Date(min) ? service.createdAt : min;
+            }, null as any),
+            updatedAt: services.reduce((max, service: any) => {
+                if (!max) return service.updatedAt;
+                return new Date(service.updatedAt) > new Date(max) ? service.updatedAt : max;
+            }, null as any),
+        },
+    };
+}
+
 export class CourierController {
-    /**
-     * Get all couriers
-     */
     getCouriers = asyncHandler(async (req: Request, res: Response) => {
-        const couriers = await Courier.find({});
+        const companyId = getCompanyId(req);
 
-        const data = couriers.map(courier => ({
-            id: courier.name,
-            name: courier.displayName,
-            code: courier.name,
-            logo: courier.logo || courier.name.substring(0, 2).toUpperCase(),
-            status: courier.isActive ? 'active' : 'inactive', // Fix: Use isActive for status
-            services: courier.serviceTypes,
-            zones: courier.regions,
-            apiIntegrated: courier.isApiIntegrated,
-            pickupEnabled: courier.pickupEnabled,
-            codEnabled: courier.codEnabled,
-            trackingEnabled: courier.trackingEnabled,
-            codLimit: courier.codLimit,
-            weightLimit: courier.weightLimit
-        }));
+        const services = await CourierService.find({
+            companyId,
+            isDeleted: false,
+        })
+            .select('provider')
+            .lean();
+
+        const providers = Array.from(
+            new Set(services.map((service: any) => normalizeProvider(service.provider)).filter(Boolean))
+        );
+
+        const snapshots = await Promise.all(
+            providers.map((provider) => getProviderSnapshot(companyId, provider))
+        );
 
         res.status(200).json({
             success: true,
-            data
+            data: snapshots.filter(Boolean).map((snapshot: any) => snapshot.listItem),
         });
     });
 
-    /**
-     * Get single courier details
-     */
     getCourier = asyncHandler(async (req: Request, res: Response) => {
-        const { id } = req.params;
+        const companyId = getCompanyId(req);
+        const provider = normalizeProvider(req.params.id);
 
-        const courier = await Courier.findOne({ name: id });
-
-        if (!courier) {
+        const snapshot = await getProviderSnapshot(companyId, provider);
+        if (!snapshot) {
             throw new NotFoundError('Courier');
-        }
-
-        // Get integration details if possible to show API info
-        // Assuming companyId is on req.user from auth middleware
-        let apiEndpoint = '';
-        if ((req as any).user?.companyId) {
-            const integration = await Integration.findOne({
-                companyId: (req as any).user.companyId,
-                provider: courier.name,
-                type: 'courier'
-            });
-            if (integration && integration.settings) {
-                apiEndpoint = integration.settings.baseUrl;
-            }
         }
 
         res.status(200).json({
             success: true,
-            data: {
-                id: courier.name,
-                name: courier.displayName,
-                code: courier.name,
-                logo: courier.logo || courier.name.substring(0, 2).toUpperCase(),
-                status: courier.isActive ? 'active' : 'inactive',
-                services: courier.serviceTypes,
-                zones: courier.regions,
-                apiIntegrated: courier.isApiIntegrated,
-                pickupEnabled: courier.pickupEnabled,
-                codEnabled: courier.codEnabled,
-                trackingEnabled: courier.trackingEnabled,
-                codLimit: courier.codLimit,
-                weightLimit: courier.weightLimit,
-                apiEndpoint,
-                createdAt: courier.createdAt,
-                updatedAt: courier.updatedAt
-            }
+            data: snapshot.detail,
         });
     });
 
-    /**
-     * Update courier details
-     */
     updateCourier = asyncHandler(async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const { name, apiEndpoint, apiKey, isActive, weightLimit, codLimit } = req.body;
+        const companyId = getCompanyId(req);
+        const provider = normalizeProvider(req.params.id);
+        const { name, apiEndpoint, apiKey, isActive } = req.body || {};
 
-        const courier = await Courier.findOne({ name: id });
-        if (!courier) {
+        const services = await CourierService.find({
+            companyId,
+            provider,
+            isDeleted: false,
+        });
+
+        if (!services.length) {
             throw new NotFoundError('Courier');
         }
 
-        // Update Courier model fields
-        if (name) courier.displayName = name;
-        if (isActive !== undefined) courier.isActive = isActive;
-        if (weightLimit) courier.weightLimit = weightLimit;
-        if (codLimit) courier.codLimit = codLimit;
+        if (typeof isActive === 'boolean') {
+            await CourierService.updateMany(
+                { companyId, provider, isDeleted: false },
+                { $set: { status: isActive ? 'active' : 'inactive' } }
+            );
+        }
 
-        await courier.save();
-
-        // Update Integration if credentials provided
-        if ((apiEndpoint || apiKey) && (req as any).user?.companyId) {
-            await Integration.findOneAndUpdate(
+        if (typeof name === 'string' && name.trim().length > 0) {
+            await Integration.updateOne(
                 {
-                    companyId: (req as any).user.companyId,
-                    provider: courier.name,
-                    type: 'courier'
+                    companyId,
+                    provider: toIntegrationProvider(provider),
+                    type: 'courier',
+                    isDeleted: false,
                 },
                 {
                     $set: {
-                        ...(apiEndpoint && { 'settings.baseUrl': apiEndpoint }),
-                        ...(apiKey && { 'credentials.apiKey': apiKey }),
-                        'settings.isActive': courier.isActive // Sync active status
-                    }
-                },
-                { upsert: false }
+                        'metadata.displayName': name.trim(),
+                    },
+                }
             );
         }
 
-        res.status(200).json({
-            success: true,
-            data: {
-                id: courier.name,
-                name: courier.displayName,
-                code: courier.name,
-                status: courier.isActive ? 'active' : 'inactive',
-                isActive: courier.isActive,
-                updatedAt: courier.updatedAt
-            }
-        });
-    });
+        if (apiEndpoint || apiKey || typeof isActive === 'boolean') {
+            await Integration.updateOne(
+                {
+                    companyId,
+                    provider: toIntegrationProvider(provider),
+                    type: 'courier',
+                    isDeleted: false,
+                },
+                {
+                    $set: {
+                        ...(apiEndpoint ? { 'settings.baseUrl': String(apiEndpoint) } : {}),
+                        ...(apiKey ? { 'credentials.apiKey': String(apiKey) } : {}),
+                        ...(typeof isActive === 'boolean'
+                            ? { 'settings.isActive': isActive }
+                            : {}),
+                    },
+                }
+            );
+        }
 
-    /**
-     * Toggle courier active status
-     */
-    toggleStatus = asyncHandler(async (req: Request, res: Response) => {
-        const { id } = req.params;
-
-        const courier = await Courier.findOne({ name: id });
-        if (!courier) {
+        const snapshot = await getProviderSnapshot(companyId, provider);
+        if (!snapshot) {
             throw new NotFoundError('Courier');
         }
 
-        courier.isActive = !courier.isActive;
-        await courier.save();
+        res.status(200).json({
+            success: true,
+            data: snapshot.detail,
+        });
+    });
 
-        // Sync with Integration
-        if ((req as any).user?.companyId) {
-            await Integration.updateOne(
-                {
-                    companyId: (req as any).user.companyId,
-                    provider: courier.name,
-                    type: 'courier'
-                },
-                { $set: { 'settings.isActive': courier.isActive } }
-            );
+    toggleStatus = asyncHandler(async (req: Request, res: Response) => {
+        const companyId = getCompanyId(req);
+        const provider = normalizeProvider(req.params.id);
+
+        const services = await CourierService.find({
+            companyId,
+            provider,
+            isDeleted: false,
+        }).lean();
+
+        if (!services.length) {
+            throw new NotFoundError('Courier');
         }
+
+        const hasActive = services.some(isServiceActive);
+        const nextStatus = hasActive ? 'inactive' : 'active';
+
+        await Promise.all([
+            CourierService.updateMany(
+                { companyId, provider, isDeleted: false },
+                { $set: { status: nextStatus } }
+            ),
+            Integration.updateOne(
+                {
+                    companyId,
+                    provider: toIntegrationProvider(provider),
+                    type: 'courier',
+                    isDeleted: false,
+                },
+                { $set: { 'settings.isActive': nextStatus === 'active' } }
+            ),
+        ]);
 
         res.status(200).json({
             success: true,
             data: {
-                id: courier.name,
-                isActive: courier.isActive,
-                status: courier.isActive ? 'active' : 'inactive'
-            }
+                id: provider,
+                isActive: nextStatus === 'active',
+                status: nextStatus,
+            },
         });
     });
 
-    /**
-     * Test courier integration
-     */
     testConnection = asyncHandler(async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const companyId = (req as any).user?.companyId;
-
-        if (!companyId) {
-            throw new ValidationError('Company ID required for testing');
-        }
+        const provider = normalizeProvider(req.params.id);
+        const companyId = getCompanyId(req);
 
         try {
-            // Attempt to get provider - this checks database existence
-            const provider = await CourierFactory.getProvider(id, companyId);
-
-            // If we got here, basic instantiation worked. 
-            // We can try a lightweight check if available, e.g. serviceability
-            // For now, success implying credentials are structurally valid/present
-
-            res.status(200).json({
-                success: true,
-                message: 'Connection successful',
-            });
+            await CourierFactory.getProvider(
+                toIntegrationProvider(provider),
+                new mongoose.Types.ObjectId(companyId)
+            );
+            res.status(200).json({ success: true, message: 'Connection successful' });
         } catch (error) {
             res.status(400).json({
                 success: false,
-                message: error instanceof Error ? error.message : 'Connection failed'
+                message: error instanceof Error ? error.message : 'Connection failed',
             });
         }
     });
 
-    /**
-     * Get courier performance
-     */
     getPerformance = asyncHandler(async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const companyId = (req as any).user?.companyId;
+        const provider = normalizeProvider(req.params.id);
+        const companyId = getCompanyId(req);
 
-        // Try to find performance record
-        let performance = null;
-        if (companyId) {
-            performance = await CourierPerformance.findOne({ courierId: id, companyId });
-        }
+        const performance = await CourierPerformance.findOne({
+            courierId: provider,
+            companyId,
+        }).lean();
 
         if (!performance) {
-            // Return mock/default structure if no data yet (prevents 404/breakage)
             return res.status(200).json({
                 success: true,
                 data: {
-                    courierId: id,
+                    courierId: provider,
                     overallMetrics: {
                         avgDeliveryDays: 0,
                         pickupSuccessRate: 0,
@@ -228,35 +315,34 @@ export class CourierController {
                         rtoRate: 0,
                         ndrRate: 0,
                         totalShipments: 0,
-                        rating: 0
+                        rating: 0,
                     },
                     trends: {
                         deliverySpeedTrend: 'stable',
                         reliabilityTrend: 'stable',
-                        volumeTrend: 'stable'
+                        volumeTrend: 'stable',
                     },
-                    slaCompliance: { // Frontend expects this structure
+                    slaCompliance: {
                         today: 100,
                         week: 100,
-                        month: 100
+                        month: 100,
                     },
-                    activeShipments: 0
-                }
+                    activeShipments: 0,
+                },
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             data: {
-                ...performance.toObject(),
-                // Add computed/frontend-specific fields if missing from model
+                ...performance,
                 slaCompliance: {
-                    today: 98, // Mock or calculate
+                    today: 98,
                     week: 97,
-                    month: 96
+                    month: 96,
                 },
-                activeShipments: performance.overallMetrics.totalShipments // Proxy
-            }
+                activeShipments: performance.overallMetrics?.totalShipments || 0,
+            },
         });
     });
 }

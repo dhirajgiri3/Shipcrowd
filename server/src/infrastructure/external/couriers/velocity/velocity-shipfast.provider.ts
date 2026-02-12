@@ -7,7 +7,7 @@
  * Core Methods (14 total):
  * 1. createShipment() - POST /forward-order-orchestration
  * 2. trackShipment() - POST /order-tracking
- * 3. getRates() - POST /serviceability (Enhanced with DynamicPricingService)
+ * 3. getRates() - POST /serviceability (serviceability-derived rates + fallback estimates)
  * 4. cancelShipment() - POST /cancel-order
  * 5. checkServiceability() - POST /serviceability
  * 6. createWarehouse() - POST /warehouse
@@ -71,25 +71,44 @@ import {
   VelocityReportsRequest,
   VelocityReportsResponse,
   VelocityError,
-  CANCELLABLE_STATUSES
+  VELOCITY_STATUS_MAP
 } from './velocity.types';
 import { VelocityAuth } from './velocity.auth';
 import { VelocityMapper } from './velocity.mapper';
 import { VELOCITY_CARRIER_IDS, isDeprecatedVelocityId } from './velocity-carrier-ids';
-import { DynamicPricingService } from '../../../../core/application/services/pricing/dynamic-pricing.service';
 import { handleVelocityError } from './velocity-error-handler';
 import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
-import { StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
+import { CourierStatusMapping, StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
 import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
 import { VELOCITY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs/index';
+import { VELOCITY_STATUS_MAPPINGS } from '../../../../core/application/services/courier/status-mappings/velocity-status-mappings';
 import logger from '../../../../shared/logger/winston.logger';
 
 export class VelocityShipfastProvider extends BaseCourierAdapter {
+  private static readonly RATE_FALLBACK_MULTIPLIER: Record<string, number> = {
+    [VELOCITY_CARRIER_IDS.BLUEDART_AIR]: 1.35,
+    [VELOCITY_CARRIER_IDS.BLUEDART_STANDARD]: 1.2,
+    [VELOCITY_CARRIER_IDS.DELHIVERY_EXPRESS]: 1.2,
+    [VELOCITY_CARRIER_IDS.DELHIVERY_STANDARD]: 1.1,
+    [VELOCITY_CARRIER_IDS.AMAZON_TRANSPORTATION]: 1.15,
+    [VELOCITY_CARRIER_IDS.EKART_STANDARD]: 1.05,
+    [VELOCITY_CARRIER_IDS.SHADOWFAX_STANDARD]: 1,
+  };
+
   private auth: VelocityAuth;
   private httpClient: AxiosInstance;
   private companyId: mongoose.Types.ObjectId;
   private rateLimiter: RateLimiterService;
   private circuitBreaker: CircuitBreaker;
+  private static readonly CANCELLABLE_INTERNAL_STATUSES = new Set([
+    'pending',
+    'created',
+    'pickup_scheduled',
+    'out_for_pickup',
+    'picked_up',
+    'in_transit',
+    'manifested'
+  ]);
 
   constructor(
     companyId: mongoose.Types.ObjectId,
@@ -104,6 +123,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       failureThreshold: 5,
       cooldownMs: 60000
     });
+    this.ensureStatusMappingsRegistered();
 
     this.httpClient = axios.create({
       baseURL: baseUrl,
@@ -145,6 +165,59 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         return Promise.reject(error);
       }
     );
+  }
+
+  private ensureStatusMappingsRegistered(): void {
+    if (StatusMapperService.getRegisteredCouriers().includes('velocity')) {
+      return;
+    }
+    StatusMapperService.register(VELOCITY_STATUS_MAPPINGS);
+  }
+
+  private mapVelocityStatus(externalStatus: string): CourierStatusMapping {
+    const normalized = String(externalStatus || '').trim();
+    try {
+      const mapped = StatusMapperService.map('velocity', normalized);
+      if (mapped.internalStatus !== 'unknown') {
+        return mapped;
+      }
+    } catch (error) {
+      logger.warn('Velocity status mapper unavailable, using fallback map', { externalStatus });
+    }
+
+    const mappedInternal = VELOCITY_STATUS_MAP[normalized.toUpperCase()];
+    if (mappedInternal) {
+      const isTerminal = ['delivered', 'rto', 'lost', 'damaged', 'cancelled'].includes(mappedInternal);
+      const statusCategory: CourierStatusMapping['statusCategory'] =
+        mappedInternal === 'delivered'
+          ? 'delivered'
+          : ['rto'].includes(mappedInternal)
+            ? 'rto'
+            : ['cancelled'].includes(mappedInternal)
+              ? 'cancelled'
+              : ['lost', 'damaged', 'ndr'].includes(mappedInternal)
+                ? 'failed'
+                : ['picked_up', 'in_transit', 'out_for_delivery'].includes(mappedInternal)
+                  ? 'in_transit'
+                  : 'pending';
+      return {
+        externalStatus: normalized,
+        internalStatus: mappedInternal,
+        statusCategory,
+        isTerminal,
+        allowsReattempt: mappedInternal === 'ndr',
+        allowsCancellation: VelocityShipfastProvider.CANCELLABLE_INTERNAL_STATUSES.has(mappedInternal),
+      };
+    }
+
+    return {
+      externalStatus: normalized || 'unknown',
+      internalStatus: 'unknown',
+      statusCategory: 'pending',
+      isTerminal: false,
+      allowsReattempt: false,
+      allowsCancellation: false,
+    };
   }
 
   /**
@@ -254,24 +327,29 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/forward-order-orchestration');
 
     // Make API call with retry
-    const response = await this.circuitBreaker.execute(async () => {
-      return await retryWithBackoff<{ data: VelocityShipmentResponse }>(
-        async () => {
-          logger.info('Creating Velocity shipment', {
-            orderId: data.orderNumber,
-            companyId: this.companyId.toString(),
-            idempotencyKey: data.idempotencyKey
-          });
+    let response: { data: VelocityShipmentResponse };
+    try {
+      response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityShipmentResponse }>(
+          async () => {
+            logger.info('Creating Velocity shipment', {
+              orderId: data.orderNumber,
+              companyId: this.companyId.toString(),
+              idempotencyKey: data.idempotencyKey
+            });
 
-          return await this.httpClient.post<VelocityShipmentResponse>(
-            '/custom/api/v1/forward-order-orchestration',
-            velocityRequest
-          );
-        },
-        3,
-        1000
-      );
-    });
+            return await this.httpClient.post<VelocityShipmentResponse>(
+              '/custom/api/v1/forward-order-orchestration',
+              velocityRequest
+            );
+          },
+          3,
+          1000
+        );
+      });
+    } catch (error) {
+      throw handleVelocityError(error, 'Velocity createShipment');
+    }
 
     const shipment = this.unwrapResponse<VelocityShipmentResponse>(response.data);
 
@@ -309,30 +387,41 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/order-tracking');
 
     // Make API call with retry
-    const response = await this.circuitBreaker.execute(async () => {
-      return await retryWithBackoff<{ data: VelocityTrackingResponse[] }>(
-        async () => {
-          logger.debug('Tracking Velocity shipment', { trackingNumber });
+    let response: { data: VelocityTrackingResponse[] };
+    try {
+      response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityTrackingResponse[] }>(
+          async () => {
+            logger.debug('Tracking Velocity shipment', { trackingNumber });
 
-          return await this.httpClient.post<VelocityTrackingResponse[]>(
-            '/custom/api/v1/order-tracking',
-            request
-          );
-        },
-        3,
-        1000
-      );
-    });
+            return await this.httpClient.post<VelocityTrackingResponse[]>(
+              '/custom/api/v1/order-tracking',
+              request
+            );
+          },
+          3,
+          1000
+        );
+      });
+    } catch (error) {
+      throw handleVelocityError(error, 'Velocity trackShipment');
+    }
 
     // Velocity returns a keyed object: { result: { [AWB]: { tracking_data: ... } } }
     const trackingMap = this.unwrapResponse<Record<string, {
-      tracking_data: {
-        shipment_status: string;
-        current_location: string;
-        estimated_delivery: string;
-        shipment_track_activities: any[];
-        awb_code: string;
-      }
+      tracking_data?: {
+        shipment_status?: string;
+        status?: string;
+        status_code?: string;
+        current_location?: string;
+        location?: string;
+        estimated_delivery?: string;
+        shipment_track_activities?: any[];
+        shipment_track?: any[];
+        tracking_history?: any[];
+        awb_code?: string;
+        error?: string;
+      };
     }>>(response.data);
 
     // Initial API structure might be direct, or inside the wrapper.
@@ -353,21 +442,55 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     const tracking = shipmentData.tracking_data;
 
+    const rawCurrentStatus =
+      tracking.shipment_status ||
+      tracking.status ||
+      tracking.status_code;
+
+    if (!rawCurrentStatus || tracking.error) {
+      throw new VelocityError(
+        404,
+        {
+          message: tracking.error || 'Shipment not found',
+          error: `No valid tracking status for AWB: ${trackingNumber}`,
+          status_code: 404
+        },
+        false
+      );
+    }
+
     // Map status using centralized StatusMapperService
-    const statusMapping = StatusMapperService.map('velocity', tracking.shipment_status);
+    const statusMapping = this.mapVelocityStatus(rawCurrentStatus);
 
     // Map tracking history to timeline
-    const timeline = (tracking.shipment_track_activities || []).map((event: any) => ({
-      status: StatusMapperService.map('velocity', event.activity || '').internalStatus,
-      message: event.activity || '',
-      location: event.location || '',
-      timestamp: new Date(event.date + ' ' + (event.time || '00:00:00'))
-    }));
+    const activityEvents =
+      tracking.shipment_track_activities ||
+      tracking.shipment_track ||
+      tracking.tracking_history ||
+      [];
+
+    const timeline = activityEvents.map((event: any) => {
+      const rawEventStatus =
+        event.activity ||
+        event.status ||
+        event.status_code ||
+        '';
+      const eventDateTime =
+        event.timestamp ||
+        `${event.date || ''} ${event.time || '00:00:00'}`.trim();
+      const parsedDate = eventDateTime ? new Date(eventDateTime) : new Date();
+      return {
+        status: this.mapVelocityStatus(rawEventStatus).internalStatus,
+        message: event.activity || event.description || rawEventStatus || '',
+        location: event.location || event.current_location || '',
+        timestamp: Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+      };
+    });
 
     return {
       trackingNumber: tracking.awb_code || trackingNumber,
       status: statusMapping.internalStatus,
-      currentLocation: tracking.current_location,
+      currentLocation: tracking.current_location || tracking.location || '',
       timeline,
       estimatedDelivery: tracking.estimated_delivery
         ? new Date(tracking.estimated_delivery)
@@ -391,23 +514,28 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/serviceability');
 
     // Make API call with retry
-    const response = await this.circuitBreaker.execute(async () => {
-      return await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
-        async () => {
-          logger.debug('Checking Velocity serviceability', {
-            from: request.origin.pincode,
-            to: request.destination.pincode
-          });
+    let response: { data: VelocityServiceabilityResponse };
+    try {
+      response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityServiceabilityResponse }>(
+          async () => {
+            logger.debug('Checking Velocity serviceability', {
+              from: request.origin.pincode,
+              to: request.destination.pincode
+            });
 
-          return await this.httpClient.post<VelocityServiceabilityResponse>(
-            '/custom/api/v1/serviceability',
-            serviceabilityRequest
-          );
-        },
-        3,
-        1000
-      );
-    });
+            return await this.httpClient.post<VelocityServiceabilityResponse>(
+              '/custom/api/v1/serviceability',
+              serviceabilityRequest
+            );
+          },
+          3,
+          1000
+        );
+      });
+    } catch (error) {
+      throw handleVelocityError(error, 'Velocity getRates');
+    }
 
     const serviceabilityData = this.unwrapResponse<{
       serviceability_results: Array<{
@@ -430,10 +558,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       );
     }
 
-    // Initialize pricing service
-    const pricingService = new DynamicPricingService();
-
-    // Map carriers to rate responses with actual pricing
+    // Map carriers to rate responses
     const rates: CourierRateResponse[] = [];
 
     // Prioritize high-performance carriers based on Velocity Carrier IDs
@@ -474,38 +599,32 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
           });
         }
 
-        const pricing = await pricingService.calculatePricing({
-          companyId: this.companyId.toString(),
-          fromPincode: request.origin.pincode,
-          toPincode: request.destination.pincode,
-          weight: request.package.weight,
-          paymentMode: request.paymentMode as 'cod' | 'prepaid',
-          orderValue: request.orderValue,
-          carrier: carrier.carrier_name,
-          externalZone: serviceabilityData.zone,
-          shipmentType: request.shipmentType as 'forward' | 'return'
-        });
+        const explicitRate = Number((carrier as any).rate || 0);
+        const estimatedDays = Number((carrier as any).estimated_delivery_days || 3);
+        const total = explicitRate > 0
+          ? explicitRate
+          : this.estimateFallbackRate(request.package.weight, carrier.carrier_id);
 
         rates.push({
-          basePrice: pricing.shipping,
-          taxes: pricing.tax.total,
-          total: pricing.total,
+          basePrice: total,
+          taxes: 0,
+          total,
           currency: 'INR',
           serviceType: carrier.carrier_name,
           carrierId: carrier.carrier_id,
           zone: serviceabilityData.zone,
-          estimatedDeliveryDays: 3 // Default fallback
+          estimatedDeliveryDays: estimatedDays
         });
       } catch (pricingError) {
-        logger.warn('Failed to calculate internal pricing for carrier', {
+        logger.warn('Failed to derive carrier rate from serviceability result', {
           carrier: carrier.carrier_name,
           error: pricingError instanceof Error ? pricingError.message : 'Unknown error'
         });
-        // Fallback to 0 price if pricing calculation fails
+        const total = this.estimateFallbackRate(request.package.weight, carrier.carrier_id);
         rates.push({
-          basePrice: 0,
+          basePrice: total,
           taxes: 0,
-          total: 0,
+          total,
           currency: 'INR',
           serviceType: carrier.carrier_name,
           carrierId: carrier.carrier_id,
@@ -519,6 +638,15 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     return rates.sort((a, b) => a.total - b.total);
   }
 
+  private estimateFallbackRate(weightKg: number, carrierId?: string): number {
+    const safeWeight = Number.isFinite(weightKg) && weightKg > 0 ? weightKg : 0.5;
+    const base = 45 + safeWeight * 18;
+    const multiplier = carrierId
+      ? VelocityShipfastProvider.RATE_FALLBACK_MULTIPLIER[carrierId] || 1
+      : 1;
+    return Math.round(base * multiplier * 100) / 100;
+  }
+
   /**
    * 4. Cancel Shipment
    * Maps to: POST /custom/api/v1/cancel-order
@@ -528,15 +656,15 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     try {
       const tracking = await this.trackShipment(trackingNumber);
 
-      const canCancel = CANCELLABLE_STATUSES.some(
-        (status) => status.toLowerCase() === tracking.status.toLowerCase()
+      const canCancel = VelocityShipfastProvider.CANCELLABLE_INTERNAL_STATUSES.has(
+        tracking.status.toLowerCase()
       );
 
       if (!canCancel) {
         throw new VelocityError(
           400,
           {
-            message: 'Cannot cancel shipment in current status',
+            message: 'Shipment is not cancellable in current status',
             error: `Shipment status '${tracking.status}' is not cancellable`,
             status_code: 400
           },
@@ -544,6 +672,14 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         );
       }
     } catch (error) {
+      if (
+        error instanceof VelocityError &&
+        error.statusCode === 400 &&
+        (error.velocityError?.message?.toLowerCase().includes('not cancellable') ||
+          error.velocityError?.error?.toLowerCase().includes('not cancellable'))
+      ) {
+        throw error;
+      }
       // If tracking fails, still attempt cancellation
       logger.warn('Could not verify shipment status before cancellation', {
         trackingNumber,
@@ -559,20 +695,25 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     await this.rateLimiter.acquire('/custom/api/v1/cancel-order');
 
     // Make API call with retry
-    const response = await this.circuitBreaker.execute(async () => {
-      return await retryWithBackoff<{ data: VelocityCancelResponse }>(
-        async () => {
-          logger.info('Cancelling Velocity shipment', { trackingNumber });
+    let response: { data: VelocityCancelResponse };
+    try {
+      response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityCancelResponse }>(
+          async () => {
+            logger.info('Cancelling Velocity shipment', { trackingNumber });
 
-          return await this.httpClient.post<VelocityCancelResponse>(
-            '/custom/api/v1/cancel-order',
-            request
-          );
-        },
-        3,
-        1000
-      );
-    });
+            return await this.httpClient.post<VelocityCancelResponse>(
+              '/custom/api/v1/cancel-order',
+              request
+            );
+          },
+          3,
+          1000
+        );
+      });
+    } catch (error) {
+      throw handleVelocityError(error, 'Velocity cancelShipment');
+    }
 
     const result = this.unwrapResponse<{ message: string }>(response.data);
 
@@ -622,10 +763,11 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       return !!(serviceabilityData.serviceability_results && serviceabilityData.serviceability_results.length > 0);
     } catch (error: any) {
       // If pincode not serviceable, API returns 422
-      if (error instanceof VelocityError && error.statusCode === 422) {
+      const velocityError = handleVelocityError(error, 'Velocity checkServiceability');
+      if (velocityError.statusCode === 422) {
         return false;
       }
-      throw error;
+      throw velocityError;
     }
   }
 
@@ -641,23 +783,28 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     // Make API call with retry
     // Make API call with retry
-    const response = await this.circuitBreaker.execute(async () => {
-      return await retryWithBackoff<{ data: VelocityWarehouseResponse }>(
-        async () => {
-          logger.info('Creating Velocity warehouse', {
-            warehouseName: warehouse.name,
-            companyId: this.companyId.toString()
-          });
+    let response: { data: VelocityWarehouseResponse };
+    try {
+      response = await this.circuitBreaker.execute(async () => {
+        return await retryWithBackoff<{ data: VelocityWarehouseResponse }>(
+          async () => {
+            logger.info('Creating Velocity warehouse', {
+              warehouseName: warehouse.name,
+              companyId: this.companyId.toString()
+            });
 
-          return await this.httpClient.post<VelocityWarehouseResponse>(
-            '/custom/api/v1/warehouse',
-            request
-          );
-        },
-        3,
-        1000
-      );
-    });
+            return await this.httpClient.post<VelocityWarehouseResponse>(
+              '/custom/api/v1/warehouse',
+              request
+            );
+          },
+          3,
+          1000
+        );
+      });
+    } catch (error) {
+      throw handleVelocityError(error, 'Velocity createWarehouse');
+    }
 
     const velocityWarehouse = this.unwrapResponse<VelocityWarehouseResponse>(response.data);
 

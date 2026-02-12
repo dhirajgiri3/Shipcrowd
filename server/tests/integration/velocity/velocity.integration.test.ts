@@ -117,7 +117,6 @@ describe('Velocity Shipfast Integration', () => {
       expect(token).toBe('test-auth-token-12345');
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining('/auth-token'),
-        expect.any(Object),
         expect.any(Object)
       );
 
@@ -130,13 +129,8 @@ describe('Velocity Shipfast Integration', () => {
     it('should use cached token on subsequent calls', async () => {
       const futureExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000);
 
-      // Set token in database
-      await Integration.findByIdAndUpdate(testIntegrationId, {
-        $set: {
-          'credentials.accessToken': encryptData('cached-token'),
-          'metadata.tokenExpiresAt': futureExpiry
-        }
-      });
+      // Seed token via auth writer path to stay compatible with encrypted credentials storage.
+      await (provider as any).auth['storeToken']('cached-token', futureExpiry);
 
       const token = await (provider as any).auth.getValidToken();
 
@@ -200,8 +194,7 @@ describe('Velocity Shipfast Integration', () => {
         expect.objectContaining({
           name: 'Test Warehouse',
           phone_number: '9876543210'
-        }),
-        expect.any(Object)
+        })
       );
 
       // Verify warehouse was updated with Velocity ID
@@ -276,7 +269,6 @@ describe('Velocity Shipfast Integration', () => {
       expect(mockedAxios.post).toHaveBeenCalledTimes(1); // Only shipment (Auth skipped in mock)
       expect(mockedAxios.post).not.toHaveBeenCalledWith(
         expect.stringContaining('/warehouse'),
-        expect.any(Object),
         expect.any(Object)
       );
     });
@@ -358,8 +350,7 @@ describe('Velocity Shipfast Integration', () => {
           order_id: 'ORD-12345',
           payment_method: 'Prepaid',
           warehouse_id: 'WHVEL123'
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -399,8 +390,7 @@ describe('Velocity Shipfast Integration', () => {
         expect.objectContaining({
           payment_method: 'COD',
           cod_collectible: 1500
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -566,8 +556,7 @@ describe('Velocity Shipfast Integration', () => {
         expect.stringContaining('/cancel-order'),
         expect.objectContaining({
           awbs: ['SHPHYB123456789']
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -763,7 +752,9 @@ describe('Velocity Shipfast Integration', () => {
         data: {
           status: 'SUCCESS',
           result: {
-            serviceability_results: []
+            serviceability_results: [
+              { carrier_name: 'Delhivery', carrier_id: '18' }
+            ]
           }
         }
       };

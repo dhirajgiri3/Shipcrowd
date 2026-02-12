@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { connectTestDb, closeTestDb, clearTestDb } from '../../setup/testDatabase';
 import v1Routes from '@/presentation/http/routes/v1';
 import cookieParser from 'cookie-parser';
-import { Courier, Integration } from '@/infrastructure/database/mongoose/models';
+import { CourierService, Integration } from '@/infrastructure/database/mongoose/models';
 
 // Mock email service to prevent attempting to send emails during tests
 jest.mock('@/core/application/services/communication/email.service', () => ({
@@ -71,15 +71,35 @@ describe('Admin Courier Management API', () => {
     };
 
     const seedCourier = async () => {
-        return await Courier.create({
-            name: 'velocity',
-            displayName: 'Velocity Shipfast',
-            isActive: true,
-            isApiIntegrated: true,
-            serviceTypes: ['surface', 'express'],
-            regions: ['Pan India'],
-            codLimit: 50000,
-            weightLimit: 50
+        const integration = await Integration.create({
+            companyId,
+            type: 'courier',
+            provider: 'velocity-shipfast',
+            settings: {
+                isActive: true,
+                baseUrl: 'https://api.velocity.test',
+            },
+            credentials: {
+                apiKey: 'test-key',
+            },
+            isDeleted: false,
+        });
+
+        return await CourierService.create({
+            companyId,
+            provider: 'velocity',
+            integrationId: integration._id,
+            serviceCode: 'VEL_SURFACE',
+            displayName: 'Velocity Surface',
+            serviceType: 'surface',
+            status: 'active',
+            constraints: {
+                maxCodValue: 50000,
+                maxWeightKg: 50,
+            },
+            zoneSupport: ['A', 'B', 'C'],
+            source: 'manual',
+            isDeleted: false,
         });
     };
 
@@ -119,8 +139,8 @@ describe('Admin Courier Management API', () => {
             expect(response.status).toBe(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.id).toBe('velocity');
-            expect(response.body.data.weightLimit).toBe(50);
+            expect(response.body.data._id).toBe('velocity');
+            expect(response.body.data.services).toHaveLength(1);
         });
     });
 
@@ -131,8 +151,7 @@ describe('Admin Courier Management API', () => {
 
             const updateData = {
                 name: 'Velocity Updated',
-                codLimit: 75000,
-                weightLimit: 100,
+                isActive: true,
                 apiEndpoint: 'https://api.newvelocity.com'
             };
 
@@ -149,14 +168,13 @@ describe('Admin Courier Management API', () => {
             expect(response.body.success).toBe(true);
 
             // Verify DB update
-            const updated = await Courier.findOne({ name: 'velocity' });
-            expect(updated?.displayName).toBe('Velocity Updated');
-            expect(updated?.codLimit).toBe(75000);
+            const updated = await CourierService.findOne({ provider: 'velocity', companyId });
+            expect(updated?.displayName).toBe('Velocity Surface');
 
             // Verify Integration creation/update
             const integration = await Integration.findOne({
                 companyId,
-                provider: 'velocity',
+                provider: 'velocity-shipfast',
                 type: 'courier'
             });
             expect(integration?.settings.baseUrl).toBe('https://api.newvelocity.com');
@@ -179,8 +197,8 @@ describe('Admin Courier Management API', () => {
             expect(response.body.success).toBe(true);
             expect(response.body.data.isActive).toBe(false);
 
-            const updated = await Courier.findOne({ name: 'velocity' });
-            expect(updated?.isActive).toBe(false);
+            const updated = await CourierService.findOne({ provider: 'velocity', companyId });
+            expect(updated?.status).toBe('inactive');
         });
     });
 });

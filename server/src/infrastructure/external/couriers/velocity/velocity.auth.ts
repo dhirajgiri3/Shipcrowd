@@ -172,21 +172,36 @@ export class VelocityAuth {
    * Store token in Integration model (encrypted)
    */
   private async storeToken(token: string, expiresAt: Date): Promise<void> {
-    await Integration.findOneAndUpdate(
+    const integration = await Integration.findOne(
       {
         companyId: this.companyId,
         type: 'courier',
         provider: 'velocity-shipfast'
-      },
-      {
-        $set: {
-          'credentials.accessToken': encryptData(token),
-          'metadata.tokenExpiresAt': expiresAt,
-          'metadata.lastTokenRefresh': new Date()
-        }
-      },
-      { upsert: false }
+      }
     );
+
+    if (!integration) {
+      throw new VelocityError(
+        404,
+        {
+          message: 'Velocity Shipfast integration not found while storing token',
+          status_code: 404
+        },
+        false
+      );
+    }
+
+    integration.credentials = {
+      ...(integration.credentials || {}),
+      accessToken: encryptData(token),
+    };
+    integration.metadata = {
+      ...(integration.metadata || {}),
+      tokenExpiresAt: expiresAt,
+      lastTokenRefresh: new Date(),
+    };
+
+    await integration.save();
   }
 
   /**
