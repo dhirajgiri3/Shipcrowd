@@ -48,12 +48,17 @@ export class VelocityAuth {
       return undefined;
     }
 
-    try {
-      return decryptData(normalized);
-    } catch {
-      // Backward compatibility for legacy plaintext credential rows.
-      return normalized;
+    let decoded = normalized;
+    for (let i = 0; i < 2; i += 1) {
+      try {
+        decoded = decryptData(decoded).trim();
+      } catch {
+        break;
+      }
     }
+
+    // Backward compatibility for legacy plaintext rows and partially migrated data.
+    return decoded || normalized;
   }
 
   constructor(companyId: mongoose.Types.ObjectId, baseUrl: string = 'https://shazam.velocity.in') {

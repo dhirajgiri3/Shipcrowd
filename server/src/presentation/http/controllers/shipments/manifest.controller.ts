@@ -2,10 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import ManifestService from '../../../../core/application/services/shipping/manifest.service';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import Manifest from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest.model';
+import axios from 'axios';
 
 /**
  * Manifest Controller
@@ -210,10 +211,29 @@ class ManifestController {
             const carrierUrl = manifest.metadata?.carrierManifestUrl || (manifest.metadata as any)?.manifestUrl;
 
             if (carrierUrl && (carrierUrl.startsWith('http') || carrierUrl.startsWith('https'))) {
-                // Redirect to the carrier's S3 link or hosted PDF
-                // This ensures the user gets the official label/manifest from the carrier
-                logger.info(`Redirecting to carrier manifest URL: ${carrierUrl}`);
-                return res.redirect(carrierUrl);
+                try {
+                    const carrierFile = await axios.get<ArrayBuffer>(carrierUrl, {
+                        responseType: 'arraybuffer',
+                        timeout: 15000,
+                    });
+
+                    const contentType = carrierFile.headers['content-type'] || 'application/pdf';
+                    res.setHeader('Content-Type', contentType);
+                    res.setHeader(
+                        'Content-Disposition',
+                        `attachment; filename="manifest-${manifest.manifestNumber}.pdf"`
+                    );
+                    res.send(Buffer.from(carrierFile.data));
+
+                    logger.info(`Manifest PDF served from carrier URL: ${manifest.manifestNumber}`);
+                    return;
+                } catch (carrierDownloadError: any) {
+                    logger.warn('Carrier manifest download failed, using internal PDF fallback', {
+                        manifestId: id,
+                        carrierUrl,
+                        error: carrierDownloadError?.message || carrierDownloadError,
+                    });
+                }
             }
 
             // Fallback to internal PDF generation

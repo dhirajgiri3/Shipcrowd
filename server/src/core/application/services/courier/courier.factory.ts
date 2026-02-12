@@ -20,6 +20,7 @@ import { Integration } from '../../../../infrastructure/database/mongoose/models
 import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import CourierProviderRegistry from './courier-provider-registry';
 
 type CourierProviderBuilder = (companyId: mongoose.Types.ObjectId) => ICourierAdapter;
 
@@ -28,30 +29,14 @@ export class CourierFactory {
   // Key format: "${providerName}-${companyId}"
   private static providers = new Map<string, ICourierAdapter>();
   private static providerBuilders = new Map<string, CourierProviderBuilder>([
-    ['velocity-shipfast', (companyId) => new VelocityShipfastProvider(companyId)],
     ['velocity', (companyId) => new VelocityShipfastProvider(companyId)],
     ['delhivery', (companyId) => new DelhiveryProvider(companyId)],
     ['ekart', (companyId) => new EkartProvider(companyId)],
   ]);
 
   static registerProvider(providerName: string, builder: CourierProviderBuilder): void {
-    this.providerBuilders.set(providerName.toLowerCase(), builder);
-  }
-
-  private static resolveProviderAliases(providerName: string): string[] {
-    const normalized = providerName.toLowerCase();
-    if (normalized === 'velocity' || normalized === 'velocity-shipfast') {
-      return ['velocity', 'velocity-shipfast'];
-    }
-    return [normalized];
-  }
-
-  private static buildProviderMatch(providerName: string): Record<string, unknown> {
-    const aliases = this.resolveProviderAliases(providerName);
-    if (aliases.length === 1) {
-      return { provider: aliases[0] };
-    }
-    return { $or: aliases.map((provider) => ({ provider })) };
+    const canonical = CourierProviderRegistry.toCanonical(providerName) || providerName.toLowerCase();
+    this.providerBuilders.set(canonical, builder);
   }
 
   /**
@@ -65,11 +50,17 @@ export class CourierFactory {
     providerName: string,
     companyId: mongoose.Types.ObjectId
   ): Promise<ICourierAdapter> {
-    const providerKey = `${providerName}-${companyId.toString()}`;
+    const canonicalProvider =
+      CourierProviderRegistry.toCanonical(providerName) || providerName.toLowerCase();
+    const providerKey = `${canonicalProvider}-${companyId.toString()}`;
 
     // Return cached provider if exists
     if (this.providers.has(providerKey)) {
-      logger.debug('Returning cached courier provider', { providerName, companyId: companyId.toString() });
+      logger.debug('Returning cached courier provider', {
+        providerName,
+        canonicalProvider,
+        companyId: companyId.toString(),
+      });
       return this.providers.get(providerKey)!;
     }
 
@@ -78,7 +69,7 @@ export class CourierFactory {
     const integration = await Integration.collection.findOne({
       companyId,
       type: 'courier',
-      ...this.buildProviderMatch(providerName),
+      ...CourierProviderRegistry.buildIntegrationMatch(canonicalProvider),
       'settings.isActive': true
     });
 
@@ -89,7 +80,7 @@ export class CourierFactory {
       );
     }
 
-    const providerBuilder = this.providerBuilders.get(providerName.toLowerCase());
+    const providerBuilder = this.providerBuilders.get(canonicalProvider);
     if (!providerBuilder) {
       throw new ValidationError(`Unknown courier provider: ${providerName}`);
     }
@@ -100,6 +91,7 @@ export class CourierFactory {
 
     logger.info('Courier provider instantiated', {
       providerName,
+      canonicalProvider,
       companyId: companyId.toString()
     });
 
@@ -147,9 +139,15 @@ export class CourierFactory {
    */
   static clearCache(companyId: mongoose.Types.ObjectId, providerName?: string): void {
     if (providerName) {
-      const providerKey = `${providerName}-${companyId.toString()}`;
+      const canonicalProvider =
+        CourierProviderRegistry.toCanonical(providerName) || providerName.toLowerCase();
+      const providerKey = `${canonicalProvider}-${companyId.toString()}`;
       this.providers.delete(providerKey);
-      logger.debug('Cleared courier provider cache', { providerName, companyId: companyId.toString() });
+      logger.debug('Cleared courier provider cache', {
+        providerName,
+        canonicalProvider,
+        companyId: companyId.toString(),
+      });
     } else {
       // Clear all providers for this company
       const companyIdStr = companyId.toString();
@@ -185,11 +183,13 @@ export class CourierFactory {
     providerName: string,
     companyId: mongoose.Types.ObjectId
   ): Promise<boolean> {
+    const canonicalProvider =
+      CourierProviderRegistry.toCanonical(providerName) || providerName.toLowerCase();
     // Use raw collection query to avoid decrypting credentials for availability checks.
     const integration = await Integration.collection.findOne({
       companyId,
       type: 'courier',
-      ...this.buildProviderMatch(providerName),
+      ...CourierProviderRegistry.buildIntegrationMatch(canonicalProvider),
       'settings.isActive': true
     });
 

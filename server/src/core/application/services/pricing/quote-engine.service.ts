@@ -35,24 +35,26 @@ import {
 import { ICourierService } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/courier-service.model';
 import { ISellerCourierPolicy } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/seller-courier-policy.model';
 import { IServiceRateCard } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/service-rate-card.model';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 type Provider = ServiceLevelProvider;
 
-const SUPPORTED_PROVIDERS: Provider[] = ['velocity', 'delhivery', 'ekart'];
+const SUPPORTED_PROVIDERS: Provider[] = [...CourierProviderRegistry.getSupportedProviders()];
 
-const PROVIDER_TO_FACTORY_KEY: Record<Provider, string> = {
-    velocity: 'velocity-shipfast',
-    delhivery: 'delhivery',
-    ekart: 'ekart',
-};
+const PROVIDER_TO_FACTORY_KEY: Record<string, string> = Object.fromEntries(
+    SUPPORTED_PROVIDERS.map((provider) => [
+        provider,
+        CourierProviderRegistry.getIntegrationProvider(provider),
+    ])
+);
 
-const PROVIDER_TIMEOUT_MS: Record<Provider, number> = {
+const PROVIDER_TIMEOUT_MS: Record<string, number> = {
     ekart: 35000,
     delhivery: 20000,
     velocity: 35000,
 };
 
-const SERVICEABILITY_TIMEOUT_MS: Record<Provider, number> = {
+const SERVICEABILITY_TIMEOUT_MS: Record<string, number> = {
     ekart: 2500,
     delhivery: 2500,
     velocity: 0,

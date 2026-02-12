@@ -1,8 +1,5 @@
-import axios from 'axios';
-import mongoose from 'mongoose';
 import { ICarrierLabelAdapter, LabelResponse } from '../../../../core/domain/interfaces/carrier-label.interface';
 import logger from '../../../../shared/logger/winston.logger';
-import { VelocityAuth } from './velocity.auth';
 
 /**
  * Velocity Label Adapter
@@ -13,12 +10,6 @@ import { VelocityAuth } from './velocity.auth';
  */
 
 class VelocityLabelAdapter implements ICarrierLabelAdapter {
-    private baseURL: string;
-
-    constructor() {
-        this.baseURL = process.env.VELOCITY_BASE_URL || 'https://shazam.velocity.in';
-    }
-
     async generateLabel(shipment: any): Promise<LabelResponse> {
         try {
             // Velocity typically provides label_url in shipment creation response
@@ -32,10 +23,6 @@ class VelocityLabelAdapter implements ICarrierLabelAdapter {
 
                 logger.warn(`Velocity label URL missing in shipment data for AWB: ${shipment.awb}`);
                 throw new Error('Label URL not available in shipment data. Please check shipment creation logs.');
-            }
-
-            if (!labelUrl) {
-                throw new Error('Label URL not available from Velocity');
             }
 
             logger.info(`Velocity label URL retrieved for AWB: ${shipment.awb}`);

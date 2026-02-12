@@ -1,4 +1,5 @@
 import { CARRIERS } from '../../../../infrastructure/database/seeders/data/carrier-data';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 /**
  * Carrier Normalization Service
@@ -15,6 +16,11 @@ export class CarrierNormalizationService {
      */
     static normalizeCarrier(carrier: string): string {
         if (!carrier) return '';
+
+        const supportedProvider = CourierProviderRegistry.toCanonical(carrier);
+        if (supportedProvider) {
+            return supportedProvider;
+        }
 
         let normalized = carrier.trim().toLowerCase();
 

@@ -6,6 +6,7 @@ import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { CourierFactory } from '../courier/courier.factory';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 
 /**
@@ -38,6 +39,9 @@ class ManifestService {
 
     private normalizeCarrier(value?: string): string {
         const carrier = (value || '').toLowerCase();
+
+        const supported = CourierProviderRegistry.toCanonical(carrier);
+        if (supported) return supported;
 
         if (carrier.includes('velocity') || carrier.includes('shipfast')) return 'velocity';
         if (carrier.includes('delhivery')) return 'delhivery';
@@ -160,13 +164,13 @@ class ManifestService {
 
             try {
                 const provider = await CourierFactory.getProvider(
-                    data.carrier,
+                    requestedCarrier,
                     new mongoose.Types.ObjectId(data.companyId)
                 );
 
                 // Check if provider supports createManifest
                 if (provider && typeof (provider as any).createManifest === 'function') {
-                    logger.info(`Calling ${data.carrier} API for manifest creation...`);
+                    logger.info(`Calling ${requestedCarrier} API for manifest creation...`);
 
                     const apiResult = await (provider as any).createManifest({
                         shipmentIds: shipments.map((s: any) => s._id.toString()),
@@ -177,7 +181,7 @@ class ManifestService {
                     if (apiResult) {
                         carrierManifestId = apiResult.manifestId;
                         carrierManifestUrl = apiResult.manifestUrl;
-                        logger.info(`Carrier manifest created: ${carrierManifestId}`, { carrier: data.carrier });
+                        logger.info(`Carrier manifest created: ${carrierManifestId}`, { carrier: requestedCarrier });
                     }
                 }
             } catch (carrierError: any) {
@@ -185,7 +189,7 @@ class ManifestService {
                 // However, we mark it in notes that carrier sync failed
                 logger.error('Carrier manifest creation failed', {
                     error: carrierError.message,
-                    carrier: data.carrier
+                    carrier: requestedCarrier
                 });
                 data.notes = (data.notes ? data.notes + '\n' : '') + `[WARNING] Carrier manifest syncing failed: ${carrierError.message}`;
             }
@@ -206,7 +210,7 @@ class ManifestService {
                         manifestNumber,
                         companyId: new mongoose.Types.ObjectId(data.companyId),
                         warehouseId: new mongoose.Types.ObjectId(resolvedWarehouseId),
-                        carrier: data.carrier,
+                        carrier: requestedCarrier,
                         shipments: manifestShipments,
                         pickup: data.pickup,
                         summary,
@@ -655,7 +659,7 @@ class ManifestService {
         if (filters.companyId) query.companyId = filters.companyId;
         if (filters.warehouseId) query.warehouseId = filters.warehouseId;
         if (filters.status) query.status = filters.status;
-        if (filters.carrier) query.carrier = filters.carrier;
+        if (filters.carrier) query.carrier = this.normalizeCarrier(filters.carrier);
         if (filters.search) {
             const searchRegex = new RegExp(filters.search, 'i');
             query.$or = [
@@ -690,7 +694,7 @@ class ManifestService {
     }) {
         const manifestQuery: any = { companyId: filters.companyId };
         if (filters.carrier) {
-            manifestQuery.carrier = filters.carrier;
+            manifestQuery.carrier = this.normalizeCarrier(filters.carrier);
         }
 
         const manifests = await Manifest.find(manifestQuery).select('shipments.shipmentId').lean();

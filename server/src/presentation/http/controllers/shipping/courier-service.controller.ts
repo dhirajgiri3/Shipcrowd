@@ -7,8 +7,7 @@ import { NotFoundError, ValidationError } from '../../../../shared/errors/app.er
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import { createCourierServiceSchema, updateCourierServiceSchema } from '../../../../shared/validation/schemas';
-
-const SUPPORTED_PROVIDERS = ['velocity', 'delhivery', 'ekart'] as const;
+import CourierProviderRegistry from '../../../../core/application/services/courier/courier-provider-registry';
 
 const parseServiceTypeFromProvider = (provider: string): Array<'surface' | 'express' | 'air' | 'standard'> => {
     if (provider === 'delhivery') return ['surface', 'express'];
@@ -87,8 +86,8 @@ export const createCourierService = async (req: Request, res: Response, next: Ne
             source,
         } = validation.data;
 
-        const normalizedProvider = String(provider).toLowerCase();
-        if (!SUPPORTED_PROVIDERS.includes(normalizedProvider as any)) {
+        const normalizedProvider = CourierProviderRegistry.toCanonical(String(provider || ''));
+        if (!normalizedProvider) {
             throw new ValidationError('Unsupported provider', ErrorCode.VAL_INVALID_INPUT);
         }
 
@@ -102,9 +101,9 @@ export const createCourierService = async (req: Request, res: Response, next: Ne
             : await Integration.findOne({
                 companyId: auth.companyId,
                 type: 'courier',
-                provider: normalizedProvider === 'velocity' ? 'velocity-shipfast' : normalizedProvider,
                 'settings.isActive': true,
                 isDeleted: false,
+                ...CourierProviderRegistry.buildIntegrationMatch(normalizedProvider),
             }).lean();
 
         if (!activeIntegration) {
@@ -224,29 +223,30 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
         requireCompanyContext(auth);
 
         const provider = String(req.params.provider || '').toLowerCase();
-        if (!SUPPORTED_PROVIDERS.includes(provider as any)) {
+        const canonicalProvider = CourierProviderRegistry.toCanonical(provider);
+        if (!canonicalProvider) {
             throw new ValidationError('Unsupported provider for sync', ErrorCode.VAL_INVALID_INPUT);
         }
 
         const integration = await Integration.findOne({
             companyId: auth.companyId,
             type: 'courier',
-            provider: provider === 'velocity' ? 'velocity-shipfast' : provider,
             'settings.isActive': true,
+            ...CourierProviderRegistry.buildIntegrationMatch(canonicalProvider),
         }).lean();
 
         if (!integration) {
             throw new ValidationError('Active integration not found for provider', ErrorCode.RES_INTEGRATION_NOT_FOUND);
         }
 
-        const serviceTypes = parseServiceTypeFromProvider(provider);
+        const serviceTypes = parseServiceTypeFromProvider(canonicalProvider);
         const createdIds: string[] = [];
 
         for (const serviceType of serviceTypes) {
-            const code = `${provider}-${serviceType}`.toUpperCase();
+            const code = `${canonicalProvider}-${serviceType}`.toUpperCase();
             const existing = await CourierService.findOne({
                 companyId: auth.companyId,
-                provider,
+                provider: canonicalProvider,
                 serviceCode: code,
                 isDeleted: false,
             }).lean();
@@ -255,10 +255,10 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
 
             const created = await CourierService.create({
                 companyId: new mongoose.Types.ObjectId(auth.companyId),
-                provider,
+                provider: canonicalProvider,
                 integrationId: integration._id,
                 serviceCode: code,
-                displayName: `${provider.toUpperCase()} ${serviceType.toUpperCase()}`,
+                displayName: `${canonicalProvider.toUpperCase()} ${serviceType.toUpperCase()}`,
                 serviceType,
                 status: 'active',
                 zoneSupport: ['A', 'B', 'C', 'D', 'E'],
@@ -273,6 +273,7 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
             res,
             {
                 provider,
+                canonicalProvider,
                 createdCount: createdIds.length,
                 createdIds,
             },

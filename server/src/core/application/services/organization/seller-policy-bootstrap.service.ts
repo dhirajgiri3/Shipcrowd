@@ -7,6 +7,7 @@ import {
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 export interface SellerPolicyBootstrapOptions {
     preserveExisting?: boolean;
@@ -80,6 +81,7 @@ class SellerPolicyBootstrapService {
 
         const updatedBy = this.toObjectIdOrNull(triggeredBy);
         const now = new Date();
+        const allowedProviders = [...CourierProviderRegistry.getSupportedProviders()];
 
         const operations = sellers.map((seller) => {
             const sellerId = new mongoose.Types.ObjectId(String(seller._id));
@@ -96,7 +98,7 @@ class SellerPolicyBootstrapService {
                             $setOnInsert: {
                                 companyId: companyObjectId,
                                 sellerId,
-                                allowedProviders: ['velocity', 'delhivery', 'ekart'],
+                                allowedProviders,
                                 allowedServiceIds: [],
                                 blockedProviders: [],
                                 blockedServiceIds: [],
@@ -123,7 +125,7 @@ class SellerPolicyBootstrapService {
                         $set: {
                             companyId: companyObjectId,
                             sellerId,
-                            allowedProviders: ['velocity', 'delhivery', 'ekart'],
+                            allowedProviders,
                             allowedServiceIds: [],
                             blockedProviders: [],
                             blockedServiceIds: [],

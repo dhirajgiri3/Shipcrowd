@@ -14,6 +14,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import WalletService from '../wallet/wallet.service';
 import WebhookDispatcherService from '../webhooks/webhook-dispatcher.service';
 import skuWeightProfileService from '../sku/sku-weight-profile.service';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -125,6 +126,34 @@ import skuWeightProfileService from '../sku/sku-weight-profile.service';
  * - Must maintain data integrity (transactions critical)
  */
 export class ShipmentService {
+    private static resolveCanonicalCarrier(carrier: string): string {
+        return (
+            CourierProviderRegistry.toCanonical(carrier) ||
+            String(carrier || '').trim().toLowerCase()
+        );
+    }
+
+    private static resolveProviderLookupKey(carrier: string): string {
+        const canonical = this.resolveCanonicalCarrier(carrier);
+        return CourierProviderRegistry.getIntegrationProvider(canonical);
+    }
+
+    private static supportsLiveCarrierSync(carrier: string): boolean {
+        return CourierProviderRegistry.isSupported(carrier);
+    }
+
+    private static buildCarrierOptions(carrier: string, warehouse: any): any {
+        const canonical = this.resolveCanonicalCarrier(carrier);
+        if (canonical === 'delhivery') {
+            return {
+                delhivery: {
+                    pickupLocationName: warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name,
+                },
+            };
+        }
+        return undefined;
+    }
+
     /**
      * Generate a unique tracking number with retry logic
      * @param maxAttempts Maximum number of attempts to generate unique number
@@ -472,12 +501,15 @@ export class ShipmentService {
 
             if (useApiRates) {
                 try {
+                    const preferredProvider = payload.carrierOverride || 'velocity';
+                    const providerKey = ShipmentService.resolveProviderLookupKey(preferredProvider);
                     logger.info('Using API-based carrier selection', {
                         orderId: order._id.toString(),
-                        companyId: companyId.toString()
+                        companyId: companyId.toString(),
+                        provider: providerKey,
                     });
 
-                    const provider = await CourierFactory.getProvider('velocity-shipfast', companyId);
+                    const provider = await CourierFactory.getProvider(providerKey, companyId);
 
                     const rates = await provider.getRates({
                         origin: { pincode: originPincode },
@@ -654,10 +686,8 @@ export class ShipmentService {
             // This is the critical integration step - we call the carrier API AFTER
             // saving locally so we have a reference point for retries if API fails.
             // ========================================================================
-            const isVelocityCarrier = selectedOption.carrier.toLowerCase().includes('velocity');
-            const isDelhiveryCarrier = selectedOption.carrier.toLowerCase().includes('delhivery');
-            const isEkartCarrier = selectedOption.carrier.toLowerCase().includes('ekart');
-            const shouldCallCarrierApi = isVelocityCarrier || isDelhiveryCarrier || isEkartCarrier;
+            const canonicalCarrier = ShipmentService.resolveCanonicalCarrier(selectedOption.carrier);
+            const shouldCallCarrierApi = ShipmentService.supportsLiveCarrierSync(canonicalCarrier);
 
             if (shouldCallCarrierApi && warehouseId) {
                 try {
@@ -667,11 +697,7 @@ export class ShipmentService {
                         warehouseId: warehouseId.toString()
                     });
 
-                    const providerName = isVelocityCarrier
-                        ? 'velocity-shipfast'
-                        : isDelhiveryCarrier
-                            ? 'delhivery'
-                            : 'ekart';
+                    const providerName = ShipmentService.resolveProviderLookupKey(canonicalCarrier);
                     const courierProvider = await CourierFactory.getProvider(providerName, companyId);
 
                     // Build proper CourierShipmentData structure for Carrier API
@@ -713,11 +739,7 @@ export class ShipmentService {
                         paymentMode: (order.paymentMethod === 'cod' ? 'cod' : 'prepaid') as 'prepaid' | 'cod',
                         codAmount: order.paymentMethod === 'cod' ? order.totals.total : 0,
                         warehouseId: warehouseId?.toString(),
-                        carrierOptions: isDelhiveryCarrier ? {
-                            delhivery: {
-                                pickupLocationName: warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name
-                            }
-                        } : undefined
+                        carrierOptions: ShipmentService.buildCarrierOptions(canonicalCarrier, warehouse),
                     };
 
                     // Call carrier createShipment with proper data structure
@@ -1083,6 +1105,7 @@ export class ShipmentService {
      */
     static async retryShipmentCreation(shipmentId: string): Promise<boolean> {
         const shipment = await Shipment.findById(shipmentId);
+
         if (!shipment) {
             logger.warn('Shipment not found for retry', { shipmentId });
             throw new NotFoundError('Shipment not found');
@@ -1131,26 +1154,27 @@ export class ShipmentService {
         const warehouseId = shipment.pickupDetails?.warehouseId;
         let warehouse = null;
         const carrierName = (shipment.carrier || '').toLowerCase();
-        const isVelocityCarrier = carrierName.includes('velocity');
-        const isDelhiveryCarrier = carrierName.includes('delhivery');
-        const isEkartCarrier = carrierName.includes('ekart');
+        const canonicalCarrier = ShipmentService.resolveCanonicalCarrier(carrierName);
 
         if (warehouseId) {
             warehouse = await Warehouse.findById(warehouseId).lean();
             if (!warehouse) {
+                const newRetryCount = retryCount + 1;
+                shipment.carrierDetails = ShipmentService.mergeCarrierDetails(
+                    shipment.carrierDetails,
+                    {
+                        retryCount: newRetryCount,
+                        lastRetryAttempt: new Date(),
+                    }
+                );
+                await shipment.save();
                 logger.error('Warehouse not found for shipment retry', { shipmentId, warehouseId });
                 // Can't retry without warehouse - mark as failed
                 return false;
             }
 
             // ✅ ON-DEMAND SYNC: Ensure warehouse is synced with carrier before creating shipment
-            const syncStatus = isVelocityCarrier
-                ? warehouse.carrierDetails?.velocity?.status
-                : isDelhiveryCarrier
-                    ? warehouse.carrierDetails?.delhivery?.status
-                    : isEkartCarrier
-                        ? warehouse.carrierDetails?.ekart?.status
-                        : undefined;
+            const syncStatus = warehouse?.carrierDetails?.[canonicalCarrier]?.status;
 
             if (!syncStatus || syncStatus === 'pending' || syncStatus === 'failed') {
                 logger.info('Warehouse not synced with carrier, attempting sync', {
@@ -1162,18 +1186,23 @@ export class ShipmentService {
 
                 try {
                     const { WarehouseSyncService } = await import('../logistics/warehouse-sync.service.js');
-                    if (isVelocityCarrier) {
-                        await WarehouseSyncService.syncWithCarrier(warehouse as any, 'velocity');
-                    } else if (isDelhiveryCarrier) {
-                        await WarehouseSyncService.syncWithCarrier(warehouse as any, 'delhivery');
-                    } else if (isEkartCarrier) {
-                        await WarehouseSyncService.syncWithCarrier(warehouse as any, 'ekart');
+                    if (ShipmentService.supportsLiveCarrierSync(canonicalCarrier)) {
+                        await WarehouseSyncService.syncWithCarrier(warehouse as any, canonicalCarrier);
                     }
 
                     // Refresh warehouse data after sync
                     warehouse = await Warehouse.findById(warehouseId).lean();
 
                     if (!warehouse) {
+                        const newRetryCount = retryCount + 1;
+                        shipment.carrierDetails = ShipmentService.mergeCarrierDetails(
+                            shipment.carrierDetails,
+                            {
+                                retryCount: newRetryCount,
+                                lastRetryAttempt: new Date(),
+                            }
+                        );
+                        await shipment.save();
                         logger.error('Warehouse disappeared after sync attempt', { warehouseId });
                         return false;
                     }
@@ -1221,11 +1250,7 @@ export class ShipmentService {
             paymentMode: shipment.paymentDetails.type as 'prepaid' | 'cod',
             codAmount: shipment.paymentDetails.type === 'cod' ? shipment.paymentDetails.codAmount || 0 : 0,
             warehouseId: warehouseId?.toString(),
-            carrierOptions: isDelhiveryCarrier ? {
-                delhivery: {
-                    pickupLocationName: warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name
-                }
-            } : undefined
+            carrierOptions: ShipmentService.buildCarrierOptions(canonicalCarrier, warehouse),
         };
 
         try {
@@ -1235,13 +1260,7 @@ export class ShipmentService {
                 retryAttempt: retryCount + 1
             });
 
-            const providerLookupName = isVelocityCarrier
-                ? 'velocity-shipfast'
-                : isDelhiveryCarrier
-                    ? 'delhivery'
-                    : isEkartCarrier
-                        ? 'ekart'
-                        : shipment.carrier;
+            const providerLookupName = ShipmentService.resolveProviderLookupKey(canonicalCarrier);
             const provider = await CourierFactory.getProvider(providerLookupName, shipment.companyId);
 
             // ✅ Use shipment ID as idempotency key for deterministic retries

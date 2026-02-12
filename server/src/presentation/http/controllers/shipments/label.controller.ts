@@ -27,87 +27,171 @@ class LabelController {
         [key: string]: typeof VelocityLabelAdapter | typeof DelhiveryLabelAdapter | typeof EkartLabelAdapter | typeof IndiaPostLabelAdapter;
     } = {
             velocity: VelocityLabelAdapter,
+            'velocity-shipfast': VelocityLabelAdapter,
             delhivery: DelhiveryLabelAdapter,
             ekart: EkartLabelAdapter,
             india_post: IndiaPostLabelAdapter,
         };
 
+    private resolveCarrierAdapter(carrier?: string) {
+        const normalized = String(carrier || '').toLowerCase();
+
+        if (this.carrierAdapters[normalized]) {
+            return this.carrierAdapters[normalized];
+        }
+        if (normalized.includes('velocity')) {
+            return this.carrierAdapters.velocity;
+        }
+        if (normalized.includes('delhivery')) {
+            return this.carrierAdapters.delhivery;
+        }
+        if (normalized.includes('ekart')) {
+            return this.carrierAdapters.ekart;
+        }
+        if (normalized.includes('india_post') || normalized.includes('indiapost')) {
+            return this.carrierAdapters.india_post;
+        }
+
+        return undefined;
+    }
+
+    private getStoredLabelUrl(shipment: any): string | undefined {
+        const docs = Array.isArray(shipment?.documents) ? shipment.documents : [];
+        const labelDoc = [...docs]
+            .reverse()
+            .find((doc: any) => doc?.type === 'label' && typeof doc?.url === 'string' && doc.url.trim());
+        return labelDoc?.url;
+    }
+
+    private async fetchLabelBufferFromUrl(url: string): Promise<Buffer> {
+        const response = await axios.get<ArrayBuffer>(url, {
+            responseType: 'arraybuffer',
+            timeout: 15000,
+        });
+        return Buffer.from(response.data);
+    }
+
+    private async generateCarrierLabelPdfBuffer(shipment: any, awb: string): Promise<Buffer | null> {
+        const adapter = this.resolveCarrierAdapter(shipment?.carrier);
+        if (!adapter) {
+            return null;
+        }
+
+        const label = await adapter.generateLabel({
+            awb,
+            label_url: this.getStoredLabelUrl(shipment),
+        });
+
+        if (label.format === 'pdf' && Buffer.isBuffer(label.data)) {
+            return label.data as Buffer;
+        }
+
+        if (label.format === 'url' && typeof label.data === 'string') {
+            return this.fetchLabelBufferFromUrl(label.data);
+        }
+
+        return null;
+    }
+
+    private formatAddress(address: any): string {
+        if (!address) {
+            return '';
+        }
+
+        if (typeof address === 'string') {
+            return address;
+        }
+
+        const parts = [
+            address.line1,
+            address.line2,
+            address.city,
+            address.state,
+            address.postalCode || address.pincode,
+        ].filter(Boolean);
+
+        return parts.join(', ');
+    }
+
+    private buildShipmentLabelData(shipment: any) {
+        const warehouse = shipment.pickupDetails?.warehouseId as any;
+        const warehouseAddress = warehouse?.address || {};
+        const orderId = shipment.orderId;
+        const orderNumber =
+            typeof orderId === 'object' && orderId?.orderNumber
+                ? orderId.orderNumber
+                : String(orderId || '');
+
+        return {
+            awb: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber,
+            carrier: shipment.carrier,
+            senderName: warehouse?.name || 'Seller',
+            senderAddress: this.formatAddress(warehouseAddress),
+            senderCity: warehouseAddress?.city || '',
+            senderState: warehouseAddress?.state || '',
+            senderPincode: warehouseAddress?.postalCode || warehouseAddress?.pincode || '',
+            senderPhone: shipment.pickupDetails?.contactPhone || warehouse?.contactInfo?.phone || '',
+            receiverName: shipment.deliveryDetails?.recipientName || '',
+            receiverAddress: this.formatAddress(shipment.deliveryDetails?.address),
+            receiverCity: shipment.deliveryDetails?.address?.city || '',
+            receiverState: shipment.deliveryDetails?.address?.state || '',
+            receiverPincode: shipment.deliveryDetails?.address?.postalCode || '',
+            receiverPhone: shipment.deliveryDetails?.recipientPhone || '',
+            weight: shipment.packageDetails?.weight || 0,
+            packages: shipment.packageDetails?.packageCount || 1,
+            codAmount: shipment.paymentDetails?.codAmount || 0,
+            paymentMode: (shipment.paymentDetails?.type || 'prepaid') as 'cod' | 'prepaid',
+            zone: undefined,
+            orderNumber,
+        };
+    }
+
     /**
      * Generate label for a shipment
      * POST /shipments/:id/label
      */
-    async generateLabel(req: Request, res: Response, next: NextFunction) {
+    generateLabel = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
-            const { format = 'pdf' } = req.body; // pdf or zpl
+            const { format = 'pdf' } = req.body || {}; // pdf or zpl
 
             if (!['pdf', 'zpl'].includes(format)) {
                 throw new ValidationError('Invalid format. Must be pdf or zpl.');
             }
 
-            const shipment = await Shipment.findById(id).populate('pickupDetails.warehouseId');
+            const shipment = await Shipment.findById(id)
+                .populate('pickupDetails.warehouseId')
+                .populate('orderId', 'orderNumber');
             if (!shipment) {
                 throw new NotFoundError('Shipment not found');
             }
 
-            // Prepare shipment data using correct shipment model structure
-            const warehouse = shipment.pickupDetails?.warehouseId as any;
-            const shipmentData = {
-                awb: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber,
-                carrier: shipment.carrier,
-                senderName: warehouse?.name || 'Seller',
-                senderAddress: warehouse?.address || '',
-                senderCity: warehouse?.city || '',
-                senderState: warehouse?.state || '',
-                senderPincode: warehouse?.pincode || '',
-                senderPhone: shipment.pickupDetails?.contactPhone || warehouse?.phone || '',
-                receiverName: shipment.deliveryDetails.recipientName,
-                receiverAddress: shipment.deliveryDetails.address.line1 + (shipment.deliveryDetails.address.line2 ? ', ' + shipment.deliveryDetails.address.line2 : ''),
-                receiverCity: shipment.deliveryDetails.address.city,
-                receiverState: shipment.deliveryDetails.address.state,
-                receiverPincode: shipment.deliveryDetails.address.postalCode,
-                receiverPhone: shipment.deliveryDetails.recipientPhone,
-                weight: shipment.packageDetails.weight,
-                packages: shipment.packageDetails.packageCount,
-                codAmount: shipment.paymentDetails.codAmount || 0,
-                paymentMode: shipment.paymentDetails.type as 'cod' | 'prepaid',
-                zone: undefined,  // Not in current model
-                orderNumber: shipment.orderId.toString(),
-            };
+            const shipmentData = this.buildShipmentLabelData(shipment);
 
             let labelBuffer: Buffer;
-            let labelFormat: string;
 
-            if (format === 'pdf' && shipment.carrier === 'delhivery') {
+            if (format === 'pdf') {
                 try {
-                    const adapter = this.carrierAdapters[shipment.carrier];
-                    if (adapter) {
-                        const label = await adapter.generateLabel({ awb: shipmentData.awb });
-                        if (label.format === 'pdf' && Buffer.isBuffer(label.data)) {
-                            labelBuffer = label.data as Buffer;
-                            labelFormat = 'application/pdf';
-                        } else {
-                            throw new Error('Delhivery label format not supported');
-                        }
+                    const carrierLabelBuffer = await this.generateCarrierLabelPdfBuffer(
+                        shipment,
+                        shipmentData.awb
+                    );
+                    if (carrierLabelBuffer) {
+                        labelBuffer = carrierLabelBuffer;
                     } else {
-                        throw new Error('Carrier adapter not found');
+                        labelBuffer = await LabelService.generatePDF(shipmentData);
                     }
                 } catch (error: any) {
-                    const status = error?.response?.status;
-                    // Fallback only on network/5xx
-                    if (status && status >= 400 && status < 500) {
-                        throw error;
-                    }
+                    logger.warn('Carrier label generation failed, using internal PDF fallback', {
+                        shipmentId: id,
+                        carrier: shipment.carrier,
+                        error: error?.message || error,
+                    });
                     labelBuffer = await LabelService.generatePDF(shipmentData);
-                    labelFormat = 'application/pdf';
                 }
-            } else if (format === 'pdf') {
-                labelBuffer = await LabelService.generatePDF(shipmentData);
-                labelFormat = 'application/pdf';
             } else {
                 const zpl = LabelService.generateZPL(shipmentData);
                 labelBuffer = Buffer.from(zpl, 'utf-8');
-                labelFormat = 'text/plain';
             }
 
             logger.info(`Label generated for shipment ${id} in ${format} format`);
@@ -127,72 +211,44 @@ class LabelController {
      * Download label
      * GET /shipments/:id/label/download?format=pdf|zpl
      */
-    async downloadLabel(req: Request, res: Response, next: NextFunction) {
+    downloadLabel = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
-            const { format = 'pdf' } = req.query;
+            const format = (req.query?.format as string) || 'pdf';
 
             if (!['pdf', 'zpl'].includes(format as string)) {
                 throw new ValidationError('Invalid format. Must be pdf or zpl.');
             }
 
-            const shipment = await Shipment.findById(id).populate('pickupDetails.warehouseId');
+            const shipment = await Shipment.findById(id)
+                .populate('pickupDetails.warehouseId')
+                .populate('orderId', 'orderNumber');
             if (!shipment) {
                 throw new NotFoundError('Shipment not found');
             }
 
-            const warehouse = shipment.pickupDetails?.warehouseId as any;
-            const shipmentData = {
-                awb: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber,
-                carrier: shipment.carrier,
-                senderName: warehouse?.name || 'Seller',
-                senderAddress: warehouse?.address || '',
-                senderCity: warehouse?.city || '',
-                senderState: warehouse?.state || '',
-                senderPincode: warehouse?.pincode || '',
-                senderPhone: shipment.pickupDetails?.contactPhone || warehouse?.phone || '',
-                receiverName: shipment.deliveryDetails.recipientName,
-                receiverAddress: shipment.deliveryDetails.address.line1 + (shipment.deliveryDetails.address.line2 ? ', ' + shipment.deliveryDetails.address.line2 : ''),
-                receiverCity: shipment.deliveryDetails.address.city,
-                receiverState: shipment.deliveryDetails.address.state,
-                receiverPincode: shipment.deliveryDetails.address.postalCode,
-                receiverPhone: shipment.deliveryDetails.recipientPhone,
-                weight: shipment.packageDetails.weight,
-                packages: shipment.packageDetails.packageCount,
-                codAmount: shipment.paymentDetails.codAmount || 0,
-                paymentMode: shipment.paymentDetails.type as 'cod' | 'prepaid',
-                zone: undefined,
-                orderNumber: shipment.orderId.toString(),
-            };
-
-            if (format === 'pdf' && shipment.carrier === 'delhivery') {
-                try {
-                    const adapter = this.carrierAdapters[shipment.carrier];
-                    if (adapter) {
-                        const label = await adapter.generateLabel({ awb: shipmentData.awb });
-                        if (label.format === 'pdf' && Buffer.isBuffer(label.data)) {
-                            res.setHeader('Content-Type', 'application/pdf');
-                            res.setHeader('Content-Disposition', `attachment; filename=\"label-${shipmentData.awb}.pdf\"`);
-                            res.send(label.data);
-                            return;
-                        }
-                    }
-                    throw new Error('Delhivery label format not supported');
-                } catch (error: any) {
-                    const status = error?.response?.status;
-                    if (status && status >= 400 && status < 500) {
-                        throw error;
-                    }
-                    const labelBuffer = await LabelService.generatePDF(shipmentData);
-                    res.setHeader('Content-Type', 'application/pdf');
-                    res.setHeader('Content-Disposition', `attachment; filename=\"label-${shipmentData.awb}.pdf\"`);
-                    res.send(labelBuffer);
-                    return;
-                }
-            }
+            const shipmentData = this.buildShipmentLabelData(shipment);
 
             if (format === 'pdf') {
-                const labelBuffer = await LabelService.generatePDF(shipmentData);
+                let labelBuffer: Buffer;
+                try {
+                    const carrierLabelBuffer = await this.generateCarrierLabelPdfBuffer(
+                        shipment,
+                        shipmentData.awb
+                    );
+                    if (carrierLabelBuffer) {
+                        labelBuffer = carrierLabelBuffer;
+                    } else {
+                        labelBuffer = await LabelService.generatePDF(shipmentData);
+                    }
+                } catch (error: any) {
+                    logger.warn('Carrier label download failed, using internal PDF fallback', {
+                        shipmentId: id,
+                        carrier: shipment.carrier,
+                        error: error?.message || error,
+                    });
+                    labelBuffer = await LabelService.generatePDF(shipmentData);
+                }
                 res.setHeader('Content-Type', 'application/pdf');
                 res.setHeader('Content-Disposition', `attachment; filename="label-${shipmentData.awb}.pdf"`);
                 res.send(labelBuffer);
@@ -213,9 +269,9 @@ class LabelController {
      * Generate bulk labels
      * POST /shipments/bulk-labels
      */
-    async generateBulkLabels(req: Request, res: Response, next: NextFunction) {
+    generateBulkLabels = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const { shipmentIds } = req.body;
+            const { shipmentIds } = req.body || {};
 
             if (!Array.isArray(shipmentIds) || shipmentIds.length === 0) {
                 throw new ValidationError('shipmentIds must be a non-empty array');
@@ -232,29 +288,7 @@ class LabelController {
             }
 
             const shipmentsData = shipments.map((shipment) => {
-                const warehouse = shipment.pickupDetails?.warehouseId as any;
-                return {
-                    awb: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber,
-                    carrier: shipment.carrier,
-                    senderName: warehouse?.name || 'Seller',
-                    senderAddress: warehouse?.address || '',
-                    senderCity: warehouse?.city || '',
-                    senderState: warehouse?.state || '',
-                    senderPincode: warehouse?.pincode || '',
-                    senderPhone: shipment.pickupDetails?.contactPhone || warehouse?.phone || '',
-                    receiverName: shipment.deliveryDetails.recipientName,
-                    receiverAddress: shipment.deliveryDetails.address.line1 + (shipment.deliveryDetails.address.line2 ? ', ' + shipment.deliveryDetails.address.line2 : ''),
-                    receiverCity: shipment.deliveryDetails.address.city,
-                    receiverState: shipment.deliveryDetails.address.state,
-                    receiverPincode: shipment.deliveryDetails.address.postalCode,
-                    receiverPhone: shipment.deliveryDetails.recipientPhone,
-                    weight: shipment.packageDetails.weight,
-                    packages: shipment.packageDetails.packageCount,
-                    codAmount: shipment.paymentDetails.codAmount || 0,
-                    paymentMode: shipment.paymentDetails.type as 'cod' | 'prepaid',
-                    zone: undefined,
-                    orderNumber: shipment.orderId.toString(),
-                };
+                return this.buildShipmentLabelData(shipment);
             });
 
             const bulkPDF = await LabelService.generateBulk(shipmentsData);
@@ -273,7 +307,7 @@ class LabelController {
      * Reprint label (same as generate)
      * POST /shipments/:id/label/reprint
      */
-    async reprintLabel(req: Request, res: Response, next: NextFunction) {
+    reprintLabel = async (req: Request, res: Response, next: NextFunction) => {
         try {
             // Call generateLabel with same logic
             await this.generateLabel(req, res, next);
@@ -286,7 +320,7 @@ class LabelController {
      * Get supported label formats for carrier
      * GET /shipments/:id/label/formats
      */
-    async getSupportedFormats(req: Request, res: Response, next: NextFunction) {
+    getSupportedFormats = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
 
@@ -295,7 +329,7 @@ class LabelController {
                 throw new NotFoundError('Shipment not found');
             }
 
-            const adapter = this.carrierAdapters[shipment.carrier];
+            const adapter = this.resolveCarrierAdapter(shipment.carrier);
             const formats = adapter ? adapter.getFormats() : ['pdf', 'zpl'];
 
             sendSuccess(res, {

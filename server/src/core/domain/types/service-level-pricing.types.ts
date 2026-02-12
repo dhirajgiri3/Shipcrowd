@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { PricingConfidence } from '../../../infrastructure/external/couriers/base/normalized-pricing.types';
 import { IServiceRateCard } from '../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/service-rate-card.model';
 
-export type ServiceLevelProvider = 'velocity' | 'delhivery' | 'ekart';
+export type ServiceLevelProvider = string;
 
 export type SelectionMode = 'manual_with_recommendation' | 'manual_only' | 'auto';
 

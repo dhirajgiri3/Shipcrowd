@@ -14,6 +14,7 @@ import mongoose from 'mongoose';
 import { Warehouse, IWarehouse } from '../../../../infrastructure/database/mongoose/models';
 import { CourierFactory } from '../courier/courier.factory';
 import logger from '../../../../shared/logger/winston.logger';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 export type SyncErrorType = 'NETWORK' | 'VALIDATION' | 'RATE_LIMIT' | 'UNKNOWN';
 
@@ -28,24 +29,12 @@ export interface SyncResult {
 }
 
 export interface SyncStatus {
-    velocity?: {
+    [carrier: string]: {
         status: 'pending' | 'synced' | 'failed';
         warehouseId?: string;
         lastSyncedAt?: Date;
         error?: string;
-    };
-    delhivery?: {
-        status: 'pending' | 'synced' | 'failed';
-        warehouseId?: string;
-        lastSyncedAt?: Date;
-        error?: string;
-    };
-    ekart?: {
-        status: 'pending' | 'synced' | 'failed';
-        warehouseId?: string;
-        lastSyncedAt?: Date;
-        error?: string;
-    };
+    } | undefined;
 }
 
 export class WarehouseSyncService {
@@ -58,13 +47,18 @@ export class WarehouseSyncService {
     static async syncWarehouse(warehouse: IWarehouse): Promise<SyncResult[]> {
         const results: SyncResult[] = [];
 
-        // Phase A: Only Velocity
-        // Phase B: Add Delhivery, Ekart
-        const enabledCarriers = ['velocity', 'delhivery'];
+        const enabledCarriers = (
+            await Promise.all(
+                CourierProviderRegistry.getSupportedProviders().map(async (provider) => {
+                    const available = await CourierFactory.isProviderAvailable(provider, warehouse.companyId);
+                    return available ? provider : null;
+                })
+            )
+        ).filter(Boolean) as string[];
 
         for (const carrier of enabledCarriers) {
             try {
-                const result = await this.syncWithCarrier(warehouse, carrier as 'velocity');
+                const result = await this.syncWithCarrier(warehouse, carrier);
                 results.push(result);
             } catch (error) {
                 logger.error(`Failed to sync warehouse with ${carrier}`, {
@@ -97,18 +91,23 @@ export class WarehouseSyncService {
      */
     static async syncWithCarrier(
         warehouse: IWarehouse,
-        carrier: 'velocity' | 'delhivery' | 'ekart'
+        carrier: string
     ): Promise<SyncResult> {
+        const canonicalCarrier = CourierProviderRegistry.toCanonical(carrier);
+        if (!canonicalCarrier) {
+            throw new Error(`Unsupported carrier for warehouse sync: ${carrier}`);
+        }
+
         // ✅ IDEMPOTENCY CHECK: Skip if already synced
-        const existingId = warehouse.carrierDetails?.[carrier]?.warehouseId;
+        const existingId = (warehouse as any)?.carrierDetails?.[canonicalCarrier]?.warehouseId;
         if (existingId) {
-            logger.info(`Warehouse already synced with ${carrier}, skipping`, {
+            logger.info(`Warehouse already synced with ${canonicalCarrier}, skipping`, {
                 warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
                 carrierWarehouseId: existingId
             });
 
             return {
-                carrier,
+                carrier: canonicalCarrier,
                 success: true,
                 warehouseId: existingId
             };
@@ -116,7 +115,7 @@ export class WarehouseSyncService {
 
         // Get courier provider
         const provider = await CourierFactory.getProvider(
-            carrier === 'velocity' ? 'velocity-shipfast' : carrier,
+            CourierProviderRegistry.getIntegrationProvider(canonicalCarrier),
             warehouse.companyId
         );
 
@@ -130,12 +129,12 @@ export class WarehouseSyncService {
             const response = await provider.createWarehouse(warehouse);
 
             // Extract warehouse ID (different field names per carrier)
-            const carrierWarehouseId = this.extractWarehouseId(response, carrier);
+            const carrierWarehouseId = this.extractWarehouseId(response, canonicalCarrier);
 
             // Update database with per-carrier status
             await Warehouse.findByIdAndUpdate(warehouse._id, {
                 $set: {
-                    [`carrierDetails.${carrier}`]: {
+                    [`carrierDetails.${canonicalCarrier}`]: {
                         warehouseId: carrierWarehouseId,
                         status: 'synced',
                         lastSyncedAt: new Date(),
@@ -144,13 +143,13 @@ export class WarehouseSyncService {
                 }
             });
 
-            logger.info(`Warehouse synced successfully with ${carrier}`, {
+            logger.info(`Warehouse synced successfully with ${canonicalCarrier}`, {
                 warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
                 carrierWarehouseId
             });
 
             return {
-                carrier,
+                carrier: canonicalCarrier,
                 success: true,
                 warehouseId: carrierWarehouseId
             };
@@ -161,7 +160,7 @@ export class WarehouseSyncService {
             // Update database with failure status
             await Warehouse.findByIdAndUpdate(warehouse._id, {
                 $set: {
-                    [`carrierDetails.${carrier}`]: {
+                    [`carrierDetails.${canonicalCarrier}`]: {
                         status: 'failed',
                         lastAttemptAt: new Date(),
                         error: {
@@ -173,7 +172,7 @@ export class WarehouseSyncService {
                 }
             });
 
-            logger.error(`Failed to sync warehouse with ${carrier}`, {
+            logger.error(`Failed to sync warehouse with ${canonicalCarrier}`, {
                 warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
                 errorType,
                 errorMessage
@@ -183,14 +182,14 @@ export class WarehouseSyncService {
             if (errorType !== 'VALIDATION') {
                 try {
                     const QueueManager = (await import('../../../../infrastructure/utilities/queue-manager.js')).default as any;
-                    const jobId = `${(warehouse._id as mongoose.Types.ObjectId).toString()}-${carrier}`;
+                    const jobId = `${(warehouse._id as mongoose.Types.ObjectId).toString()}-${canonicalCarrier}`;
 
                     await QueueManager.addJob(
                         'warehouse-sync',
                         'sync-warehouse',
                         {
                             warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
-                            carrier
+                            carrier: canonicalCarrier
                         },
                         {
                             jobId, // Deduplication
@@ -205,13 +204,13 @@ export class WarehouseSyncService {
 
                     logger.info('Warehouse sync queued for retry', {
                         warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
-                        carrier,
+                        carrier: canonicalCarrier,
                         errorType
                     });
                 } catch (queueError) {
                     logger.error('Failed to queue warehouse sync retry', {
                         warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
-                        carrier,
+                        carrier: canonicalCarrier,
                         error: queueError instanceof Error ? queueError.message : 'Unknown error'
                     });
                 }
@@ -237,7 +236,7 @@ export class WarehouseSyncService {
         }
 
         try {
-            await this.syncWithCarrier(warehouse, carrier as 'velocity' | 'delhivery' | 'ekart');
+            await this.syncWithCarrier(warehouse, carrier);
             return true;
         } catch (error) {
             logger.error('Retry sync failed', {
@@ -262,32 +261,22 @@ export class WarehouseSyncService {
             throw new Error('Warehouse not found');
         }
 
-        return {
-            velocity: warehouse.carrierDetails?.velocity
+        const carriers = CourierProviderRegistry.getSupportedProviders();
+        const status: SyncStatus = {};
+
+        for (const carrier of carriers) {
+            const details = (warehouse as any)?.carrierDetails?.[carrier];
+            status[carrier] = details
                 ? {
-                    status: warehouse.carrierDetails.velocity.status,
-                    warehouseId: warehouse.carrierDetails.velocity.warehouseId,
-                    lastSyncedAt: warehouse.carrierDetails.velocity.lastSyncedAt,
-                    error: warehouse.carrierDetails.velocity.error?.message
+                    status: details.status,
+                    warehouseId: details.warehouseId,
+                    lastSyncedAt: details.lastSyncedAt,
+                    error: details.error?.message,
                 }
-                : undefined,
-            delhivery: warehouse.carrierDetails?.delhivery
-                ? {
-                    status: warehouse.carrierDetails.delhivery.status,
-                    warehouseId: warehouse.carrierDetails.delhivery.warehouseId,
-                    lastSyncedAt: warehouse.carrierDetails.delhivery.lastSyncedAt,
-                    error: warehouse.carrierDetails.delhivery.error?.message
-                }
-                : undefined,
-            ekart: warehouse.carrierDetails?.ekart
-                ? {
-                    status: warehouse.carrierDetails.ekart.status,
-                    warehouseId: warehouse.carrierDetails.ekart.warehouseId,
-                    lastSyncedAt: warehouse.carrierDetails.ekart.lastSyncedAt,
-                    error: warehouse.carrierDetails.ekart.error?.message
-                }
-                : undefined
-        };
+                : undefined;
+        }
+
+        return status;
     }
 
     /**
@@ -343,7 +332,13 @@ export class WarehouseSyncService {
             case 'ekart':
                 return response.hub_id || response.facility_id;
             default:
-                throw new Error(`Unknown carrier: ${carrier}`);
+                return (
+                    response.warehouse_id ||
+                    response.pickup_location_id ||
+                    response.hub_id ||
+                    response.facility_id ||
+                    response.id
+                );
         }
     }
 }

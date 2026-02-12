@@ -1,6 +1,7 @@
 import logger from '../../../../shared/logger/winston.logger';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
-type Provider = 'velocity' | 'delhivery' | 'ekart';
+type Provider = string;
 type Confidence = 'high' | 'medium' | 'low';
 type BookingFailureStage = 'before_awb' | 'after_awb' | 'unknown';
 
@@ -27,9 +28,9 @@ interface ServiceLevelPricingMetrics {
         optionsTotal: number;
         fallbackOptionsTotal: number;
         confidence: Record<Confidence, number>;
-        providerAttempts: Record<Provider, number>;
-        providerTimeouts: Record<Provider, number>;
-        providerTimeoutRate: Record<Provider, number>;
+        providerAttempts: Record<string, number>;
+        providerTimeouts: Record<string, number>;
+        providerTimeoutRate: Record<string, number>;
     };
     bookings: {
         attempts: number;
@@ -74,15 +75,15 @@ class ServiceLevelPricingMetricsService {
                 low: 0,
             } as Record<Confidence, number>,
             providerAttempts: {
-                velocity: 0,
-                delhivery: 0,
-                ekart: 0,
-            } as Record<Provider, number>,
+                ...Object.fromEntries(
+                    CourierProviderRegistry.getSupportedProviders().map((provider) => [provider, 0])
+                ),
+            } as Record<string, number>,
             providerTimeouts: {
-                velocity: 0,
-                delhivery: 0,
-                ekart: 0,
-            } as Record<Provider, number>,
+                ...Object.fromEntries(
+                    CourierProviderRegistry.getSupportedProviders().map((provider) => [provider, 0])
+                ),
+            } as Record<string, number>,
         },
         bookings: {
             attempts: 0,
@@ -126,11 +127,15 @@ class ServiceLevelPricingMetricsService {
         }
 
         for (const provider of input.providerAttempts) {
-            this.metrics.quotes.providerAttempts[provider] += 1;
+            const key = this.normalizeProviderKey(provider);
+            this.ensureProviderCounter('providerAttempts', key);
+            this.metrics.quotes.providerAttempts[key] += 1;
         }
 
         for (const provider of input.providerTimeouts) {
-            this.metrics.quotes.providerTimeouts[provider] += 1;
+            const key = this.normalizeProviderKey(provider);
+            this.ensureProviderCounter('providerTimeouts', key);
+            this.metrics.quotes.providerTimeouts[key] += 1;
         }
 
         this.pushLatencySample(input.durationMs);
@@ -210,13 +215,13 @@ class ServiceLevelPricingMetricsService {
 
         const p95LatencyMs = this.calculateP95();
 
-        const providerTimeoutRate = (Object.keys(this.metrics.quotes.providerAttempts) as Provider[])
+        const providerTimeoutRate = Object.keys(this.metrics.quotes.providerAttempts)
             .reduce((acc, provider) => {
                 const attempts = this.metrics.quotes.providerAttempts[provider];
-                const timeouts = this.metrics.quotes.providerTimeouts[provider];
+                const timeouts = this.metrics.quotes.providerTimeouts[provider] || 0;
                 acc[provider] = attempts > 0 ? Number(((timeouts / attempts) * 100).toFixed(2)) : 0;
                 return acc;
-            }, {} as Record<Provider, number>);
+            }, {} as Record<string, number>);
 
         return {
             quotes: {
@@ -262,14 +267,14 @@ class ServiceLevelPricingMetricsService {
                     low: 0,
                 },
                 providerAttempts: {
-                    velocity: 0,
-                    delhivery: 0,
-                    ekart: 0,
+                    ...Object.fromEntries(
+                        CourierProviderRegistry.getSupportedProviders().map((provider) => [provider, 0])
+                    ),
                 },
                 providerTimeouts: {
-                    velocity: 0,
-                    delhivery: 0,
-                    ekart: 0,
+                    ...Object.fromEntries(
+                        CourierProviderRegistry.getSupportedProviders().map((provider) => [provider, 0])
+                    ),
                 },
             },
             bookings: {
@@ -320,6 +325,21 @@ class ServiceLevelPricingMetricsService {
         const sorted = [...this.latencySamples].sort((a, b) => a - b);
         const p95Index = Math.max(0, Math.ceil(sorted.length * 0.95) - 1);
         return Number(sorted[p95Index].toFixed(2));
+    }
+
+    private normalizeProviderKey(provider: string): string {
+        return CourierProviderRegistry.toCanonical(provider) || String(provider || '').trim().toLowerCase();
+    }
+
+    private ensureProviderCounter(
+        counter: 'providerAttempts' | 'providerTimeouts',
+        provider: string
+    ): void {
+        if (!provider) return;
+
+        if (this.metrics.quotes[counter][provider] === undefined) {
+            this.metrics.quotes[counter][provider] = 0;
+        }
     }
 }
 

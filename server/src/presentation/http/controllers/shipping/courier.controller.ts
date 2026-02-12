@@ -9,14 +9,12 @@ import {
     Shipment,
 } from '../../../../infrastructure/database/mongoose/models';
 import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
+import CourierProviderRegistry, {
+    CanonicalCourierProvider,
+} from '../../../../core/application/services/courier/courier-provider-registry';
 
-const PROVIDER_LABELS: Record<string, string> = {
-    velocity: 'Velocity',
-    delhivery: 'Delhivery',
-    ekart: 'Ekart',
-};
-const SUPPORTED_PROVIDERS = ['velocity', 'delhivery', 'ekart'] as const;
-type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
+const SUPPORTED_PROVIDERS = CourierProviderRegistry.getSupportedProviders();
+type SupportedProvider = CanonicalCourierProvider;
 const ACTIVE_SHIPMENT_STATUSES = [
     'picked',
     'picked_up',
@@ -41,11 +39,11 @@ function getCompanyId(req: Request): string {
 }
 
 function normalizeProvider(id: string): string {
-    return String(id || '').trim().toLowerCase();
+    return CourierProviderRegistry.normalize(id);
 }
 
 function formatProviderName(provider: string): string {
-    return PROVIDER_LABELS[provider] || provider.toUpperCase();
+    return CourierProviderRegistry.getLabel(provider);
 }
 
 function isServiceActive(service: any): boolean {
@@ -53,7 +51,7 @@ function isServiceActive(service: any): boolean {
 }
 
 function toIntegrationProvider(provider: string): string {
-    return provider === 'velocity' ? 'velocity-shipfast' : provider;
+    return CourierProviderRegistry.getIntegrationProvider(provider);
 }
 
 function integrationInsertFields(companyId: string, provider: string) {
@@ -61,37 +59,20 @@ function integrationInsertFields(companyId: string, provider: string) {
 }
 
 function integrationProviderPatch(provider: string) {
-    return provider === 'ekart'
-        ? { provider: 'ekart', platform: 'ekart' }
-        : { provider: toIntegrationProvider(provider) };
+    return CourierProviderRegistry.buildIntegrationPatch(provider);
 }
 
 function buildIntegrationQuery(companyId: string, provider: string) {
-    if (provider === 'ekart') {
-        return {
-            companyId,
-            type: 'courier',
-            isDeleted: false,
-            $or: [{ provider: 'ekart' }, { platform: 'ekart' }],
-        };
-    }
-
     return {
         companyId,
-        provider: toIntegrationProvider(provider),
         type: 'courier',
         isDeleted: false,
+        ...CourierProviderRegistry.buildIntegrationMatch(provider),
     };
 }
 
 function toSupportedProvider(provider: string): SupportedProvider | null {
-    const normalized = normalizeProvider(provider);
-    if (!normalized) return null;
-    if (normalized === 'velocity-shipfast') return 'velocity';
-    if ((SUPPORTED_PROVIDERS as readonly string[]).includes(normalized)) {
-        return normalized as SupportedProvider;
-    }
-    return null;
+    return CourierProviderRegistry.toCanonical(provider) as SupportedProvider | null;
 }
 
 function requireSupportedProvider(provider: string): SupportedProvider {
@@ -103,13 +84,7 @@ function requireSupportedProvider(provider: string): SupportedProvider {
 }
 
 function buildCarrierCandidates(provider: SupportedProvider): string[] {
-    const candidates: string[] = [provider];
-    if (provider === 'velocity') {
-        candidates.push('velocity-shipfast');
-        candidates.push('velocity shipfast');
-        candidates.push('shipfast');
-    }
-    return candidates;
+    return CourierProviderRegistry.getCarrierCandidates(provider);
 }
 
 function escapeRegExp(value: string): string {

@@ -22,12 +22,17 @@ export class DelhiveryAuth {
             return undefined;
         }
 
-        try {
-            return decryptData(normalized);
-        } catch {
-            // Backward compatibility for legacy plaintext credentials.
-            return normalized;
+        let decoded = normalized;
+        for (let i = 0; i < 2; i += 1) {
+            try {
+                decoded = decryptData(decoded).trim();
+            } catch {
+                break;
+            }
         }
+
+        // Backward compatibility for legacy plaintext credentials.
+        return decoded || normalized;
     }
 
     private async getIntegrationToken(): Promise<string | undefined> {
