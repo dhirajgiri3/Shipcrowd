@@ -135,3 +135,66 @@ export function orderToCardData(order: Order) {
     urgentReason: getUrgentReason(order)
   };
 }
+
+/**
+ * Calculate smart filter counts from orders data
+ * This function analyzes the full order set to provide accurate counts for each filter
+ */
+export function calculateSmartFilterCounts(
+  allOrders: Order[],
+  totalCount: number
+): Record<string, number> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Zone B states (India shipping zones)
+  const zoneBStates = ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'];
+
+  const counts = {
+    all: totalCount,
+    needs_attention: 0,
+    today: 0,
+    cod_pending: 0,
+    last_7_days: 0,
+    zone_b: 0
+  };
+
+  allOrders.forEach(order => {
+    const orderDate = new Date(order.createdAt);
+    orderDate.setHours(0, 0, 0, 0);
+    const state = order.customerInfo?.address?.state;
+
+    // Needs Attention: Orders requiring immediate action
+    if ([
+      'rto', 'cancelled', 'ready_to_ship', 'ndr',
+      'pickup_pending', 'pickup_failed', 'exception',
+      'ready', 'new'
+    ].includes(order.currentStatus)) {
+      counts.needs_attention++;
+    }
+
+    // Today's Orders
+    if (orderDate.getTime() === today.getTime()) {
+      counts.today++;
+    }
+
+    // COD Pending: COD orders that haven't been delivered yet
+    if (order.paymentMethod === 'cod' && order.currentStatus !== 'delivered') {
+      counts.cod_pending++;
+    }
+
+    // Last 7 Days
+    if (orderDate >= sevenDaysAgo) {
+      counts.last_7_days++;
+    }
+
+    // Zone B
+    if (state && zoneBStates.includes(state)) {
+      counts.zone_b++;
+    }
+  });
+
+  return counts;
+}

@@ -116,17 +116,11 @@ const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
       <div className="flex flex-col gap-1">
         <div className="flex flex-col gap-1">
           <StatusBadge
+            domain="payment"
             status={row.paymentStatus}
             size="sm"
             className="w-fit"
           />
-          {row.paymentMethod && (
-            <StatusBadge
-              status={row.paymentMethod}
-              size="sm"
-              className="w-fit opacity-90"
-            />
-          )}
         </div>
       </div>
     )
@@ -260,6 +254,7 @@ export function ResponsiveOrderList({
         data={sortedOrders}
         onRowClick={onOrderClick}
         isLoading={isLoading}
+        disablePagination={true}
       />
     </div>
   );

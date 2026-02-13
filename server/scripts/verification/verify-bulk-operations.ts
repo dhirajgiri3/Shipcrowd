@@ -1,4 +1,3 @@
-
 import * as dotenv from 'dotenv';
 import path from 'path';
 
@@ -16,9 +15,11 @@ async function verifyBulkOperations() {
     try {
         // 2. Dynamic Imports for robust path resolution
         const controllerPath = path.resolve(process.cwd(), 'src/presentation/http/controllers/shipments/bulk-shipment.controller.ts');
+        const labelControllerPath = path.resolve(process.cwd(), 'src/presentation/http/controllers/shipments/label.controller.ts');
         const modelsPath = path.resolve(process.cwd(), 'src/infrastructure/database/mongoose/models/index.ts');
 
         const { default: BulkShipmentController } = await import(controllerPath);
+        const { default: LabelController } = await import(labelControllerPath);
         const { Shipment, Manifest } = await import(modelsPath);
 
         await mongoose.connect(MONGODB_URI);
@@ -143,7 +144,7 @@ async function verifyBulkOperations() {
         // Reset response object
         resObj.data = null;
 
-        await BulkShipmentController.generateBulkLabels(reqLabels, resObj, next);
+        await LabelController.generateBulkLabels(reqLabels, resObj, next);
 
         if (!resObj.data || !(resObj.data instanceof Buffer)) {
             throw new Error('Response is not a PDF Buffer');

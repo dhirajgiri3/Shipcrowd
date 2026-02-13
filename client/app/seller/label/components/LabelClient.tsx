@@ -4,6 +4,10 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from 'react';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { Loader } from '@/src/components/ui/feedback/Loader';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     FileText,
     Download,
@@ -13,9 +17,10 @@ import {
     Phone,
     QrCode,
     Truck,
-    Package
+    Package,
+    AlertCircle
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, formatDate, formatCurrency } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShipmentByAwb, useGenerateLabel } from '@/src/core/api/hooks/seller/useShipment';
@@ -37,21 +42,24 @@ export function LabelClient() {
     }, []);
 
     const handleSearch = () => {
-        if (!awbInput.trim()) {
+        const normalizedAwb = awbInput.trim();
+        if (!normalizedAwb) {
             addToast('Please enter an AWB number', 'warning');
             return;
         }
-        setSearchedAwb(awbInput);
+        setSearchedAwb(normalizedAwb);
     };
 
     const handlePrint = () => {
         if (!shipmentData) return;
 
-        generateLabel(shipmentData.awbNumber, {
+        generateLabel(shipmentData.shipmentId, {
             onSuccess: (response) => {
-                // In a real scenario, this would likely open a PDF URL in a new window or trigger a print dialog
-                // For now we simulate the print action as before, but normally we'd use response.labelUrl
-                window.print();
+                if (response?.labelUrl) {
+                    window.open(response.labelUrl, '_blank');
+                } else {
+                    addToast('Label generated successfully', 'success');
+                }
             }
         });
     };
@@ -59,10 +67,9 @@ export function LabelClient() {
     const handleDownload = () => {
         if (!shipmentData) return;
 
-        generateLabel(shipmentData.awbNumber, {
+        generateLabel(shipmentData.shipmentId, {
             onSuccess: (response) => {
-                // Determine if we have a URL to open
-                if (response.labelUrl) {
+                if (response?.labelUrl) {
                     window.open(response.labelUrl, '_blank');
                 } else {
                     addToast('Downloading label...', 'success');
@@ -110,7 +117,7 @@ export function LabelClient() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-8 rounded-[var(--radius-3xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm print:hidden relative overflow-hidden"
+                className="p-8 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm print:hidden relative overflow-hidden"
             >
                 {/* Visual Background Element */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[var(--primary-blue)]/5 to-transparent rounded-bl-full pointer-events-none -mr-16 -mt-16" />
@@ -121,34 +128,25 @@ export function LabelClient() {
                     </label>
                     <div className="flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-1 group">
-                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-muted)] group-focus-within:text-[var(--primary-blue)] transition-colors" />
                             <Input
                                 placeholder="e.g., DL987654321IN"
                                 value={awbInput}
                                 onChange={(e) => setAwbInput(e.target.value)}
-                                className="pl-14 h-14 rounded-2xl bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] text-lg shadow-inner"
+                                className="pl-14 h-14 rounded-2xl text-lg shadow-inner"
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                icon={<Search className="w-5 h-5 text-[var(--text-muted)]" />}
                             />
                         </div>
                         <Button
                             onClick={handleSearch}
                             disabled={isSearching}
-                            className="h-14 px-8 rounded-2xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-brand-lg text-lg font-semibold transition-all hover:scale-105 active:scale-95"
+                            className="h-14 px-8 rounded-2xl shadow-brand-lg text-lg font-semibold transition-all hover:scale-105 active:scale-95"
+                            variant="primary"
                         >
                             {isSearching ? (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    <span>Fetching...</span>
-                                </motion.div>
+                                <Loader size="sm" variant="spinner" className="text-white" />
                             ) : 'Generate Label'}
                         </Button>
-                    </div>
-                    <div className="mt-4 flex gap-2">
-                        {/* Remove hardcoded suggestions or replace with recent history if available */}
                     </div>
                 </div>
             </motion.div>
@@ -161,15 +159,18 @@ export function LabelClient() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="py-12 text-center"
+                        className="py-12 flex justify-center"
                     >
-                        <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Truck className="h-10 w-10 text-[var(--error)]" />
-                        </div>
-                        <h3 className="text-xl font-bold text-[var(--error)]">Shipment Not Found</h3>
-                        <p className="text-[var(--text-muted)] mt-1">
-                            We couldn't find a shipment with AWB <strong>{searchedAwb}</strong>. Please check and try again.
-                        </p>
+                        <EmptyState
+                            icon={<AlertCircle className="w-12 h-12" />}
+                            title="Shipment Not Found"
+                            description={`We couldn't find a shipment with AWB ${searchedAwb}. Please check and try again.`}
+                            action={{
+                                label: 'Clear Search',
+                                onClick: () => { setAwbInput(''); setSearchedAwb(''); },
+                                variant: 'outline' as const
+                            }}
+                        />
                     </motion.div>
                 )}
 
@@ -183,124 +184,128 @@ export function LabelClient() {
                     >
                         {/* Label Card */}
                         <div className="lg:col-span-2 print:col-span-3 print:shadow-none">
-                            <div className="p-8 rounded-[var(--radius-3xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-xl print:border-none print:p-0 print:shadow-none">
-                                <div className="flex items-center justify-between mb-8 print:hidden">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-[var(--text-primary)]">Label Preview</h3>
-                                        <p className="text-sm text-[var(--text-muted)]">Verified shipping document</p>
+                            <Card className="rounded-[var(--radius-3xl)] print:border-none print:shadow-none bg-[var(--bg-primary)]">
+                                <div className="p-8 print:p-0">
+                                    <div className="flex items-center justify-between mb-8 print:hidden">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-[var(--text-primary)]">Label Preview</h3>
+                                            <p className="text-sm text-[var(--text-muted)]">Verified shipping document</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleDownload}
+                                                disabled={isGenerating}
+                                                className="bg-[var(--bg-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)]"
+                                            >
+                                                {isGenerating ? <Loader size="sm" /> : <Download className="h-4 w-4 mr-2" />}
+                                                {isGenerating ? 'Generating...' : 'PDF'}
+                                            </Button>
+                                            <Button
+                                                onClick={handlePrint}
+                                                disabled={isGenerating}
+                                                className="bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-[var(--text-secondary)] shadow-lg hover:shadow-xl transition-all"
+                                            >
+                                                {isGenerating ? <Loader size="sm" className="text-current" /> : <Printer className="h-4 w-4 mr-2" />}
+                                                {isGenerating ? 'Generating...' : 'Print'}
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-3">
-                                        <Button
-                                            variant="outline"
-                                            onClick={handleDownload}
-                                            disabled={isGenerating}
-                                            className="bg-[var(--bg-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] h-10 px-4 rounded-xl"
-                                        >
-                                            <Download className="h-4 w-4 mr-2" /> PDF
-                                        </Button>
-                                        <Button
-                                            onClick={handlePrint}
-                                            disabled={isGenerating}
-                                            className="bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-[var(--text-secondary)] h-10 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
-                                        >
-                                            <Printer className="h-4 w-4 mr-2" /> Print
-                                        </Button>
+
+                                    {/* Actual Label Design - High Contrast for Realism */}
+                                    <div className="border-[3px] border-[var(--text-primary)] rounded-xl bg-white text-black overflow-hidden print:border-2 print:border-black max-w-2xl mx-auto shadow-2xl transform transition-transform hover:scale-[1.01] duration-300">
+                                        {/* Top Bar */}
+                                        <div className="flex border-b-[3px] border-black">
+                                            <div className="flex-1 p-5 border-r-[3px] border-black">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="border-[2.5px] border-black p-1.5 rounded-lg">
+                                                        <Truck className="h-8 w-8 text-black" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Carrier</p>
+                                                        <span className="text-3xl font-black uppercase leading-none tracking-tight">{shipmentData.courier || 'N/A'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex items-center gap-2">
+                                                    <span className="text-xs font-bold bg-neutral-200 px-2 py-1 rounded border border-neutral-300 uppercase tracking-wider">{shipmentData.service || 'Standard'}</span>
+                                                    <span className="text-xs font-bold bg-black text-white px-2 py-1 rounded uppercase tracking-wider">Standard</span>
+                                                </div>
+                                            </div>
+                                            <div className="p-5 flex flex-col items-center justify-center min-w-[160px] bg-neutral-50">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Payment</p>
+                                                <h2 className="text-4xl font-black tracking-tight">{shipmentData.paymentMode || 'PREPAID'}</h2>
+                                                {shipmentData.paymentMode === 'COD' && (
+                                                    <p className="text-xl font-bold mt-1">{formatCurrency(shipmentData.codAmount || 0)}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Addresses */}
+                                        <div className="grid grid-cols-2 border-b-[3px] border-black">
+                                            <div className="p-6 border-r-[3px] border-black">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3 flex items-center gap-1">
+                                                    From (Shipper)
+                                                </p>
+                                                <p className="font-bold text-base text-black">{shipmentData.shipperDetails?.name || 'N/A'}</p>
+                                                <p className="text-sm mt-1.5 leading-relaxed text-neutral-600 font-medium">
+                                                    {shipmentData.shipperDetails?.address}<br />
+                                                    {shipmentData.shipperDetails?.city}, {shipmentData.shipperDetails?.state}<br />
+                                                    <span className="font-bold text-neutral-800">PIN: {shipmentData.shipperDetails?.pincode}</span>
+                                                </p>
+                                                <div className="flex items-center gap-1.5 mt-4 text-xs font-bold text-neutral-500 bg-neutral-100 py-1 px-2 rounded w-fit">
+                                                    <Phone className="h-3 w-3" /> {shipmentData.shipperDetails?.phone || 'N/A'}
+                                                </div>
+                                            </div>
+                                            <div className="p-6 bg-neutral-50/50">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">To (Consignee)</p>
+                                                <p className="font-bold text-xl text-black">{shipmentData.consigneeDetails?.name || 'N/A'}</p>
+                                                <p className="text-sm mt-1.5 leading-relaxed text-neutral-600 font-medium">
+                                                    {shipmentData.consigneeDetails?.address}<br />
+                                                    {shipmentData.consigneeDetails?.city}, {shipmentData.consigneeDetails?.state}
+                                                </p>
+                                                <p className="text-3xl font-black mt-3 text-black tracking-wide">{shipmentData.consigneeDetails?.pincode}</p>
+                                                <div className="flex items-center gap-1.5 mt-4 text-xs font-bold text-neutral-500 bg-white border border-neutral-200 py-1 px-2 rounded w-fit shadow-sm">
+                                                    <Phone className="h-3 w-3" /> {shipmentData.consigneeDetails?.phone || 'N/A'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Product Info */}
+                                        <div className="grid grid-cols-4 border-b-[3px] border-black text-xs text-black bg-white">
+                                            <div className="p-4 border-r-[3px] border-black col-span-2">
+                                                <p className="font-bold text-neutral-400 uppercase mb-1 text-[10px] tracking-wider">Contents</p>
+                                                <p className="font-bold truncate text-sm">{shipmentData.productDetails?.name || 'Shipment Content'}</p>
+                                                <p className="text-neutral-500 font-mono mt-1 text-[10px]">SKU: {shipmentData.productDetails?.sku || 'N/A'}</p>
+                                            </div>
+                                            <div className="p-4 border-r-[3px] border-black">
+                                                <p className="font-bold text-neutral-400 uppercase mb-1 text-[10px] tracking-wider">Weight</p>
+                                                <p className="font-black text-sm">{shipmentData.weight} kg</p>
+                                                <p className="text-[10px] text-neutral-600 mt-0.5">{shipmentData.dimensions || 'N/A'}</p>
+                                            </div>
+                                            <div className="p-4">
+                                                <p className="font-bold text-neutral-400 uppercase mb-1 text-[10px] tracking-wider">Date</p>
+                                                <p className="font-bold">{shipmentData.createdAt ? formatDate(shipmentData.createdAt) : formatDate(new Date().toISOString())}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Barcode Area */}
+                                        <div className="p-10 flex flex-col items-center justify-center bg-white relative">
+                                            <div className="absolute top-4 right-4 border border-neutral-200 rounded p-1">
+                                                <QrCode className="h-16 w-16 text-black" />
+                                            </div>
+                                            {/* Simulated Barcode Lines (CSS/Image could be improved for real generation) */}
+                                            <div className="h-16 w-full max-w-sm bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Code_128_barcode_sample.svg/1200px-Code_128_barcode_sample.svg.png')] bg-cover bg-center opacity-90 grayscale contrast-150 mb-3" />
+                                            <p className="font-mono font-bold text-3xl tracking-[0.3em] text-black mt-2">{shipmentData.awbNumber || 'N/A'}</p>
+                                            <p className="text-[10px] text-neutral-400 uppercase mt-2 font-bold tracking-widest">Scan for Status</p>
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div className="bg-black text-white p-3 text-center text-[10px] font-bold uppercase tracking-[0.3em]">
+                                            Powered by Shipcrowd Logistics
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Actual Label Design - High Contrast for Realism */}
-                                <div className="border-[3px] border-slate-900 rounded-xl bg-white text-slate-900 overflow-hidden print:border-2 print:border-black max-w-2xl mx-auto shadow-2xl transform transition-transform hover:scale-[1.01] duration-300">
-                                    {/* Top Bar */}
-                                    <div className="flex border-b-[3px] border-slate-900">
-                                        <div className="flex-1 p-5 border-r-[3px] border-slate-900">
-                                            <div className="flex items-center gap-4">
-                                                <div className="border-[2.5px] border-slate-900 p-1.5 rounded-lg">
-                                                    <Truck className="h-8 w-8 text-slate-900" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Carrier</p>
-                                                    <span className="text-3xl font-black uppercase leading-none tracking-tight">{shipmentData.courier}</span>
-                                                </div>
-                                            </div>
-                                            <div className="mt-3 flex items-center gap-2">
-                                                <span className="text-xs font-bold bg-slate-200 px-2 py-1 rounded border border-slate-300 uppercase tracking-wider">{shipmentData.service}</span>
-                                                <span className="text-xs font-bold bg-slate-900 text-white px-2 py-1 rounded uppercase tracking-wider">Standard</span>
-                                            </div>
-                                        </div>
-                                        <div className="p-5 flex flex-col items-center justify-center min-w-[160px] bg-slate-50">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Payment</p>
-                                            <h2 className="text-4xl font-black tracking-tight">{shipmentData.paymentMode}</h2>
-                                            {shipmentData.paymentMode === 'COD' && (
-                                                <p className="text-xl font-bold mt-1">₹{shipmentData.codAmount}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Addresses */}
-                                    <div className="grid grid-cols-2 border-b-[3px] border-slate-900">
-                                        <div className="p-6 border-r-[3px] border-slate-900">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1">
-                                                From (Shipper)
-                                            </p>
-                                            <p className="font-bold text-base text-slate-900">{shipmentData.shipperDetails.name}</p>
-                                            <p className="text-sm mt-1.5 leading-relaxed text-slate-600 font-medium">
-                                                {shipmentData.shipperDetails.address}<br />
-                                                {shipmentData.shipperDetails.city}, {shipmentData.shipperDetails.state}<br />
-                                                <span className="font-bold text-slate-800">PIN: {shipmentData.shipperDetails.pincode}</span>
-                                            </p>
-                                            <div className="flex items-center gap-1.5 mt-4 text-xs font-bold text-slate-500 bg-slate-100 py-1 px-2 rounded w-fit">
-                                                <Phone className="h-3 w-3" /> {shipmentData.shipperDetails.phone}
-                                            </div>
-                                        </div>
-                                        <div className="p-6 bg-slate-50/50">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">To (Consignee)</p>
-                                            <p className="font-bold text-xl text-slate-900">{shipmentData.consigneeDetails.name}</p>
-                                            <p className="text-sm mt-1.5 leading-relaxed text-slate-600 font-medium">
-                                                {shipmentData.consigneeDetails.address}<br />
-                                                {shipmentData.consigneeDetails.city}, {shipmentData.consigneeDetails.state}
-                                            </p>
-                                            <p className="text-3xl font-black mt-3 text-slate-900 tracking-wide">{shipmentData.consigneeDetails.pincode}</p>
-                                            <div className="flex items-center gap-1.5 mt-4 text-xs font-bold text-slate-500 bg-white border border-slate-200 py-1 px-2 rounded w-fit shadow-sm">
-                                                <Phone className="h-3 w-3" /> {shipmentData.consigneeDetails.phone}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Product Info */}
-                                    <div className="grid grid-cols-4 border-b-[3px] border-slate-900 text-xs text-slate-900 bg-white">
-                                        <div className="p-4 border-r-[3px] border-slate-900 col-span-2">
-                                            <p className="font-bold text-slate-400 uppercase mb-1 text-[10px] tracking-wider">Contents</p>
-                                            <p className="font-bold truncate text-sm">{shipmentData.productDetails.name}</p>
-                                            <p className="text-slate-500 font-mono mt-1 text-[10px]">SKU: {shipmentData.productDetails.sku}</p>
-                                        </div>
-                                        <div className="p-4 border-r-[3px] border-slate-900">
-                                            <p className="font-bold text-slate-400 uppercase mb-1 text-[10px] tracking-wider">Weight</p>
-                                            <p className="font-black text-sm">{shipmentData.weight}</p>
-                                            <p className="text-[10px] text-slate-600 mt-0.5">{shipmentData.dimensions}</p>
-                                        </div>
-                                        <div className="p-4">
-                                            <p className="font-bold text-slate-400 uppercase mb-1 text-[10px] tracking-wider">Date</p>
-                                            <p className="font-bold">{new Date(shipmentData.createdAt).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Barcode Area */}
-                                    <div className="p-10 flex flex-col items-center justify-center bg-white relative">
-                                        <div className="absolute top-4 right-4 border border-slate-200 rounded p-1">
-                                            <QrCode className="h-16 w-16 text-slate-900" />
-                                        </div>
-                                        {/* Simulated Barcode Lines (CSS/Image could be improved for real generation) */}
-                                        <div className="h-16 w-full max-w-sm bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Code_128_barcode_sample.svg/1200px-Code_128_barcode_sample.svg.png')] bg-cover bg-center opacity-90 grayscale contrast-150 mb-3" />
-                                        <p className="font-mono font-bold text-3xl tracking-[0.3em] text-slate-900 mt-2">{shipmentData.awbNumber}</p>
-                                        <p className="text-[10px] text-slate-400 uppercase mt-2 font-bold tracking-widest">Scan for Status</p>
-                                    </div>
-
-                                    {/* Footer */}
-                                    <div className="bg-slate-900 text-white p-3 text-center text-[10px] font-bold uppercase tracking-[0.3em]">
-                                        Powered by Shipcrowd Logistics
-                                    </div>
-                                </div>
-                            </div>
+                            </Card>
                         </div>
 
                         {/* Actions Sidebar */}
@@ -309,56 +314,62 @@ export function LabelClient() {
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.2 }}
-                                className="p-6 rounded-[var(--radius-3xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm"
                             >
-                                <h3 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                                    <FileText className="w-5 h-5 text-[var(--primary-blue)]" /> Quick Details
-                                </h3>
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 transition-colors group">
-                                        <div>
-                                            <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">AWB Number</p>
-                                            <p className="font-mono font-bold text-[var(--text-primary)]">{shipmentData.awbNumber}</p>
+                                <Card className="rounded-[var(--radius-3xl)] shadow-sm">
+                                    <div className="p-6">
+                                        <h3 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                                            <FileText className="w-5 h-5 text-[var(--primary-blue)]" /> Quick Details
+                                        </h3>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 transition-colors group">
+                                                <div>
+                                                    <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">AWB Number</p>
+                                                    <p className="font-mono font-bold text-[var(--text-primary)]">{shipmentData.awbNumber}</p>
+                                                </div>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] rounded-lg" onClick={() => copyToClipboard(shipmentData.awbNumber)}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 transition-colors group">
+                                                <div>
+                                                    <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Order ID</p>
+                                                    <p className="font-semibold text-[var(--text-primary)]">{shipmentData.orderId || 'N/A'}</p>
+                                                </div>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] rounded-lg" onClick={() => copyToClipboard(shipmentData.orderId)}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] rounded-lg" onClick={() => copyToClipboard(shipmentData.awbNumber)}>
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
                                     </div>
-                                    <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 transition-colors group">
-                                        <div>
-                                            <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Order ID</p>
-                                            <p className="font-semibold text-[var(--text-primary)]">{shipmentData.orderId}</p>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] rounded-lg" onClick={() => copyToClipboard(shipmentData.orderId)}>
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
+                                </Card>
                             </motion.div>
 
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.3 }}
-                                className="p-6 rounded-[var(--radius-3xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm"
                             >
-                                <Button
-                                    className="w-full h-14 text-lg font-semibold bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-brand-lg mb-4 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    onClick={handlePrint}
-                                    disabled={isGenerating}
-                                >
-                                    <Printer className="h-5 w-5 mr-2" />
-                                    Print Label
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="w-full h-14 bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-xl"
-                                    onClick={handleDownload}
-                                    disabled={isGenerating}
-                                >
-                                    <Download className="h-5 w-5 mr-2" />
-                                    Download PDF
-                                </Button>
+                                <Card className="rounded-[var(--radius-3xl)] shadow-sm">
+                                    <div className="p-6 space-y-4">
+                                        <Button
+                                            className="w-full h-14 text-lg font-semibold bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-brand-lg rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                            onClick={handlePrint}
+                                            disabled={isGenerating}
+                                        >
+                                            {isGenerating ? <Loader size="sm" className="mr-2 text-white" /> : <Printer className="h-5 w-5 mr-2" />}
+                                            Print Label
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full h-14 bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-xl"
+                                            onClick={handleDownload}
+                                            disabled={isGenerating}
+                                        >
+                                            {isGenerating ? <Loader size="sm" className="mr-2" /> : <Download className="h-5 w-5 mr-2" />}
+                                            Download PDF
+                                        </Button>
+                                    </div>
+                                </Card>
                             </motion.div>
                         </div>
                     </motion.div>
@@ -371,13 +382,12 @@ export function LabelClient() {
                             exit={{ opacity: 0 }}
                             className="flex flex-col items-center justify-center py-32 text-center"
                         >
-                            <div className="w-32 h-32 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mb-8 animate-[pulse_3s_ease-in-out_infinite]">
-                                <Package className="h-12 w-12 text-[var(--text-muted)] opacity-50" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Ready to Generate</h3>
-                            <p className="text-[var(--text-muted)] max-w-md mx-auto text-lg">
-                                Enter a valid AWB number above to verify details and generate a compliant shipping label instantly.
-                            </p>
+                            <EmptyState
+                                icon={<Package className="w-12 h-12" />}
+                                title="Ready to Generate"
+                                description="Enter a valid AWB number above to verify details and generate a compliant shipping label instantly."
+                                className="border-none shadow-none bg-transparent"
+                            />
                         </motion.div>
                     )
                 )}

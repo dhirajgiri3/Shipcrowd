@@ -5,23 +5,27 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { NDREvent, NDRWorkflow } from '../../../../infrastructure/database/mongoose/models';
-import { AppError, ValidationError, NotFoundError, AuthenticationError } from '../../../../shared/errors/app.error';
+import { NDREvent, NDRWorkflow, Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import NDRDetectionService from '../../../../core/application/services/ndr/ndr-detection.service';
-import NDRClassificationService from '../../../../core/application/services/ndr/ndr-classification.service';
 import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
+import { NDRDataTransformerService } from '../../../../core/application/services/ndr/ndr-data-transformer.service';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import {
     listNDREventsQuerySchema,
     resolveNDRSchema,
+    takeNDRActionSchema,
     escalateNDRSchema,
     getNDRAnalyticsQuerySchema,
     getNDRTrendsQuerySchema,
     getTopNDRReasonsQuerySchema,
 } from '../../../../shared/validation/ndr-schemas';
+import mongoose from 'mongoose';
+import logger from '../../../../shared/logger/winston.logger';
+
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 
 export class NDRController {
@@ -48,20 +52,119 @@ export class NDRController {
             const {
                 status,
                 ndrType,
+                search,
+                startDate,
+                endDate,
                 page,
                 limit,
                 sortBy,
                 sortOrder,
             } = validation.data;
 
-            const filter: any = { company: companyId };
+            const companyObjectId = new mongoose.Types.ObjectId(companyId);
+            const filter: any = { company: companyObjectId };
 
+            logger.info('NDR listNDREvents - Query Debug', {
+                companyId,
+                companyIdType: typeof companyId,
+                objectId: companyObjectId,
+                filter,
+                status,
+                ndrType,
+                search,
+                startDate,
+                endDate,
+            });
+
+            // Map frontend status values to backend queries
             if (status) {
-                filter.status = status;
+                switch (status) {
+                    case 'open':
+                        filter.status = 'detected';
+                        break;
+                    case 'in_progress':
+                    case 'customer_action':
+                        filter.status = 'in_resolution';
+                        break;
+                    case 'rto':
+                        filter.status = 'rto_triggered';
+                        break;
+                    case 'action_required':
+                        // Action required includes both detected and in_resolution
+                        filter.status = { $in: ['detected', 'in_resolution'] };
+                        break;
+                    case 'reattempt_scheduled':
+                        filter.status = 'in_resolution';
+                        break;
+                    case 'converted_to_rto':
+                        filter.status = 'rto_triggered';
+                        break;
+                    default:
+                        filter.status = status;
+                }
             }
 
             if (ndrType) {
                 filter.ndrType = ndrType;
+            }
+
+            if (startDate || endDate) {
+                filter.detectedAt = {};
+                if (startDate) {
+                    filter.detectedAt.$gte = new Date(startDate);
+                }
+                if (endDate) {
+                    filter.detectedAt.$lte = new Date(endDate);
+                }
+            }
+
+            if (search) {
+                const searchRegex = new RegExp(escapeRegex(search), 'i');
+                const searchClauses: any[] = [
+                    { awb: searchRegex },
+                    { ndrReason: searchRegex },
+                    { ndrReasonClassified: searchRegex },
+                ];
+
+                if (mongoose.isValidObjectId(search)) {
+                    const searchObjectId = new mongoose.Types.ObjectId(search);
+                    searchClauses.push(
+                        { _id: searchObjectId },
+                        { shipment: searchObjectId },
+                        { order: searchObjectId }
+                    );
+                }
+
+                const [shipmentMatches, orderMatches] = await Promise.all([
+                    Shipment.find({
+                        companyId: companyObjectId,
+                        trackingNumber: searchRegex,
+                    })
+                        .select('_id')
+                        .limit(200)
+                        .lean(),
+                    Order.find({
+                        companyId: companyObjectId,
+                        $or: [
+                            { orderNumber: searchRegex },
+                            { 'customerInfo.name': searchRegex },
+                            { 'customerInfo.phone': searchRegex },
+                        ],
+                    })
+                        .select('_id')
+                        .limit(200)
+                        .lean(),
+                ]);
+
+                if (shipmentMatches.length > 0) {
+                    searchClauses.push({ shipment: { $in: shipmentMatches.map((row: any) => row._id) } });
+                }
+
+                if (orderMatches.length > 0) {
+                    searchClauses.push({ order: { $in: orderMatches.map((row: any) => row._id) } });
+                }
+
+                filter.$or = searchClauses;
             }
 
             const skip = (page - 1) * limit;
@@ -71,17 +174,21 @@ export class NDRController {
                     .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
                     .skip(skip)
                     .limit(limit)
-                    .populate('shipment order'),
+                    .populate('shipment order')
+                    .lean(),
                 NDREvent.countDocuments(filter),
             ]);
 
+            // Transform events to match frontend expectations
+            const transformedCases = NDRDataTransformerService.transformNDREvents(events);
+
             sendSuccess(res, {
-                data: events,
+                cases: transformedCases, // ✅ Changed from 'data' to 'cases'
                 pagination: {
                     page,
                     limit,
                     total,
-                    pages: Math.ceil(total / limit),
+                    totalPages: Math.ceil(total / limit), // ✅ Changed from 'pages' to 'totalPages'
                 },
             });
         } catch (error) {
@@ -100,14 +207,18 @@ export class NDRController {
             const { id } = req.params;
             const companyId = auth.companyId;
 
-            const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId })
-                .populate('shipment order');
+            const ndrEvent = await NDREvent.findOne({ _id: id, company: new mongoose.Types.ObjectId(companyId) })
+                .populate('shipment order')
+                .lean();
 
             if (!ndrEvent) {
                 throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
 
-            sendSuccess(res, { data: ndrEvent });
+            // Transform single event
+            const transformedCase = NDRDataTransformerService.transformNDREvent(ndrEvent);
+
+            sendSuccess(res, transformedCase); // ✅ Return transformed data directly
         } catch (error) {
             next(error);
         }
@@ -138,7 +249,7 @@ export class NDRController {
             const { resolution, notes, resolutionMethod } = validation.data;
 
             // Verify ownership
-            const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
+            const ndrEvent = await NDREvent.findOne({ _id: id, company: new mongoose.Types.ObjectId(companyId) });
             if (!ndrEvent) {
                 throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
@@ -147,6 +258,62 @@ export class NDRController {
             await NDRResolutionService.resolveNDR(id, resolution, userId || 'system', notes);
 
             sendSuccess(res, null, 'NDR resolved successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Take an action on NDR (seller/admin initiated)
+     * POST /ndr/events/:id/action
+     */
+    static async takeAction(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const { id } = req.params;
+            const userId = auth.userId || 'system';
+            const companyObjectId = new mongoose.Types.ObjectId(auth.companyId);
+
+            const validation = takeNDRActionSchema.safeParse(req.body);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message,
+                }));
+                throw new ValidationError('Validation failed', errors);
+            }
+
+            const ownership = await NDREvent.findOne({ _id: id, company: companyObjectId }).select('_id');
+            if (!ownership) {
+                throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
+            }
+
+            const {
+                action,
+                notes,
+                newAddress,
+                newDeliveryDate,
+                communicationChannel,
+            } = validation.data;
+
+            await NDRResolutionService.takeAction(id, action, userId, {
+                notes,
+                newAddress,
+                newDeliveryDate,
+                communicationChannel,
+            });
+
+            const updated = await NDREvent.findOne({ _id: id, company: companyObjectId })
+                .populate('shipment order')
+                .lean();
+
+            if (!updated) {
+                throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
+            }
+
+            const transformedCase = NDRDataTransformerService.transformNDREvent(updated);
+            sendSuccess(res, transformedCase, 'NDR action executed successfully');
         } catch (error) {
             next(error);
         }
@@ -175,7 +342,7 @@ export class NDRController {
             const { reason, escalateTo, priority, notes } = validation.data;
 
             // Verify ownership
-            const ndrEvent = await NDREvent.findOne({ _id: id, company: auth.companyId });
+            const ndrEvent = await NDREvent.findOne({ _id: id, company: new mongoose.Types.ObjectId(auth.companyId) });
             if (!ndrEvent) {
                 throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
@@ -200,7 +367,7 @@ export class NDRController {
             const { id } = req.params;
             const companyId = auth.companyId;
 
-            const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
+            const ndrEvent = await NDREvent.findOne({ _id: id, company: new mongoose.Types.ObjectId(companyId) });
             if (!ndrEvent) {
                 throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
@@ -402,7 +569,7 @@ export class NDRController {
             const companyId = auth.companyId;
 
             const workflows = await NDRWorkflow.find({
-                $or: [{ isDefault: true }, { company: companyId }],
+                $or: [{ isDefault: true }, { company: new mongoose.Types.ObjectId(companyId) }],
                 isActive: true,
             });
 

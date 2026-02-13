@@ -152,7 +152,7 @@ export default function AdminDisputeReviewPage() {
                                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                                     {dispute.disputeId}
                                 </h1>
-                                <StatusBadge status={dispute.status} className="text-base" />
+                                <StatusBadge domain="dispute" status={dispute.status} className="text-base" />
                             </div>
                             <p className="text-gray-600 dark:text-gray-400 mt-1 font-mono">
                                 AWB: {shipment?.trackingNumber || 'N/A'} | Detected: {formatDate(dispute.detectedAt)}
@@ -450,7 +450,7 @@ export default function AdminDisputeReviewPage() {
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-500 dark:text-gray-400">Outcome</span>
-                                        <StatusBadge status={dispute.resolution?.outcome || 'unknown'} />
+                                        <StatusBadge domain="dispute" status={dispute.resolution?.outcome || 'unknown'} />
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-500 dark:text-gray-400">Resolved By</span>

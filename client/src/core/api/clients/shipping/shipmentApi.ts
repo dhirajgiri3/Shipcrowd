@@ -6,6 +6,7 @@
 import { apiClient } from '@/src/core/api/http';
 
 export interface ShipmentDetails {
+    shipmentId: string;
     awbNumber: string;
     orderId: string;
     courier: string;
@@ -37,6 +38,99 @@ export interface ShipmentDetails {
         quantity: number;
     };
 }
+
+interface ShipmentListApiRecord {
+    _id: string;
+    trackingNumber?: string;
+    carrier?: string;
+    serviceType?: string;
+    createdAt?: string;
+    carrierDetails?: {
+        carrierTrackingNumber?: string;
+    };
+    packageDetails?: {
+        weight?: number;
+        dimensions?: { length?: number; width?: number; height?: number };
+    };
+    paymentDetails?: {
+        type?: string;
+        codAmount?: number;
+    };
+    pickupDetails?: {
+        contactPhone?: string;
+        warehouseId?: {
+            name?: string;
+            address?: {
+                line1?: string;
+                line2?: string;
+                city?: string;
+                state?: string;
+                postalCode?: string;
+            };
+            contactInfo?: { phone?: string };
+        };
+    };
+    deliveryDetails?: {
+        recipientName?: string;
+        recipientPhone?: string;
+        address?: {
+            line1?: string;
+            line2?: string;
+            city?: string;
+            state?: string;
+            postalCode?: string;
+        };
+    };
+    orderId?: {
+        _id?: string;
+        orderNumber?: string;
+        paymentMethod?: string;
+        products?: Array<{ name?: string; sku?: string; quantity?: number }>;
+    } | string;
+}
+
+const normalize = (value: unknown) => String(value || '').trim().toLowerCase();
+
+const mapShipmentToLabelDetails = (shipment: ShipmentListApiRecord): ShipmentDetails => {
+    const order = typeof shipment.orderId === 'object' && shipment.orderId ? shipment.orderId : undefined;
+    const warehouse = shipment.pickupDetails?.warehouseId;
+    const dimensions = shipment.packageDetails?.dimensions || {};
+    const firstProduct = order?.products?.[0];
+
+    return {
+        shipmentId: shipment._id,
+        awbNumber: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber || '',
+        orderId: order?.orderNumber || String(order?._id || ''),
+        courier: String(shipment.carrier || '').toUpperCase(),
+        service: shipment.serviceType || 'standard',
+        weight: `${Number(shipment.packageDetails?.weight || 0)} kg`,
+        dimensions: `${Number(dimensions.length || 0)}x${Number(dimensions.width || 0)}x${Number(dimensions.height || 0)} cm`,
+        paymentMode: normalize(shipment.paymentDetails?.type || order?.paymentMethod) === 'cod' ? 'COD' : 'Prepaid',
+        codAmount: Number(shipment.paymentDetails?.codAmount || 0),
+        createdAt: shipment.createdAt || new Date().toISOString(),
+        shipperDetails: {
+            name: warehouse?.name || 'Seller',
+            address: [warehouse?.address?.line1, warehouse?.address?.line2].filter(Boolean).join(', '),
+            city: warehouse?.address?.city || '',
+            state: warehouse?.address?.state || '',
+            pincode: warehouse?.address?.postalCode || '',
+            phone: shipment.pickupDetails?.contactPhone || warehouse?.contactInfo?.phone || '',
+        },
+        consigneeDetails: {
+            name: shipment.deliveryDetails?.recipientName || 'N/A',
+            address: [shipment.deliveryDetails?.address?.line1, shipment.deliveryDetails?.address?.line2].filter(Boolean).join(', '),
+            city: shipment.deliveryDetails?.address?.city || '',
+            state: shipment.deliveryDetails?.address?.state || '',
+            pincode: shipment.deliveryDetails?.address?.postalCode || '',
+            phone: shipment.deliveryDetails?.recipientPhone || '',
+        },
+        productDetails: {
+            name: firstProduct?.name || 'Shipment Item',
+            sku: firstProduct?.sku || 'N/A',
+            quantity: Number(firstProduct?.quantity || 1),
+        },
+    };
+};
 
 export interface TrackingActivity {
     date: string;
@@ -109,18 +203,40 @@ export const shipmentApi = {
      * Get shipment details by AWB
      */
     getShipmentByAwb: async (awb: string): Promise<ShipmentDetails> => {
-        // Encode the AWB to ensure special characters don't break the URL
-        const response = await apiClient.get<ShipmentDetails>(`/shipments/awb/${encodeURIComponent(awb)}`);
-        return response.data;
+        const response = await apiClient.get<{ success: boolean; data: ShipmentListApiRecord[] }>(
+            '/shipments',
+            { params: { search: awb, page: 1, limit: 10 } }
+        );
+        const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+        const target = normalize(awb);
+        const matched = rows.find((shipment) => {
+            const internal = normalize(shipment.trackingNumber);
+            const carrierAwb = normalize(shipment.carrierDetails?.carrierTrackingNumber);
+            return internal === target || carrierAwb === target;
+        });
+
+        if (!matched) {
+            throw new Error('Shipment not found');
+        }
+
+        return mapShipmentToLabelDetails(matched);
     },
 
     /**
      * Generate label for a shipment
      * Returns: Label HTML content or URL
      */
-    generateLabel: async (awb: string): Promise<{ labelUrl: string; htmlContent?: string }> => {
-        const response = await apiClient.post(`/shipments/${encodeURIComponent(awb)}/label`);
-        return response.data;
+    generateLabel: async (shipmentId: string): Promise<{ labelUrl: string; htmlContent?: string }> => {
+        const response = await apiClient.get(
+            `/shipments/${encodeURIComponent(shipmentId)}/label/download`,
+            {
+                params: { format: 'pdf' },
+                responseType: 'blob',
+            }
+        );
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const labelUrl = window.URL.createObjectURL(blob);
+        return { labelUrl };
     },
 
     /**
@@ -132,40 +248,42 @@ export const shipmentApi = {
 
         const data = response.data?.data || response.data;
 
-        // Check if backend already returned a normalized timeline
-        let timeline = [];
-        if (data.timeline && Array.isArray(data.timeline)) {
-            timeline = data.timeline;
-        } else {
-            // Fallback Mapping logic (only if backend returns raw data, which it shouldn't for internal API)
-            timeline = (data.activities || []).map((activity: any, index: number) => ({
-                status: activity.status || activity.activity,
-                location: activity.location,
-                timestamp: activity.date || activity.timestamp,
-                description: activity.description,
-                completed: true,
-                current: index === 0
-            }));
+        // Backend now returns properly formatted timeline
+        const timeline = data.timeline || [];
+
+        // Format estimated delivery date if it's an ISO string
+        let estimatedDelivery = 'N/A';
+        if (data.estimatedDelivery) {
+            try {
+                const date = new Date(data.estimatedDelivery);
+                estimatedDelivery = date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            } catch (e) {
+                estimatedDelivery = data.estimatedDelivery;
+            }
         }
 
         return {
-            awb: data.trackingNumber || data.awb || awb, // Backend returns trackingNumber
-            trackingNumber: data.trackingNumber || data.awb || awb,
-            currentStatus: data.currentStatus || data.current_status || 'Unknown',
-            status: data.currentStatus || data.current_status || 'Unknown',
-            estimatedDelivery: data.estimatedDelivery || data.expected_date || 'N/A',
-            actualDelivery: data.actualDelivery || data.delivered_date,
+            awb: data.awb || data.trackingNumber || awb,
+            trackingNumber: data.trackingNumber || awb,
+            currentStatus: data.currentStatus || 'Unknown',
+            status: data.currentStatus || 'Unknown',
+            createdAt: data.createdAt,
+            estimatedDelivery,
+            actualDelivery: data.actualDelivery,
             origin: data.origin || 'N/A',
             destination: data.destination || 'N/A',
-            recipient: {
-                name: data.recipient?.name || data.consignee_name,
-                city: data.recipient?.city || data.destination,
-                state: data.recipient?.state || ''
+            recipient: data.recipient || {
+                city: 'N/A',
+                state: 'N/A'
             },
-            carrier: data.carrier || data.courier_name || 'N/A',
-            courier: data.carrier || data.courier_name || 'N/A',
-            serviceType: data.serviceType || data.service_type || 'Standard',
-            timeline: timeline,
+            carrier: data.carrier || 'N/A',
+            courier: data.carrier || 'N/A',
+            serviceType: data.serviceType || 'Standard',
+            timeline,
             history: timeline
         };
     },

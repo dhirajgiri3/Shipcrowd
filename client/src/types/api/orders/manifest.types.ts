@@ -11,9 +11,7 @@ export type ManifestStatus = 'open' | 'closed' | 'handed_over';
 export type CourierPartner =
     | 'velocity'
     | 'delhivery'
-    | 'ekart'
-    | 'xpressbees'
-    | 'india_post';
+    | 'ekart';
 
 export interface ManifestShipment {
     shipmentId: string;

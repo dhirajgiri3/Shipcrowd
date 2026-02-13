@@ -64,7 +64,6 @@ export interface IRTOEvent extends Document {
 }
 
 interface IRTOEventModel extends Model<IRTOEvent> {
-    getPendingRTOs(companyId: string): Promise<IRTOEvent[]>;
     getByShipment(shipmentId: string): Promise<IRTOEvent | null>;
 }
 
@@ -274,18 +273,6 @@ RTOEventSchema.index(
         name: 'unique_active_rto_per_shipment'
     }
 );
-
-// Static: Get pending RTOs for company
-RTOEventSchema.statics.getPendingRTOs = async function (
-    companyId: string
-): Promise<IRTOEvent[]> {
-    return this.find({
-        company: companyId,
-        returnStatus: { $in: ['initiated', 'in_transit', 'qc_pending'] },
-    })
-        .sort({ triggeredAt: -1 })
-        .populate('shipment order warehouse');
-};
 
 // Static: Get RTO by shipment
 RTOEventSchema.statics.getByShipment = async function (

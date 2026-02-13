@@ -1,17 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../../http";
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { apiClient } from '../../http';
+import { queryKeys } from '../../config/query-keys';
 
-/**
- * RTO Analytics Hook
- * 
- * Provides comprehensive RTO data for dashboard:
- * - Current/previous rate comparison
- * - 6-month trend
- * - Courier breakdown with performance labels
- * - Reason distribution
- * - Actionable recommendations
- */
+export interface RTOAnalyticsFilters {
+    startDate?: string;
+    endDate?: string;
+    warehouseId?: string;
+    rtoReason?: string;
+}
 
 interface RTOByCourier {
     courier: string;
@@ -25,7 +22,6 @@ interface RTOByReason {
     label: string;
     percentage: number;
     count: number;
-    // ...
 }
 
 interface RTORecommendation {
@@ -43,16 +39,26 @@ export interface RTOAnalyticsData {
         totalRTO: number;
         totalOrders: number;
         estimatedLoss: number;
+        periodLabel: string;
+    };
+    stats: {
+        total: number;
+        byStatus: Record<string, number>;
+        byReason: Record<string, number>;
+        totalCharges: number;
+        avgCharges: number;
+        restockRate: number;
+        dispositionBreakdown: Record<string, number>;
+        avgQcTurnaroundHours?: number;
     };
     trend: Array<{ month: string; rate: number }>;
     byCourier: RTOByCourier[];
     byReason: RTOByReason[];
     recommendations: RTORecommendation[];
-}
-
-interface RTOAnalyticsFilters {
-    startDate?: string;
-    endDate?: string;
+    period: {
+        startDate: string;
+        endDate: string;
+    };
 }
 
 export function useRTOAnalytics(filters?: RTOAnalyticsFilters, options?: { enabled?: boolean }) {
@@ -61,10 +67,10 @@ export function useRTOAnalytics(filters?: RTOAnalyticsFilters, options?: { enabl
     const enabled = hasCompanyContext && (options?.enabled !== false);
 
     return useQuery({
-        queryKey: ["rto-analytics", filters],
+        queryKey: queryKeys.rto.analytics(filters),
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: RTOAnalyticsData }>(
-                '/analytics/rto',
+                '/rto/analytics',
                 { params: filters }
             );
             return data.data;

@@ -85,7 +85,7 @@ export default function RemittanceDetailPage() {
                                 {remittance.remittanceId}
                             </p>
                         </div>
-                        <StatusBadge status={remittance.status} className="text-base px-4 py-2" />
+                        <StatusBadge domain="remittance" status={remittance.status} className="text-base px-4 py-2" />
                     </div>
                 </div>
 
@@ -137,7 +137,7 @@ export default function RemittanceDetailPage() {
                         </h3>
                         {remittance.payout ? (
                             <>
-                                <StatusBadge status={remittance.payout.status} className="mb-2" />
+                                <StatusBadge domain="remittance" status={remittance.payout.status} className="mb-2" />
                                 {remittance.payout.utr && (
                                     <p className="text-xs font-mono text-[var(--text-primary)] mt-2">
                                         UTR: {remittance.payout.utr}

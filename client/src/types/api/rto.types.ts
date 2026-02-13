@@ -111,7 +111,7 @@ export const RTO_REASON_LABELS: Record<RTOReason, string> = {
     ndr_unresolved: 'Customer Unavailable',
     customer_cancellation: 'Customer Cancelled',
     qc_failure: 'QC Failure',
-    refused: 'Refused',
+    refused: 'Order Refused',
     damaged_in_transit: 'Damaged in Transit',
     incorrect_product: 'Incorrect / Address',
     other: 'Other',

@@ -604,6 +604,7 @@ export class ShipmentService {
             // Calculate estimated delivery
             const estimatedDelivery = new Date();
             estimatedDelivery.setDate(estimatedDelivery.getDate() + selectedOption.deliveryTime);
+            const canonicalCarrier = ShipmentService.resolveCanonicalCarrier(selectedOption.carrier);
 
             const resolvedPricingDetails =
                 pricingDetails || ShipmentService.buildPricingDetailsFromSelectedOption(selectedOption);
@@ -613,7 +614,7 @@ export class ShipmentService {
                 trackingNumber,
                 orderId: order._id,
                 companyId,
-                carrier: selectedOption.carrier,
+                carrier: canonicalCarrier,
                 serviceType,
                 packageDetails: {
                     weight: totalWeight,
@@ -686,7 +687,6 @@ export class ShipmentService {
             // This is the critical integration step - we call the carrier API AFTER
             // saving locally so we have a reference point for retries if API fails.
             // ========================================================================
-            const canonicalCarrier = ShipmentService.resolveCanonicalCarrier(selectedOption.carrier);
             const shouldCallCarrierApi = ShipmentService.supportsLiveCarrierSync(canonicalCarrier);
 
             if (shouldCallCarrierApi && warehouseId) {
@@ -1174,7 +1174,8 @@ export class ShipmentService {
             }
 
             // ✅ ON-DEMAND SYNC: Ensure warehouse is synced with carrier before creating shipment
-            const syncStatus = warehouse?.carrierDetails?.[canonicalCarrier]?.status;
+            const warehouseCarrierDetails = warehouse?.carrierDetails as Record<string, { status?: string }> | undefined;
+            const syncStatus = warehouseCarrierDetails?.[canonicalCarrier]?.status;
 
             if (!syncStatus || syncStatus === 'pending' || syncStatus === 'failed') {
                 logger.info('Warehouse not synced with carrier, attempting sync', {

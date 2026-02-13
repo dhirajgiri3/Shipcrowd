@@ -24,7 +24,7 @@ import { getManifestCarrierStrategy } from './manifest-carrier-strategy';
 interface CreateManifestData {
     companyId: string;
     warehouseId?: string;
-    carrier: 'velocity' | 'delhivery' | 'ekart' | 'xpressbees' | 'india_post';
+    carrier: 'velocity' | 'delhivery' | 'ekart';
     shipmentIds: string[];
     pickup: {
         scheduledDate: Date;
@@ -36,21 +36,13 @@ interface CreateManifestData {
 }
 
 class ManifestService {
-    private readonly ELIGIBLE_STATUSES = ['created', 'pending_pickup', 'ready_to_ship'];
+    private readonly ELIGIBLE_STATUSES = ['pending_pickup', 'ready_to_ship'];
 
     private normalizeCarrier(value?: string): string {
         const carrier = (value || '').toLowerCase();
 
         const supported = CourierProviderRegistry.toCanonical(carrier);
         if (supported) return supported;
-
-        if (carrier.includes('velocity') || carrier.includes('shipfast')) return 'velocity';
-        if (carrier.includes('delhivery')) return 'delhivery';
-        if (carrier.includes('ekart')) return 'ekart';
-        if (carrier.includes('xpressbees') || carrier.includes('xpress')) return 'xpressbees';
-        if (carrier.includes('india post') || carrier.includes('india_post') || carrier.includes('india-post') || carrier.includes('indiapost')) {
-            return 'india_post';
-        }
 
         return carrier;
     }
@@ -169,9 +161,25 @@ class ManifestService {
             }
 
             const requestedCarrier = this.normalizeCarrier(data.carrier);
+            if (!CourierProviderRegistry.isSupported(requestedCarrier)) {
+                throw new ValidationError(`Unsupported carrier '${data.carrier}'. Supported carriers: velocity, delhivery, ekart`);
+            }
             if (carriers[0] !== requestedCarrier) {
                 throw new ValidationError(
                     `Shipments belong to ${carriers[0]}, but manifest is for ${data.carrier}`
+                );
+            }
+
+            const missingAwbShipments = shipments.filter(
+                (s: any) => !String(s.carrierDetails?.carrierTrackingNumber || '').trim()
+            );
+            if (missingAwbShipments.length > 0) {
+                throw new ValidationError(
+                    `Cannot create manifest: ${missingAwbShipments.length} shipment(s) are missing carrier AWB`,
+                    {
+                        shipmentIds: missingAwbShipments.map((s: any) => s._id.toString()),
+                        reason: 'carrier_awb_missing',
+                    }
                 );
             }
 
@@ -193,6 +201,20 @@ class ManifestService {
             let carrierManifestId: string | undefined;
             let carrierManifestUrl: string | undefined;
             const carrierStrategy = getManifestCarrierStrategy(requestedCarrier);
+            if (carrierStrategy.pickupMode === 'shipment') {
+                const missingProviderShipments = shipments.filter(
+                    (s: any) => !String(s.carrierDetails?.providerShipmentId || '').trim()
+                );
+                if (missingProviderShipments.length > 0) {
+                    throw new ValidationError(
+                        `Cannot create manifest: ${missingProviderShipments.length} shipment(s) are missing provider shipment IDs for pickup scheduling`,
+                        {
+                            shipmentIds: missingProviderShipments.map((s: any) => s._id.toString()),
+                            reason: 'provider_shipment_id_missing',
+                        }
+                    );
+                }
+            }
 
             try {
                 const provider = await CourierFactory.getProvider(
@@ -217,7 +239,7 @@ class ManifestService {
 
                     const apiResult = await (provider as any).createManifest({
                         shipmentIds: shipments.map((s: any) => s._id.toString()),
-                        awbs: shipments.map((s: any) => s.carrierDetails?.carrierTrackingNumber || s.trackingNumber),
+                        awbs: shipments.map((s: any) => s.carrierDetails?.carrierTrackingNumber),
                         warehouseId: resolvedWarehouseId
                     });
 
@@ -245,7 +267,7 @@ class ManifestService {
             // Prepare shipment data
             const manifestShipments = shipments.map((s: any) => ({
                 shipmentId: s._id,
-                awb: s.carrierDetails?.carrierTrackingNumber || s.trackingNumber, // Prefer carrier AWB
+                awb: s.carrierDetails?.carrierTrackingNumber,
                 weight: s.packageDetails?.weight || 0,
                 packages: s.packageDetails?.packageCount || 1,
                 codAmount: s.paymentDetails?.type === 'cod' ? s.paymentDetails?.codAmount || 0 : 0,
@@ -587,6 +609,11 @@ class ManifestService {
             failedShipments: [] as Array<{ shipmentId: string; trackingNumber: string; error: string }>,
             skippedCarriers: [] as Array<{ carrier: string; reason: string; count: number }>,
         };
+        const requiredSchedulingFailures: Array<{
+            carrier: string;
+            shipmentId?: string;
+            reason: string;
+        }> = [];
 
         try {
             const shipments = await Shipment.find({
@@ -633,6 +660,10 @@ class ManifestService {
                             reason: 'Provider does not implement schedulePickup',
                             count: carrierBatch.length,
                         });
+                        requiredSchedulingFailures.push({
+                            carrier,
+                            reason: 'Provider does not implement schedulePickup',
+                        });
                         continue;
                     }
 
@@ -641,6 +672,10 @@ class ManifestService {
                         const warehouseId = first?.pickupDetails?.warehouseId;
                         if (!warehouseId) {
                             pickupResults.failed += carrierBatch.length;
+                            requiredSchedulingFailures.push({
+                                carrier,
+                                reason: 'Warehouse ID missing on shipment batch for warehouse-level pickup',
+                            });
                             continue;
                         }
 
@@ -649,17 +684,29 @@ class ManifestService {
 
                         if (!pickupLocationName) {
                             pickupResults.failed += carrierBatch.length;
+                            requiredSchedulingFailures.push({
+                                carrier,
+                                reason: 'Pickup location unavailable for warehouse-level pickup',
+                            });
                             continue;
                         }
 
-                        await provider.schedulePickup({
-                            pickupDate: manifest.pickup.scheduledDate.toISOString().split('T')[0],
-                            pickupTime: `${manifest.pickup.timeSlot.split('-')[0]}:00`,
-                            pickupLocation: pickupLocationName,
-                            expectedCount: carrierBatch.length,
-                        });
+                        try {
+                            await provider.schedulePickup({
+                                pickupDate: manifest.pickup.scheduledDate.toISOString().split('T')[0],
+                                pickupTime: `${manifest.pickup.timeSlot.split('-')[0]}:00`,
+                                pickupLocation: pickupLocationName,
+                                expectedCount: carrierBatch.length,
+                            });
 
-                        pickupResults.successful += carrierBatch.length;
+                            pickupResults.successful += carrierBatch.length;
+                        } catch (warehousePickupError: any) {
+                            pickupResults.failed += carrierBatch.length;
+                            requiredSchedulingFailures.push({
+                                carrier,
+                                reason: `Warehouse pickup scheduling failed: ${warehousePickupError?.message || 'Unknown error'}`,
+                            });
+                        }
                         continue;
                     }
 
@@ -674,6 +721,11 @@ class ManifestService {
                                 trackingNumber: shipment.trackingNumber,
                                 error: 'Missing providerShipmentId',
                             });
+                            requiredSchedulingFailures.push({
+                                carrier,
+                                shipmentId,
+                                reason: 'Missing providerShipmentId',
+                            });
                             continue;
                         }
 
@@ -687,6 +739,11 @@ class ManifestService {
                                 shipmentId,
                                 trackingNumber: shipment.trackingNumber,
                                 error: errorMsg,
+                            });
+                            requiredSchedulingFailures.push({
+                                carrier,
+                                shipmentId,
+                                reason: errorMsg,
                             });
 
                             try {
@@ -720,6 +777,11 @@ class ManifestService {
                             trackingNumber: shipment.trackingNumber,
                             error: providerError instanceof Error ? providerError.message : 'Unknown provider error',
                         });
+                        requiredSchedulingFailures.push({
+                            carrier,
+                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                            reason: providerError instanceof Error ? providerError.message : 'Unknown provider error',
+                        });
                     });
                     logger.warn(`Could not schedule pickup for carrier '${carrier}'`, {
                         error: providerError instanceof Error ? providerError.message : 'Unknown error',
@@ -728,6 +790,21 @@ class ManifestService {
             }
         } catch (error) {
             logger.error(`Error processing carrier pickup for manifest ${manifestId}:`, error);
+            requiredSchedulingFailures.push({
+                carrier: manifest.carrier,
+                reason: error instanceof Error ? error.message : 'Unexpected pickup processing error',
+            });
+        }
+
+        if (requiredSchedulingFailures.length > 0) {
+            throw new ValidationError(
+                'Cannot close manifest: required pickup scheduling failed',
+                {
+                    manifestId,
+                    failures: requiredSchedulingFailures,
+                    pickupResults,
+                }
+            );
         }
 
         manifest.status = 'closed';

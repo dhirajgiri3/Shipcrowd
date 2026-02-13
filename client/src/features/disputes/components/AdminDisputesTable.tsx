@@ -231,7 +231,7 @@ export function AdminDisputesTable() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <StatusBadge status={dispute.status} />
+                                            <StatusBadge domain="dispute" status={dispute.status} />
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <button

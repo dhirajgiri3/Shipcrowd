@@ -18,6 +18,7 @@ import { NDREvent, PreventionEvent } from '../../../../infrastructure/database/m
 import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
+import RTOAnalyticsService from '../rto/rto-analytics.service';
 
 interface DateRange {
     start: Date;
@@ -26,10 +27,13 @@ interface DateRange {
 
 interface NDRStats {
     total: number;
+    detected: number;
+    inResolution: number;
     active: number;
     resolved: number;
     escalated: number;
     rtoTriggered: number;
+    slaBreach: number;
     resolutionRate: number;
     avgResolutionTime: number; // hours
 }
@@ -49,7 +53,7 @@ export default class NDRAnalyticsService {
         companyId: string,
         dateRange?: DateRange
     ): Promise<NDRStats> {
-        const matchFilter: any = { company: companyId };
+        const matchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
 
         if (dateRange) {
             matchFilter.detectedAt = {
@@ -58,7 +62,7 @@ export default class NDRAnalyticsService {
             };
         }
 
-        const [statusCounts, resolutionStats] = await Promise.all([
+        const [statusCounts, resolutionStats, slaBreach] = await Promise.all([
             NDREvent.aggregate([
                 { $match: matchFilter },
                 {
@@ -88,6 +92,11 @@ export default class NDRAnalyticsService {
                     },
                 },
             ]),
+            NDREvent.countDocuments({
+                ...matchFilter,
+                status: { $in: ['detected', 'in_resolution'] },
+                resolutionDeadline: { $lt: new Date() },
+            }),
         ]);
 
         const statusMap: Record<string, number> = {};
@@ -95,22 +104,24 @@ export default class NDRAnalyticsService {
             statusMap[s._id] = s.count;
         });
 
-        const total =
-            (statusMap.detected || 0) +
-            (statusMap.in_resolution || 0) +
-            (statusMap.resolved || 0) +
-            (statusMap.escalated || 0) +
-            (statusMap.rto_triggered || 0);
-
+        const detected = statusMap.detected || 0;
+        const inResolution = statusMap.in_resolution || 0;
+        const escalated = statusMap.escalated || 0;
+        const rtoTriggered = statusMap.rto_triggered || 0;
         const resolved = statusMap.resolved || 0;
+        const total = detected + inResolution + resolved + escalated + rtoTriggered;
+
         const resolutionRate = total > 0 ? (resolved / total) * 100 : 0;
 
         return {
             total,
-            active: (statusMap.detected || 0) + (statusMap.in_resolution || 0),
+            detected,
+            inResolution,
+            active: detected + inResolution,
             resolved,
-            escalated: statusMap.escalated || 0,
-            rtoTriggered: statusMap.rto_triggered || 0,
+            escalated,
+            rtoTriggered,
+            slaBreach,
             resolutionRate: Math.round(resolutionRate * 100) / 100,
             avgResolutionTime:
                 Math.round((resolutionStats[0]?.avgResolutionTime || 0) * 100) / 100,
@@ -124,7 +135,7 @@ export default class NDRAnalyticsService {
         companyId: string,
         dateRange?: DateRange
     ): Promise<Record<string, number>> {
-        const matchFilter: any = { company: companyId };
+        const matchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
 
         if (dateRange) {
             matchFilter.detectedAt = {
@@ -159,7 +170,7 @@ export default class NDRAnalyticsService {
         const result = await NDREvent.aggregate([
             {
                 $match: {
-                    company: companyId,
+                    company: new mongoose.Types.ObjectId(companyId),
                     detectedAt: {
                         $gte: dateRange.start,
                         $lte: dateRange.end,
@@ -198,7 +209,7 @@ export default class NDRAnalyticsService {
         companyId: string
     ): Promise<Record<string, { total: number; successful: number; rate: number }>> {
         const result = await NDREvent.aggregate([
-            { $match: { company: companyId } },
+            { $match: { company: new mongoose.Types.ObjectId(companyId) } },
             { $unwind: '$resolutionActions' },
             {
                 $group: {
@@ -228,7 +239,8 @@ export default class NDRAnalyticsService {
      */
     static async getRTOStats(
         companyId: string,
-        dateRange?: DateRange
+        dateRange?: DateRange,
+        extraFilters?: { warehouseId?: string; rtoReason?: string }
     ): Promise<{
         total: number;
         byReason: Record<string, number>;
@@ -239,100 +251,21 @@ export default class NDRAnalyticsService {
         dispositionBreakdown: Record<string, number>;
         avgQcTurnaroundHours?: number;
     }> {
-        const matchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
-
-        if (dateRange) {
-            matchFilter.triggeredAt = {
-                $gte: dateRange.start,
-                $lte: dateRange.end,
-            };
-        }
-
-        const [overall, byReason, byStatus, byDisposition, qcTurnaround] = await Promise.all([
-            RTOEvent.aggregate([
-                { $match: matchFilter },
-                {
-                    $group: {
-                        _id: null,
-                        total: { $sum: 1 },
-                        totalCharges: { $sum: '$rtoCharges' },
-                        avgCharges: { $avg: '$rtoCharges' },
-                    },
-                },
-            ]),
-            RTOEvent.aggregate([
-                { $match: matchFilter },
-                { $group: { _id: '$rtoReason', count: { $sum: 1 } } },
-            ]),
-            RTOEvent.aggregate([
-                { $match: matchFilter },
-                { $group: { _id: '$returnStatus', count: { $sum: 1 } } },
-            ]),
-            RTOEvent.aggregate([
-                { $match: { ...matchFilter, disposition: { $exists: true, $ne: null } } },
-                { $group: { _id: '$disposition.action', count: { $sum: 1 } } },
-            ]),
-            RTOEvent.aggregate([
-                {
-                    $match: {
-                        ...matchFilter,
-                        'qcResult.inspectedAt': { $exists: true, $ne: null },
-                        triggeredAt: { $exists: true, $ne: null },
-                    },
-                },
-                {
-                    $project: {
-                        hours: {
-                            $divide: [
-                                { $subtract: ['$qcResult.inspectedAt', '$triggeredAt'] },
-                                3600000,
-                            ],
-                        },
-                    },
-                },
-                { $group: { _id: null, avgHours: { $avg: '$hours' } } },
-            ]),
-        ]);
-
-        const byReasonMap: Record<string, number> = {};
-        byReason.forEach((r) => {
-            byReasonMap[r._id] = r.count;
+        const analytics = await RTOAnalyticsService.getAnalytics(companyId, {
+            startDate: dateRange?.start?.toISOString(),
+            endDate: dateRange?.end?.toISOString(),
+            warehouseId: extraFilters?.warehouseId,
+            rtoReason: extraFilters?.rtoReason,
         });
-
-        const byStatusMap: Record<string, number> = {};
-        byStatus.forEach((r) => {
-            byStatusMap[r._id] = r.count;
-        });
-
-        const dispositionBreakdown: Record<string, number> = { restock: 0, refurb: 0, dispose: 0, claim: 0 };
-        byDisposition.forEach((r) => {
-            if (r._id && dispositionBreakdown[r._id] !== undefined) {
-                dispositionBreakdown[r._id] = r.count;
-            }
-        });
-
-        const completedCount =
-            (byStatusMap.restocked || 0) +
-            (byStatusMap.disposed || 0) +
-            (byStatusMap.refurbishing || 0) +
-            (byStatusMap.claim_filed || 0);
-        const restockRate =
-            completedCount > 0 && byStatusMap.restocked
-                ? Math.round((byStatusMap.restocked / completedCount) * 1000) / 10
-                : 0;
-
-        const avgQcTurnaroundHours =
-            qcTurnaround[0]?.avgHours != null ? Math.round(qcTurnaround[0].avgHours * 10) / 10 : undefined;
-
         return {
-            total: overall[0]?.total || 0,
-            byReason: byReasonMap,
-            byStatus: byStatusMap,
-            totalCharges: overall[0]?.totalCharges || 0,
-            avgCharges: Math.round((overall[0]?.avgCharges || 0) * 100) / 100,
-            restockRate,
-            dispositionBreakdown,
-            avgQcTurnaroundHours,
+            total: analytics.stats.total,
+            byReason: analytics.stats.byReason,
+            byStatus: analytics.stats.byStatus,
+            totalCharges: analytics.stats.totalCharges,
+            avgCharges: analytics.stats.avgCharges,
+            restockRate: analytics.stats.restockRate,
+            dispositionBreakdown: analytics.stats.dispositionBreakdown,
+            avgQcTurnaroundHours: analytics.stats.avgQcTurnaroundHours,
         };
     }
 
@@ -344,7 +277,7 @@ export default class NDRAnalyticsService {
         limit: number = 10
     ): Promise<{ reason: string; count: number; percentage: number }[]> {
         const result = await NDREvent.aggregate([
-            { $match: { company: companyId } },
+            { $match: { company: new mongoose.Types.ObjectId(companyId) } },
             { $group: { _id: '$ndrReason', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
             { $limit: limit },
@@ -369,7 +302,7 @@ export default class NDRAnalyticsService {
     ): Promise<Record<string, { total: number; ndrCount: number; ndrRate: number }>> {
         // First, get total shipments per carrier
         const shipmentMatchFilter: any = { companyId };
-        const ndrMatchFilter: any = { company: companyId };
+        const ndrMatchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
 
         if (dateRange) {
             shipmentMatchFilter.createdAt = {
@@ -452,12 +385,6 @@ export default class NDRAnalyticsService {
             result[carrier].ndrRate = total > 0 ? Math.round((ndrCount / total) * 100 * 100) / 100 : 0;
         });
 
-        logger.info('getNDRByCourier completed', {
-            companyId,
-            carriersAnalyzed: Object.keys(result).length,
-            dateRange: dateRange ? { start: dateRange.start, end: dateRange.end } : 'all time',
-        });
-
         return result;
     }
 
@@ -475,11 +402,11 @@ export default class NDRAnalyticsService {
         const [ndrStats, rtoStats, recentNDRs, recentRTOs] = await Promise.all([
             this.getNDRStats(companyId),
             this.getRTOStats(companyId),
-            NDREvent.find({ company: companyId })
+            NDREvent.find({ company: new mongoose.Types.ObjectId(companyId) })
                 .sort({ detectedAt: -1 })
                 .limit(10)
                 .populate('shipment order'),
-            RTOEvent.find({ company: companyId })
+            RTOEvent.find({ company: new mongoose.Types.ObjectId(companyId) })
                 .sort({ triggeredAt: -1 })
                 .limit(10)
                 .populate('shipment order'),
@@ -506,7 +433,7 @@ export default class NDRAnalyticsService {
         responseRate: number;
         actionBreakdown: Record<string, number>;
     }> {
-        const matchFilter: any = { company: companyId };
+        const matchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
         if (dateRange) {
             matchFilter.detectedAt = { $gte: dateRange.start, $lte: dateRange.end };
         }

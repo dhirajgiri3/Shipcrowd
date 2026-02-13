@@ -27,6 +27,7 @@ interface DataTableProps<T> {
         totalItems: number;
         onPageChange: (page: number) => void;
     };
+    disablePagination?: boolean; // Disable internal pagination when parent handles it
 }
 
 export const DataTable = React.memo(DataTableComponent) as typeof DataTableComponent;
@@ -41,7 +42,8 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
     sortBy,
     sortOrder,
     onSort,
-    pagination
+    pagination,
+    disablePagination = false
 }: DataTableProps<T>) {
     // Client-side state fallback
     const [localSortConfig, setLocalSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -74,13 +76,13 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
         return sorted;
     }, [data, localSortConfig, onSort]);
 
-    // Client-side pagination logic (only if pagination prop is NOT provided)
+    // Client-side pagination logic (only if pagination prop is NOT provided AND not disabled)
     const displayData = React.useMemo(() => {
-        if (pagination) return processedData; // Server-side pagination
+        if (pagination || disablePagination) return processedData; // Server-side pagination or disabled
 
         const start = (localCurrentPage - 1) * itemsPerPage;
         return processedData.slice(start, start + itemsPerPage);
-    }, [processedData, localCurrentPage, pagination]);
+    }, [processedData, localCurrentPage, pagination, disablePagination]);
 
     const handleHeaderClick = (key: string) => {
         if (onSort) {
@@ -179,7 +181,7 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {!disablePagination && totalPages > 1 && (
                 <div className="flex items-center justify-between px-2">
                     <p className="text-sm text-[var(--text-muted)]">
                         Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}

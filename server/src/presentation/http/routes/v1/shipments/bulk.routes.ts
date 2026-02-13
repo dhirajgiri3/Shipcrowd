@@ -18,15 +18,4 @@ router.post(
     BulkShipmentController.createBulkManifest
 );
 
-/**
- * @route POST /shipments/bulk/labels
- * @desc Generate merged PDF of labels for multiple shipments
- * @access Private
- */
-router.post(
-    '/labels',
-    requireAccess({ tier: AccessTier.PRODUCTION }),
-    BulkShipmentController.generateBulkLabels
-);
-
 export default router;

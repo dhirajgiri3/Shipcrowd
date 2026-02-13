@@ -9,7 +9,7 @@ import {
     IndianRupee,
     ArrowRight,
 } from 'lucide-react';
-import { useRTOStats } from '@/src/core/api/hooks/rto/useRTOManagement';
+import { useRTOAnalytics } from '@/src/core/api/hooks/rto/useRTOAnalytics';
 
 const cardVariants = {
     hidden: { opacity: 0, y: 12 },
@@ -32,10 +32,11 @@ export function RTODashboardCards({
     periodLabel = 'Selected Period',
 }: RTODashboardCardsProps) {
     const router = useRouter();
-    const { data: stats, isLoading, error } = useRTOStats({ startDate, endDate });
+    const { data: analytics, isLoading, error } = useRTOAnalytics({ startDate, endDate });
 
     if (error) return null;
 
+    const stats = analytics?.stats;
     const pendingQC = stats?.byStatus?.qc_pending ?? 0;
     const inTransit = stats?.byStatus?.in_transit ?? 0;
     const totalByStatus = stats?.byStatus
@@ -43,6 +44,15 @@ export function RTODashboardCards({
         : 0;
     const total = (stats?.total ?? 0) > 0 ? (stats?.total ?? 0) : totalByStatus;
     const totalCharges = stats?.totalCharges ?? 0;
+    const baseParams = new URLSearchParams();
+    if (startDate) baseParams.set('startDate', startDate);
+    if (endDate) baseParams.set('endDate', endDate);
+    const buildRTOUrl = (returnStatus?: string) => {
+        const params = new URLSearchParams(baseParams.toString());
+        if (returnStatus) params.set('returnStatus', returnStatus);
+        const query = params.toString();
+        return query ? `/seller/rto?${query}` : '/seller/rto';
+    };
 
     const cards = [
         {
@@ -105,7 +115,7 @@ export function RTODashboardCards({
                 </div>
                 <button
                     type="button"
-                    onClick={() => router.push('/seller/rto')}
+                    onClick={() => router.push(buildRTOUrl())}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] transition-colors"
                 >
                     View all RTO
@@ -137,11 +147,11 @@ export function RTODashboardCards({
                                     custom={i}
                                     onClick={() => {
                                         if (card.key === 'qc_pending') {
-                                            router.push('/seller/rto?returnStatus=qc_pending');
+                                            router.push(buildRTOUrl('qc_pending'));
                                         } else if (card.key === 'in_transit') {
-                                            router.push('/seller/rto?returnStatus=in_transit');
+                                            router.push(buildRTOUrl('in_transit'));
                                         } else {
-                                            router.push('/seller/rto');
+                                            router.push(buildRTOUrl());
                                         }
                                     }}
                                     className={`w-full text-left rounded-xl border p-4 transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.99] ${card.bgClass}`}

@@ -45,8 +45,7 @@ const courierDisplayNames: Record<string, string> = {
     velocity: 'Velocity',
     delhivery: 'Delhivery',
     ekart: 'Ekart',
-    xpressbees: 'XpressBees',
-    india_post: 'India Post',
+
 };
 
 // ==================== Component ====================

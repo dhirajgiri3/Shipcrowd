@@ -96,12 +96,6 @@ export interface IntegrationFilters extends FilterParams {
   isActive?: boolean;
 }
 
-export interface ManifestFilters extends FilterParams {
-  status?: 'pending' | 'generated' | 'handed_over' | 'closed';
-  courier?: string;
-  dateRange?: DateRangeParams;
-}
-
 export interface CommunicationRuleFilters extends FilterParams {
   channel?: 'email' | 'sms' | 'whatsapp';
   category?: string;
@@ -147,6 +141,10 @@ export interface WeightDiscrepancyFilters extends FilterParams {
 export interface RtoFilters extends FilterParams {
   reason?: string;
   courier?: string;
+  rtoReason?: string;
+  warehouseId?: string;
+  startDate?: string;
+  endDate?: string;
   dateRange?: DateRangeParams;
 }
 
@@ -452,20 +450,6 @@ export const queryKeys = {
       list: (filters?: FilterParams) => ['admin', 'companies', 'list', filters],
       stats: () => ['admin', 'companies', 'stats'],
     },
-  },
-
-  // ========================================================================
-  // MANIFESTS DOMAIN
-  // ========================================================================
-  manifests: {
-    all: () => ['manifests'],
-    list: (filters?: ManifestFilters) => ['manifests', 'list', filters],
-    detail: (id: string) => ['manifests', 'detail', id],
-    stats: () => ['manifests', 'stats'],
-    byStatus: (status: string) => ['manifests', 'status', status],
-    byCourier: (courier: string) => ['manifests', 'courier', courier],
-    pendingReconciliation: () => ['manifests', 'pending-reconciliation'],
-    eligibleShipments: (courier?: string) => ['manifests', 'eligible-shipments', courier],
   },
 
   // ========================================================================

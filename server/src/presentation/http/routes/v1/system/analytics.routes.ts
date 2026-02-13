@@ -122,12 +122,6 @@ router.get('/seller-actions', authenticate, asyncHandler(analyticsController.get
 router.get('/recent-customers', authenticate, asyncHandler(analyticsController.getRecentCustomers));
 
 /**
- * Phase 4: RTO Analytics (Dashboard)
- * @route GET /api/v1/analytics/rto
- */
-router.get('/rto', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getRTOAnalytics));
-
-/**
  * Phase 4: Profitability Analytics (Dashboard)
  * @route GET /api/v1/analytics/profitability
  */

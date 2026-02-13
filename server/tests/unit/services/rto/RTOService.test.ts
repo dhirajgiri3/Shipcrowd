@@ -6,6 +6,7 @@
  */
 
 import RTOService from '../../../../src/core/application/services/rto/rto.service';
+import RTOAnalyticsService from '../../../../src/core/application/services/rto/rto-analytics.service';
 import mongoose from 'mongoose';
 import { AppError } from '../../../../src/shared/errors/app.error';
 
@@ -335,12 +336,35 @@ describe('RTOService', () => {
 
     describe('getRTOStats', () => {
         it('should return RTO statistics for company', async () => {
-            (RTOEvent.aggregate as any)
-                .mockResolvedValueOnce([{ _id: null, total: 2, avgCharges: 62.5 }])
-                .mockResolvedValueOnce([
-                    { _id: 'ndr_unresolved', count: 1 },
-                    { _id: 'customer_cancellation', count: 1 },
-                ]);
+            const spy = jest.spyOn(RTOAnalyticsService, 'getAnalytics').mockResolvedValueOnce({
+                summary: {
+                    currentRate: 2,
+                    previousRate: 1,
+                    change: 1,
+                    industryAverage: 10.5,
+                    totalRTO: 2,
+                    totalOrders: 100,
+                    estimatedLoss: 125,
+                    periodLabel: 'Last 30 Days',
+                },
+                stats: {
+                    total: 2,
+                    byReason: { ndr_unresolved: 1, customer_cancellation: 1 },
+                    byStatus: { initiated: 2 },
+                    totalCharges: 125,
+                    avgCharges: 62.5,
+                    restockRate: 0,
+                    dispositionBreakdown: { restock: 0, refurb: 0, dispose: 0, claim: 0 },
+                },
+                trend: [],
+                byCourier: [],
+                byReason: [],
+                recommendations: [],
+                period: {
+                    startDate: new Date('2025-01-01').toISOString(),
+                    endDate: new Date('2025-01-31').toISOString(),
+                },
+            } as any);
 
             const stats = await RTOService.getRTOStats('company123');
 
@@ -349,34 +373,85 @@ describe('RTOService', () => {
             expect(stats.byReason!['ndr_unresolved']).toBe(1);
             expect(stats.byReason!['customer_cancellation']).toBe(1);
             expect(stats.avgCharges).toBe(62.5);
-            expect(stats.returnRate).toBe(0);
+            expect(stats.returnRate).toBe(2);
+            spy.mockRestore();
         });
 
         it('should accept optional date range', async () => {
-            (RTOEvent.aggregate as any)
-                .mockResolvedValueOnce([{ _id: null, total: 1, avgCharges: 50 }])
-                .mockResolvedValueOnce([{ _id: 'ndr_unresolved', count: 1 }]);
+            const spy = jest.spyOn(RTOAnalyticsService, 'getAnalytics').mockResolvedValueOnce({
+                summary: {
+                    currentRate: 1,
+                    previousRate: 0,
+                    change: 1,
+                    industryAverage: 10.5,
+                    totalRTO: 1,
+                    totalOrders: 100,
+                    estimatedLoss: 50,
+                    periodLabel: 'Custom Range',
+                },
+                stats: {
+                    total: 1,
+                    byReason: { ndr_unresolved: 1 },
+                    byStatus: { initiated: 1 },
+                    totalCharges: 50,
+                    avgCharges: 50,
+                    restockRate: 0,
+                    dispositionBreakdown: { restock: 0, refurb: 0, dispose: 0, claim: 0 },
+                },
+                trend: [],
+                byCourier: [],
+                byReason: [],
+                recommendations: [],
+                period: {
+                    startDate: new Date('2025-01-01').toISOString(),
+                    endDate: new Date('2025-01-31').toISOString(),
+                },
+            } as any);
 
             const start = new Date('2025-01-01');
             const end = new Date('2025-01-31');
             await RTOService.getRTOStats('company123', { start, end });
 
-            expect(RTOEvent.aggregate).toHaveBeenCalledWith(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        $match: expect.objectContaining({
-                            company: 'company123',
-                            triggeredAt: { $gte: start, $lte: end },
-                        }),
-                    }),
-                ])
+            expect(spy).toHaveBeenCalledWith(
+                'company123',
+                expect.objectContaining({
+                    startDate: start.toISOString(),
+                    endDate: end.toISOString(),
+                })
             );
+            spy.mockRestore();
         });
 
         it('should return zero totals and empty byReason when no RTOs', async () => {
-            (RTOEvent.aggregate as any)
-                .mockResolvedValueOnce([{ _id: null, total: 0, avgCharges: 0 }])
-                .mockResolvedValueOnce([]);
+            const spy = jest.spyOn(RTOAnalyticsService, 'getAnalytics').mockResolvedValueOnce({
+                summary: {
+                    currentRate: 0,
+                    previousRate: 0,
+                    change: 0,
+                    industryAverage: 10.5,
+                    totalRTO: 0,
+                    totalOrders: 0,
+                    estimatedLoss: 0,
+                    periodLabel: 'Last 30 Days',
+                },
+                stats: {
+                    total: 0,
+                    byReason: {},
+                    byStatus: {},
+                    totalCharges: 0,
+                    avgCharges: 0,
+                    restockRate: 0,
+                    dispositionBreakdown: { restock: 0, refurb: 0, dispose: 0, claim: 0 },
+                },
+                trend: [],
+                byCourier: [],
+                byReason: [],
+                recommendations: [],
+                period: {
+                    startDate: new Date('2025-01-01').toISOString(),
+                    endDate: new Date('2025-01-31').toISOString(),
+                },
+            } as any);
 
             const stats = await RTOService.getRTOStats('company456');
 
@@ -384,18 +459,42 @@ describe('RTOService', () => {
             expect(stats.avgCharges).toBe(0);
             expect(stats.byReason).toEqual({});
             expect(stats.returnRate).toBe(0);
+            spy.mockRestore();
         });
     });
 
     describe('getRTOAnalytics', () => {
         it('should return analytics summary, trend, byCourier, byReason and recommendations', async () => {
             const validCompanyId = new mongoose.Types.ObjectId().toString();
-            (RTOEvent.countDocuments as any).mockResolvedValue(5);
-            (Shipment.countDocuments as any).mockResolvedValue(100);
-            (RTOEvent.aggregate as any)
-                .mockResolvedValueOnce([{ avgCharge: 80 }])
-                .mockResolvedValueOnce([]);
-            (Shipment.aggregate as any).mockResolvedValue([]);
+            const spy = jest.spyOn(RTOAnalyticsService, 'getAnalytics').mockResolvedValueOnce({
+                summary: {
+                    currentRate: 5,
+                    previousRate: 3,
+                    change: 2,
+                    industryAverage: 10.5,
+                    totalRTO: 5,
+                    totalOrders: 100,
+                    estimatedLoss: 400,
+                    periodLabel: 'Last 30 Days',
+                },
+                stats: {
+                    total: 5,
+                    byReason: { ndr_unresolved: 3, customer_cancellation: 2 },
+                    byStatus: { initiated: 5 },
+                    totalCharges: 400,
+                    avgCharges: 80,
+                    restockRate: 0,
+                    dispositionBreakdown: { restock: 0, refurb: 0, dispose: 0, claim: 0 },
+                },
+                trend: [{ month: 'Jan', rate: 5 }],
+                byCourier: [{ courier: 'Velocity', rate: 5, count: 5, total: 100 }],
+                byReason: [{ reason: 'ndr_unresolved', label: 'Customer Unavailable', percentage: 60, count: 3 }],
+                recommendations: [],
+                period: {
+                    startDate: new Date('2025-01-01').toISOString(),
+                    endDate: new Date('2025-01-31').toISOString(),
+                },
+            } as any);
 
             const analytics = await RTOService.getRTOAnalytics(validCompanyId);
 
@@ -407,6 +506,7 @@ describe('RTOService', () => {
             expect(analytics.byCourier).toBeDefined();
             expect(analytics.byReason).toBeDefined();
             expect(analytics.recommendations).toBeDefined();
+            spy.mockRestore();
         });
     });
 

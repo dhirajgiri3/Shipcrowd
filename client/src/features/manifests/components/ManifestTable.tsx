@@ -32,8 +32,6 @@ const courierDisplayNames: Record<CourierPartner, string> = {
     velocity: 'Velocity',
     delhivery: 'Delhivery',
     ekart: 'Ekart',
-    xpressbees: 'XpressBees',
-    india_post: 'India Post',
 };
 
 // ==================== Props ====================

@@ -25,6 +25,7 @@ import WalletService from '../wallet/wallet.service';
 import { RTONotificationService } from './rto-notification.service';
 import ServiceRatePricingService from './rate-card.service';
 import InventoryService from '../warehouse/inventory.service';
+import RTOAnalyticsService from './rto-analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
@@ -64,10 +65,7 @@ export default class RTOService {
     private static readonly RTO_RATE_LIMIT = 10; // Max RTOs per minute per company
     private static readonly RTO_RATE_WINDOW_SECONDS = 60; // 1 minute
 
-    // Benchmarks & Defaults
-    private static readonly INDUSTRY_RTO_AVG = 10.5; // Benchmark for Indian e-commerce COD (Industry Standard)
     private static readonly DEFAULT_RTO_CHARGE = 50; // Fallback flat rate if calculation fails
-    private static readonly FALLBACK_AVG_RTO_CHARGE = 80; // Used for estimates if no history exists
 
     /**
      * Check rate limit for RTO triggers
@@ -1141,42 +1139,15 @@ export default class RTOService {
         avgCharges: number;
         returnRate: number;
     }> {
-        const matchFilter: any = { company: companyId };
-
-        if (dateRange) {
-            matchFilter.triggeredAt = {
-                $gte: dateRange.start,
-                $lte: dateRange.end,
-            };
-        }
-
-        const [totalStats, reasonStats] = await Promise.all([
-            RTOEvent.aggregate([
-                { $match: matchFilter },
-                {
-                    $group: {
-                        _id: null,
-                        total: { $sum: 1 },
-                        avgCharges: { $avg: '$rtoCharges' },
-                    },
-                },
-            ]),
-            RTOEvent.aggregate([
-                { $match: matchFilter },
-                { $group: { _id: '$rtoReason', count: { $sum: 1 } } },
-            ]),
-        ]);
-
-        const byReason: Record<string, number> = {};
-        reasonStats.forEach((r) => {
-            byReason[r._id] = r.count;
+        const analytics = await RTOAnalyticsService.getAnalytics(companyId, {
+            startDate: dateRange?.start?.toISOString(),
+            endDate: dateRange?.end?.toISOString(),
         });
-
         return {
-            total: totalStats[0]?.total || 0,
-            byReason,
-            avgCharges: totalStats[0]?.avgCharges || 0,
-            returnRate: 0, // Metric requires total shipment count context, to be implemented in AnalyticsService
+            total: analytics.stats.total,
+            byReason: analytics.stats.byReason,
+            avgCharges: analytics.stats.avgCharges,
+            returnRate: analytics.summary.currentRate,
         };
     }
 
@@ -1199,226 +1170,24 @@ export default class RTOService {
         byReason: Array<{ reason: string; label: string; percentage: number; count: number }>;
         recommendations: Array<{ type: string; message: string; impact?: string }>;
     }> {
-        const now = new Date();
-        const currentStart = dateRange?.start || new Date(now.getFullYear(), now.getMonth(), 1);
-        const currentEnd = dateRange?.end || now;
-        const periodMs = Math.max(24 * 60 * 60 * 1000, currentEnd.getTime() - currentStart.getTime());
-        const previousEnd = new Date(currentStart.getTime() - 1);
-        const previousStart = new Date(previousEnd.getTime() - periodMs);
-
-        // Current + previous month stats using proper models
-        const [currentRTOs, currentShipments, previousRTOs, previousShipments] = await Promise.all([
-            RTOEvent.countDocuments({
-                company: new mongoose.Types.ObjectId(companyId),
-                triggeredAt: { $gte: currentStart, $lte: currentEnd }
-            }),
-            Shipment.countDocuments({
-                companyId: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: currentStart, $lte: currentEnd }
-            }),
-            RTOEvent.countDocuments({
-                company: new mongoose.Types.ObjectId(companyId),
-                triggeredAt: { $gte: previousStart, $lte: previousEnd }
-            }),
-            Shipment.countDocuments({
-                companyId: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: previousStart, $lte: previousEnd }
-            })
-        ]);
-
-        const currentRate = currentShipments > 0 ? (currentRTOs / currentShipments) * 100 : 0;
-        const previousRate = previousShipments > 0 ? (previousRTOs / previousShipments) * 100 : 0;
-        const change = previousRate > 0 ? currentRate - previousRate : (currentRate > 0 ? currentRate : 0);
-        const industryAverage = this.INDUSTRY_RTO_AVG;
-
-        // ✅ DYNAMIC: Calculate actual average RTO charge from recent history (last 30 days)
-        // If not enough data, fall back to configured average
-        const [avgChargeResult] = await RTOEvent.aggregate([
-            {
-                $match: {
-                    company: new mongoose.Types.ObjectId(companyId),
-                    rtoCharges: { $gt: 0 },
-                    triggeredAt: { $gte: previousStart } // Include previous comparable range for better sample
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    avgCharge: { $avg: '$rtoCharges' }
-                }
-            }
-        ]);
-
-        const avgRTOCharge = avgChargeResult?.avgCharge
-            ? Math.round(avgChargeResult.avgCharge)
-            : this.FALLBACK_AVG_RTO_CHARGE;
-
-        const estimatedLoss = currentRTOs * avgRTOCharge;
-
-        // 6-month trend using proper model
-        const trend: Array<{ month: string; rate: number }> = [];
-        for (let i = 5; i >= 0; i--) {
-            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
-            const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' });
-
-            const [rtos, shipments] = await Promise.all([
-                RTOEvent.countDocuments({
-                    company: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: monthStart, $lte: monthEnd }
-                }),
-                Shipment.countDocuments({
-                    companyId: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: monthStart, $lte: monthEnd }
-                })
-            ]);
-
-            const rate = shipments > 0 ? (rtos / shipments) * 100 : 0;
-            trend.push({ month: monthName, rate: Math.round(rate * 10) / 10 });
-        }
-
-        // Courier breakdown using Shipment model aggregation
-        const courierBreakdown = await RTOEvent.aggregate([
-            {
-                $match: {
-                    company: new mongoose.Types.ObjectId(companyId),
-                    triggeredAt: { $gte: currentStart, $lte: currentEnd },
-                }
-            },
-            {
-                $lookup: {
-                    from: 'shipments',
-                    localField: 'shipment',
-                    foreignField: '_id',
-                    as: 'shipmentDetails',
-                },
-            },
-            {
-                $unwind: {
-                    path: '$shipmentDetails',
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            {
-                $group: {
-                    _id: '$shipmentDetails.carrier',
-                    rtoCount: { $sum: 1 }
-                }
-            }
-        ]);
-
-        const courierTotals = await Shipment.aggregate([
-            {
-                $match: {
-                    companyId: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: currentStart, $lte: currentEnd }
-                }
-            },
-            {
-                $group: {
-                    _id: '$carrier',
-                    total: { $sum: 1 }
-                }
-            }
-        ]);
-
-        const courierMap = new Map(courierTotals.map((c: any) => [c._id, c.total]));
-        const byCourier = courierBreakdown.map((item: any) => {
-            const total = courierMap.get(item._id) || 0;
-            const rate = total > 0 ? (item.rtoCount / total) * 100 : 0;
-            return {
-                courier: item._id || 'Unknown',
-                rate: Math.round(rate * 10) / 10,
-                count: item.rtoCount,
-                total
-            };
-        }).sort((a, b) => a.rate - b.rate); // Best courier first (lowest RTO rate)
-
-        // Reason breakdown using RTOEvent model
-        const reasonBreakdown = await RTOEvent.aggregate([
-            {
-                $match: {
-                    company: new mongoose.Types.ObjectId(companyId),
-                    triggeredAt: { $gte: currentStart, $lte: currentEnd }
-                }
-            },
-            {
-                $group: {
-                    _id: '$rtoReason',
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
-
-        const totalReasonCount = reasonBreakdown.reduce((sum, r) => sum + r.count, 0);
-        const reasonLabels: Record<string, string> = {
-            'ndr_unresolved': 'Customer Unavailable',
-            'customer_cancellation': 'Customer Refused',
-            'refused': 'Order Refused',
-            'incorrect_product': 'Incorrect Address',
-            'damaged_in_transit': 'Damaged',
-            'qc_failure': 'QC Failure',
-            'other': 'Other'
-        };
-
-        const byReason = reasonBreakdown.map(item => ({
-            reason: item._id,
-            label: reasonLabels[item._id] || item._id,
-            percentage: totalReasonCount > 0 ? Math.round((item.count / totalReasonCount) * 100) : 0,
-            count: item.count
-        })).sort((a, b) => b.percentage - a.percentage);
-
-        // Generate smart recommendations based on data patterns
-        const recommendations: Array<{ type: string; message: string; impact?: string }> = [];
-
-        // Recommendation 1: Courier switching if high variance exists
-        if (byCourier.length > 1) {
-            const worst = byCourier[byCourier.length - 1];
-            const best = byCourier[0];
-            if (worst.rate - best.rate > 3) { // >3% difference
-                const savings = Math.round((worst.count - (worst.total * best.rate / 100)) * avgRTOCharge);
-                recommendations.push({
-                    type: 'courier_switch',
-                    message: `Switch orders from ${worst.courier} to ${best.courier}`,
-                    impact: `Save ₹${savings.toLocaleString()}/month`
-                });
-            }
-        }
-
-        // Recommendation 2: Address verification if incorrect address is significant
-        const addressReason = byReason.find(r => r.reason === 'incorrect_product');
-        if (addressReason && addressReason.percentage > 10) {
-            recommendations.push({
-                type: 'verification',
-                message: 'Enable address verification before dispatch',
-                impact: 'Reduce incorrect address RTOs by 40%'
-            });
-        }
-
-        // Recommendation 3: IVR confirmation if customer unavailable is high
-        const unavailableReason = byReason.find(r => r.reason === 'ndr_unresolved');
-        if (unavailableReason && unavailableReason.percentage > 30) {
-            recommendations.push({
-                type: 'verification',
-                message: 'Enable IVR confirmation for COD orders above ₹1,000',
-                impact: 'Reduce customer unavailable by 25%'
-            });
-        }
-
+        const analytics = await RTOAnalyticsService.getAnalytics(companyId, {
+            startDate: dateRange?.start?.toISOString(),
+            endDate: dateRange?.end?.toISOString(),
+        });
         return {
             summary: {
-                currentRate: Math.round(currentRate * 10) / 10,
-                previousRate: Math.round(previousRate * 10) / 10,
-                change: Math.round(change * 10) / 10,
-                industryAverage,
-                totalRTO: currentRTOs,
-                totalOrders: currentShipments,
-                estimatedLoss
+                currentRate: analytics.summary.currentRate,
+                previousRate: analytics.summary.previousRate,
+                change: analytics.summary.change,
+                industryAverage: analytics.summary.industryAverage,
+                totalRTO: analytics.summary.totalRTO,
+                totalOrders: analytics.summary.totalOrders,
+                estimatedLoss: analytics.summary.estimatedLoss,
             },
-            trend,
-            byCourier,
-            byReason,
-            recommendations
+            trend: analytics.trend,
+            byCourier: analytics.byCourier,
+            byReason: analytics.byReason,
+            recommendations: analytics.recommendations,
         };
     }
 }

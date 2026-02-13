@@ -9,7 +9,8 @@ import {
     CourierRateResponse,
     CourierReverseShipmentData,
     CourierReverseShipmentResponse,
-    CourierPODResponse
+    CourierPODResponse,
+    CourierLabelResponse
 } from '../base/courier.adapter';
 import { DelhiveryAuth } from './delhivery.auth';
 import { DelhiveryMapper } from './delhivery.mapper';
@@ -608,5 +609,56 @@ export class DelhiveryProvider extends BaseCourierAdapter {
             manifestId: result.manifestNumber,
             manifestUrl: result.manifestDownloadUrl
         };
+    }
+
+    async getLabel(
+        trackingIds: string[],
+        format: 'pdf' | 'json' = 'pdf'
+    ): Promise<CourierLabelResponse> {
+        if (!trackingIds || trackingIds.length === 0) {
+            throw new DelhiveryError(400, 'At least one waybill is required', false);
+        }
+
+        const wbns = trackingIds.join(',');
+        await this.rateLimiter.acquire('/api/p/packing_slip');
+
+        const response = await this.circuitBreaker.execute(async () => {
+            return retryWithBackoff(async () => {
+                return this.httpClient.get('/api/p/packing_slip', {
+                    headers: await this.getHeaders(),
+                    params: {
+                        wbns,
+                        pdf: 'true',
+                        pdf_size: '4R',
+                    },
+                    responseType: format === 'pdf' ? 'arraybuffer' : 'json',
+                });
+            }, 3, 1000);
+        });
+
+        if (format === 'json') {
+            const data: any = response.data;
+            const url =
+                (typeof data === 'string' && data.startsWith('http') ? data : '') ||
+                data?.url ||
+                data?.packages?.[0]?.pdf_download_link;
+
+            if (!url) {
+                throw new DelhiveryError(502, 'Delhivery label URL unavailable in response', true);
+            }
+
+            return {
+                labels: trackingIds.map((trackingId) => ({
+                    tracking_id: trackingId,
+                    label_url: url,
+                })),
+            };
+        }
+
+        // Delhivery can respond with either a direct PDF buffer or URL metadata.
+        if (Buffer.isBuffer(response.data)) {
+            return { pdfBuffer: response.data };
+        }
+        return { pdfBuffer: Buffer.from(response.data as ArrayBuffer) };
     }
 }

@@ -48,6 +48,7 @@ export interface RTOFilters {
     warehouseId?: string;
     startDate?: string;
     endDate?: string;
+    search?: string;
     page?: number;
     limit?: number;
     sortBy?: 'triggeredAt' | 'expectedReturnDate' | 'actualReturnDate';
@@ -88,45 +89,6 @@ export interface ExecuteDispositionPayload {
     notes?: string;
 }
 
-/** Response from GET /rto/analytics/stats (for dashboard cards + enhanced analytics) */
-export interface RTOStatsResponse {
-    total: number;
-    byReason: Record<string, number>;
-    byStatus: Record<string, number>;
-    totalCharges: number;
-    avgCharges: number;
-    /** Restock rate % among completed RTOs (restocked / (restocked+disposed+refurbishing+claim_filed)) */
-    restockRate?: number;
-    /** Counts by disposition action */
-    dispositionBreakdown?: Record<string, number>;
-    /** Average hours from RTO initiation to QC completion */
-    avgQcTurnaroundHours?: number;
-}
-
-/**
- * Get RTO stats for dashboard (counts by status, total charges).
- * GET /rto/analytics/stats
- */
-export function useRTOStats(params?: { startDate?: string; endDate?: string }, options?: UseQueryOptions<RTOStatsResponse, ApiError>) {
-    const queryParams: Record<string, string> = {};
-    if (params?.startDate) queryParams.startDate = params.startDate;
-    if (params?.endDate) queryParams.endDate = params.endDate;
-
-    return useQuery<RTOStatsResponse, ApiError>({
-        queryKey: [...queryKeys.rto.all(), 'stats', params],
-        queryFn: async () => {
-            const response = await apiClient.get<{ success: boolean; data: RTOStatsResponse }>(
-                '/rto/analytics/stats',
-                { params: Object.keys(queryParams).length ? queryParams : undefined }
-            );
-            return response.data?.data ?? response.data;
-        },
-        ...CACHE_TIMES.SHORT,
-        retry: RETRY_CONFIG.DEFAULT,
-        ...options,
-    });
-}
-
 /**
  * Get list of RTO events with filters
  * GET /rto/events
@@ -141,6 +103,7 @@ export function useRTOEvents(filters?: RTOFilters, options?: UseQueryOptions<RTO
     if (filters?.warehouseId) params.warehouseId = filters.warehouseId;
     if (filters?.startDate) params.startDate = filters.startDate;
     if (filters?.endDate) params.endDate = filters.endDate;
+    if (filters?.search) params.search = filters.search;
     if (filters?.sortBy) params.sortBy = filters.sortBy;
     if (filters?.sortOrder) params.sortOrder = filters.sortOrder;
 
@@ -280,6 +243,7 @@ export function usePerformRTOQC(
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.analytics(), exact: false });
             showSuccessToast('RTO quality check recorded successfully');
         },
         onError: (error) => handleApiError(error),
@@ -309,6 +273,7 @@ export function useUpdateRTOStatus(
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.analytics(), exact: false });
             showSuccessToast('RTO status updated');
         },
         onError: (error) => handleApiError(error),
@@ -361,6 +326,7 @@ export function useExecuteDisposition(
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.detail(variables.rtoId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.analytics(), exact: false });
             showSuccessToast('Disposition applied');
         },
         onError: (error) => handleApiError(error),
@@ -398,6 +364,7 @@ export function useTriggerRTO(
             queryClient.invalidateQueries({ queryKey: queryKeys.rto.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.rto.analytics(), exact: false });
             showSuccessToast('RTO triggered successfully');
         },
         onError: (error) => handleApiError(error),

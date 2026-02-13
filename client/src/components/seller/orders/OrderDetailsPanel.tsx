@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, MapPin, Package, CreditCard, Truck, Calendar, Printer, Share2 } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Package } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
-import { Badge } from '@/src/components/ui/core/Badge';
-import { cn, formatCurrency } from '@/src/lib/utils';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { cn, formatCurrency, formatDate } from '@/src/lib/utils';
 import { Order } from '@/src/types/domain/order';
 
 interface OrderDetailsPanelProps {
@@ -16,6 +17,8 @@ interface OrderDetailsPanelProps {
 export const OrderDetailsPanel = React.memo(OrderDetailsPanelComponent);
 
 function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) {
+    const router = useRouter();
+
     if (!order) return null;
 
     return (
@@ -61,20 +64,11 @@ function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) 
                             <div className="flex items-center justify-between bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-subtle)]">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Status</p>
-                                    <div className="flex items-center gap-2">
-                                        <div className={cn("w-2 h-2 rounded-full",
-                                            order.currentStatus === 'delivered' ? "bg-green-500" :
-                                                order.currentStatus === 'cancelled' ? "bg-red-500" :
-                                                    "bg-blue-500"
-                                        )} />
-                                        <span className="font-bold text-[var(--text-primary)] capitalize">{order.currentStatus.replace(/_/g, ' ')}</span>
-                                    </div>
+                                    <StatusBadge domain="order" status={order.currentStatus} size="sm" />
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Payment</p>
-                                    <Badge variant={order.paymentStatus === 'paid' ? 'success' : 'warning'} className="capitalize">
-                                        {order.paymentStatus}
-                                    </Badge>
+                                    <StatusBadge domain="payment" status={order.paymentStatus} size="sm" />
                                 </div>
                             </div>
 
@@ -118,9 +112,9 @@ function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) 
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-bold text-[var(--text-primary)] truncate">{product.name}</p>
-                                                <p className="text-xs text-[var(--text-muted)] mt-1">SKU: TEST-SKU-{idx}</p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-1">SKU: {product.sku || 'N/A'}</p>
                                                 <div className="flex items-center justify-between mt-2">
-                                                    <Badge variant="secondary" className="text-xs">Qty: {product.quantity}</Badge>
+                                                    <span className="text-xs bg-[var(--bg-secondary)] px-2 py-0.5 rounded text-[var(--text-secondary)] border border-[var(--border-subtle)]">Qty: {product.quantity}</span>
                                                     <span className="font-mono text-sm font-semibold">{formatCurrency(product.price)}</span>
                                                 </div>
                                             </div>
@@ -150,15 +144,7 @@ function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) 
                             </div>
                         </div>
 
-                        {/* Footer Actions */}
-                        <div className="p-6 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] flex gap-3">
-                            <Button className="flex-1 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
-                                <Printer className="w-4 h-4 mr-2" /> Print Label
-                            </Button>
-                            <Button variant="outline" className="flex-1">
-                                <Truck className="w-4 h-4 mr-2" /> Track
-                            </Button>
-                        </div>
+
                     </motion.div>
                 </>
             )}

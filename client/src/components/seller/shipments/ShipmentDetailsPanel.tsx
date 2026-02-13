@@ -1,17 +1,50 @@
 "use client";
 
 import React, { useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { DetailPanel } from '@/src/components/ui/layout/DetailPanel';
 import { Button } from '@/src/components/ui/core/Button';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { useShipmentPOD, useUploadShipmentPOD } from '@/src/core/api/hooks/logistics/usePod';
+import { useGenerateLabel } from '@/src/core/api/hooks/seller/useShipment';
 import {
     Package, MapPin, User, Phone, Truck, Calendar,
     IndianRupee, Copy, ExternalLink, FileText, Upload, Loader2
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { Shipment } from '@/src/types/domain/admin';
+
+interface Shipment {
+    id?: string;
+    _id?: string;
+    trackingNumber?: string;
+    awb?: string;
+    orderNumber?: string;
+    orderId?: any;
+    status?: string;
+    currentStatus?: string;
+    courier?: string;
+    carrier?: string;
+    serviceType?: string;
+    weight?: number;
+    codAmount?: number;
+    customer?: any;
+    deliveryDetails?: any;
+    pickupDetails?: any;
+    packageDetails?: any;
+    paymentDetails?: any;
+    origin?: any;
+    destination?: any;
+    createdAt?: string;
+    quoteSnapshot?: {
+        provider?: string;
+        serviceName?: string;
+        quotedSellAmount?: number;
+        expectedCostAmount?: number;
+        expectedMarginAmount?: number;
+        confidence?: 'high' | 'medium' | 'low';
+    };
+}
 
 interface ShipmentDetailsPanelProps {
     shipment: Shipment | null;
@@ -22,15 +55,18 @@ export const ShipmentDetailsPanel = React.memo(ShipmentDetailsPanelComponent);
 
 function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPanelProps) {
     const { addToast } = useToast();
+    const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const shipmentId = shipment ? ((shipment as any)._id || shipment.id) : '';
+    const trackingNumber = shipment ? ((shipment as any).trackingNumber || (shipment as any).awb || shipment.awb) : '';
 
     const { data: pod, isLoading: isPodLoading } = useShipmentPOD(shipmentId, {
         queryKey: ['shipment-pod', shipmentId],
         enabled: !!shipment && !!shipmentId,
     });
     const { mutate: uploadPod, isPending: isUploading } = useUploadShipmentPOD();
+    const { mutate: generateLabel, isPending: isGeneratingLabel } = useGenerateLabel();
 
     if (!shipment) return null;
 
@@ -51,16 +87,41 @@ function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPan
         event.target.value = '';
     };
 
+    const handleDownloadLabel = () => {
+        if (!shipmentId) return;
+        generateLabel(shipmentId);
+    };
+
+    const handleTrack = () => {
+        if (!trackingNumber) {
+            addToast('Tracking number not available', 'error');
+            return;
+        }
+        router.push(`/seller/tracking?awb=${trackingNumber}`);
+    };
+
     const footer = (
         <div className="flex gap-3">
-            <Button variant="outline" className="flex-1">
-                <FileText className="w-4 h-4 mr-2" /> Download Label
+            <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleDownloadLabel}
+                disabled={isGeneratingLabel || !shipmentId}
+            >
+                {isGeneratingLabel ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                    <FileText className="w-4 h-4 mr-2" />
+                )}
+                Download Label
             </Button>
-            <Button variant="outline" className="flex-1">
+            <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleTrack}
+                disabled={!trackingNumber}
+            >
                 <ExternalLink className="w-4 h-4 mr-2" /> Track
-            </Button>
-            <Button className="flex-1 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
-                <Phone className="w-4 h-4 mr-2" /> Support
             </Button>
         </div>
     );
@@ -69,7 +130,7 @@ function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPan
         <DetailPanel
             isOpen={!!shipment}
             onClose={onClose}
-            title={`AWB: ${shipment.awb}`}
+            title={`AWB: ${trackingNumber || 'N/A'}`}
             subtitle={`Order: ${(shipment as any).orderId?.orderNumber || shipment.orderNumber || 'N/A'}`}
             footer={footer}
             width="lg"
@@ -80,13 +141,15 @@ function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPan
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">AWB Number</p>
                         <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-lg text-[var(--text-primary)]">{shipment.awb}</span>
-                            <button
-                                onClick={() => handleCopy(shipment.awb, 'AWB')}
-                                className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-                            >
-                                <Copy className="h-3.5 w-3.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]" />
-                            </button>
+                            <span className="font-mono font-bold text-lg text-[var(--text-primary)]">{trackingNumber || 'N/A'}</span>
+                            {trackingNumber && (
+                                <button
+                                    onClick={() => handleCopy(trackingNumber, 'AWB')}
+                                    className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                                >
+                                    <Copy className="h-3.5 w-3.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]" />
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div className="text-right">
@@ -179,7 +242,7 @@ function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPan
                                 <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
                                 <p className="text-xs text-[var(--text-muted)]">Created</p>
                             </div>
-                            <p className="font-medium text-[var(--text-primary)]">{formatDate(shipment.createdAt)}</p>
+                            <p className="font-medium text-[var(--text-primary)]">{shipment.createdAt ? formatDate(shipment.createdAt) : 'N/A'}</p>
                         </div>
                     </div>
                 </div>

@@ -101,6 +101,11 @@ export interface CourierPODResponse {
     message?: string;
 }
 
+export interface CourierLabelResponse {
+    labels?: Array<{ tracking_id: string; label_url: string }>;
+    pdfBuffer?: Buffer;
+}
+
 export interface CourierRateRequest {
     origin: {
         pincode: string;
@@ -308,6 +313,14 @@ export interface ICourierAdapter {
      * Proof of Delivery (POD) retrieval (optional)
      */
     getProofOfDelivery?(trackingNumber: string): Promise<CourierPODResponse>;
+
+    /**
+     * Label retrieval (optional)
+     */
+    getLabel?(
+        trackingIds: string[],
+        format?: 'pdf' | 'json'
+    ): Promise<CourierLabelResponse>;
 }
 
 /**

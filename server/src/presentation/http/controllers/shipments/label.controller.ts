@@ -1,60 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
+import axios from 'axios';
 import LabelService from '../../../../core/application/services/shipping/label.service';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import DelhiveryLabelAdapter from '../../../../infrastructure/external/couriers/delhivery/delhivery-label.adapter';
-import EkartLabelAdapter from '../../../../infrastructure/external/couriers/ekart/ekart-label.adapter';
-import IndiaPostLabelAdapter from '../../../../infrastructure/external/couriers/india-post/india-post-label.adapter';
-import VelocityLabelAdapter from '../../../../infrastructure/external/couriers/velocity/velocity-label.adapter';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import axios from 'axios';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-
-/**
- * Label Controller
- * Handles label generation and download endpoints
- * 
- * Endpoints:
- * 1. POST /shipments/:id/label - Generate label
- * 2. GET /shipments/:id/label/download - Download label
- * 3. POST /shipments/bulk-labels - Bulk generation
- * 4. POST /shipments/:id/label/reprint - Reprint label
- * 5. GET /shipments/:id/label/formats - Get supported formats
- */
+import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import CourierProviderRegistry from '../../../../core/application/services/courier/courier-provider-registry';
 
 class LabelController {
-    private carrierAdapters: {
-        [key: string]: typeof VelocityLabelAdapter | typeof DelhiveryLabelAdapter | typeof EkartLabelAdapter | typeof IndiaPostLabelAdapter;
-    } = {
-            velocity: VelocityLabelAdapter,
-            'velocity-shipfast': VelocityLabelAdapter,
-            delhivery: DelhiveryLabelAdapter,
-            ekart: EkartLabelAdapter,
-            india_post: IndiaPostLabelAdapter,
-        };
-
-    private resolveCarrierAdapter(carrier?: string) {
-        const normalized = String(carrier || '').toLowerCase();
-
-        if (this.carrierAdapters[normalized]) {
-            return this.carrierAdapters[normalized];
-        }
-        if (normalized.includes('velocity')) {
-            return this.carrierAdapters.velocity;
-        }
-        if (normalized.includes('delhivery')) {
-            return this.carrierAdapters.delhivery;
-        }
-        if (normalized.includes('ekart')) {
-            return this.carrierAdapters.ekart;
-        }
-        if (normalized.includes('india_post') || normalized.includes('indiapost')) {
-            return this.carrierAdapters.india_post;
-        }
-
-        return undefined;
-    }
-
     private getStoredLabelUrl(shipment: any): string | undefined {
         const docs = Array.isArray(shipment?.documents) ? shipment.documents : [];
         const labelDoc = [...docs]
@@ -71,23 +27,83 @@ class LabelController {
         return Buffer.from(response.data);
     }
 
+    private canUseCarrierLabel(shipment: any): { allowed: boolean; reason?: string } {
+        const carrier = String(shipment?.carrier || '').toLowerCase();
+        const carrierAwb = String(shipment?.carrierDetails?.carrierTrackingNumber || '').trim();
+        const storedLabelUrl = this.getStoredLabelUrl(shipment);
+
+        const normalizedStatus = String(shipment?.currentStatus || '').toLowerCase();
+        if (normalizedStatus === 'awaiting_sync' || normalizedStatus === 'awaiting_carrier_sync') {
+            return { allowed: false, reason: 'Shipment is awaiting carrier sync' };
+        }
+
+        if (carrier === 'velocity') {
+            if (!storedLabelUrl) {
+                return { allowed: false, reason: 'Velocity label URL not stored yet' };
+            }
+            return { allowed: true };
+        }
+
+        if (!carrierAwb) {
+            return { allowed: false, reason: 'Carrier AWB is not available yet' };
+        }
+
+        return { allowed: true };
+    }
+
     private async generateCarrierLabelPdfBuffer(shipment: any, awb: string): Promise<Buffer | null> {
-        const adapter = this.resolveCarrierAdapter(shipment?.carrier);
-        if (!adapter) {
+        const canonicalCarrier = CourierProviderRegistry.toCanonical(String(shipment?.carrier || ''));
+        if (!canonicalCarrier) {
             return null;
         }
 
-        const label = await adapter.generateLabel({
-            awb,
-            label_url: this.getStoredLabelUrl(shipment),
-        });
-
-        if (label.format === 'pdf' && Buffer.isBuffer(label.data)) {
-            return label.data as Buffer;
+        const eligibility = this.canUseCarrierLabel(shipment);
+        if (!eligibility.allowed) {
+            logger.info('Skipping carrier label fetch, using internal label fallback', {
+                shipmentId: shipment?._id?.toString?.() || shipment?._id,
+                carrier: shipment?.carrier,
+                reason: eligibility.reason,
+            });
+            return null;
         }
 
-        if (label.format === 'url' && typeof label.data === 'string') {
-            return this.fetchLabelBufferFromUrl(label.data);
+        if (canonicalCarrier === 'velocity') {
+            const storedLabelUrl = this.getStoredLabelUrl(shipment);
+            if (!storedLabelUrl) {
+                return null;
+            }
+            try {
+                return await this.fetchLabelBufferFromUrl(storedLabelUrl);
+            } catch (error: any) {
+                logger.warn('Velocity stored label URL fetch failed, using internal fallback', {
+                    shipmentId: shipment?._id?.toString?.() || shipment?._id,
+                    awb,
+                    error: error?.message || error,
+                });
+                return null;
+            }
+        }
+
+        const companyId =
+            shipment?.companyId instanceof mongoose.Types.ObjectId
+                ? shipment.companyId
+                : new mongoose.Types.ObjectId(String(shipment?.companyId));
+
+        const provider = await CourierFactory.getProvider(canonicalCarrier, companyId);
+        if (typeof provider.getLabel !== 'function') {
+            return null;
+        }
+
+        const labelResult = await provider.getLabel([awb], 'pdf');
+        if (labelResult?.pdfBuffer && Buffer.isBuffer(labelResult.pdfBuffer)) {
+            return labelResult.pdfBuffer;
+        }
+
+        if (labelResult?.labels?.length) {
+            const labelUrl = labelResult.labels[0]?.label_url;
+            if (typeof labelUrl === 'string' && labelUrl.trim()) {
+                return this.fetchLabelBufferFromUrl(labelUrl);
+            }
         }
 
         return null;
@@ -146,41 +162,47 @@ class LabelController {
         };
     }
 
-    /**
-     * Generate label for a shipment
-     * POST /shipments/:id/label
-     */
+    private async getCompanyShipmentOrThrow(req: Request, shipmentId: string, populate: boolean = true): Promise<any> {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+
+        const query = {
+            _id: shipmentId,
+            companyId: new mongoose.Types.ObjectId(auth.companyId),
+            isDeleted: false,
+        };
+
+        const shipmentQuery = Shipment.findOne(query);
+        if (populate) {
+            shipmentQuery.populate('pickupDetails.warehouseId').populate('orderId', 'orderNumber');
+        }
+
+        const shipment = await shipmentQuery;
+        if (!shipment) {
+            throw new NotFoundError('Shipment not found');
+        }
+
+        return shipment;
+    }
+
     generateLabel = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
-            const { format = 'pdf' } = req.body || {}; // pdf or zpl
+            const { format = 'pdf' } = req.body || {};
 
             if (!['pdf', 'zpl'].includes(format)) {
                 throw new ValidationError('Invalid format. Must be pdf or zpl.');
             }
 
-            const shipment = await Shipment.findById(id)
-                .populate('pickupDetails.warehouseId')
-                .populate('orderId', 'orderNumber');
-            if (!shipment) {
-                throw new NotFoundError('Shipment not found');
-            }
-
+            const shipment = await this.getCompanyShipmentOrThrow(req, id);
             const shipmentData = this.buildShipmentLabelData(shipment);
 
             let labelBuffer: Buffer;
 
             if (format === 'pdf') {
                 try {
-                    const carrierLabelBuffer = await this.generateCarrierLabelPdfBuffer(
-                        shipment,
-                        shipmentData.awb
-                    );
-                    if (carrierLabelBuffer) {
-                        labelBuffer = carrierLabelBuffer;
-                    } else {
-                        labelBuffer = await LabelService.generatePDF(shipmentData);
-                    }
+                    const carrierLabelBuffer = await this.generateCarrierLabelPdfBuffer(shipment, shipmentData.awb);
+                    labelBuffer = carrierLabelBuffer || await LabelService.generatePDF(shipmentData);
                 } catch (error: any) {
                     logger.warn('Carrier label generation failed, using internal PDF fallback', {
                         shipmentId: id,
@@ -207,40 +229,23 @@ class LabelController {
         }
     }
 
-    /**
-     * Download label
-     * GET /shipments/:id/label/download?format=pdf|zpl
-     */
     downloadLabel = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
             const format = (req.query?.format as string) || 'pdf';
 
-            if (!['pdf', 'zpl'].includes(format as string)) {
+            if (!['pdf', 'zpl'].includes(format)) {
                 throw new ValidationError('Invalid format. Must be pdf or zpl.');
             }
 
-            const shipment = await Shipment.findById(id)
-                .populate('pickupDetails.warehouseId')
-                .populate('orderId', 'orderNumber');
-            if (!shipment) {
-                throw new NotFoundError('Shipment not found');
-            }
-
+            const shipment = await this.getCompanyShipmentOrThrow(req, id);
             const shipmentData = this.buildShipmentLabelData(shipment);
 
             if (format === 'pdf') {
                 let labelBuffer: Buffer;
                 try {
-                    const carrierLabelBuffer = await this.generateCarrierLabelPdfBuffer(
-                        shipment,
-                        shipmentData.awb
-                    );
-                    if (carrierLabelBuffer) {
-                        labelBuffer = carrierLabelBuffer;
-                    } else {
-                        labelBuffer = await LabelService.generatePDF(shipmentData);
-                    }
+                    const carrierLabelBuffer = await this.generateCarrierLabelPdfBuffer(shipment, shipmentData.awb);
+                    labelBuffer = carrierLabelBuffer || await LabelService.generatePDF(shipmentData);
                 } catch (error: any) {
                     logger.warn('Carrier label download failed, using internal PDF fallback', {
                         shipmentId: id,
@@ -265,12 +270,10 @@ class LabelController {
         }
     }
 
-    /**
-     * Generate bulk labels
-     * POST /shipments/bulk-labels
-     */
     generateBulkLabels = async (req: Request, res: Response, next: NextFunction) => {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { shipmentIds } = req.body || {};
 
             if (!Array.isArray(shipmentIds) || shipmentIds.length === 0) {
@@ -281,16 +284,17 @@ class LabelController {
                 throw new ValidationError('Maximum 100 shipments allowed per bulk request');
             }
 
-            const shipments = await Shipment.find({ _id: { $in: shipmentIds } }).populate('pickupDetails.warehouseId');
+            const shipments = await Shipment.find({
+                _id: { $in: shipmentIds },
+                companyId: new mongoose.Types.ObjectId(auth.companyId),
+                isDeleted: false,
+            }).populate('pickupDetails.warehouseId');
 
-            if (shipments.length === 0) {
-                throw new NotFoundError('No shipments found');
+            if (shipments.length !== shipmentIds.length) {
+                throw new ValidationError('One or more shipment IDs are invalid or do not belong to your company');
             }
 
-            const shipmentsData = shipments.map((shipment) => {
-                return this.buildShipmentLabelData(shipment);
-            });
-
+            const shipmentsData = shipments.map((shipment) => this.buildShipmentLabelData(shipment));
             const bulkPDF = await LabelService.generateBulk(shipmentsData);
 
             res.setHeader('Content-Type', 'application/pdf');
@@ -303,39 +307,31 @@ class LabelController {
         }
     }
 
-    /**
-     * Reprint label (same as generate)
-     * POST /shipments/:id/label/reprint
-     */
     reprintLabel = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            // Call generateLabel with same logic
             await this.generateLabel(req, res, next);
         } catch (error) {
             next(error);
         }
     }
 
-    /**
-     * Get supported label formats for carrier
-     * GET /shipments/:id/label/formats
-     */
     getSupportedFormats = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
+            const shipment = await this.getCompanyShipmentOrThrow(req, id, false);
+            const canonicalCarrier = CourierProviderRegistry.toCanonical(String(shipment.carrier || ''));
 
-            const shipment = await Shipment.findById(id);
-            if (!shipment) {
-                throw new NotFoundError('Shipment not found');
+            let supportedFormats: Array<'pdf' | 'zpl' | 'url'> = ['pdf', 'zpl'];
+            if (canonicalCarrier === 'velocity') {
+                supportedFormats = ['url'];
+            } else if (canonicalCarrier === 'delhivery' || canonicalCarrier === 'ekart') {
+                supportedFormats = ['pdf', 'url'];
             }
-
-            const adapter = this.resolveCarrierAdapter(shipment.carrier);
-            const formats = adapter ? adapter.getFormats() : ['pdf', 'zpl'];
 
             sendSuccess(res, {
                 carrier: shipment.carrier,
-                supportedFormats: formats,
-                internalFormats: ['pdf', 'zpl'], // Always available via label service
+                supportedFormats,
+                internalFormats: ['pdf', 'zpl'],
             });
         } catch (error) {
             next(error);

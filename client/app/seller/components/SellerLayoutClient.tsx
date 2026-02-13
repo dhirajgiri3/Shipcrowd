@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Sidebar } from '@/src/components/seller/Sidebar';
-import { Header } from '@/src/components/seller/Header';
+import { Sidebar } from '@/src/components/seller/layout/Sidebar';
+import { Header } from '@/src/components/seller/layout/Header';
 import { ThemeProvider } from '@/src/components/shared/ThemeProvider';
 import { ToastProvider } from '@/src/components/ui/feedback/Toast';
 import { AuthGuard } from '@/src/features/auth/components/AuthGuard';

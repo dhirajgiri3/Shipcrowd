@@ -159,7 +159,7 @@ export function ShipmentTable({
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <StatusBadge status={shipment.currentStatus} />
+                                        <StatusBadge domain="shipment" status={shipment.currentStatus} />
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {(shipment as any).paymentDetails ? (

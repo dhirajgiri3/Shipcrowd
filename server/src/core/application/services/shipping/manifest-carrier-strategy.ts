@@ -30,18 +30,6 @@ const STRATEGIES: Record<string, Omit<ManifestCarrierStrategy, 'carrier'>> = {
         pickupTrigger: 'shipment_create',
         notes: 'No dedicated pickup scheduling call in current adapter flow',
     },
-    xpressbees: {
-        externalManifestMode: 'none',
-        pickupMode: 'none',
-        pickupTrigger: 'shipment_create',
-        notes: 'No explicit manifest/pickup adapter support configured',
-    },
-    india_post: {
-        externalManifestMode: 'none',
-        pickupMode: 'none',
-        pickupTrigger: 'shipment_create',
-        notes: 'No explicit manifest/pickup adapter support configured',
-    },
 };
 
 const DEFAULT_STRATEGY: Omit<ManifestCarrierStrategy, 'carrier'> = {
@@ -61,4 +49,3 @@ export const getManifestCarrierStrategy = (carrier: string): ManifestCarrierStra
         ...strategy,
     };
 };
-

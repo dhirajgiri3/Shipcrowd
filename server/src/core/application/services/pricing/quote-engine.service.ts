@@ -30,16 +30,16 @@ import {
     QuoteSessionOutput,
     SelectionMode,
     ServiceRateCardFormulaOutput,
-    ServiceLevelProvider,
 } from '../../../domain/types/service-level-pricing.types';
 import { ICourierService } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/courier-service.model';
 import { ISellerCourierPolicy } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/seller-courier-policy.model';
 import { IServiceRateCard } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/service-rate-card.model';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
 
-type Provider = ServiceLevelProvider;
+type CanonicalProvider = NormalizedRateResult['provider'];
+type Provider = CanonicalProvider;
 
-const SUPPORTED_PROVIDERS: Provider[] = [...CourierProviderRegistry.getSupportedProviders()];
+const SUPPORTED_PROVIDERS: CanonicalProvider[] = [...CourierProviderRegistry.getSupportedProviders()];
 
 const PROVIDER_TO_FACTORY_KEY: Record<string, string> = Object.fromEntries(
     SUPPORTED_PROVIDERS.map((provider) => [
@@ -506,8 +506,16 @@ class QuoteEngineService {
             return services;
         }
 
-        const allowedProviders = new Set(policy.allowedProviders || []);
-        const blockedProviders = new Set(policy.blockedProviders || []);
+        const allowedProviders = new Set<CanonicalProvider>(
+            (policy.allowedProviders || []).filter((provider): provider is CanonicalProvider =>
+                this.isProvider(String(provider))
+            )
+        );
+        const blockedProviders = new Set<CanonicalProvider>(
+            (policy.blockedProviders || []).filter((provider): provider is CanonicalProvider =>
+                this.isProvider(String(provider))
+            )
+        );
         const allowedServiceIds = new Set(
             (policy.allowedServiceIds || []).map((id) => String(id))
         );
@@ -518,12 +526,12 @@ class QuoteEngineService {
         return services.filter((service) => {
             if (
                 allowedProviders.size > 0 &&
-                !allowedProviders.has(service.provider as Provider)
+                !allowedProviders.has(service.provider as CanonicalProvider)
             ) {
                 return false;
             }
 
-            if (blockedProviders.has(service.provider as Provider)) {
+            if (blockedProviders.has(service.provider as CanonicalProvider)) {
                 return false;
             }
 

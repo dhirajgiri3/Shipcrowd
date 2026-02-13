@@ -6,7 +6,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
-import { OrderDetailsPanel } from '@/src/components/seller/OrderDetailsPanel';
+import { OrderDetailsPanel } from '@/src/components/seller/orders/OrderDetailsPanel';
 import {
     Search,
     Filter,
@@ -45,15 +45,10 @@ export function OrdersClient() {
     const { addToast } = useToast();
     const limit = 20;
 
-    // Reset page on search change
+    // Reset page when any filter changes
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch]);
-
-    // Reset page when tab changes
-    useEffect(() => {
-        setPage(1);
-    }, [activeTab]);
+    }, [debouncedSearch, activeTab, smartFilter, paymentFilter]);
 
     // --- REAL API INTEGRATION ---
     const {
@@ -66,6 +61,8 @@ export function OrdersClient() {
         limit,
         status: activeTab !== 'all' ? activeTab : undefined,
         search: debouncedSearch || undefined,
+        smartFilter: smartFilter !== 'all' ? smartFilter : undefined,
+        paymentStatus: paymentFilter !== 'all' ? paymentFilter : undefined,
     });
 
     // Use real data from API directly
@@ -79,59 +76,8 @@ export function OrdersClient() {
         setIsRefreshing(false);
     };
 
-    // Filter Logic (client-side for payment filter & smart filter if API doesn't support)
-    // In a real scenario, these should ideally be passed as params to the API
-    const filteredOrders = useMemo(() => {
-        let filtered = ordersData;
-
-        // Apply Payment Filter
-        if (paymentFilter !== 'all') {
-            filtered = filtered.filter(o => o.paymentStatus === paymentFilter);
-        }
-
-        // Apply Smart Filter (Only for visual filtering on current page if API not supported)
-        // Ideally, this should be a backend param
-        if (smartFilter !== 'all') {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const sevenDaysAgo = new Date(today);
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-            switch (smartFilter) {
-                case 'needs_attention':
-                    filtered = filtered.filter(o =>
-                        ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
-                    );
-                    break;
-                case 'today':
-                    filtered = filtered.filter(o => {
-                        const orderDate = new Date(o.createdAt);
-                        orderDate.setHours(0, 0, 0, 0);
-                        return orderDate.getTime() === today.getTime();
-                    });
-                    break;
-                case 'cod_pending':
-                    filtered = filtered.filter(o =>
-                        o.paymentMethod === 'cod' && o.currentStatus !== 'delivered'
-                    );
-                    break;
-                case 'last_7_days':
-                    filtered = filtered.filter(o => {
-                        const orderDate = new Date(o.createdAt);
-                        return orderDate >= sevenDaysAgo;
-                    });
-                    break;
-                case 'zone_b':
-                    filtered = filtered.filter(o => {
-                        const state = o.customerInfo?.address?.state;
-                        return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
-                    });
-                    break;
-            }
-        }
-
-        return filtered;
-    }, [ordersData, paymentFilter, smartFilter]);
+    // No client-side filtering needed - all filtering is done server-side for better performance
+    const filteredOrders = ordersData;
 
 
     // Derived Metrics from available data (or use stats from API if available)
@@ -286,9 +232,9 @@ export function OrdersClient() {
                         setSmartFilter(filter);
                         setPage(1); // Reset pagination
                     }}
-                    counts={{
+                    counts={ordersResponse?.filterCounts || {
                         all: pagination?.total || 0,
-                        needs_attention: 0, // Todo: Get from API facets
+                        needs_attention: 0,
                         today: 0,
                         cod_pending: 0,
                         last_7_days: 0,

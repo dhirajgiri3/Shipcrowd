@@ -5,6 +5,7 @@
  */
 
 import QuoteEngineService from '../pricing/quote-engine.service';
+import CarrierNormalizationService from './carrier-normalization.service';
 
 export interface CarrierOption {
     carrier: string;
@@ -79,7 +80,7 @@ export class CarrierService {
                         : 'standard';
 
                 return {
-                    carrier: option.provider,
+                    carrier: CarrierNormalizationService.normalizeCarrier(option.provider),
                     rate: Number(option.quotedAmount || 0),
                     deliveryTime: Number(option.eta?.maxDays || option.eta?.minDays || 5),
                     score: Number(option.rankScore || 0),

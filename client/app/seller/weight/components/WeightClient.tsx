@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Scale,
     Search,
@@ -21,6 +20,7 @@ import {
     FileText,
     Loader2
 } from 'lucide-react';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
@@ -52,20 +52,8 @@ export function WeightClient() {
 
     const discrepancies = discrepancyData?.discrepancies || [];
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return <Badge variant="warning" className="gap-1"><Clock className="h-3 w-3" />Pending</Badge>;
-            case 'disputed':
-                return <Badge variant="info" className="gap-1"><MessageSquare className="h-3 w-3" />Disputed</Badge>;
-            case 'accepted':
-                return <Badge variant="neutral" className="gap-1"><CheckCircle className="h-3 w-3" />Accepted</Badge>;
-            case 'resolved':
-                return <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" />Resolved</Badge>;
-            default:
-                return <Badge variant="neutral">{status}</Badge>;
-        }
-    };
+    // Helper removed - using StatusBadge component
+
 
     const handleAccept = (id: string) => {
         acceptDiscrepancy(id);
@@ -247,7 +235,7 @@ export function WeightClient() {
                                                 <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(disc.additionalCharge)}</p>
                                             </td>
                                             <td className="p-4 text-center">
-                                                {getStatusBadge(disc.status)}
+                                                <StatusBadge domain="weight_discrepancy" status={disc.status} />
                                             </td>
                                             <td className="p-4">
                                                 {disc.status === 'pending' && (

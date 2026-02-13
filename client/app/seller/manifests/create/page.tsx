@@ -43,8 +43,6 @@ const courierOptions: { value: CourierPartner; label: string; logo?: string }[] 
     { value: 'velocity', label: 'Velocity' },
     { value: 'delhivery', label: 'Delhivery' },
     { value: 'ekart', label: 'Ekart' },
-    { value: 'xpressbees', label: 'XpressBees' },
-    { value: 'india_post', label: 'India Post' },
 ];
 
 const pickupSlots = [
@@ -77,7 +75,6 @@ export default function CreateManifestPage() {
         data: eligibleShipments,
         isLoading: isLoadingShipments
     } = useEligibleManifestShipments(selectedCourier ?? undefined, undefined, {
-        queryKey: ['eligible-shipments', selectedCourier],
         enabled: currentStep === 2 && !!selectedCourier,
     });
 

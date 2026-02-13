@@ -105,7 +105,7 @@ import { useCODStats } from '@/src/core/api/hooks/finance/useCOD';
 import { useOrderTrends } from '@/src/core/api/hooks/analytics/useOrderTrends';
 import { useUrgentActions } from '@/src/core/api/hooks/dashboard/useUrgentActions';
 import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, transformCashFlowToComponent } from '@/src/core/api/hooks/finance'; // Phase 3: New APIs
-import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics'; // Phase 4: RTO Analytics
+import { useRTOAnalytics } from '@/src/core/api/hooks/rto/useRTOAnalytics'; // Phase 4: RTO Analytics
 import { useProfitabilityAnalytics } from '@/src/core/api/hooks/analytics/useProfitabilityAnalytics'; // Phase 4: Profitability Analytics
 import { useGeographicInsights } from '@/src/core/api/hooks/analytics/useGeographicInsights'; // Phase 4: Geographic Insights
 import { useSmartInsights, type SmartInsight } from '@/src/core/api/hooks/analytics/useSmartInsights'; // Phase 5: Smart Insights (100% Real Data)
@@ -564,7 +564,7 @@ export function DashboardClient() {
                             title: 'RTO Rate Spike Detected',
                             message: `RTO rate increased by ${rtoAnalyticsData.summary.change.toFixed(1)}% compared to last period. Review affected orders.`,
                             ctaLabel: 'View RTO Analytics',
-                            ctaUrl: '/seller/analytics/rto',
+                            ctaUrl: `/seller/rto?startDate=${encodeURIComponent(dateParams.startDate)}&endDate=${encodeURIComponent(dateParams.endDate)}`,
                             dismissable: true,
                         });
                     }
@@ -689,7 +689,12 @@ export function DashboardClient() {
                             periodLabel={selectedPeriodLabel}
                         />
                         <RTOAnalytics
-                            onViewDetails={() => router.push('/seller/rto')}
+                            onViewDetails={() => {
+                                const params = new URLSearchParams();
+                                params.set('startDate', dateParams.startDate);
+                                params.set('endDate', dateParams.endDate);
+                                router.push(`/seller/rto?${params.toString()}`);
+                            }}
                             startDate={dateParams.startDate}
                             endDate={dateParams.endDate}
                             periodLabel={selectedPeriodLabel}

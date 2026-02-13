@@ -1,7 +1,6 @@
 import PDFDocument from 'pdfkit';
 import BarcodeService from './barcode.service';
 import logger from '../../../../shared/logger/winston.logger';
-import { ICarrierLabelAdapter, LabelResponse } from '../../../domain/interfaces/carrier-label.interface';
 
 /**
  * Label Service

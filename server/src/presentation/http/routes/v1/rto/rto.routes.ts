@@ -53,6 +53,6 @@ router.post('/events/:id/disposition/execute', RTOController.executeDisposition)
 /**
  * RTO Analytics
  */
-router.get('/analytics/stats', RTOController.getStats);
+router.get('/analytics', RTOController.getAnalytics);
 
 export default router;

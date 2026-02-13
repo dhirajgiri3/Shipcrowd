@@ -330,7 +330,8 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
             isDeleted: false,
         })
             .populate('orderId', 'orderNumber customerInfo')
-            .select('trackingNumber carrier serviceType currentStatus statusHistory deliveryDetails estimatedDelivery actualDelivery')
+            .populate('pickupDetails.warehouseId', 'name address')
+            .select('trackingNumber carrier serviceType currentStatus statusHistory deliveryDetails pickupDetails estimatedDelivery actualDelivery createdAt carrierDetails')
             .lean();
 
         if (!shipment) {
@@ -339,19 +340,55 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
 
         const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);
 
+        // Format timeline with proper date formatting and event marking
+        const formattedTimeline = timeline.map((event: any, index: number) => {
+            const timestamp = new Date(event.timestamp);
+            const isLatest = index === timeline.length - 1;
+
+            return {
+                status: event.status,
+                location: event.location || 'Unknown Location',
+                timestamp: timestamp.toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                }),
+                description: event.description,
+                completed: true,
+                current: isLatest
+            };
+        });
+
+        // Get origin from pickup details
+        const warehouse = shipment.pickupDetails?.warehouseId;
+        const origin = warehouse?.address ?
+            `${warehouse.address.city || 'N/A'}, ${warehouse.address.state || 'N/A'}` :
+            'N/A';
+
+        const destination = shipment.deliveryDetails?.address ?
+            `${shipment.deliveryDetails.address.city || 'N/A'}, ${shipment.deliveryDetails.address.state || 'N/A'}` :
+            'N/A';
+
         sendSuccess(res, {
             trackingNumber: shipment.trackingNumber,
+            awb: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber,
             carrier: shipment.carrier,
             serviceType: shipment.serviceType,
             currentStatus: shipment.currentStatus,
             estimatedDelivery: shipment.estimatedDelivery,
             actualDelivery: shipment.actualDelivery,
+            createdAt: shipment.createdAt,
+            origin,
+            destination,
             recipient: {
-                name: shipment.deliveryDetails.recipientName,
-                city: shipment.deliveryDetails.address.city,
-                state: shipment.deliveryDetails.address.state,
+                name: shipment.deliveryDetails?.recipientName || 'N/A',
+                city: shipment.deliveryDetails?.address?.city || 'N/A',
+                state: shipment.deliveryDetails?.address?.state || 'N/A',
             },
-            timeline,
+            timeline: formattedTimeline,
         }, 'Shipment tracking retrieved successfully');
     } catch (error) {
         logger.error('Error tracking shipment:', error);
@@ -480,7 +517,8 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
             isDeleted: false,
         })
             .populate('orderId', 'orderNumber')
-            .select('trackingNumber carrier serviceType currentStatus statusHistory deliveryDetails estimatedDelivery actualDelivery createdAt')
+            .populate('pickupDetails.warehouseId', 'name address')
+            .select('trackingNumber carrier serviceType currentStatus statusHistory deliveryDetails pickupDetails estimatedDelivery actualDelivery createdAt carrierDetails')
             .lean();
 
         if (!shipment) {
@@ -489,21 +527,56 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
 
         const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);
 
+        // Format timeline with proper date formatting and event marking
+        const formattedTimeline = timeline.map((event: any, index: number) => {
+            const timestamp = new Date(event.timestamp);
+            const isLatest = index === timeline.length - 1;
+
+            return {
+                status: event.status,
+                location: event.location || 'Unknown Location',
+                timestamp: timestamp.toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                }),
+                description: event.description,
+                completed: true,
+                current: isLatest
+            };
+        });
+
+        // Get origin from pickup details
+        const warehouse = shipment.pickupDetails?.warehouseId;
+        const origin = warehouse?.address ?
+            `${warehouse.address.city || 'N/A'}, ${warehouse.address.state || 'N/A'}` :
+            'N/A';
+
+        const destination = shipment.deliveryDetails?.address ?
+            `${shipment.deliveryDetails.address.city || 'N/A'}, ${shipment.deliveryDetails.address.state || 'N/A'}` :
+            'N/A';
+
         // Sanitize sensitive info for public view logic
         const publicResponse = {
             trackingNumber: shipment.trackingNumber,
+            awb: shipment.carrierDetails?.carrierTrackingNumber || shipment.trackingNumber,
             carrier: shipment.carrier,
             serviceType: shipment.serviceType,
             currentStatus: shipment.currentStatus,
             estimatedDelivery: shipment.estimatedDelivery,
             actualDelivery: shipment.actualDelivery,
             createdAt: shipment.createdAt,
+            origin,
+            destination,
             recipient: {
                 // Only show City/State for privacy in public tracking
-                city: shipment.deliveryDetails.address.city,
-                state: shipment.deliveryDetails.address.state,
+                city: shipment.deliveryDetails?.address?.city || 'N/A',
+                state: shipment.deliveryDetails?.address?.state || 'N/A',
             },
-            timeline,
+            timeline: formattedTimeline,
         };
 
         // 3. CACHE SET: Store result for 5 minutes (300 seconds)

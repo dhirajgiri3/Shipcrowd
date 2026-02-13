@@ -16,7 +16,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { formatCurrency } from '@/src/lib/dashboard/data-utils';
-import { useRTOAnalytics, type RTOAnalyticsData } from '@/src/core/api/hooks/analytics';
+import { useRTOAnalytics, type RTOAnalyticsData } from '@/src/core/api/hooks/rto/useRTOAnalytics';
 
 /**
  * RTO Analytics Component
@@ -30,15 +30,17 @@ interface RTOAnalyticsProps {
     startDate?: string;
     endDate?: string;
     periodLabel?: string;
+    data?: RTOAnalyticsData;
 }
 
 const getReasonIcon = (reason: string) => {
     switch (reason) {
-        case 'customer_unavailable':
+        case 'ndr_unresolved':
             return Phone;
-        case 'customer_refused':
+        case 'customer_cancellation':
+        case 'refused':
             return XCircle;
-        case 'incorrect_address':
+        case 'incorrect_product':
             return MapPin;
         default:
             return Package;
@@ -50,9 +52,14 @@ const RTOAnalytics = memo(function RTOAnalytics({
     startDate,
     endDate,
     periodLabel = 'Selected Period',
+    data,
 }: RTOAnalyticsProps) {
-    // API Hooks
-    const { data: rtoData, isLoading, error } = useRTOAnalytics({ startDate, endDate });
+    const shouldFetch = !data;
+    const { data: fetchedData, isLoading, error } = useRTOAnalytics(
+        { startDate, endDate },
+        { enabled: shouldFetch }
+    );
+    const rtoData = data ?? fetchedData;
 
     if (isLoading) {
         return (
@@ -82,6 +89,7 @@ const RTOAnalytics = memo(function RTOAnalytics({
 
     const isImproving = rtoData.summary.change < 0;
     const isBetterThanAverage = rtoData.summary.currentRate < rtoData.summary.industryAverage;
+    const displayPeriodLabel = (rtoData.summary.periodLabel || periodLabel).toLowerCase();
 
     // Find best and worst courier - safe array operations
     const sortedCouriers = rtoData.byCourier && Array.isArray(rtoData.byCourier) && rtoData.byCourier.length > 0
@@ -195,7 +203,7 @@ const RTOAnalytics = memo(function RTOAnalytics({
                             {formatCurrency(rtoData.summary.estimatedLoss)}
                         </p>
                         <p className="text-xs text-[var(--error)]/70">
-                            {periodLabel.toLowerCase()}
+                            {displayPeriodLabel}
                         </p>
                     </motion.div>
                 </div>

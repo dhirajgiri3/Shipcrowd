@@ -9,8 +9,8 @@ import { useRecentCustomers, RecentCustomer } from '@/src/core/api/hooks/orders/
 import Link from "next/link";
 
 // Lazy load modals
-const QuickOrderModal = lazy(() => import("./QuickOrderModal"));
-const CSVUploadModal = lazy(() => import("./CSVUploadModal"));
+const QuickOrderModal = lazy(() => import("../orders/QuickOrderModal"));
+const CSVUploadModal = lazy(() => import("../shipments/CSVUploadModal"));
 
 export function QuickCreate() {
     const { data: recentCustomers, isLoading } = useRecentCustomers({ limit: 6 });

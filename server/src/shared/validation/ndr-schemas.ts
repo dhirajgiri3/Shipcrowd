@@ -20,11 +20,22 @@ export const ndrTypeSchema = z.enum([
 export type NDRType = z.infer<typeof ndrTypeSchema>;
 
 export const ndrStatusSchema = z.enum([
+    // Frontend legacy aliases
+    'open',
+    'in_progress',
+    'customer_action',
+    'rto',
+
+    // Backend canonical values
     'detected',
     'in_resolution',
     'resolved',
     'escalated',
     'rto_triggered',
+    // Frontend compatibility statuses
+    'action_required', // Maps to detected + in_resolution
+    'reattempt_scheduled', // Maps to in_resolution
+    'converted_to_rto', // Maps to rto_triggered
 ]);
 
 export type NDRStatus = z.infer<typeof ndrStatusSchema>;
@@ -58,6 +69,7 @@ export const listNDREventsQuerySchema = z.object({
     limit: z.string().optional().transform(val => Math.max(1, Math.min(100, parseInt(val || '20', 10)))),
     status: ndrStatusSchema.optional(),
     ndrType: ndrTypeSchema.optional(),
+    search: z.string().trim().min(1).max(100).optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     sortBy: z.enum(['detectedAt', 'resolutionDeadline', 'createdAt']).optional().default('detectedAt'),
@@ -108,6 +120,24 @@ export const resolveNDRSchema = z.object({
 });
 
 export type ResolveNDRInput = z.infer<typeof resolveNDRSchema>;
+
+export const takeNDRActionSchema = z.object({
+    action: z.enum([
+        'reattempt_delivery',
+        'address_correction',
+        'reschedule_delivery',
+        'cancel_order',
+        'convert_prepaid',
+        'contact_customer',
+        'return_to_origin',
+    ]),
+    notes: z.string().max(1000).optional(),
+    newAddress: z.record(z.unknown()).optional(),
+    newDeliveryDate: z.string().optional(),
+    communicationChannel: z.enum(['sms', 'email', 'whatsapp', 'call']).optional(),
+});
+
+export type TakeNDRActionInput = z.infer<typeof takeNDRActionSchema>;
 
 export const escalateNDRSchema = z.object({
     reason: z.string()

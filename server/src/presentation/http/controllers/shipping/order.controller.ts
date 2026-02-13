@@ -124,14 +124,16 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
         const sortBy = req.query.sortBy as string || 'createdAt';
         const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
 
-        // Extract filters
+// Extract filters
         const queryParams = {
             status: req.query.status,
             search: req.query.search,
             startDate: req.query.startDate,
             endDate: req.query.endDate,
             warehouse: req.query.warehouse,
-            phone: req.query.phone
+            phone: req.query.phone,
+            smartFilter: req.query.smartFilter, // Smart filter preset
+            paymentStatus: req.query.paymentStatus // Payment status filter
         };
 
         // If admin with no companyId, pass null to service to fetch all
@@ -144,7 +146,7 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
             { page, limit, sortBy, sortOrder }
         );
 
-        sendPaginated(res, result.orders, {
+sendPaginated(res, result.orders, {
             page: result.page,
             pages: result.pages,
             total: result.total,
@@ -152,7 +154,8 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
             hasNext: result.page < result.pages,
             hasPrev: result.page > 1
         }, 'Orders retrieved successfully', {
-            stats: result.stats // Attach stats to response metadata
+            stats: result.stats, // Attach stats to response metadata
+            filterCounts: result.filterCounts // Attach smart filter counts
         });
     } catch (error) {
         logger.error('Error fetching orders:', error);

@@ -17,6 +17,12 @@ import {
     useDownloadManifestPDF,
 } from '@/src/core/api/hooks/logistics/useManifest';
 import { ManifestTable } from '@/src/features/manifests/components/ManifestTable';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Loader } from '@/src/components/ui/feedback/Loader';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { Pagination } from '@/src/components/ui/data/Pagination';
 import {
     Plus,
     FileText,
@@ -29,7 +35,7 @@ import {
     Truck,
     RefreshCw,
 } from 'lucide-react';
-import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest } from '@/src/types/api/orders';
+import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest, ManifestListResponse } from '@/src/types/api/orders';
 
 // ==================== Status Options ====================
 
@@ -45,8 +51,7 @@ const courierOptions: { value: CourierPartner | ''; label: string }[] = [
     { value: 'velocity', label: 'Velocity' },
     { value: 'delhivery', label: 'Delhivery' },
     { value: 'ekart', label: 'Ekart' },
-    { value: 'xpressbees', label: 'XpressBees' },
-    { value: 'india_post', label: 'India Post' },
+
 ];
 
 // ==================== Component ====================
@@ -72,7 +77,9 @@ export default function ManifestsPage() {
     });
 
     // API hooks
-    const { data: manifestsData, isLoading, refetch } = useShipmentManifestsList(buildFilters());
+    const { data, isLoading, refetch } = useShipmentManifestsList(buildFilters());
+    const manifestsData = data as ManifestListResponse | undefined;
+
     const { data: stats, isLoading: isStatsLoading } = useShipmentManifestStats();
     const { mutateAsync: downloadPdf } = useDownloadManifestPDF();
 
@@ -99,205 +106,221 @@ export default function ManifestsPage() {
         refetch();
     };
 
+    const handlePageChange = (page: number) => {
+        setFilters(prev => ({ ...prev, page }));
+    };
+
+    // Check if we have active filters
+    const hasActiveFilters = !!searchQuery || !!statusFilter || !!courierFilter;
+
+    // Loading overlay for table
+    const renderTableContent = () => {
+        if (isLoading && (!manifestsData?.manifests || manifestsData.manifests.length === 0)) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20">
+                    <Loader size="lg" variant="spinner" className="text-[var(--primary-blue)] mb-4" />
+                    <p className="text-[var(--text-muted)]">Loading manifests...</p>
+                </div>
+            );
+        }
+
+        if (!isLoading && (!manifestsData?.manifests || manifestsData.manifests.length === 0)) {
+            return (
+                <div className="py-12">
+                    <EmptyState
+                        icon={<FileText className="w-12 h-12" />}
+                        title={hasActiveFilters ? "No manifests found" : "No manifests created yet"}
+                        description={hasActiveFilters
+                            ? "Try adjusting your search or filters to find what you're looking for."
+                            : "Create your first manifest to start grouping shipments for pickup."}
+                        action={!hasActiveFilters ? {
+                            label: "Create Manifest",
+                            onClick: handleCreateManifest,
+                            icon: <Plus className="w-4 h-4 mr-2" />
+                        } : {
+                            label: "Clear Filters",
+                            onClick: () => {
+                                setSearchQuery('');
+                                setStatusFilter('');
+                                setCourierFilter('');
+                                setFilters(prev => ({ ...prev, page: 1 }));
+                            },
+                            variant: "outline"
+                        }}
+                    />
+                </div>
+            );
+        }
+
+        return (
+            <>
+                <div className="relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 bg-[var(--bg-primary)]/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                            <Loader size="md" variant="spinner" />
+                        </div>
+                    )}
+                    <ManifestTable
+                        manifests={manifestsData?.manifests ?? []}
+                        isLoading={false} // We handle loading state above
+                        onManifestClick={handleManifestClick}
+                        onDownloadPdf={handleDownloadPdf}
+                    />
+                </div>
+
+                {manifestsData && (
+                    <Pagination
+                        currentPage={filters.page || 1}
+                        totalPages={manifestsData.pages}
+                        totalItems={manifestsData.total}
+                        pageSize={filters.limit || 10}
+                        onPageChange={handlePageChange}
+                        className="bg-transparent border-t border-[var(--border-subtle)]"
+                    />
+                )}
+            </>
+        );
+    };
+
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)]">
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                            Manifests
-                        </h1>
-                        <p className="text-[var(--text-secondary)]">
-                            Manage pickup manifests and coordinate with courier partners
-                        </p>
+        <div className="min-h-screen space-y-8 pb-20">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] text-xs font-bold uppercase tracking-wider mb-2 border border-[var(--primary-blue-light)]/20">
+                        <span className="w-2 h-2 rounded-full bg-[var(--primary-blue)] animate-pulse" />
+                        Logistics Management
                     </div>
-                    <button
-                        onClick={handleCreateManifest}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white font-medium rounded-lg transition-colors"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Create Manifest
-                    </button>
+                    <h1 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">
+                        Manifests
+                    </h1>
+                    <p className="text-[var(--text-secondary)] mt-1">
+                        Manage pickup manifests and coordinate with courier partners
+                    </p>
                 </div>
+                <Button
+                    onClick={handleCreateManifest}
+                    className="h-12 px-6 rounded-xl shadow-brand-lg font-semibold"
+                    variant="primary"
+                >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Create Manifest
+                </Button>
+            </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    {/* Total Manifests */}
-                    <div className="bg-[var(--bg-elevated)] rounded-xl shadow-sm border border-[var(--border-default)] p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Total Manifests</p>
-                                {isStatsLoading ? (
-                                    <div className="h-8 w-16 bg-[var(--bg-secondary)] rounded animate-pulse mt-1" />
-                                ) : (
-                                    <p className="text-3xl font-bold text-[var(--text-primary)]">
-                                        {stats?.totalManifests ?? 0}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="w-12 h-12 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
-                                <FileText className="w-6 h-6 text-[var(--primary-blue)]" />
-                            </div>
-                        </div>
-                    </div>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {isStatsLoading ? (
+                    // Loading skeletons for stats
+                    Array(4).fill(0).map((_, i) => (
+                        <div key={i} className="h-32 bg-[var(--bg-elevated)] rounded-2xl animate-pulse border border-[var(--border-subtle)]" />
+                    ))
+                ) : (
+                    <>
+                        <StatsCard
+                            title="Total Manifests"
+                            value={stats?.totalManifests ?? 0}
+                            icon={FileText}
+                            variant="default"
+                            delay={0}
+                        />
+                        <StatsCard
+                            title="Pending Pickup"
+                            value={stats?.pendingPickup ?? 0}
+                            icon={Clock}
+                            variant="warning"
+                            delay={1}
+                        />
+                        <StatsCard
+                            title="Scheduled Today"
+                            value={stats?.scheduledToday ?? 0}
+                            icon={Calendar}
+                            variant="info"
+                            delay={2}
+                        />
+                        <StatsCard
+                            title="Picked Up Today"
+                            value={stats?.pickedUpToday ?? 0}
+                            icon={CheckCircle2}
+                            variant="success"
+                            delay={3}
+                        />
+                    </>
+                )}
+            </div>
 
-                    {/* Pending Pickup */}
-                    <div className="bg-[var(--bg-elevated)] rounded-xl shadow-sm border border-[var(--border-default)] p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Pending Pickup</p>
-                                {isStatsLoading ? (
-                                    <div className="h-8 w-16 bg-[var(--bg-secondary)] rounded animate-pulse mt-1" />
-                                ) : (
-                                    <p className="text-3xl font-bold text-[var(--warning)]">
-                                        {stats?.pendingPickup ?? 0}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="w-12 h-12 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center">
-                                <Clock className="w-6 h-6 text-[var(--warning)]" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Scheduled Today */}
-                    <div className="bg-[var(--bg-elevated)] rounded-xl shadow-sm border border-[var(--border-default)] p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Scheduled Today</p>
-                                {isStatsLoading ? (
-                                    <div className="h-8 w-16 bg-[var(--bg-secondary)] rounded animate-pulse mt-1" />
-                                ) : (
-                                    <p className="text-3xl font-bold text-[var(--primary-blue)]">
-                                        {stats?.scheduledToday ?? 0}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="w-12 h-12 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
-                                <Calendar className="w-6 h-6 text-[var(--primary-blue)]" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Picked Up Today */}
-                    <div className="bg-[var(--bg-elevated)] rounded-xl shadow-sm border border-[var(--border-default)] p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Picked Up Today</p>
-                                {isStatsLoading ? (
-                                    <div className="h-8 w-16 bg-[var(--bg-secondary)] rounded animate-pulse mt-1" />
-                                ) : (
-                                    <p className="text-3xl font-bold text-[var(--success)]">
-                                        {stats?.pickedUpToday ?? 0}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="w-12 h-12 rounded-lg bg-[var(--success-bg)] flex items-center justify-center">
-                                <CheckCircle2 className="w-6 h-6 text-[var(--success)]" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Filters Section */}
-                <div className="bg-[var(--bg-elevated)] rounded-xl shadow-sm border border-[var(--border-default)] p-4 mb-6">
+            {/* Filters & Table Section */}
+            <div className="bg-[var(--bg-elevated)] rounded-3xl border border-[var(--border-subtle)] shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/50">
                     <div className="flex flex-col md:flex-row gap-4">
                         {/* Search */}
                         <form onSubmit={handleSearch} className="flex-1">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search by manifest ID..."
-                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] placeholder:text-[var(--text-muted)]"
-                                />
-                            </div>
+                            <Input
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search by manifest ID..."
+                                icon={<Search className="w-4 h-4 text-[var(--text-muted)]" />}
+                                className="h-10 bg-[var(--bg-tertiary)]"
+                            />
                         </form>
 
                         {/* Status Filter */}
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value as ManifestStatus | '');
-                                    setFilters(prev => ({ ...prev, page: 1 }));
-                                }}
-                                className="pl-9 pr-8 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none min-w-[160px]"
-                            >
-                                {statusOptions.map(option => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="w-full md:w-48">
+                            <div className="relative">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none z-10" />
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => {
+                                        setStatusFilter(e.target.value as ManifestStatus | '');
+                                        setFilters(prev => ({ ...prev, page: 1 }));
+                                    }}
+                                    className="w-full h-10 pl-9 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-sm focus:ring-1 focus:ring-[var(--primary-blue)] focus:border-[var(--primary-blue)] appearance-none cursor-pointer"
+                                >
+                                    {statusOptions.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Courier Filter */}
-                        <div className="relative">
-                            <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <select
-                                value={courierFilter}
-                                onChange={(e) => {
-                                    setCourierFilter(e.target.value as CourierPartner | '');
-                                    setFilters(prev => ({ ...prev, page: 1 }));
-                                }}
-                                className="pl-9 pr-8 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] appearance-none min-w-[140px]"
-                            >
-                                {courierOptions.map(option => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="w-full md:w-48">
+                            <div className="relative">
+                                <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none z-10" />
+                                <select
+                                    value={courierFilter}
+                                    onChange={(e) => {
+                                        setCourierFilter(e.target.value as CourierPartner | '');
+                                        setFilters(prev => ({ ...prev, page: 1 }));
+                                    }}
+                                    className="w-full h-10 pl-9 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-sm focus:ring-1 focus:ring-[var(--primary-blue)] focus:border-[var(--primary-blue)] appearance-none cursor-pointer"
+                                >
+                                    {courierOptions.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Refresh Button */}
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={handleRefresh}
-                            className="p-2 text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors"
+                            className="h-10 w-10 text-[var(--text-secondary)] hover:text-[var(--primary-blue)]"
                             title="Refresh"
                         >
-                            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-                        </button>
+                            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        </Button>
                     </div>
                 </div>
 
-                {/* Manifests Table */}
-                <ManifestTable
-                    manifests={manifestsData?.manifests ?? []}
-                    isLoading={isLoading}
-                    onManifestClick={handleManifestClick}
-                    onDownloadPdf={handleDownloadPdf}
-                />
-
-                {/* Pagination */}
-                {manifestsData && manifestsData.pages > 1 && (
-                    <div className="mt-6 flex items-center justify-between">
-                        <p className="text-sm text-[var(--text-secondary)]">
-                            Showing {((filters.page! - 1) * filters.limit!) + 1} to {Math.min(filters.page! * filters.limit!, manifestsData.total)} of {manifestsData.total} manifests
-                        </p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setFilters(prev => ({ ...prev, page: (prev.page ?? 1) - 1 }))}
-                                disabled={(filters.page ?? 1) <= 1}
-                                className="px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Previous
-                            </button>
-                            <button
-                                onClick={() => setFilters(prev => ({ ...prev, page: (prev.page ?? 1) + 1 }))}
-                                disabled={(filters.page ?? 1) >= manifestsData.pages}
-                                className="px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
-                )}
+                {/* Table Content */}
+                {renderTableContent()}
             </div>
         </div>
     );

@@ -92,7 +92,7 @@ export default function DisputeDetailPage() {
                                 AWB: {awb}
                             </p>
                         </div>
-                        <StatusBadge status={dispute.status} className="text-base px-4 py-2" />
+                        <StatusBadge domain="dispute" status={dispute.status} className="text-base px-4 py-2" />
                     </div>
                 </div>
 
@@ -326,7 +326,7 @@ export default function DisputeDetailPage() {
                                 <div className="space-y-3">
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-[var(--text-secondary)]">Outcome</span>
-                                        <StatusBadge status={dispute.resolution.outcome} />
+                                        <StatusBadge domain="dispute" status={dispute.resolution.outcome} />
                                     </div>
                                     {dispute.resolution.refundAmount && dispute.resolution.refundAmount > 0 && (
                                         <div className="flex justify-between items-center">

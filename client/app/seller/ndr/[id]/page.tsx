@@ -91,7 +91,7 @@ export default function NDRDetailPage() {
 
     const shipment = typeof ndrCase.shipmentId === 'object' ? ndrCase.shipmentId : null;
     const order = typeof ndrCase.orderId === 'object' ? ndrCase.orderId : null;
-    const isResolved = ndrCase.status === 'resolved' || ndrCase.status === 'converted_to_rto';
+    const isResolved = ['resolved', 'converted_to_rto', 'rto_triggered'].includes(ndrCase.status);
 
     return (
         <div className="min-h-screen bg-[var(--bg-secondary)] p-6">

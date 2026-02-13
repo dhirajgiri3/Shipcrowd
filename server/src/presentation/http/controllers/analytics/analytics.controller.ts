@@ -8,7 +8,6 @@ import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
-import RTOService from '../../../../core/application/services/rto/rto.service';
 import GeographicAnalyticsService from '../../../../core/application/services/analytics/geographic-analytics.service';
 import SmartInsightsService from '../../../../core/application/services/analytics/smart-insights.service';
 import AdminInsightsService from '../../../../core/application/services/analytics/admin-insights.service';
@@ -1480,48 +1479,6 @@ export const getRecentCustomers = async (
 };
 
 /**
- * Get RTO Analytics for dashboard
- * Phase 4: Powers RTOAnalytics component
- * @route GET /api/v1/analytics/rto
- */
-export const getRTOAnalytics = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-): Promise<void> => {
-    try {
-        const auth = guardChecks(req, { requireCompany: true });
-        requireCompanyContext(auth);
-        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
-        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-
-        if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime()))) {
-            throw new ValidationError('Invalid startDate or endDate format');
-        }
-
-        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
-
-        // Cache key
-        const cacheKey = `analytics:rto:${auth.companyId}:${startDate?.toISOString() || 'default'}:${endDate?.toISOString() || 'default'}`;
-        const cached = await cacheService.get(cacheKey);
-        if (cached) {
-            sendSuccess(res, cached, 'RTO analytics retrieved from cache');
-            return;
-        }
-
-        const analytics = await RTOService.getRTOAnalytics(auth.companyId, dateRange);
-
-        // Cache for 5 minutes
-        await cacheService.set(cacheKey, analytics, 300);
-
-        sendSuccess(res, analytics, 'RTO analytics retrieved successfully');
-    } catch (error) {
-        logger.error('Error fetching RTO analytics:', error);
-        next(error);
-    }
-};
-
-/**
  * Get Profitability Analytics for dashboard
  * Phase 4: Powers ProfitabilityCard component
  * @route GET /api/v1/analytics/profitability
@@ -1670,7 +1627,6 @@ export default {
     getSellerActions,
     getRecentCustomers,
     // Phase 4: Dashboard Analytics
-    getRTOAnalytics,
     getProfitabilityAnalytics,
     getGeographicInsights,
     // Phase 5: Smart Insights

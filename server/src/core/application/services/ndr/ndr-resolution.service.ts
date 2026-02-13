@@ -393,6 +393,139 @@ export default class NDRResolutionService {
     }
 
     /**
+     * Execute seller/admin initiated manual action on an NDR
+     */
+    static async takeAction(
+        ndrEventId: string,
+        action: string,
+        actedBy: string,
+        options?: {
+            notes?: string;
+            newAddress?: Record<string, any>;
+            newDeliveryDate?: string;
+            communicationChannel?: 'sms' | 'email' | 'whatsapp' | 'call';
+        }
+    ): Promise<void> {
+        const ndrEvent = await NDREvent.findById(ndrEventId).populate('shipment order');
+        if (!ndrEvent) {
+            throw new AppError('NDR event not found', 'NDR_NOT_FOUND', 404);
+        }
+
+        if (ndrEvent.status === 'resolved') {
+            throw new AppError('Cannot take action on resolved NDR', 'NDR_ALREADY_RESOLVED', 400);
+        }
+
+        if (ndrEvent.status === 'rto_triggered' && action !== 'contact_customer') {
+            throw new AppError('RTO already triggered for this NDR', 'NDR_RTO_TRIGGERED', 400);
+        }
+
+        const customer = await this.getCustomerInfo(ndrEvent);
+        if (!customer) {
+            throw new ValidationError('No customer phone number found', ErrorCode.VAL_MISSING_FIELD);
+        }
+
+        const mapped = this.mapManualActionToExecutor(action, options);
+        const orderId = String((ndrEvent.order as any)?._id || ndrEvent.order);
+
+        const result = await NDRActionExecutors.executeAction(
+            mapped.actionType,
+            {
+                ndrEvent,
+                customer,
+                orderId,
+                companyId: ndrEvent.company.toString(),
+            },
+            mapped.actionConfig
+        );
+
+        await NDRActionExecutors.recordActionResult(ndrEventId, result, actedBy || 'system');
+
+        await createAuditLog(
+            actedBy || 'system',
+            String(ndrEvent.company),
+            'update',
+            'ndr_event',
+            ndrEventId,
+            {
+                action: 'manual_ndr_action',
+                requestedAction: action,
+                mappedAction: mapped.actionType,
+                notes: options?.notes,
+                result: result.result,
+            }
+        );
+
+        if (!result.success) {
+            throw new AppError(
+                result.error || 'Failed to execute NDR action',
+                'NDR_ACTION_FAILED',
+                400
+            );
+        }
+    }
+
+    private static mapManualActionToExecutor(
+        action: string,
+        options?: {
+            notes?: string;
+            newAddress?: Record<string, any>;
+            newDeliveryDate?: string;
+            communicationChannel?: 'sms' | 'email' | 'whatsapp' | 'call';
+        }
+    ): { actionType: string; actionConfig: Record<string, any> } {
+        switch (action) {
+            case 'reattempt_delivery':
+            case 'reschedule_delivery':
+                return {
+                    actionType: 'request_reattempt',
+                    actionConfig: {
+                        preferredDate: options?.newDeliveryDate,
+                        notes: options?.notes,
+                    },
+                };
+            case 'address_correction':
+                return {
+                    actionType: 'update_address',
+                    actionConfig: {
+                        newAddress: options?.newAddress,
+                        notes: options?.notes,
+                    },
+                };
+            case 'contact_customer': {
+                const channelMap: Record<string, string> = {
+                    sms: 'send_sms',
+                    email: 'send_email',
+                    whatsapp: 'send_whatsapp',
+                    call: 'call_customer',
+                };
+                return {
+                    actionType: channelMap[options?.communicationChannel || 'whatsapp'] || 'send_whatsapp',
+                    actionConfig: {
+                        message: options?.notes,
+                    },
+                };
+            }
+            case 'return_to_origin':
+            case 'cancel_order':
+                return {
+                    actionType: 'trigger_rto',
+                    actionConfig: {
+                        notes: options?.notes,
+                    },
+                };
+            case 'convert_prepaid':
+                return {
+                    actionType: 'send_whatsapp',
+                    actionConfig: {
+                        message: options?.notes || 'Please complete prepaid payment to continue delivery.',
+                    },
+                };
+            default:
+                throw new ValidationError('Unsupported NDR action', ErrorCode.VAL_INVALID_INPUT);
+        }
+    }
+
+    /**
      * Manually resolve NDR
      * Issue #15: Added notes parameter for complete audit trail
      */

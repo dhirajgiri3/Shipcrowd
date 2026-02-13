@@ -30,7 +30,7 @@ export const useShipmentByAwb = (awb?: string) => {
  */
 export const useGenerateLabel = () => {
     return useMutation({
-        mutationFn: async (awb: string) => await shipmentApi.generateLabel(awb),
+        mutationFn: async (shipmentId: string) => await shipmentApi.generateLabel(shipmentId),
         onSuccess: () => {
             showSuccessToast('Label generated successfully');
         },

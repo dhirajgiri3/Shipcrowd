@@ -629,9 +629,11 @@ Need help? Reply to this message.
         };
 
         const nextStatus =
-            actionResult.result === 'success' || actionResult.result === 'skipped'
-                ? 'in_resolution'
-                : 'detected';
+            actionResult.actionType === 'trigger_rto' && actionResult.result === 'success'
+                ? 'rto_triggered'
+                : actionResult.result === 'success' || actionResult.result === 'skipped'
+                    ? 'in_resolution'
+                    : 'detected';
 
         await NDREvent.findByIdAndUpdate(ndrEventId, {
             $push: { resolutionActions: action },

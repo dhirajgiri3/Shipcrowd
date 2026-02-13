@@ -176,9 +176,52 @@ export class OrderService extends CachedService {
             }
         }
 
-        // Warehouse Filter
+// Warehouse Filter
         if (queryParams.warehouse) {
             matchStage.warehouseId = new mongoose.Types.ObjectId(queryParams.warehouse);
+        }
+
+        // Payment Status Filter
+        if (queryParams.paymentStatus && queryParams.paymentStatus !== 'all') {
+            matchStage.paymentStatus = queryParams.paymentStatus;
+        }
+
+        // Smart Filter (Server-side filtering for better UX)
+        if (queryParams.smartFilter && queryParams.smartFilter !== 'all') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            switch (queryParams.smartFilter) {
+                case 'needs_attention':
+                    matchStage.currentStatus = {
+                        $in: ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception', 'ready', 'new']
+                    };
+                    break;
+                case 'today':
+                    matchStage.createdAt = {
+                        $gte: today,
+                        $lt: tomorrow
+                    };
+                    break;
+                case 'cod_pending':
+                    matchStage.paymentMethod = 'cod';
+                    matchStage.currentStatus = { $ne: 'delivered' };
+                    break;
+                case 'last_7_days':
+                    matchStage.createdAt = {
+                        $gte: sevenDaysAgo
+                    };
+                    break;
+                case 'zone_b':
+                    matchStage['customerInfo.address.state'] = {
+                        $in: ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh']
+                    };
+                    break;
+            }
         }
 
         // 2. Build Sort Stage
@@ -200,8 +243,8 @@ export class OrderService extends CachedService {
             ? { currentStatus: queryParams.status }
             : {};
 
-        // 4. Aggregation Pipeline
-        const pipeline = [
+// 4. Aggregation Pipeline
+        const pipeline: any[] = [
             { $match: matchStage },
             {
                 $facet: {
@@ -227,13 +270,79 @@ export class OrderService extends CachedService {
                         { $unwind: { path: '$warehouse', preserveNullAndEmptyArrays: true } },
                         // Project only needed fields if necessary, or keep all
                     ],
-                    // Facet 2: Status Counts (for Tabs)
+// Facet 2: Status Counts (for Tabs)
                     stats: [
                         { $group: { _id: '$currentStatus', count: { $sum: 1 } } }
                     ],
-                    // Facet 3: Total Count (for Pagination of the list)
+                    // Facet 3: Total Count (for Pagination of the list, with status filter applied)
                     total: [
                         { $match: statusMatch },
+                        { $count: 'count' }
+                    ],
+                    // Facet 3.5: All Count (total without status filter, for "All Orders" chip)
+                    allCount: [
+                        { $count: 'count' }
+                    ],
+                    // Facet 4: Needs Attention Count
+                    needsAttentionCount: [
+                        {
+                            $match: {
+                                currentStatus: {
+                                    $in: ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception', 'ready', 'new']
+                                }
+                            }
+                        },
+                        { $count: 'count' }
+                    ],
+                    // Facet 5: Today's Orders Count
+                    todayCount: [
+                        {
+                            $addFields: {
+                                orderDateOnly: {
+                                    $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+                                },
+                                todayDateOnly: {
+                                    $dateToString: { format: '%Y-%m-%d', date: new Date() }
+                                }
+                            }
+                        },
+                        {
+                            $match: {
+                                $expr: { $eq: ['$orderDateOnly', '$todayDateOnly'] }
+                            }
+                        },
+                        { $count: 'count' }
+                    ],
+                    // Facet 6: COD Pending Count
+                    codPendingCount: [
+                        {
+                            $match: {
+                                paymentMethod: 'cod',
+                                currentStatus: { $ne: 'delivered' }
+                            }
+                        },
+                        { $count: 'count' }
+                    ],
+                    // Facet 7: Last 7 Days Count
+                    last7DaysCount: [
+                        {
+                            $match: {
+                                createdAt: {
+                                    $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                                }
+                            }
+                        },
+                        { $count: 'count' }
+                    ],
+                    // Facet 8: Zone B Count
+                    zoneBCount: [
+                        {
+                            $match: {
+                                'customerInfo.address.state': {
+                                    $in: ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh']
+                                }
+                            }
+                        },
                         { $count: 'count' }
                     ]
                 }
@@ -250,7 +359,7 @@ export class OrderService extends CachedService {
             id: o._id
         }));
 
-        const total = result.total[0]?.count || 0;
+const total = result.total[0]?.count || 0;
 
         const stats: Record<string, number> = {};
         result.stats.forEach((s: any) => {
@@ -263,10 +372,22 @@ export class OrderService extends CachedService {
             if (!stats[s]) stats[s] = 0;
         });
 
+// Extract smart filter counts from individual facets
+        const allCount = result.allCount?.[0]?.count || 0;
+        const filterCounts: Record<string, number> = {
+            all: allCount,
+            needs_attention: result.needsAttentionCount?.[0]?.count || 0,
+            today: result.todayCount?.[0]?.count || 0,
+            cod_pending: result.codPendingCount?.[0]?.count || 0,
+            last_7_days: result.last7DaysCount?.[0]?.count || 0,
+            zone_b: result.zoneBCount?.[0]?.count || 0
+        };
+
         return {
             orders,
             total,
             stats,
+            filterCounts,
             page,
             pages: Math.ceil(total / limit)
         };

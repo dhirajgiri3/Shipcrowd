@@ -569,6 +569,21 @@ export const ORDER_STATUS_CONFIG: Record<string, StatusConfig> = {
     label: 'Pending',
     color: 'warning',
     description: 'Order pending'
+  },
+  processing: {
+    label: 'Processing',
+    color: 'info',
+    description: 'Order is being processed'
+  },
+  in_transit: {
+    label: 'In Transit',
+    color: 'primary',
+    description: 'Order in transit'
+  },
+  unshipped: {
+    label: 'Unshipped',
+    color: 'warning',
+    description: 'Order not yet shipped'
   }
 };
 
@@ -927,6 +942,11 @@ export const PAYMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
     color: 'success',
     description: 'Payment successful',
   },
+  unpaid: {
+    label: 'Unpaid',
+    color: 'error',
+    description: 'Payment not received',
+  },
   pending: {
     label: 'Pending',
     color: 'warning',
@@ -1010,6 +1030,37 @@ export const TRANSACTION_TYPE_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WEIGHT DISCREPANCY STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const WEIGHT_DISCREPANCY_STATUS_CONFIG: Record<string, StatusConfig> = {
+  pending: {
+    label: 'Pending Action',
+    color: 'warning',
+    description: 'Action required',
+    icon: 'Clock',
+  },
+  disputed: {
+    label: 'Disputed',
+    color: 'info',
+    description: 'Dispute raised',
+    icon: 'MessageSquare',
+  },
+  accepted: {
+    label: 'Accepted',
+    color: 'neutral',
+    description: 'Discrepancy accepted',
+    icon: 'CheckCircle',
+  },
+  resolved: {
+    label: 'Resolved',
+    color: 'success',
+    description: 'Discrepancy resolved',
+    icon: 'CheckCircle',
+  },
+};
+
 /**
  * Get status configuration for a specific domain and status
  */
@@ -1042,7 +1093,9 @@ export function getStatusConfig(
     | 'rto'
     | 'transaction_type'
     | 'pickup'
-    | 'qc',
+    | 'pickup'
+    | 'qc'
+    | 'weight_discrepancy',
   status: string
 ): StatusConfig | undefined {
   const configs: Record<string, StatusConfigMap> = {
@@ -1074,6 +1127,7 @@ export function getStatusConfig(
     transaction_type: TRANSACTION_TYPE_CONFIG,
     pickup: PICKUP_STATUS_CONFIG,
     qc: QC_STATUS_CONFIG,
+    weight_discrepancy: WEIGHT_DISCREPANCY_STATUS_CONFIG,
   };
 
   const domainConfig = configs[domain];
@@ -1139,4 +1193,5 @@ export const STATUS_CONFIGS = {
   transaction_type: TRANSACTION_TYPE_CONFIG,
   pickup: PICKUP_STATUS_CONFIG,
   qc: QC_STATUS_CONFIG,
+  weight_discrepancy: WEIGHT_DISCREPANCY_STATUS_CONFIG,
 } as const;

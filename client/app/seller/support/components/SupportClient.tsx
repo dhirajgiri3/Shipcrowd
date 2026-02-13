@@ -28,6 +28,7 @@ import {
     Send,
     Paperclip
 } from 'lucide-react';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from '@/src/lib/utils';
 import { useSupportTickets, useCreateSupportTicket } from '@/src/core/api/hooks/support/useSupport';
@@ -74,18 +75,8 @@ export function SupportClient() {
     const tickets = ticketsData?.tickets || [];
     const filteredTickets = tickets;
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'open':
-                return <Badge variant="warning" className="gap-1"><AlertCircle className="h-3 w-3" />Open</Badge>;
-            case 'in_progress':
-                return <Badge variant="info" className="gap-1"><Clock className="h-3 w-3" />In Progress</Badge>;
-            case 'resolved':
-                return <Badge variant="success" className="gap-1"><CheckCircle2 className="h-3 w-3" />Resolved</Badge>;
-            default:
-                return <Badge variant="neutral">{status}</Badge>;
-        }
-    };
+    // Helper removed - using StatusBadge component
+
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
@@ -373,7 +364,7 @@ export function SupportClient() {
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-mono text-[var(--text-muted)]">{ticket.ticketId}</span>
-                                                    {getStatusBadge(ticket.status)}
+                                                    <StatusBadge domain="support_ticket" status={ticket.status} />
                                                     <Badge variant="outline" className="text-xs capitalize">{ticket.category}</Badge>
                                                 </div>
                                                 <h3 className="font-medium text-[var(--text-primary)]">{ticket.subject}</h3>

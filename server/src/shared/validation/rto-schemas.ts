@@ -13,6 +13,7 @@ export const rtoReasonSchema = z.enum([
     'ndr_unresolved',
     'customer_cancellation',
     'qc_failure',
+    'refused',
     'damaged_in_transit',
     'incorrect_product',
     'other',
@@ -56,28 +57,66 @@ export type RTOTriggeredBy = z.infer<typeof rtoTriggeredBySchema>;
 // Query Schemas
 // ============================================================================
 
+const dateStringSchema = z
+    .string()
+    .refine((val) => !Number.isNaN(Date.parse(val)), 'Invalid date format');
+
 export const listRTOEventsQuerySchema = z.object({
     page: z.string().optional().transform(val => Math.max(1, parseInt(val || '1', 10))),
     limit: z.string().optional().transform(val => Math.max(1, Math.min(100, parseInt(val || '20', 10)))),
     returnStatus: rtoStatusSchema.optional(),
     rtoReason: rtoReasonSchema.optional(),
     warehouseId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid warehouse ID format').optional(),
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
+    startDate: dateStringSchema.optional(),
+    endDate: dateStringSchema.optional(),
     sortBy: z.enum(['triggeredAt', 'expectedReturnDate', 'actualReturnDate']).optional().default('triggeredAt'),
     sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+}).superRefine((data, ctx) => {
+    if ((data.startDate && !data.endDate) || (!data.startDate && data.endDate)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'startDate and endDate must be provided together',
+            path: ['startDate'],
+        });
+        return;
+    }
+
+    if (data.startDate && data.endDate && new Date(data.startDate) > new Date(data.endDate)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'startDate must be before or equal to endDate',
+            path: ['startDate'],
+        });
+    }
 });
 
 export type ListRTOEventsQuery = z.infer<typeof listRTOEventsQuerySchema>;
 
-export const getRTOStatsQuerySchema = z.object({
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
+export const getRTOAnalyticsQuerySchema = z.object({
+    startDate: dateStringSchema.optional(),
+    endDate: dateStringSchema.optional(),
     warehouseId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
     rtoReason: rtoReasonSchema.optional(),
+}).superRefine((data, ctx) => {
+    if ((data.startDate && !data.endDate) || (!data.startDate && data.endDate)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'startDate and endDate must be provided together',
+            path: ['startDate'],
+        });
+        return;
+    }
+
+    if (data.startDate && data.endDate && new Date(data.startDate) > new Date(data.endDate)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'startDate must be before or equal to endDate',
+            path: ['startDate'],
+        });
+    }
 });
 
-export type GetRTOStatsQuery = z.infer<typeof getRTOStatsQuerySchema>;
+export type GetRTOAnalyticsQuery = z.infer<typeof getRTOAnalyticsQuerySchema>;
 
 export const getPendingRTOsQuerySchema = z.object({
     warehouseId: z.string().regex(/^[a-f\d]{24}$/i).optional(),

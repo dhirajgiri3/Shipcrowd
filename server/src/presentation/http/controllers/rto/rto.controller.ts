@@ -7,11 +7,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import RTOService from '../../../../core/application/services/rto/rto.service';
+import RTOAnalyticsService from '../../../../core/application/services/rto/rto-analytics.service';
 import { RTODispositionService } from '../../../../core/application/services/rto/rto-disposition.service';
-import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
-import { AppError, ValidationError, NotFoundError, AuthenticationError, RateLimitError } from '../../../../shared/errors/app.error';
+import { AppError, ValidationError, NotFoundError, RateLimitError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import cacheService from '../../../../core/application/services/analytics/analytics-cache.service';
 import StorageService from '../../../../infrastructure/external/storage/storage.service';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import {
@@ -19,7 +20,7 @@ import {
     triggerManualRTOSchema,
     updateRTOStatusSchema,
     recordQCResultSchema,
-    getRTOStatsQuerySchema,
+    getRTOAnalyticsQuerySchema,
     getPendingRTOsQuerySchema,
     executeDispositionSchema,
 } from '../../../../shared/validation/rto-schemas';
@@ -49,6 +50,8 @@ export class RTOController {
                 returnStatus,
                 rtoReason,
                 warehouseId,
+                startDate,
+                endDate,
                 page,
                 limit,
                 sortBy,
@@ -67,6 +70,15 @@ export class RTOController {
 
             if (warehouseId) {
                 filter.warehouse = warehouseId;
+            }
+            if (startDate || endDate) {
+                filter.triggeredAt = {};
+                if (startDate) {
+                    filter.triggeredAt.$gte = new Date(startDate);
+                }
+                if (endDate) {
+                    filter.triggeredAt.$lte = new Date(endDate);
+                }
             }
 
             const skip = (page - 1) * limit;
@@ -298,17 +310,17 @@ export class RTOController {
     }
 
     /**
-     * Get RTO statistics
-     * GET /rto/analytics/stats
+     * Get RTO analytics
+     * GET /rto/analytics
      */
-    static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
+    static async getAnalytics(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const auth = guardChecks(req);
             requireCompanyContext(auth);
             const companyId = auth.companyId;
 
             // Validate query parameters
-            const validation = getRTOStatsQuerySchema.safeParse(req.query);
+            const validation = getRTOAnalyticsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
@@ -318,18 +330,20 @@ export class RTOController {
             }
 
             const { startDate, endDate, warehouseId, rtoReason } = validation.data;
-
-            let dateRange;
-            if (startDate && endDate) {
-                dateRange = {
-                    start: new Date(startDate),
-                    end: new Date(endDate),
-                };
+            const cacheKey = `rto:analytics:${companyId}:${startDate || 'default'}:${endDate || 'default'}:${warehouseId || 'all'}:${rtoReason || 'all'}`;
+            const cached = await cacheService.get(cacheKey);
+            if (cached) {
+                sendSuccess(res, cached);
+                return;
             }
-
-            const stats = await NDRAnalyticsService.getRTOStats(companyId, dateRange);
-
-            sendSuccess(res, stats);
+            const analytics = await RTOAnalyticsService.getAnalytics(companyId, {
+                startDate,
+                endDate,
+                warehouseId,
+                rtoReason,
+            });
+            await cacheService.set(cacheKey, analytics, 300);
+            sendSuccess(res, analytics);
         } catch (error) {
             next(error);
         }
@@ -414,8 +428,24 @@ export class RTOController {
             }
 
             const { warehouseId, daysUntilReturn } = validation.data;
+            const filter: Record<string, unknown> = {
+                company: companyId,
+                returnStatus: { $in: ['initiated', 'in_transit', 'qc_pending'] },
+            };
 
-            const pendingRTOs = await RTOEvent.getPendingRTOs(companyId);
+            if (warehouseId) {
+                filter.warehouse = warehouseId;
+            }
+
+            if (Number.isFinite(daysUntilReturn) && daysUntilReturn > 0) {
+                const until = new Date();
+                until.setDate(until.getDate() + daysUntilReturn);
+                filter.expectedReturnDate = { $lte: until };
+            }
+
+            const pendingRTOs = await RTOEvent.find(filter)
+                .sort({ triggeredAt: -1 })
+                .populate('shipment order warehouse');
 
             sendSuccess(res, { data: pendingRTOs });
         } catch (error) {

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { useShipments, useGenerateBulkLabels, useShipmentStats } from '@/src/core/api/hooks/orders/useShipments';
-import { ShipmentDetailsPanel } from '@/src/components/seller/ShipmentDetailsPanel';
+import { ShipmentDetailsPanel } from '@/src/components/seller/shipments/ShipmentDetailsPanel';
 import { format } from 'date-fns';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';

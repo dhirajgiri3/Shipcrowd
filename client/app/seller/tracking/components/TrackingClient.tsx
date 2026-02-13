@@ -3,22 +3,23 @@ export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
 import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Card } from '@/src/components/ui/core/Card';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { Loader } from '@/src/components/ui/feedback/Loader';
+import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/feedback/Alert';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { cn } from '@/src/lib/utils';
 import {
     Search,
     Truck,
     Package,
-    MapPin,
-    Clock,
-    ArrowRight,
-    Calendar,
     AlertCircle,
-    CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSellerTracking } from '@/src/core/api/hooks/seller/useSellerTracking';
-import { NormalizedTrackingData } from '@/src/core/api/clients/shipping/shipmentApi';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { TrackingInfo } from '@/src/core/api/clients/shipping/shipmentApi';
 
 export function TrackingClient() {
     const [search, setSearch] = useState('');
@@ -36,9 +37,6 @@ export function TrackingClient() {
         }
         setSearchTerm(search.trim());
     };
-
-    // Simplify the tracking result display logic
-    // We'll use the 'result' from the hook directly
 
     return (
         <div className="min-h-screen pb-20 space-y-8">
@@ -80,14 +78,13 @@ export function TrackingClient() {
                         className="flex flex-col sm:flex-row gap-3"
                     >
                         <div className="relative flex-1 group">
-                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--primary-blue)] transition-colors" />
-                            <input
-                                type="text"
+                            <Input
                                 placeholder="Enter AWB Number (e.g., DL987654321IN)"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="w-full h-14 pl-14 pr-4 rounded-2xl bg-[var(--bg-secondary)] border border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-lg transition-all text-[var(--text-primary)] placeholder:text-[var(--text-muted)] shadow-inner"
+                                className="h-14 pl-14 text-lg shadow-inner"
+                                icon={<Search className="w-5 h-5 text-[var(--text-muted)]" />}
                             />
                         </div>
                         <Button
@@ -96,10 +93,7 @@ export function TrackingClient() {
                             className="h-14 px-8 rounded-2xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-lg font-semibold shadow-brand-lg transition-all hover:scale-105 active:scale-95"
                         >
                             {isSearching ? (
-                                <span className="flex items-center gap-2">
-                                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Tracking...
-                                </span>
+                                <Loader size="sm" variant="spinner" className="text-white mr-2" />
                             ) : 'Track Now'}
                         </Button>
                     </motion.div>
@@ -108,16 +102,37 @@ export function TrackingClient() {
 
             {/* Error State */}
             {isError && (
-                <div className="p-8 rounded-[var(--radius-3xl)] bg-[var(--error-bg)] border border-[var(--error-bg)] text-center text-[var(--error)]">
-                    <AlertCircle className="w-10 h-10 mx-auto mb-2 text-[var(--error)]" />
-                    <h3 className="text-lg font-bold">Tracking Failed</h3>
-                    <p className="mt-1">{(error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message || 'Could not fetch tracking information. Please check the AWB number.'}</p>
-                </div>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    <Alert variant="error" className="rounded-[var(--radius-3xl)] border-none bg-[var(--error-bg)]">
+                        <AlertCircle className="h-5 w-5" />
+                        <AlertTitle>Tracking Failed</AlertTitle>
+                        <AlertDescription>
+                            {(error as any)?.response?.data?.message ||
+                             (error as any)?.message ||
+                             'Shipment not found. Please check the AWB number and try again.'}
+                        </AlertDescription>
+                    </Alert>
+                </motion.div>
+            )}
+
+            {/* Loading State */}
+            {isSearching && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center justify-center py-20"
+                >
+                    <Loader size="lg" variant="spinner" className="text-[var(--primary-blue)] mb-4" />
+                    <p className="text-[var(--text-muted)] text-lg">Tracking your shipment...</p>
+                </motion.div>
             )}
 
             {/* Results Section */}
             <AnimatePresence mode="wait">
-                {result ? (
+                {!isSearching && result ? (
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -127,74 +142,92 @@ export function TrackingClient() {
                     >
                         {/* Main Status Card */}
                         <div className="lg:col-span-2 space-y-6">
-                            <div className="p-8 rounded-[var(--radius-3xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-[var(--border-subtle)] pb-8">
-                                    <div className="flex items-center gap-5">
-                                        <div className="h-20 w-20 rounded-2xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] border border-[var(--primary-blue-light)]/20 shadow-inner">
-                                            <Truck className="w-10 h-10" />
+                            <Card className="rounded-[var(--radius-3xl)] border border-[var(--border-subtle)] shadow-sm overflow-hidden">
+                                <div className="p-8">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-[var(--border-subtle)] pb-8">
+                                        <div className="flex items-center gap-5">
+                                            <div className="h-20 w-20 rounded-2xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] border border-[var(--primary-blue-light)]/20 shadow-inner">
+                                                <Truck className="w-10 h-10" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Current Status</p>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <StatusBadge status={result.currentStatus} className="scale-125" />
+                                                </div>
+                                                <p className="text-sm text-[var(--text-secondary)] mt-2">Via {result.carrier}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Current Status</p>
-                                            <h2 className="text-3xl font-bold text-[var(--text-primary)]">{result.status}</h2>
-                                            <p className="text-sm text-[var(--text-secondary)] mt-1">Via {result.courier}</p>
+                                        <div className="text-right bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-subtle)]">
+                                            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Estimated Delivery</p>
+                                            <p className="text-lg font-bold text-[var(--success)]">{result.estimatedDelivery}</p>
                                         </div>
                                     </div>
-                                    <div className="text-right bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-subtle)]">
-                                        <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Estimated Delivery</p>
-                                        <p className="text-xl font-bold text-[var(--success)]">{result.estimatedDelivery}</p>
-                                    </div>
-                                </div>
 
-                                {/* Timeline */}
-                                <div className="relative space-y-0 pl-4 pt-4">
-                                    {/* Vertical Line */}
-                                    <div className="absolute left-[27px] top-4 bottom-8 w-0.5 bg-[var(--border-subtle)]" />
+                                    {/* Timeline */}
+                                    <div className="relative space-y-0 pl-4 pt-4">
+                                        {(!result.timeline || result.timeline.length === 0) ? (
+                                            <div className="text-center py-12">
+                                                <Package className="w-12 h-12 mx-auto text-[var(--text-muted)] mb-3" />
+                                                <p className="text-[var(--text-muted)] text-sm">No tracking events available yet</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* Vertical Line */}
+                                                <div className="absolute left-[27px] top-4 bottom-8 w-0.5 bg-[var(--border-subtle)]" />
 
-                                    {result.history.map((event, i) => (
-                                        <motion.div
-                                            key={i}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: i * 0.1 }}
-                                            className="relative flex gap-8 pb-10 last:pb-0 group"
-                                        >
-                                            {/* Node */}
-                                            <div className={cn(
-                                                "relative z-10 flex-shrink-0 w-6 h-6 rounded-full border-[3px] transition-all duration-300 mt-1",
-                                                event.current
-                                                    ? "bg-[var(--primary-blue)] border-[var(--primary-blue-light)] shadow-[0_0_0_4px_var(--primary-blue-soft)] scale-110"
-                                                    : event.completed
-                                                        ? "bg-[var(--success)] border-[var(--success-bg)]"
-                                                        : "bg-[var(--bg-tertiary)] border-[var(--border-subtle)]"
-                                            )} />
+                                                {result.timeline.map((event: any, i: number) => (
+                                            <motion.div
+                                                key={i}
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: i * 0.1 }}
+                                                className="relative flex gap-8 pb-10 last:pb-0 group"
+                                            >
+                                                {/* Node */}
+                                                <div className={cn(
+                                                    "relative z-10 flex-shrink-0 w-6 h-6 rounded-full border-[3px] transition-all duration-300 mt-1",
+                                                    event.current
+                                                        ? "bg-[var(--primary-blue)] border-[var(--primary-blue-light)] shadow-[0_0_0_4px_var(--primary-blue-soft)] scale-110"
+                                                        : event.completed
+                                                            ? "bg-[var(--success)] border-[var(--success-bg)]"
+                                                            : "bg-[var(--bg-tertiary)] border-[var(--border-subtle)]"
+                                                )} />
 
-                                            <div className={cn(
-                                                "flex-1 p-5 rounded-2xl border transition-all duration-200",
-                                                event.current
-                                                    ? "bg-[var(--bg-secondary)] border-[var(--primary-blue)]/30 shadow-md transform scale-[1.01]"
-                                                    : "bg-[var(--bg-primary)] border-transparent group-hover:border-[var(--border-subtle)] group-hover:bg-[var(--bg-secondary)]/30"
-                                            )}>
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <div>
-                                                        <p className={cn(
-                                                            "font-bold text-base",
-                                                            event.current ? "text-[var(--primary-blue)]" : "text-[var(--text-primary)]"
-                                                        )}>{event.status}</p>
-                                                        <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-1.5">
-                                                            <MapPin className="w-3.5 h-3.5 opacity-70" />
-                                                            {event.location}
-                                                        </p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-sm font-bold text-[var(--text-primary)]">{event.timestamp.split(',')[0]}</p>
-                                                        <p className="text-xs text-[var(--text-muted)] mt-0.5">{event.timestamp.split(',')[1]}</p>
+                                                <div className={cn(
+                                                    "flex-1 p-5 rounded-2xl border transition-all duration-200",
+                                                    event.current
+                                                        ? "bg-[var(--bg-secondary)] border-[var(--primary-blue)]/30 shadow-md transform scale-[1.01]"
+                                                        : "bg-[var(--bg-primary)] border-transparent group-hover:border-[var(--border-subtle)] group-hover:bg-[var(--bg-secondary)]/30"
+                                                )}>
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div className="flex-1">
+                                                            <p className={cn(
+                                                                "font-bold text-base capitalize",
+                                                                event.current ? "text-[var(--primary-blue)]" : "text-[var(--text-primary)]"
+                                                            )}>{event.status?.replace(/_/g, ' ')}</p>
+                                                            <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-1.5">
+                                                                {event.location}
+                                                            </p>
+                                                            {event.description && (
+                                                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                                                    {event.description}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-right flex-shrink-0">
+                                                            <p className="text-xs font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                                                                {event.timestamp}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </motion.div>
-                                    ))}
+                                            </motion.div>
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            </Card>
                         </div>
 
                         {/* Sidebar */}
@@ -203,28 +236,36 @@ export function TrackingClient() {
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.2 }}
-                                className="p-6 rounded-[var(--radius-xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm"
                             >
-                                <h3 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                                    <Package className="w-5 h-5 text-[var(--primary-blue)]" /> Shipment Details
-                                </h3>
-                                <dl className="space-y-4">
-                                    <div className="pb-4 border-b border-[var(--border-subtle)]">
-                                        <dt className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Courier Partner</dt>
-                                        <dd className="font-semibold text-[var(--text-primary)] mt-1 flex items-center gap-2">
-                                            {result.courier}
-                                            <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
-                                        </dd>
+                                <Card className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm">
+                                    <div className="p-6">
+                                        <h3 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                                            <Package className="w-5 h-5 text-[var(--primary-blue)]" /> Shipment Details
+                                        </h3>
+                                        <dl className="space-y-4">
+                                            <div className="pb-4 border-b border-[var(--border-subtle)]">
+                                                <dt className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">AWB Number</dt>
+                                                <dd className="font-mono font-semibold text-[var(--text-primary)] mt-1">
+                                                    {result.awb}
+                                                </dd>
+                                            </div>
+                                            <div className="pb-4 border-b border-[var(--border-subtle)]">
+                                                <dt className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Courier Partner</dt>
+                                                <dd className="font-semibold text-[var(--text-primary)] mt-1 capitalize">
+                                                    {result.carrier}
+                                                </dd>
+                                            </div>
+                                            <div className="pb-4 border-b border-[var(--border-subtle)]">
+                                                <dt className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Origin</dt>
+                                                <dd className="font-medium text-[var(--text-primary)] mt-1">{result.origin}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Destination</dt>
+                                                <dd className="font-medium text-[var(--text-primary)] mt-1">{result.destination}</dd>
+                                            </div>
+                                        </dl>
                                     </div>
-                                    <div className="pb-4 border-b border-[var(--border-subtle)]">
-                                        <dt className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Origin</dt>
-                                        <dd className="font-medium text-[var(--text-primary)] mt-1">{result.origin}</dd>
-                                    </div>
-                                    <div>
-                                        <dt className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Destination</dt>
-                                        <dd className="font-medium text-[var(--text-primary)] mt-1">{result.destination}</dd>
-                                    </div>
-                                </dl>
+                                </Card>
                             </motion.div>
 
                             <motion.div
@@ -240,7 +281,7 @@ export function TrackingClient() {
                     </motion.div>
                 ) : (
                     /* Search Placeholder / Empty State */
-                    !isSearching && !isError && (
+                    !isError && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -248,25 +289,12 @@ export function TrackingClient() {
                         >
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="md:col-span-2">
-                                    <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4">Recent Searches</h3>
-                                    <div className="grid sm:grid-cols-2 gap-4">
-                                        {[1, 2].map((_, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => { setSearch('DL987654321IN'); handleSearch(); }}
-                                                className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] hover:border-[var(--primary-blue)]/30 transition-all text-left group shadow-sm hover:shadow-md"
-                                            >
-                                                <div className="p-3 rounded-xl bg-[var(--bg-secondary)] text-[var(--text-muted)] group-hover:bg-[var(--primary-blue-soft)] group-hover:text-[var(--primary-blue)] transition-colors">
-                                                    <Clock className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-[var(--text-primary)]">DL987654321IN</p>
-                                                    <p className="text-xs text-[var(--text-muted)] mt-1">Checked 2 hours ago</p>
-                                                </div>
-                                                <ArrowRight className="w-5 h-5 text-[var(--text-muted)] ml-auto opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <EmptyState
+                                        icon={<Package className="w-12 h-12" />}
+                                        title="Track Your Shipment"
+                                        description="Enter your AWB number above to see the realtime status of your shipment."
+                                        className="bg-transparent border-none shadow-none"
+                                    />
                                 </div>
                             </div>
                         </motion.div>

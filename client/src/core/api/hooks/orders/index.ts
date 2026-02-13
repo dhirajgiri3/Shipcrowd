@@ -7,9 +7,6 @@ export * from './useOrders';
 export * from './useShipments';
 export * from './useShipmentDetail';
 
-// Manifests (includes useEligibleShipments)
-export * from './useManifests';
-
 // Recent Customers
 export * from './useRecentCustomers';
 

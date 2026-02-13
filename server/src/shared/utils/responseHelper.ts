@@ -57,7 +57,11 @@ export const sendPaginated = <T>(
     data: T[],
     pagination: PaginationMeta,
     message?: string,
-    extras?: { stats?: Record<string, number> }
+    extras?: {
+        stats?: Record<string, number>;
+        filterCounts?: Record<string, number>;
+        [key: string]: any;
+    }
 ): Response<PaginatedResponse<T>> => {
     const response: PaginatedResponse<T> = {
         success: true,

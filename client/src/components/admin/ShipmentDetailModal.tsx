@@ -67,7 +67,7 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                         </div>
                         <p className="text-sm text-[var(--text-muted)]">Order: {(shipment as any).orderId?.orderNumber || shipment.orderNumber}</p>
                     </div>
-                    <StatusBadge status={shipment.status || (shipment as any).currentStatus} />
+                    <StatusBadge domain="shipment" status={shipment.status || (shipment as any).currentStatus} />
                 </div>
 
                 {/* Customer Info */}

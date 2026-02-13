@@ -27,6 +27,9 @@ router.get('/events/:id', NDRController.getNDREvent);
 // Resolve NDR manually
 router.post('/events/:id/resolve', NDRController.resolveNDR);
 
+// Execute manual seller/admin action
+router.post('/events/:id/action', NDRController.takeAction);
+
 // Escalate NDR
 router.post('/events/:id/escalate', NDRController.escalateNDR);
 
@@ -36,8 +39,8 @@ router.post('/events/:id/trigger-workflow', NDRController.triggerWorkflow);
 /**
  * NDR Analytics
  */
-// Get overall statistics
-router.get('/analytics/stats', NDRController.getStats);
+// Get overall statistics/metrics
+router.get('/analytics/stats', NDRAnalyticsController.getStats);
 
 // Get breakdown by type
 router.get('/analytics/by-type', NDRController.getByType);

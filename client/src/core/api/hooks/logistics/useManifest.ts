@@ -98,7 +98,7 @@ export function useShipmentManifestStats(
 export function useEligibleManifestShipments(
     carrier?: string,
     warehouseId?: string,
-    options?: UseQueryOptions<EligibleManifestShipment[], ApiError>
+    options?: Omit<UseQueryOptions<EligibleManifestShipment[], ApiError>, 'queryKey'>
 ) {
     return useQuery<EligibleManifestShipment[], ApiError>({
         queryKey: queryKeys.shipments.manifestEligible(carrier, warehouseId),

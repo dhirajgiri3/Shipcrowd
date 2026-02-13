@@ -178,6 +178,14 @@ export interface GetOrdersResponse {
     hasPrev?: boolean;
   };
   stats?: Record<string, number>; // Faceted search stats
+  filterCounts?: {
+    all: number;
+    needs_attention: number;
+    today: number;
+    cod_pending: number;
+    last_7_days: number;
+    zone_b: number;
+  };
   timestamp: string;
 }
 
@@ -205,6 +213,8 @@ export interface OrderListParams {
   endDate?: string;
   warehouse?: string;
   search?: string; // Search by order number or customer name/phone
+  smartFilter?: 'all' | 'needs_attention' | 'today' | 'cod_pending' | 'last_7_days' | 'zone_b'; // Smart filter preset
+  paymentStatus?: 'all' | 'paid' | 'pending' | 'failed'; // Payment status filter
   // Admin-specific filters
   sellerId?: string; // Filter by seller (admin only)
   paymentMode?: 'COD' | 'Prepaid';
