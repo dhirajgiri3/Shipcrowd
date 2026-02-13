@@ -35,6 +35,16 @@ export const DEPRECATED_VELOCITY_CARRIER_IDS = [
 ];
 
 /**
+ * Best-effort replacements for deprecated IDs observed in legacy integrations.
+ * Unknown legacy IDs keep their original value.
+ */
+export const DEPRECATED_VELOCITY_ID_REPLACEMENTS: Record<string, string> = {
+  CARO0ZZQH1H6U: VELOCITY_CARRIER_IDS.DELHIVERY_STANDARD,
+  CARCVBWTPRH08: VELOCITY_CARRIER_IDS.EKART_STANDARD,
+  CARFYXUKCQHBM: VELOCITY_CARRIER_IDS.DELHIVERY_SPECIAL_20KG,
+};
+
+/**
  * Helper to get carrier name from ID
  */
 export const getVelocityCarrierName = (carrierId: string): string => {
@@ -53,4 +63,11 @@ export const getVelocityCarrierName = (carrierId: string): string => {
  */
 export const isDeprecatedVelocityId = (carrierId: string): boolean => {
   return DEPRECATED_VELOCITY_CARRIER_IDS.includes(carrierId);
+};
+
+/**
+ * Normalize deprecated IDs to canonical active IDs where mapping is known.
+ */
+export const normalizeVelocityCarrierId = (carrierId: string): string => {
+  return DEPRECATED_VELOCITY_ID_REPLACEMENTS[carrierId] || carrierId;
 };

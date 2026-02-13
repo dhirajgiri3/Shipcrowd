@@ -41,6 +41,45 @@ const parseNumericQuery = (value: unknown, fallback: number): number => {
     return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const PINCODE_REGEX = /^\d{6}$/;
+const COURIER_RATE_LIMITS = {
+    minWeightKg: 0.001,
+    maxWeightKg: 200,
+    minDimensionCm: 1,
+    maxDimensionCm: 300,
+    minOrderValue: 0,
+    maxOrderValue: 1_000_000,
+};
+
+const validatePincode = (field: 'fromPincode' | 'toPincode', value: string): void => {
+    if (!PINCODE_REGEX.test(value)) {
+        throw new AppError(
+            `${field} must be a valid 6-digit pincode`,
+            ErrorCode.VAL_INVALID_INPUT,
+            422,
+            true,
+            { field, value }
+        );
+    }
+};
+
+const validateNumericRange = (
+    field: string,
+    value: number,
+    min: number,
+    max: number
+): void => {
+    if (!Number.isFinite(value) || value < min || value > max) {
+        throw new AppError(
+            `${field} must be between ${min} and ${max}`,
+            ErrorCode.VAL_INVALID_INPUT,
+            422,
+            true,
+            { field, min, max, value }
+        );
+    }
+};
+
 /**
  * @route POST /api/v1/orders
  * @desc Create a new order
@@ -80,20 +119,60 @@ router.get(
         requireCompanyContext(auth);
         const paymentMode: 'cod' | 'prepaid' =
             String(req.query.paymentMode || 'Prepaid').toLowerCase() === 'cod' ? 'cod' : 'prepaid';
+        const fromPincode = String(req.query.fromPincode || '').trim();
+        const toPincode = String(req.query.toPincode || '').trim();
+        const weight = parseNumericQuery(req.query.weight, 0);
+        const length = parseNumericQuery(req.query.length, 10);
+        const width = parseNumericQuery(req.query.width, 10);
+        const height = parseNumericQuery(req.query.height, 10);
+        const orderValue = parseNumericQuery(req.query.orderValue, 0);
+
+        validatePincode('fromPincode', fromPincode);
+        validatePincode('toPincode', toPincode);
+        validateNumericRange(
+            'weight',
+            weight,
+            COURIER_RATE_LIMITS.minWeightKg,
+            COURIER_RATE_LIMITS.maxWeightKg
+        );
+        validateNumericRange(
+            'length',
+            length,
+            COURIER_RATE_LIMITS.minDimensionCm,
+            COURIER_RATE_LIMITS.maxDimensionCm
+        );
+        validateNumericRange(
+            'width',
+            width,
+            COURIER_RATE_LIMITS.minDimensionCm,
+            COURIER_RATE_LIMITS.maxDimensionCm
+        );
+        validateNumericRange(
+            'height',
+            height,
+            COURIER_RATE_LIMITS.minDimensionCm,
+            COURIER_RATE_LIMITS.maxDimensionCm
+        );
+        validateNumericRange(
+            'orderValue',
+            orderValue,
+            COURIER_RATE_LIMITS.minOrderValue,
+            COURIER_RATE_LIMITS.maxOrderValue
+        );
 
         const quoteInput = {
             companyId: auth.companyId,
             sellerId: auth.userId,
-            fromPincode: String(req.query.fromPincode || ''),
-            toPincode: String(req.query.toPincode || ''),
-            weight: parseNumericQuery(req.query.weight, 0),
+            fromPincode,
+            toPincode,
+            weight,
             dimensions: {
-                length: parseNumericQuery(req.query.length, 10),
-                width: parseNumericQuery(req.query.width, 10),
-                height: parseNumericQuery(req.query.height, 10),
+                length,
+                width,
+                height,
             },
             paymentMode,
-            orderValue: parseNumericQuery(req.query.orderValue, 0),
+            orderValue,
             shipmentType: 'forward' as const,
         };
         const quoteResult = await QuoteEngineService.generateQuotes(quoteInput);

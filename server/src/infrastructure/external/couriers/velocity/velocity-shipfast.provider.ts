@@ -75,7 +75,11 @@ import {
 } from './velocity.types';
 import { VelocityAuth } from './velocity.auth';
 import { VelocityMapper } from './velocity.mapper';
-import { VELOCITY_CARRIER_IDS, isDeprecatedVelocityId } from './velocity-carrier-ids';
+import {
+  VELOCITY_CARRIER_IDS,
+  isDeprecatedVelocityId,
+  normalizeVelocityCarrierId
+} from './velocity-carrier-ids';
 import { handleVelocityError } from './velocity-error-handler';
 import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
 import { CourierStatusMapping, StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
@@ -94,6 +98,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     [VELOCITY_CARRIER_IDS.EKART_STANDARD]: 1.05,
     [VELOCITY_CARRIER_IDS.SHADOWFAX_STANDARD]: 1,
   };
+  private static readonly warnedDeprecatedCarrierIds = new Set<string>();
 
   private auth: VelocityAuth;
   private httpClient: AxiosInstance;
@@ -635,8 +640,8 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       };
 
       return [...carriers].sort((a, b) => {
-        const priorityA = priorityMap[a.carrier_id] || 0;
-        const priorityB = priorityMap[b.carrier_id] || 0;
+        const priorityA = priorityMap[normalizeVelocityCarrierId(a.carrier_id)] || 0;
+        const priorityB = priorityMap[normalizeVelocityCarrierId(b.carrier_id)] || 0;
 
         // If priorities are different, use them
         if (priorityB !== priorityA) {
@@ -652,10 +657,17 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     for (const carrier of sortedCarriers) {
       try {
+        const normalizedCarrierId = normalizeVelocityCarrierId(carrier.carrier_id);
+
         // Log warning if carrier is deprecated
-        if (isDeprecatedVelocityId(carrier.carrier_id)) {
+        if (
+          isDeprecatedVelocityId(carrier.carrier_id) &&
+          !VelocityShipfastProvider.warnedDeprecatedCarrierIds.has(carrier.carrier_id)
+        ) {
+          VelocityShipfastProvider.warnedDeprecatedCarrierIds.add(carrier.carrier_id);
           logger.warn('Received deprecated carrier ID in serviceability', {
             carrierId: carrier.carrier_id,
+            normalizedCarrierId,
             carrierName: carrier.carrier_name
           });
         }
@@ -664,7 +676,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         const estimatedDays = Number((carrier as any).estimated_delivery_days || 3);
         const total = explicitRate > 0
           ? explicitRate
-          : this.estimateFallbackRate(request.package.weight, carrier.carrier_id);
+          : this.estimateFallbackRate(request.package.weight, normalizedCarrierId);
 
         rates.push({
           basePrice: total,
@@ -672,7 +684,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
           total,
           currency: 'INR',
           serviceType: carrier.carrier_name,
-          carrierId: carrier.carrier_id,
+          carrierId: normalizedCarrierId,
           zone: serviceabilityData.zone,
           estimatedDeliveryDays: estimatedDays
         });
@@ -681,14 +693,15 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
           carrier: carrier.carrier_name,
           error: pricingError instanceof Error ? pricingError.message : 'Unknown error'
         });
-        const total = this.estimateFallbackRate(request.package.weight, carrier.carrier_id);
+        const normalizedCarrierId = normalizeVelocityCarrierId(carrier.carrier_id);
+        const total = this.estimateFallbackRate(request.package.weight, normalizedCarrierId);
         rates.push({
           basePrice: total,
           taxes: 0,
           total,
           currency: 'INR',
           serviceType: carrier.carrier_name,
-          carrierId: carrier.carrier_id,
+          carrierId: normalizedCarrierId,
           zone: serviceabilityData.zone,
           estimatedDeliveryDays: 3
         });
@@ -1730,9 +1743,14 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
    * Internal validation for carrier IDs
    */
   private validateCarrierId(carrierId: string): void {
-    if (isDeprecatedVelocityId(carrierId)) {
+    if (
+      isDeprecatedVelocityId(carrierId) &&
+      !VelocityShipfastProvider.warnedDeprecatedCarrierIds.has(carrierId)
+    ) {
+      VelocityShipfastProvider.warnedDeprecatedCarrierIds.add(carrierId);
       logger.warn('Using deprecated Velocity carrier ID', {
         carrierId,
+        normalizedCarrierId: normalizeVelocityCarrierId(carrierId),
         recommendation: 'Update to latest carrier IDs from documentation'
       });
     }

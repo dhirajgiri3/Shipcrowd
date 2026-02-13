@@ -58,11 +58,14 @@ export class OnboardingProgressService {
      */
     async updateStep(companyId: string, stepKey: string, userId?: string) {
         try {
-            const progress = await OnboardingProgress.findOne({ companyId });
+            let progress = await OnboardingProgress.findOne({ companyId });
 
             if (!progress) {
-                logger.warn(`Cannot update step ${stepKey}: Progress record not found for company ${companyId}`);
-                return null;
+                if (!userId) {
+                    logger.warn(`Cannot update step ${stepKey}: Progress record not found for company ${companyId}`);
+                    return null;
+                }
+                progress = await this.getProgress(companyId, userId);
             }
 
             // If already completed, do nothing

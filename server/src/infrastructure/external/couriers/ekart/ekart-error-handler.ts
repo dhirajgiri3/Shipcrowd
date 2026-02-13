@@ -251,6 +251,19 @@ export async function retryWithBackoff<T>(
  * @returns true if error is retryable
  */
 export function isRetryableError(error: any): boolean {
+    const responseData = error?.response?.data || {};
+    const errorCode =
+        responseData?.code ||
+        responseData?.errorCode ||
+        responseData?.error?.code ||
+        responseData?.error?.exception ||
+        responseData?.error?.exceptionName;
+
+    // Known functional miss from provider: do not retry.
+    if (errorCode === 'SWIFT_RESOURCE_NOT_FOUND_EXCEPTION') {
+        return false;
+    }
+
     // Network errors are retryable
     if (error.code) {
         const retryableNetworkCodes = [
@@ -311,29 +324,50 @@ export function isRetryableError(error: any): boolean {
 export function handleEkartError(error: any, context?: Record<string, any>): EkartError {
     const statusCode = error.response?.status || 500;
     const responseData = error.response?.data || {};
+    const errorCode =
+        responseData?.code ||
+        responseData?.errorCode ||
+        responseData?.error?.code ||
+        responseData?.error?.exception ||
+        responseData?.error?.exceptionName;
+    const isResourceNotFound = errorCode === 'SWIFT_RESOURCE_NOT_FOUND_EXCEPTION';
+    const resolvedStatusCode = isResourceNotFound && statusCode >= 500 ? 404 : statusCode;
+    const retryable = isResourceNotFound ? false : isRetryableError(error);
+    const responseMessage =
+        responseData?.message ||
+        responseData?.error?.message ||
+        error.message ||
+        'Unknown Ekart API error';
 
     // Extract retry-after header for 429 errors
     const retryAfter = error.response?.headers?.['retry-after'];
     const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : undefined;
 
     const ekartError = new EkartError(
-        statusCode,
+        resolvedStatusCode,
         {
-            message: responseData.message || error.message || 'Unknown Ekart API error',
+            message: responseMessage,
             error: responseData,
-            status_code: statusCode,
+            status_code: resolvedStatusCode,
             retryAfter: retryAfterSeconds,
         },
-        isRetryableError(error)
+        retryable
     );
 
-    logger.error('Ekart API error', {
-        statusCode,
+    const logPayload = {
+        statusCode: resolvedStatusCode,
+        rawStatusCode: statusCode,
+        errorCode,
         message: ekartError.message,
         isRetryable: ekartError.isRetryable,
         retryAfter: retryAfterSeconds,
         ...context,
-    });
+    };
+    if (resolvedStatusCode >= 500 || retryable) {
+        logger.error('Ekart API error', logPayload);
+    } else {
+        logger.warn('Ekart API returned non-retryable response', logPayload);
+    }
 
     return ekartError;
 }

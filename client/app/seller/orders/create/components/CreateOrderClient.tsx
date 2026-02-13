@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -30,6 +30,7 @@ import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useWarehouses } from '@/src/core/api/hooks/logistics/useWarehouses';
 import { usePincodeAutocomplete } from '@/src/core/api/hooks/logistics/usePincodeAutocomplete';
 import { orderApi } from '@/src/core/api/clients/orders/orderApi';
+import { useDebouncedValue } from '@/src/hooks/data';
 import type { CreateOrderRequest, OrderFormData } from '@/src/types/domain/order';
 
 const INDIAN_STATES = [
@@ -52,6 +53,10 @@ type PreflightState = {
   status: 'idle' | 'checking' | 'success' | 'error';
   message?: string;
 };
+
+const PRECHECK_DEBOUNCE_MS = 700;
+const MAX_PRECHECK_WEIGHT_KG = 200;
+const MAX_PRECHECK_ORDER_VALUE = 1_000_000;
 
 const mapServerFieldToLocal = (field: string): string => {
   const map: Record<string, string> = {
@@ -78,6 +83,8 @@ export function CreateOrderClient() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [routePreflight, setRoutePreflight] = useState<PreflightState>({ status: 'idle' });
+  const preflightRequestIdRef = useRef(0);
+  const preflightSignatureRef = useRef('');
 
   const { data: warehouses = [], isLoading: isWarehousesLoading } = useWarehouses();
 
@@ -158,43 +165,104 @@ export function CreateOrderClient() {
   );
 
   const totals = useMemo(() => {
-    const subtotal = formData.products.reduce((sum, product) => sum + (product.price * product.quantity), 0);
-    const total = subtotal + formData.tax + formData.shipping - formData.discount;
+    const subtotal = formData.products.reduce((sum, product) => {
+      const quantity = Number.isFinite(product.quantity) && product.quantity > 0 ? product.quantity : 0;
+      const price = Number.isFinite(product.price) && product.price >= 0 ? product.price : 0;
+      return sum + (price * quantity);
+    }, 0);
+    const tax = Number.isFinite(formData.tax) ? formData.tax : 0;
+    const shipping = Number.isFinite(formData.shipping) ? formData.shipping : 0;
+    const discount = Number.isFinite(formData.discount) ? formData.discount : 0;
+    const total = Math.max(subtotal + tax + shipping - discount, 0);
     return { subtotal, total };
   }, [formData.products, formData.tax, formData.shipping, formData.discount]);
 
   const totalWeight = useMemo(() => {
     const weight = formData.products.reduce((sum, product) => {
-      const productWeight = product.weight && product.weight > 0 ? product.weight : 0.5;
-      return sum + productWeight * product.quantity;
+      const quantity = Number.isFinite(product.quantity) && product.quantity > 0 ? product.quantity : 0;
+      if (quantity <= 0) return sum;
+
+      const rawWeight = product.weight;
+      const productWeight = (typeof rawWeight === 'number' && Number.isFinite(rawWeight) && rawWeight > 0)
+        ? rawWeight
+        : 0.5;
+
+      return sum + (productWeight * quantity);
     }, 0);
-    return Math.max(weight, 0.001);
+    return Math.max(Number.isFinite(weight) ? weight : 0, 0.001);
   }, [formData.products]);
 
+  const hasPreflightEligibleProduct = useMemo(
+    () =>
+      formData.products.some((product) =>
+        product.name.trim() &&
+        Number.isFinite(product.quantity) &&
+        product.quantity > 0 &&
+        Number.isFinite(product.price) &&
+        product.price > 0
+      ),
+    [formData.products]
+  );
+  const debouncedDestinationPincode = useDebouncedValue(formData.postalCode, PRECHECK_DEBOUNCE_MS);
+  const debouncedPaymentMethod = useDebouncedValue(formData.paymentMethod, PRECHECK_DEBOUNCE_MS);
+  const debouncedTotalWeight = useDebouncedValue(totalWeight, PRECHECK_DEBOUNCE_MS);
+  const debouncedOrderValue = useDebouncedValue(totals.total, PRECHECK_DEBOUNCE_MS);
+
   useEffect(() => {
+    const fromPincode = selectedWarehouse?.address?.postalCode || '';
+    const toPincode = debouncedDestinationPincode;
+
     const canCheck =
-      !!selectedWarehouse?.address?.postalCode &&
-      /^\d{6}$/.test(formData.postalCode) &&
-      formData.products.some((product) => product.name && product.quantity > 0 && product.price > 0);
+      currentStep >= 2 &&
+      /^\d{6}$/.test(fromPincode) &&
+      /^\d{6}$/.test(toPincode) &&
+      hasPreflightEligibleProduct &&
+      Number.isFinite(debouncedTotalWeight) &&
+      debouncedTotalWeight > 0 &&
+      debouncedTotalWeight <= MAX_PRECHECK_WEIGHT_KG &&
+      Number.isFinite(debouncedOrderValue) &&
+      debouncedOrderValue >= 0 &&
+      debouncedOrderValue <= MAX_PRECHECK_ORDER_VALUE;
 
     if (!canCheck) {
+      preflightRequestIdRef.current += 1;
+      preflightSignatureRef.current = '';
       setRoutePreflight({ status: 'idle' });
       return;
     }
 
-    const timeout = setTimeout(async () => {
+    const signature = [
+      fromPincode,
+      toPincode,
+      debouncedTotalWeight.toFixed(3),
+      debouncedPaymentMethod,
+      debouncedOrderValue.toFixed(2),
+    ].join('|');
+
+    if (signature === preflightSignatureRef.current) {
+      return;
+    }
+
+    preflightSignatureRef.current = signature;
+    const requestId = ++preflightRequestIdRef.current;
+
+    (async () => {
       try {
         setRoutePreflight({ status: 'checking', message: 'Checking route serviceability...' });
         const response = await orderApi.getCourierRates({
-          fromPincode: selectedWarehouse.address.postalCode,
-          toPincode: formData.postalCode,
-          weight: totalWeight,
-          paymentMode: formData.paymentMethod,
-          orderValue: totals.total,
+          fromPincode,
+          toPincode,
+          weight: debouncedTotalWeight,
+          paymentMode: debouncedPaymentMethod,
+          orderValue: debouncedOrderValue,
           length: 20,
           width: 15,
           height: 10,
         });
+
+        if (requestId !== preflightRequestIdRef.current) {
+          return;
+        }
 
         if (!response.data?.length) {
           setRoutePreflight({
@@ -209,15 +277,24 @@ export function CreateOrderClient() {
           message: `${response.data.length} courier option(s) available for this route.`,
         });
       } catch {
+        if (requestId !== preflightRequestIdRef.current) {
+          return;
+        }
         setRoutePreflight({
           status: 'error',
           message: 'Could not validate route serviceability. Please verify warehouse and destination pincode.',
         });
       }
-    }, 400);
-
-    return () => clearTimeout(timeout);
-  }, [selectedWarehouse, formData.postalCode, formData.products, formData.paymentMethod, totalWeight, totals.total]);
+    })();
+  }, [
+    currentStep,
+    selectedWarehouse,
+    hasPreflightEligibleProduct,
+    debouncedDestinationPincode,
+    debouncedPaymentMethod,
+    debouncedTotalWeight,
+    debouncedOrderValue,
+  ]);
 
   const clearFieldError = useCallback((field: string) => {
     setFieldErrors((prev) => {
@@ -296,7 +373,7 @@ export function CreateOrderClient() {
       formData.products.forEach((product, index) => {
         if (!product.name.trim()) nextErrors[`products.${index}.name`] = 'Product name is required';
         if (!product.quantity || product.quantity < 1) nextErrors[`products.${index}.quantity`] = 'Quantity must be at least 1';
-        if (!product.price || product.price <= 0) nextErrors[`products.${index}.price`] = 'Price must be greater than 0';
+        if (product.price === undefined || isNaN(product.price) || product.price < 0) nextErrors[`products.${index}.price`] = 'Price must be 0 or greater';
       });
     }
 
@@ -599,9 +676,20 @@ export function CreateOrderClient() {
                       id={`product-qty-${product.id}`}
                       type="number"
                       min="1"
-                      value={product.quantity}
+                      value={isNaN(product.quantity) ? '' : product.quantity}
+                      onFocus={(e) => e.target.select()}
                       aria-invalid={!!getFieldError(`products.${index}.quantity`)}
-                      onChange={(e) => handleProductChange(product.id, 'quantity', Number(e.target.value))}
+                      onChange={(e) => {
+                        if (e.target.value === '') {
+                          handleProductChange(product.id, 'quantity', NaN);
+                          return;
+                        }
+                        const parsedQuantity = Number(e.target.value);
+                        const quantity = Number.isFinite(parsedQuantity)
+                          ? Math.max(parsedQuantity, 1)
+                          : NaN;
+                        handleProductChange(product.id, 'quantity', quantity);
+                      }}
                     />
                   </div>
 
@@ -614,9 +702,21 @@ export function CreateOrderClient() {
                       type="number"
                       min="0"
                       step="0.01"
-                      value={product.price}
+                      value={isNaN(product.price) ? '' : product.price}
+                      onFocus={(e) => e.target.select()}
+                      placeholder="0.00"
                       aria-invalid={!!getFieldError(`products.${index}.price`)}
-                      onChange={(e) => handleProductChange(product.id, 'price', Number(e.target.value))}
+                      onChange={(e) => {
+                        if (e.target.value === '') {
+                          handleProductChange(product.id, 'price', NaN);
+                          return;
+                        }
+                        const parsedPrice = Number(e.target.value);
+                        const price = Number.isFinite(parsedPrice)
+                          ? Math.max(parsedPrice, 0)
+                          : NaN;
+                        handleProductChange(product.id, 'price', price);
+                      }}
                     />
                   </div>
 
@@ -627,16 +727,29 @@ export function CreateOrderClient() {
                     <Input
                       id={`product-weight-${product.id}`}
                       type="number"
+                      min="0.01"
                       step="0.01"
-                      value={product.weight || ''}
-                      onChange={(e) => handleProductChange(product.id, 'weight', e.target.value ? Number(e.target.value) : undefined)}
+                      value={product.weight === undefined || isNaN(product.weight) ? '' : product.weight}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        if (e.target.value === '') {
+                          handleProductChange(product.id, 'weight', undefined);
+                          return;
+                        }
+                        const parsedWeight = Number(e.target.value);
+                        if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) {
+                          handleProductChange(product.id, 'weight', undefined);
+                          return;
+                        }
+                        handleProductChange(product.id, 'weight', parsedWeight);
+                      }}
                     />
                   </div>
                 </div>
 
                 <div className="flex justify-end p-3 bg-[var(--bg-tertiary)] rounded-lg">
                   <p className="text-sm text-[var(--text-secondary)]">
-                    Subtotal: <span className="font-bold text-[var(--text-primary)]">₹{(product.quantity * product.price).toFixed(2)}</span>
+                    Subtotal: <span className="font-bold text-[var(--text-primary)]">₹{((product.quantity || 0) * (product.price || 0)).toFixed(2)}</span>
                   </p>
                 </div>
               </div>
@@ -759,14 +872,17 @@ export function CreateOrderClient() {
 
             <div className="mb-8">
               <label htmlFor="externalOrderNumber" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
-                External Order Number <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+                Store / External Order ID <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
               </label>
               <Input
                 id="externalOrderNumber"
                 value={formData.externalOrderNumber}
-                placeholder="e.g. ORD-001"
+                placeholder="e.g. #1024, ORD-001"
                 onChange={(e) => handleInputChange('externalOrderNumber', e.target.value)}
               />
+              <p className="text-xs text-[var(--text-secondary)] mt-1.5">
+                Reference ID from your online store (Shopify, WooCommerce) or ERP system.
+              </p>
             </div>
 
             <div className="mb-8">

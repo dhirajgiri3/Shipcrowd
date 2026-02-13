@@ -47,6 +47,20 @@ export interface ShippingDetails {
   shippingCost: number;
 }
 
+export interface OrderWarehouseRef {
+  _id?: string;
+  id?: string;
+  name?: string;
+  address?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+}
+
 /**
  * Order totals (auto-calculated by backend)
  */
@@ -89,7 +103,7 @@ export interface Order {
   sourceId?: string;
   externalOrderNumber?: string;
 
-  warehouseId?: string;
+  warehouseId?: string | OrderWarehouseRef | null;
 
   // Dynamic status string - not enum
   currentStatus: string;

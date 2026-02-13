@@ -541,8 +541,8 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     let updatedSession: ISession | null = null;
     for (const session of activeSessions) {
       logger.debug(`Token refresh: Comparing with session ${session._id}`);
-      logger.debug(`  - Stored hash (first 20 chars): ${session.refreshToken.substring(0, 20)}...`);
-      logger.debug(`  - Incoming token (first 20 chars): ${token.substring(0, 20)}...`);
+      logger.debug(`  - Stored refresh hash present: ${Boolean(session.refreshToken)}`);
+      logger.debug(`  - Incoming refresh token length: ${token.length}`);
       const isMatch = await session.compareRefreshToken(token);
       logger.debug(`  - Match result: ${isMatch}`);
       if (isMatch) {

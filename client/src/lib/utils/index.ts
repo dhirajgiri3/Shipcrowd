@@ -19,3 +19,6 @@ export * from './logger';
 // Sanitization utilities
 export * from './sanitize';
 
+// Seller shipping flags and eligibility
+export * from './seller-shipping-flags';
+export * from './order-shipping-eligibility';
