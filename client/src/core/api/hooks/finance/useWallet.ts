@@ -20,6 +20,8 @@ import type {
     WalletTransactionResponse,
     WalletStats,
     TransactionFilters,
+    RechargeInitResponse,
+    RechargeWalletPayload,
 } from '@/src/types/api/finance';
 
 // ==================== Hooks ====================
@@ -62,13 +64,24 @@ export const useWalletTransactions = (
 };
 
 /**
+ * Initialize wallet recharge order before opening Razorpay checkout
+ */
+export const useInitWalletRecharge = (options?: UseMutationOptions<RechargeInitResponse, Error, { amount: number }>) => {
+    return useMutation<RechargeInitResponse, Error, { amount: number }>({
+        mutationFn: (data: { amount: number }) => walletApi.initRecharge(data),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};
+
+/**
  * Recharge wallet with optimistic update
  */
-export const useRechargeWallet = (options?: UseMutationOptions<any, Error, { amount: number; paymentId?: string }>) => {
+export const useRechargeWallet = (options?: UseMutationOptions<any, Error, RechargeWalletPayload>) => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: { amount: number; paymentId?: string }) => walletApi.rechargeWallet(data),
+        mutationFn: (data: RechargeWalletPayload) => walletApi.rechargeWallet(data),
         ...createOptimisticUpdateHandler({
             queryClient,
             queryKey: queryKeys.wallet.balance(),

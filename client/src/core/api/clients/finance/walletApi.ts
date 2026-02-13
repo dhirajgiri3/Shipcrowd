@@ -9,7 +9,8 @@ import {
   WalletTransactionResponse,
   WalletStats,
   TransactionFilters,
-  RechargeWalletPayload
+  RechargeWalletPayload,
+  RechargeInitResponse
 } from '@/src/types/api/finance';
 
 export interface AutoRechargeSettings {
@@ -51,6 +52,15 @@ export class WalletApiService {
       // @ts-ignore - pagination exists in API response but not typed in axios response wrapper yet
       pagination: response.data.pagination
     };
+  }
+
+  /**
+   * Initialize wallet recharge order
+   * POST /api/v1/finance/wallet/recharge/init
+   */
+  async initRecharge(data: { amount: number }): Promise<RechargeInitResponse> {
+    const response = await apiClient.post('/finance/wallet/recharge/init', data);
+    return response.data.data;
   }
 
   /**

@@ -26,10 +26,11 @@ export const handlePaymentWebhook = async (req: Request, res: Response): Promise
 
         const payment = event.payload.payment.entity;
         const notes = payment.notes || {};
-        const { companyId, purpose, idempotencyKey } = notes;
+        const { companyId, purpose, type, idempotencyKey } = notes;
+        const paymentPurpose = purpose || type;
 
         // 1. Validate if this is an auto-recharge payment
-        if (purpose !== 'auto-recharge' || !companyId) {
+        if (paymentPurpose !== 'auto-recharge' || !companyId) {
             logger.info('Razorpay webhook: Ignoring non-auto-recharge payment', { paymentId: payment.id });
             res.status(200).json({ status: 'ignored' });
             return;
@@ -96,7 +97,9 @@ export const handlePaymentWebhook = async (req: Request, res: Response): Promise
                     type: 'auto',
                     externalId: payment.id
                 },
-                'system'
+                'system',
+                undefined,
+                `webhook-recharge:${payment.id}`
             );
 
             if (!creditResult.success) {

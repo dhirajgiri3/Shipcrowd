@@ -94,6 +94,7 @@
  */
 
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { Company } from '../../../../infrastructure/database/mongoose/models';
 import {
     WalletTransaction,
@@ -597,6 +598,7 @@ export default class WalletService {
                         currency: 'INR',
                         notes: {
                             companyId,
+                            purpose: 'auto-recharge',
                             type: 'auto-recharge',
                             idempotencyKey
                         },
@@ -874,6 +876,38 @@ export default class WalletService {
     }
 
     /**
+     * Create Razorpay order for wallet recharge
+     */
+    static async createRechargeOrder(
+        companyId: string,
+        amount: number,
+        createdBy: string
+    ): Promise<{ orderId: string; amount: number; currency: string; key: string }> {
+        const companyExists = await Company.exists({ _id: companyId });
+        if (!companyExists) {
+            throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
+        }
+
+        const order = await razorpayPaymentService.createOrder({
+            amount,
+            currency: 'INR',
+            notes: {
+                companyId,
+                purpose: 'wallet_recharge',
+                createdBy,
+            },
+            description: `Wallet recharge for company ${companyId}`,
+        });
+
+        return {
+            orderId: order.id,
+            amount: order.amount,
+            currency: 'INR',
+            key: process.env.RAZORPAY_KEY_ID || '',
+        };
+    }
+
+    /**
      * Verify payment status with Razorpay
      * Resolves SECURITY HOLE where arbitrary payment IDs could be used
      */
@@ -881,9 +915,12 @@ export default class WalletService {
         companyId: string,
         amount: number,
         paymentId: string,
+        orderId: string,
+        signature: string,
         createdBy: string
     ): Promise<TransactionResult> {
         // ✅ CRITICAL: Verify payment with Razorpay before crediting
+        let verifiedAmount = 0;
         try {
             const Razorpay = (await import('razorpay')).default;
             const razorpay = new Razorpay({
@@ -893,6 +930,69 @@ export default class WalletService {
 
             // Fetch payment details from Razorpay
             const payment = await razorpay.payments.fetch(paymentId);
+
+            if (!payment.order_id || payment.order_id !== orderId) {
+                logger.error('Payment verification failed: order mismatch', {
+                    paymentId,
+                    orderId,
+                    paymentOrderId: payment.order_id,
+                    companyId,
+                });
+                return {
+                    success: false,
+                    error: 'Payment order mismatch',
+                };
+            }
+
+            const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+            if (!keySecret) {
+                return {
+                    success: false,
+                    error: 'Razorpay configuration missing',
+                };
+            }
+
+            const expectedSignature = crypto
+                .createHmac('sha256', keySecret)
+                .update(`${orderId}|${paymentId}`)
+                .digest('hex');
+
+            try {
+                const signatureValid = crypto.timingSafeEqual(
+                    Buffer.from(signature),
+                    Buffer.from(expectedSignature)
+                );
+
+                if (!signatureValid) {
+                    logger.error('Payment verification failed: invalid signature', {
+                        paymentId,
+                        orderId,
+                        companyId,
+                    });
+                    return {
+                        success: false,
+                        error: 'Invalid payment signature',
+                    };
+                }
+            } catch {
+                return {
+                    success: false,
+                    error: 'Invalid payment signature',
+                };
+            }
+
+            const paymentCompanyId = (payment.notes as Record<string, string> | undefined)?.companyId;
+            if (paymentCompanyId && paymentCompanyId !== companyId) {
+                logger.error('Payment verification failed: company mismatch', {
+                    paymentId,
+                    companyId,
+                    paymentCompanyId,
+                });
+                return {
+                    success: false,
+                    error: 'Payment does not belong to this company',
+                };
+            }
 
             // Verify payment status
             if (payment.status !== 'captured') {
@@ -927,6 +1027,7 @@ export default class WalletService {
                 amount: paidAmount,
                 companyId,
             });
+            verifiedAmount = paidAmount;
 
         } catch (error: any) {
             logger.error('Payment verification failed', {
@@ -943,14 +1044,16 @@ export default class WalletService {
         // Only credit wallet after successful verification
         return this.credit(
             companyId,
-            amount,
+            verifiedAmount,
             'recharge',
             `Wallet recharge via payment ${paymentId}`,
             {
                 type: 'payment',
-                id: paymentId,
+                externalId: paymentId,
             },
-            createdBy
+            createdBy,
+            undefined,
+            `wallet-recharge:${paymentId}`
         );
     }
 

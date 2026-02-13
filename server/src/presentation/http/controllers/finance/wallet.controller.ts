@@ -9,6 +9,7 @@ import { AuthenticationError, ValidationError, AppError } from '../../../../shar
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import {
+    initRechargeSchema,
     rechargeWalletSchema,
     updateWalletThresholdSchema,
     refundTransactionSchema
@@ -85,6 +86,43 @@ export const getTransactionHistory = async (
 };
 
 /**
+ * Initialize wallet recharge order
+ * POST /api/v1/finance/wallet/recharge/init
+ */
+export const initRecharge = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+
+        const validation = initRechargeSchema.safeParse(req.body);
+        if (!validation.success) {
+            const details = validation.error.errors.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', details);
+        }
+
+        const { amount } = validation.data;
+
+        const result = await WalletService.createRechargeOrder(
+            auth.companyId,
+            amount,
+            auth.userId
+        );
+
+        sendSuccess(res, result, 'Recharge order initialized successfully');
+    } catch (error) {
+        logger.error('Error initializing wallet recharge:', error);
+        next(error);
+    }
+};
+
+/**
  * Handle wallet recharge
  * POST /api/v1/finance/wallet/recharge
  */
@@ -106,12 +144,14 @@ export const rechargeWallet = async (
             throw new ValidationError('Validation failed', details);
         }
 
-        const { amount, paymentId } = validation.data;
+        const { amount, paymentId, orderId, signature } = validation.data;
 
         const result = await WalletService.handleRecharge(
             auth.companyId,
             amount,
             paymentId,
+            orderId,
+            signature,
             auth.userId
         );
 
@@ -444,6 +484,7 @@ export const getAutoRechargeSettings = async (
 };
 
 export default {
+    initRecharge,
     getBalance,
     getTransactionHistory,
     rechargeWallet,

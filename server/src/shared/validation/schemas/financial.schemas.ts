@@ -3,9 +3,15 @@ import { z } from 'zod';
 /**
  * Wallet Schemas
  */
+export const initRechargeSchema = z.object({
+    amount: z.number().positive('Amount must be positive').max(1000000, 'Amount cannot exceed ₹10,00,000'),
+});
+
 export const rechargeWalletSchema = z.object({
     amount: z.number().positive('Amount must be positive').max(1000000, 'Amount cannot exceed ₹10,00,000'),
     paymentId: z.string().min(1, 'Payment ID is required'),
+    orderId: z.string().min(1, 'Order ID is required'),
+    signature: z.string().min(1, 'Signature is required'),
 });
 
 export const updateWalletThresholdSchema = z.object({

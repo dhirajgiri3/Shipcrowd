@@ -26,7 +26,7 @@ import {
 import type { PaymentMethod } from '@/src/components/seller/wallet';
 import type { Transaction as WalletUiTransaction } from '@/src/components/seller/wallet';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
+import { useInitWalletRecharge, useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
 import { useAutoRechargeSettings, useUpdateAutoRecharge } from '@/src/core/api/hooks/finance/useAutoRecharge';
 import type { WalletTransaction } from '@/src/types/api/finance';
 
@@ -39,6 +39,7 @@ export function WalletPageClient() {
     const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useWalletBalance();
     const { data: transactionsData, isLoading: transactionsLoading } = useWalletTransactions({ limit: 20 });
     const { data: autoRechargeSettings } = useAutoRechargeSettings();
+    const initRecharge = useInitWalletRecharge();
     const rechargeWallet = useRechargeWallet();
     const updateAutoRecharge = useUpdateAutoRecharge();
 
@@ -76,21 +77,23 @@ export function WalletPageClient() {
         try {
             if (!isRazorpayLoaded) {
                 addToast('Payment gateway failed to load. Please refresh and try again.', 'error');
-                return;
+                throw new Error('Razorpay checkout script not loaded');
             }
 
+            const init = await initRecharge.mutateAsync({ amount });
+
             const options: RazorpayOptions = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
-                amount: Math.round(amount * 100),
-                currency: 'INR',
+                key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
+                amount: Math.round(init.amount * 100),
+                currency: init.currency || 'INR',
                 name: 'Shipcrowd Logistics',
                 description: 'Wallet Recharge',
                 image: 'https://shipcrowd.com/logo.png',
-                order_id: '',
+                order_id: init.orderId,
                 handler: async (response) => {
                     try {
                         await rechargeWallet.mutateAsync({
-                            amount,
+                            amount: init.amount,
                             paymentId: response.razorpay_payment_id,
                             orderId: response.razorpay_order_id,
                             signature: response.razorpay_signature,
@@ -109,10 +112,10 @@ export function WalletPageClient() {
 
             const razorpay = new window.Razorpay(options);
             razorpay.open();
-            setIsAddMoneyOpen(false);
         } catch (error) {
             console.error('Recharge failed:', error);
             addToast('Failed to process recharge. Please try again.', 'error');
+            throw error instanceof Error ? error : new Error('Recharge failed');
         }
     };
 

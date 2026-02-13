@@ -1,32 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import CODRemittanceService from '../../../../../core/application/services/finance/cod-remittance.service';
 import logger from '../../../../../shared/logger/winston.logger';
-import crypto from 'crypto';
 import { sendSuccess } from '../../../../../shared/utils/responseHelper';
-
-/**
- * Verify Razorpay webhook signature
- * ✅ P0 FIX: Use timing-safe comparison to prevent timing attacks
- */
-function verifyRazorpaySignature(payload: any, signature: string, secret: string): boolean {
-    const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(payload))
-        .digest('hex');
-
-    // ✅ CRITICAL: Use timing-safe comparison to prevent timing attacks
-    // Reference: OWASP - Timing Attack Prevention
-    try {
-        return crypto.timingSafeEqual(
-            Buffer.from(signature, 'utf8'),
-            Buffer.from(expectedSignature, 'utf8')
-        );
-    } catch (error) {
-        // timingSafeEqual throws if buffer lengths differ
-        logger.error('Webhook signature verification failed', { error });
-        return false;
-    }
-}
 
 /**
  * Handle Razorpay Payout Webhooks
@@ -38,26 +13,7 @@ export const handlePayoutWebhook = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const signature = req.headers['x-razorpay-signature'] as string;
-
-        if (!signature) {
-            logger.warn('Razorpay webhook received without signature');
-            res.status(400).json({ error: 'Missing signature' });
-            return;
-        }
-
-        // Verify webhook signature
-        const isValid = verifyRazorpaySignature(
-            req.body,
-            signature,
-            process.env.RAZORPAY_WEBHOOK_SECRET!
-        );
-
-        if (!isValid) {
-            logger.warn('Invalid Razorpay webhook signature');
-            res.status(401).json({ error: 'Invalid signature' });
-            return;
-        }
+        // Signature is already verified by verifyRazorpayWebhook middleware.
 
         const event = req.body;
         const eventType = event.event;

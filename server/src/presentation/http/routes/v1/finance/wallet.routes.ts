@@ -23,6 +23,9 @@ router.get('/cash-flow-forecast', walletController.getCashFlowForecast);
 // Get transaction history
 router.get('/transactions', walletController.getTransactionHistory);
 
+// Initialize recharge order
+router.post('/recharge/init', walletController.initRecharge);
+
 // Recharge wallet
 router.post('/recharge', walletController.rechargeWallet);
 

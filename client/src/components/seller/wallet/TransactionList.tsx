@@ -74,6 +74,17 @@ const CATEGORY_LABELS = {
     payout: 'Payout',
 };
 
+const parseSafeDate = (value?: string): Date | null => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const safeFormat = (value: string, formatString: string, fallback = '--'): string => {
+    const date = parseSafeDate(value);
+    return date ? format(date, formatString) : fallback;
+};
+
 export function TransactionList({ transactions, isLoading = false, className = '' }: TransactionListProps) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [isExporting, setIsExporting] = useState(false);
@@ -87,11 +98,14 @@ export function TransactionList({ transactions, isLoading = false, className = '
         } else if (filter === 'debits') {
             filtered = filtered.filter(t => t.type === 'debit');
         } else if (filter === 'this_week') {
-            filtered = filtered.filter(t => isThisWeek(new Date(t.timestamp)));
+            filtered = filtered.filter((t) => {
+                const date = parseSafeDate(t.timestamp);
+                return date ? isThisWeek(date) : false;
+            });
         }
 
         return filtered.sort((a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            (parseSafeDate(b.timestamp)?.getTime() || 0) - (parseSafeDate(a.timestamp)?.getTime() || 0)
         );
     }, [transactions, filter]);
 
@@ -114,7 +128,7 @@ export function TransactionList({ transactions, isLoading = false, className = '
         const csvContent = [
             ['Date', 'Type', 'Category', 'Description', 'Amount', 'Balance'].join(','),
             ...filteredTransactions.map(t => [
-                format(new Date(t.timestamp), 'dd/MM/yyyy HH:mm'),
+                safeFormat(t.timestamp, 'dd/MM/yyyy HH:mm'),
                 t.type === 'credit' ? 'Credit' : 'Debit',
                 CATEGORY_LABELS[t.category],
                 `"${t.description}"`,
@@ -256,9 +270,10 @@ export function TransactionList({ transactions, isLoading = false, className = '
                     filteredTransactions.map((transaction, index) => {
                         const Icon = CATEGORY_ICONS[transaction.category];
                         const isCredit = transaction.type === 'credit';
+                        const currentDate = parseSafeDate(transaction.timestamp);
+                        const previousDate = parseSafeDate(filteredTransactions[index - 1]?.timestamp);
                         const showDate = index === 0 ||
-                            format(new Date(transaction.timestamp), 'dd/MM/yyyy') !==
-                            format(new Date(filteredTransactions[index - 1].timestamp), 'dd/MM/yyyy');
+                            (currentDate?.toDateString() || '') !== (previousDate?.toDateString() || '');
 
                         return (
                             <div key={transaction.id}>
@@ -267,9 +282,9 @@ export function TransactionList({ transactions, isLoading = false, className = '
                                     <div className="flex items-center gap-2 py-2 mt-4 first:mt-0">
                                         <Calendar className="w-4 h-4 text-[var(--text-muted)]" />
                                         <div className="text-sm font-semibold text-[var(--text-secondary)]">
-                                            {isToday(new Date(transaction.timestamp))
+                                            {currentDate && isToday(currentDate)
                                                 ? 'Today'
-                                                : format(new Date(transaction.timestamp), 'dd MMMM yyyy')}
+                                                : safeFormat(transaction.timestamp, 'dd MMMM yyyy', 'Unknown date')}
                                         </div>
                                         <div className="flex-1 h-px bg-[var(--border-subtle)]" />
                                     </div>
@@ -317,7 +332,7 @@ export function TransactionList({ transactions, isLoading = false, className = '
                                         )}
 
                                         <div className="text-xs text-[var(--text-muted)] mt-1">
-                                            {format(new Date(transaction.timestamp), 'hh:mm a')}
+                                            {safeFormat(transaction.timestamp, 'hh:mm a', '--:--')}
                                         </div>
                                     </div>
 

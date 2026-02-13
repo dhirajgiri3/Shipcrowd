@@ -19,7 +19,7 @@ export interface WalletBalance {
 
 // ==================== Wallet Transaction ====================
 
-export type TransactionType = 'credit' | 'debit';
+export type TransactionType = 'credit' | 'debit' | 'refund' | 'adjustment';
 
 export type TransactionReason =
     | 'recharge'
@@ -27,9 +27,12 @@ export type TransactionReason =
     | 'rto_charge'
     | 'cod_remittance'
     | 'refund'
+    | 'adjustment'
+    | 'promotional_credit'
+    | 'weight_discrepancy'
     | 'other';
 
-export type TransactionStatus = 'completed' | 'pending' | 'failed';
+export type TransactionStatus = 'completed' | 'pending' | 'failed' | 'reversed';
 
 export interface WalletTransaction {
     _id: string;
@@ -90,9 +93,9 @@ export interface WalletStats {
 
 export interface RechargeWalletPayload {
     amount: number;
-    paymentId?: string; // Razorpay Payment ID
-    orderId?: string;   // Razorpay Order ID
-    signature?: string; // Razorpay Signature
+    paymentId: string; // Razorpay Payment ID
+    orderId: string;   // Razorpay Order ID
+    signature: string; // Razorpay Signature
 }
 
 export interface RechargeInitResponse {

@@ -14,7 +14,7 @@
 
 import React, { useState } from 'react';
 import Script from 'next/script';
-import { useRechargeWallet } from '@/src/core/api/hooks';
+import { useInitWalletRecharge, useRechargeWallet } from '@/src/core/api/hooks';
 import { formatCurrency } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
@@ -38,6 +38,7 @@ export function AddMoneyModal({ isOpen, onClose, currentBalance = 0 }: AddMoneyM
     // Add Razorpay loading state
     const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
 
+    const { mutateAsync: initRecharge } = useInitWalletRecharge();
     const { mutate: rechargeWallet, isPending, isError, error } = useRechargeWallet();
     const { addToast } = useToast();
 
@@ -60,48 +61,50 @@ export function AddMoneyModal({ isOpen, onClose, currentBalance = 0 }: AddMoneyM
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) return;
 
-        // In a real production app, you would create an order on the backend first
-        // const order = await createOrder(numAmount);
+        try {
+            const init = await initRecharge({ amount: numAmount });
 
-        const options: RazorpayOptions = {
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890', // Fallback for dev
-            amount: numAmount * 100, // Amount in paise
-            currency: "INR",
-            name: "Shipcrowd Logistics",
-            description: "Wallet Recharge",
-            image: "https://shipcrowd.com/logo.png", // Replace with actual logo URL
-            order_id: "", // Since backend doesn't support order creation yet, leave empty (Razorpay might use auto-capture)
-            handler: function (response: any) {
-                // On success, verify/credit on backend
-                rechargeWallet(
-                    {
-                        amount: numAmount,
-                        paymentId: response.razorpay_payment_id,
-                        // orderId: response.razorpay_order_id,
-                        // signature: response.razorpay_signature
-                    },
-                    {
-                        onSuccess: () => {
-                            // Toast handled in hook but we can add specific message
-                            onClose();
-                            setAmount('');
-                            setCustomAmount(false);
+            const options: RazorpayOptions = {
+                key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
+                amount: init.amount * 100, // Amount in paise
+                currency: init.currency || "INR",
+                name: "Shipcrowd Logistics",
+                description: "Wallet Recharge",
+                image: "https://shipcrowd.com/logo.png", // Replace with actual logo URL
+                order_id: init.orderId,
+                handler: function (response: any) {
+                    // On success, verify/credit on backend
+                    rechargeWallet(
+                        {
+                            amount: init.amount,
+                            paymentId: response.razorpay_payment_id,
+                            orderId: response.razorpay_order_id,
+                            signature: response.razorpay_signature
+                        },
+                        {
+                            onSuccess: () => {
+                                onClose();
+                                setAmount('');
+                                setCustomAmount(false);
+                            }
                         }
-                    }
-                );
-            },
-            prefill: {
-                name: "Shipcrowd User", // You could pass user details here
-                email: "user@example.com",
-                contact: "9999999999"
-            },
-            theme: {
-                color: "#2563EB"
-            }
-        };
+                    );
+                },
+                prefill: {
+                    name: "Shipcrowd User",
+                    email: "user@example.com",
+                    contact: "9999999999"
+                },
+                theme: {
+                    color: "#2563EB"
+                }
+            };
 
-        const rzp1 = new window.Razorpay(options);
-        rzp1.open();
+            const rzp1 = new window.Razorpay(options);
+            rzp1.open();
+        } catch (error) {
+            addToast('Failed to initialize payment. Please try again.', 'error');
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {

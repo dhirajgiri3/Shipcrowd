@@ -26,7 +26,7 @@ import Link from 'next/link';
 import { TruckLoader } from '@/src/components/ui';
 
 // API Hooks
-import { useWalletBalance, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
+import { useInitWalletRecharge, useWalletBalance, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
 import { useProfile } from '@/src/core/api/hooks/settings/useProfile';
 
 const quickAmounts = [1000, 2000, 5000, 10000, 25000, 50000];
@@ -53,6 +53,7 @@ export function RechargeClient() {
 
     // API Hooks
     const { data: balanceData } = useWalletBalance();
+    const initRecharge = useInitWalletRecharge();
     const { mutate: rechargeWallet, isPending: isRecharging } = useRechargeWallet();
     const { data: profile } = useProfile();
     const { addToast } = useToast();
@@ -102,7 +103,7 @@ export function RechargeClient() {
         return baseAmount;
     };
 
-    const handleProceed = () => {
+    const handleProceed = async () => {
         if (!amount || Number(amount) < 100) {
             addToast('Minimum recharge amount is ₹100', 'warning');
             return;
@@ -113,45 +114,53 @@ export function RechargeClient() {
             return;
         }
 
-        const payAmount = calculateTotal();
+        try {
+            const payAmount = calculateTotal();
+            const init = await initRecharge.mutateAsync({ amount: payAmount });
 
-        // Initialize Razorpay Options
-        const options: RazorpayOptions = {
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
-            amount: payAmount * 100, // Amount in paise
-            currency: "INR",
-            name: "Shipcrowd Logistics",
-            description: "Wallet Recharge",
-            image: "https://shipcrowd.com/logo.png",
-            order_id: "", // Backend does not pre-create order yet, use empty string to satisfy type
-            handler: function (response: any) {
-                // On success, verify/credit on backend
-                rechargeWallet(
-                    {
-                        amount: Number(amount), // Credit the original requested amount
-                        paymentId: response.razorpay_payment_id,
-                    },
-                    {
-                        onSuccess: () => {
-                            setAmount('');
-                            setAppliedPromo(null);
-                            setPromoCode('');
+            // Initialize Razorpay Options
+            const options: RazorpayOptions = {
+                key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
+                amount: init.amount * 100, // Amount in paise
+                currency: init.currency || "INR",
+                name: "Shipcrowd Logistics",
+                description: "Wallet Recharge",
+                image: "https://shipcrowd.com/logo.png",
+                order_id: init.orderId,
+                handler: function (response: any) {
+                    // On success, verify/credit on backend
+                    rechargeWallet(
+                        {
+                            amount: init.amount,
+                            paymentId: response.razorpay_payment_id,
+                            orderId: response.razorpay_order_id,
+                            signature: response.razorpay_signature,
+                        },
+                        {
+                            onSuccess: () => {
+                                setAmount('');
+                                setAppliedPromo(null);
+                                setPromoCode('');
+                            }
                         }
-                    }
-                );
-            },
-            prefill: {
-                name: profile?.name || "",
-                email: profile?.email || "",
-                contact: profile?.phone || ""
-            },
-            theme: {
-                color: "#2563EB"
-            }
-        };
+                    );
+                },
+                prefill: {
+                    name: profile?.name || "",
+                    email: profile?.email || "",
+                    contact: profile?.phone || ""
+                },
+                theme: {
+                    color: "#2563EB"
+                }
+            };
 
-        const rzp1 = new window.Razorpay(options);
-        rzp1.open();
+            const rzp1 = new window.Razorpay(options);
+            rzp1.open();
+        } catch (error) {
+            console.error('Failed to initialize wallet recharge:', error);
+            addToast('Unable to start payment. Please try again.', 'error');
+        }
     };
 
     return (

@@ -26,14 +26,28 @@ export interface PaymentVerificationResult {
 
 export class RazorpayPaymentService {
     private static instance: RazorpayPaymentService;
-    private razorpay: Razorpay;
+    private razorpay: Razorpay | null = null;
 
     private constructor() {
+        // Lazy initialization. Wallet features that do not need Razorpay
+        // must keep working even when Razorpay env vars are absent.
+        this.initializeClientIfConfigured();
+    }
+
+    static getInstance(): RazorpayPaymentService {
+        if (!RazorpayPaymentService.instance) {
+            RazorpayPaymentService.instance = new RazorpayPaymentService();
+        }
+        return RazorpayPaymentService.instance;
+    }
+
+    private initializeClientIfConfigured(): void {
         const keyId = process.env.RAZORPAY_KEY_ID;
         const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
         if (!keyId || !keySecret) {
-            throw new Error('Razorpay credentials not configured');
+            logger.warn('Razorpay credentials not configured. Payment APIs will be unavailable until configured.');
+            return;
         }
 
         this.razorpay = new Razorpay({
@@ -44,11 +58,20 @@ export class RazorpayPaymentService {
         logger.info('Razorpay Payment Service initialized');
     }
 
-    static getInstance(): RazorpayPaymentService {
-        if (!RazorpayPaymentService.instance) {
-            RazorpayPaymentService.instance = new RazorpayPaymentService();
+    private getClient(): Razorpay {
+        if (!this.razorpay) {
+            this.initializeClientIfConfigured();
         }
-        return RazorpayPaymentService.instance;
+
+        if (!this.razorpay) {
+            throw new ExternalServiceError(
+                'Razorpay',
+                'Razorpay credentials not configured',
+                ErrorCode.EXT_PAYMENT_FAILURE
+            );
+        }
+
+        return this.razorpay;
     }
 
     /**
@@ -58,7 +81,7 @@ export class RazorpayPaymentService {
      */
     async createOrder(options: CreatePaymentOptions): Promise<{ id: string; amount: number; status: string }> {
         try {
-            const order = await this.razorpay.orders.create({
+            const order = await this.getClient().orders.create({
                 amount: Math.round(options.amount * 100), // Convert to paise
                 currency: options.currency || 'INR',
                 notes: options.notes || {},
@@ -95,7 +118,7 @@ export class RazorpayPaymentService {
      */
     async verifyPayment(paymentId: string): Promise<PaymentVerificationResult> {
         try {
-            const payment = await this.razorpay.payments.fetch(paymentId);
+            const payment = await this.getClient().payments.fetch(paymentId);
 
             return {
                 id: payment.id,

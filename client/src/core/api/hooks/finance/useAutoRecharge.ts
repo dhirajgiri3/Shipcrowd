@@ -24,9 +24,8 @@ export function useUpdateAutoRecharge() {
             walletApi.updateAutoRechargeSettings(settings),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['auto-recharge-settings'] });
-            // Balance might change if we auto-recharged immediately (logic dependent), 
-            // but primarily we invalidate balance to show updated status or if UI depends on it
-            queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+            // Keep in sync with centralized key factory: queryKeys.wallet.balance()
+            queryClient.invalidateQueries({ queryKey: ['wallet', 'balance'] });
         },
     });
 }
