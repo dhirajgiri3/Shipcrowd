@@ -139,6 +139,13 @@ export interface IReturnOrder extends Document {
     | 'completed'           // Refund completed
     | 'cancelled';          // Return cancelled
 
+    sellerReview: {
+        status: 'pending' | 'approved' | 'rejected';
+        reviewedBy?: mongoose.Types.ObjectId;
+        reviewedAt?: Date;
+        rejectionReason?: string;
+    };
+
     // ============================================================================
     // TIMELINE (Audit Trail)
     // ============================================================================
@@ -372,6 +379,20 @@ const ReturnOrderSchema = new Schema<IReturnOrder>(
             required: true,
             index: true,
         },
+        sellerReview: {
+            status: {
+                type: String,
+                enum: ['pending', 'approved', 'rejected'],
+                default: 'pending',
+                index: true,
+            },
+            reviewedBy: {
+                type: Schema.Types.ObjectId,
+                ref: 'User',
+            },
+            reviewedAt: Date,
+            rejectionReason: String,
+        },
         timeline: {
             type: [{
                 status: {
@@ -433,6 +454,7 @@ const ReturnOrderSchema = new Schema<IReturnOrder>(
 // ============================================================================
 ReturnOrderSchema.index({ companyId: 1, status: 1, createdAt: -1 }); // Company's returns list
 ReturnOrderSchema.index({ customerId: 1, createdAt: -1 });           // Customer's returns
+ReturnOrderSchema.index({ companyId: 1, status: 1, 'sellerReview.status': 1, createdAt: -1 });
 ReturnOrderSchema.index({ 'qc.status': 1 });                         // QC queue
 ReturnOrderSchema.index({ 'refund.status': 1 });                     // Refund processing queue
 ReturnOrderSchema.index({ 'sla.isBreached': 1, status: 1 });         // SLA alerts

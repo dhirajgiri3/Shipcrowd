@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import logger from '@/shared/logger/winston.logger';
 
 // ============================================================================
 // 1. CORE & AUTHENTICATION
@@ -174,6 +175,13 @@ router.use('/serviceability/address', addressRoutes); // Alias for backward comp
 router.use('/serviceability', addressRoutes); // Direct mount
 router.use('/logistics/pincode', pincodeRoutes);
 router.use('/logistics/returns', returnsRoutes);
+router.use('/returns', (req, _res, next) => {
+    logger.warn('Deprecated returns API alias used. Switch to /api/v1/logistics/returns', {
+        method: req.method,
+        path: req.originalUrl,
+    });
+    next();
+}, returnsRoutes);
 router.use('/admin/returns', adminReturnsRoutes);
 router.use('/integrations', integrationsRoutes);
 

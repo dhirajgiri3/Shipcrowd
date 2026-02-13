@@ -98,6 +98,11 @@ export const RETURN_STATUS_CONFIG: Record<ReturnStatus, StatusConfig> = {
     color: 'secondary',
     description: 'Being returned',
   },
+  qc_in_progress: {
+    label: 'QC In Progress',
+    color: 'info',
+    description: 'Warehouse team is inspecting returned items',
+  },
   received: {
     label: 'Received',
     color: 'tertiary',
@@ -123,10 +128,25 @@ export const RETURN_STATUS_CONFIG: Record<ReturnStatus, StatusConfig> = {
     color: 'alert',
     description: 'Refund processing',
   },
+  refunding: {
+    label: 'Refunding',
+    color: 'alert',
+    description: 'Refund in progress',
+  },
   refund_completed: {
     label: 'Refund Completed',
     color: 'success',
     description: 'Refund completed',
+  },
+  completed: {
+    label: 'Completed',
+    color: 'success',
+    description: 'Return lifecycle completed',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    color: 'neutral',
+    description: 'Return cancelled',
   },
   closed: {
     label: 'Closed',

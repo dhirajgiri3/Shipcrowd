@@ -13,7 +13,7 @@ import type {
     ReturnFilters,
     ReturnListResponse,
     CreateReturnPayload,
-    ApproveReturnPayload,
+    ReviewReturnPayload,
     PerformQCPayload,
     ProcessRefundPayload,
     ReturnMetrics,
@@ -24,8 +24,37 @@ export function useReturns(filters?: ReturnFilters, options?: UseQueryOptions<Re
     return useQuery<ReturnListResponse, ApiError>({
         queryKey: queryKeys.returns.list(filters),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnListResponse>('/returns', { params: filters });
-            return data;
+            const params = {
+                ...filters,
+                returnReason: filters?.returnReason || filters?.reason,
+            };
+            const response = await apiClient.get<any>('/logistics/returns', { params });
+            const body = response?.data || {};
+            const payload = (Array.isArray(body?.data) || body?.pagination)
+                ? body
+                : (body?.data || body);
+            const list = Array.isArray(payload?.data)
+                ? payload.data
+                : Array.isArray(payload?.returns)
+                    ? payload.returns
+                    : [];
+            const pagination = payload?.pagination || {
+                page: filters?.page || 1,
+                limit: filters?.limit || 20,
+                total: list.length,
+                pages: 1,
+                totalPages: 1,
+            };
+
+            return {
+                returns: list,
+                pagination: {
+                    page: pagination.page || 1,
+                    limit: pagination.limit || 20,
+                    total: pagination.total || 0,
+                    totalPages: pagination.totalPages || pagination.pages || 1,
+                },
+            };
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
@@ -37,8 +66,8 @@ export function useReturn(returnId: string, options?: UseQueryOptions<ReturnRequ
     return useQuery<ReturnRequest, ApiError>({
         queryKey: queryKeys.returns.detail(returnId),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnRequest>(`/returns/${returnId}`);
-            return data;
+            const response = await apiClient.get<any>(`/logistics/returns/${returnId}`);
+            return response?.data?.data || response?.data;
         },
         enabled: !!returnId,
         ...CACHE_TIMES.MEDIUM,
@@ -51,8 +80,23 @@ export function useReturnMetrics(options?: UseQueryOptions<ReturnMetrics, ApiErr
     return useQuery<ReturnMetrics, ApiError>({
         queryKey: queryKeys.returns.analytics(),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnMetrics>('/returns/stats');
-            return data;
+            const response = await apiClient.get<any>('/logistics/returns/stats');
+            const body = response?.data || {};
+            const stats = body?.data || body;
+            const summary = stats.summary || stats;
+            return {
+                total: summary.total || summary.totalReturns || 0,
+                requested: summary.requested || 0,
+                sellerReviewPending: summary.sellerReviewPending || 0,
+                qcPending: summary.qcPending || 0,
+                completed: summary.completed || 0,
+                totalRefundAmount: summary.totalRefundAmount || 0,
+                averageProcessingTimeHours: summary.averageProcessingTimeHours || summary.averageProcessingTime || 0,
+                returnRate: summary.returnRate || 0,
+                byStatus: stats.byStatus || stats.returnsByStatus || {},
+                byReason: stats.byReason || {},
+                period: stats.period,
+            };
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
@@ -62,10 +106,18 @@ export function useReturnMetrics(options?: UseQueryOptions<ReturnMetrics, ApiErr
 
 export function useReturnAnalytics(filters?: { startDate?: string; endDate?: string }, options?: UseQueryOptions<ReturnAnalytics, ApiError>) {
     return useQuery<ReturnAnalytics, ApiError>({
-        queryKey: queryKeys.returns.analytics(filters?.startDate),
+        queryKey: queryKeys.returns.analytics(filters),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnAnalytics>('/returns/stats', { params: filters });
-            return data;
+            const response = await apiClient.get<any>('/logistics/returns/stats', { params: filters });
+            const body = response?.data || {};
+            const data = body?.data || body;
+            return {
+                summary: data.summary || {},
+                byStatus: data.byStatus || {},
+                byReason: data.byReason || {},
+                topReasons: data.topReasons || [],
+                period: data.period || {},
+            } as ReturnAnalytics;
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
@@ -77,8 +129,8 @@ export function useCreateReturn(options?: UseMutationOptions<ReturnRequest, ApiE
     const queryClient = useQueryClient();
     return useMutation<ReturnRequest, ApiError, CreateReturnPayload>({
         mutationFn: async (payload: CreateReturnPayload) => {
-            const { data } = await apiClient.post<ReturnRequest>('/returns', payload);
-            return data;
+            const response = await apiClient.post<any>('/logistics/returns', payload);
+            return response?.data?.data || response?.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.returns.all() });
@@ -91,18 +143,19 @@ export function useCreateReturn(options?: UseMutationOptions<ReturnRequest, ApiE
     });
 }
 
-export function useApproveReturn(options?: UseMutationOptions<ReturnRequest, ApiError, { returnId: string; payload: ApproveReturnPayload }>) {
+export function useReviewReturn(options?: UseMutationOptions<ReturnRequest, ApiError, { returnId: string; payload: ReviewReturnPayload }>) {
     const queryClient = useQueryClient();
-    return useMutation<ReturnRequest, ApiError, { returnId: string; payload: ApproveReturnPayload }>({
+    return useMutation<ReturnRequest, ApiError, { returnId: string; payload: ReviewReturnPayload }>({
         mutationFn: async ({ returnId, payload }) => {
-            const { data } = await apiClient.post<ReturnRequest>(`/returns/${returnId}/approve`, payload);
-            return data;
+            const response = await apiClient.patch<any>(`/logistics/returns/${returnId}/review`, payload);
+            return response?.data?.data || response?.data;
         },
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.returns.all() });
-            showSuccessToast('Return approved successfully');
+            queryClient.invalidateQueries({ queryKey: queryKeys.returns.detail(variables.returnId) });
+            showSuccessToast('Return review submitted successfully');
         },
-        onError: (error) => handleApiError(error, 'Approve Return Failed'),
+        onError: (error) => handleApiError(error, 'Return Review Failed'),
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
@@ -112,8 +165,8 @@ export function usePerformQC(options?: UseMutationOptions<ReturnRequest, ApiErro
     const queryClient = useQueryClient();
     return useMutation<ReturnRequest, ApiError, { returnId: string; payload: PerformQCPayload }>({
         mutationFn: async ({ returnId, payload }) => {
-            const { data } = await apiClient.post<ReturnRequest>(`/returns/${returnId}/qc`, payload);
-            return data;
+            const response = await apiClient.post<any>(`/logistics/returns/${returnId}/qc`, payload);
+            return response?.data?.data || response?.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.returns.all() });
@@ -129,8 +182,8 @@ export function useProcessRefund(options?: UseMutationOptions<ReturnRequest, Api
     const queryClient = useQueryClient();
     return useMutation<ReturnRequest, ApiError, { returnId: string; payload: ProcessRefundPayload }>({
         mutationFn: async ({ returnId, payload }) => {
-            const { data } = await apiClient.post<ReturnRequest>(`/returns/${returnId}/refund`, payload);
-            return data;
+            const response = await apiClient.post<any>(`/logistics/returns/${returnId}/refund`, payload);
+            return response?.data?.data || response?.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.returns.all() });
@@ -146,12 +199,14 @@ export function useCancelReturn(options?: UseMutationOptions<ReturnRequest, ApiE
     const queryClient = useQueryClient();
     return useMutation<ReturnRequest, ApiError, string>({
         mutationFn: async (returnId: string) => {
-            const { data } = await apiClient.post<ReturnRequest>(`/returns/${returnId}/cancel`);
-            return data;
+            const response = await apiClient.post<any>(`/logistics/returns/${returnId}/cancel`);
+            return response?.data?.data || response?.data;
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.returns.all() });
-            queryClient.removeQueries({ queryKey: queryKeys.returns.detail(data._id) });
+            if (data?._id) {
+                queryClient.removeQueries({ queryKey: queryKeys.returns.detail(data._id) });
+            }
             showSuccessToast('Return cancelled successfully');
         },
         onError: (error) => handleApiError(error, 'Cancel Return Failed'),
@@ -159,3 +214,6 @@ export function useCancelReturn(options?: UseMutationOptions<ReturnRequest, ApiE
         ...options,
     });
 }
+
+// legacy alias to avoid breaking old imports while migrating callers
+export const useApproveReturn = useReviewReturn;

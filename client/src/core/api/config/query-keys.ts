@@ -270,7 +270,7 @@ export const queryKeys = {
     all: () => ['returns'],
     list: (filters?: FilterParams) => ['returns', 'list', filters],
     detail: (id: string) => ['returns', 'detail', id],
-    analytics: (dateFilter?: string) => ['returns', 'analytics', dateFilter],
+    analytics: (filters?: DateRangeParams | string) => ['returns', 'analytics', filters],
     stats: () => ['returns', 'stats'],
   },
 
@@ -508,6 +508,8 @@ export const queryKeys = {
     byTrackingNumber: (trackingNumber: string) => ['tracking', 'tracking-number', trackingNumber],
     byOrderId: (orderId: string) => ['tracking', 'order', orderId],
     timeline: (shipmentId: string) => ['tracking', shipmentId, 'timeline'],
+    rtoByAwb: (awb: string) => ['tracking', 'rto', 'awb', awb] as const,
+    rtoByOrder: (orderNumber: string, phone: string) => ['tracking', 'rto', 'order', orderNumber, phone] as const,
   },
 
   // ========================================================================

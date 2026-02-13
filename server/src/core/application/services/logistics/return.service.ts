@@ -6,7 +6,7 @@
 
 import mongoose from 'mongoose';
 import ReturnOrder, { IReturnOrder, ReturnReason } from '../../../../infrastructure/database/mongoose/models/logistics/returns/return-order.model';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import WalletService from '../wallet/wallet.service';
 import InventoryService from '../warehouse/inventory.service';
 import logger from '../../../../shared/logger/winston.logger';
@@ -54,19 +54,23 @@ interface IRecordQCResultDTO {
 }
 
 interface IReturnStatistics {
-    totalReturns: number;
-    returnRate: number;
+    summary: {
+        total: number;
+        requested: number;
+        sellerReviewPending: number;
+        qcPending: number;
+        completed: number;
+        totalRefundAmount: number;
+        returnRate: number;
+        averageProcessingTimeHours: number;
+    };
+    byStatus: Record<string, number>;
+    byReason: Record<string, number>;
     topReasons: Array<{ reason: string; count: number; percentage: number }>;
-    avgRefundAmount: number;
-    qcPassRate: number;
-    avgProcessingTime: number;      // In hours
-    slaBreachRate: number;
-    returnsByStatus: Record<string, number>;
-    timeSeriesData?: Array<{
-        date: string;
-        returns: number;
-        refundAmount: number;
-    }>;
+    period: {
+        startDate: string;
+        endDate: string;
+    };
 }
 
 export default class ReturnService {
@@ -676,7 +680,7 @@ export default class ReturnService {
         // Build query filter
         const filter: any = {
             companyId: new mongoose.Types.ObjectId(companyId),
-            isDeleted: false,
+            isDeleted: { $ne: true },
         };
 
         if (dateRange) {
@@ -689,13 +693,21 @@ export default class ReturnService {
         // Fetch all returns
         const returns = await ReturnOrder.find(filter);
 
-        // Calculate metrics
         const totalReturns = returns.length;
 
-        // Total orders in same period (for return rate)
-        // TODO: Fetch actual order count
-        const totalOrders = 1000; // Placeholder
-        const returnRate = (totalReturns / totalOrders) * 100;
+        const orderFilter: Record<string, unknown> = {
+            companyId: new mongoose.Types.ObjectId(companyId),
+            isDeleted: { $ne: true },
+        };
+        if (dateRange) {
+            orderFilter.createdAt = {
+                $gte: dateRange.start,
+                $lte: dateRange.end,
+            };
+        }
+
+        const totalOrders = await Order.countDocuments(orderFilter);
+        const returnRate = totalOrders > 0 ? (totalReturns / totalOrders) * 100 : 0;
 
         // Top return reasons
         const reasonCounts = returns.reduce((acc, ret) => {
@@ -712,17 +724,6 @@ export default class ReturnService {
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
-        // Average refund amount
-        const avgRefundAmount = returns.length > 0
-            ? returns.reduce((sum, ret) => sum + ret.refundAmount, 0) / returns.length
-            : 0;
-
-        // QC pass rate
-        const qcCompletedReturns = returns.filter(r => r.qc.status === 'passed' || r.qc.status === 'failed');
-        const qcPassRate = qcCompletedReturns.length > 0
-            ? (returns.filter(r => r.qc.status === 'passed').length / qcCompletedReturns.length) * 100
-            : 0;
-
         // Average processing time (request to refund)
         const completedReturns = returns.filter(r => r.refund.completedAt);
         const avgProcessingTime = completedReturns.length > 0
@@ -732,33 +733,87 @@ export default class ReturnService {
             }, 0) / completedReturns.length
             : 0;
 
-        // SLA breach rate
-        const slaBreachRate = returns.length > 0
-            ? (returns.filter(r => r.sla.isBreached).length / returns.length) * 100
-            : 0;
-
         // Returns by status
         const returnsByStatus = returns.reduce((acc, ret) => {
             acc[ret.status] = (acc[ret.status] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
 
-        logger.info('Return statistics calculated', {
-            companyId,
-            totalReturns,
-            returnRate: `${returnRate.toFixed(2)}%`,
-        });
+        const periodStart = dateRange?.start ?? new Date(new Date().setDate(new Date().getDate() - 29));
+        const periodEnd = dateRange?.end ?? new Date();
+        const summary = {
+            total: totalReturns,
+            requested: returnsByStatus.requested || 0,
+            sellerReviewPending: returns.filter((r: any) => (r.sellerReview?.status || 'pending') === 'pending').length,
+            qcPending: returnsByStatus.qc_pending || 0,
+            completed: returnsByStatus.completed || 0,
+            totalRefundAmount: Math.round(
+                returns.reduce((sum, ret) => {
+                    const amount = ret.refund?.status === 'completed'
+                        ? ret.calculateActualRefund()
+                        : 0;
+                    return sum + amount;
+                }, 0)
+            ),
+            returnRate: Math.round(returnRate * 100) / 100,
+            averageProcessingTimeHours: Math.round(avgProcessingTime * 100) / 100,
+        };
 
         return {
-            totalReturns,
-            returnRate,
+            summary,
+            byStatus: returnsByStatus,
+            byReason: reasonCounts,
             topReasons,
-            avgRefundAmount,
-            qcPassRate,
-            avgProcessingTime,
-            slaBreachRate,
-            returnsByStatus,
+            period: {
+                startDate: periodStart.toISOString(),
+                endDate: periodEnd.toISOString(),
+            },
         };
+    }
+
+    static async reviewReturnRequest(
+        returnId: string,
+        decision: 'approved' | 'rejected',
+        actor: string,
+        companyId: string,
+        reason?: string
+    ): Promise<IReturnOrder> {
+        const query = mongoose.Types.ObjectId.isValid(returnId)
+            ? { $or: [{ returnId }, { _id: returnId }], isDeleted: { $ne: true }, companyId: new mongoose.Types.ObjectId(companyId) }
+            : { returnId, isDeleted: { $ne: true }, companyId: new mongoose.Types.ObjectId(companyId) };
+
+        const returnOrder = await ReturnOrder.findOne(query);
+        if (!returnOrder) {
+            throw new NotFoundError('Return order', ErrorCode.BIZ_NOT_FOUND);
+        }
+
+        if (returnOrder.status !== 'requested') {
+            throw new ConflictError(`Only requested returns can be reviewed. Current status: ${returnOrder.status}`);
+        }
+
+        returnOrder.sellerReview = {
+            status: decision,
+            reviewedBy: new mongoose.Types.ObjectId(actor),
+            reviewedAt: new Date(),
+            rejectionReason: decision === 'rejected' ? reason : undefined,
+        } as any;
+
+        if (decision === 'rejected') {
+            returnOrder.status = 'cancelled';
+            returnOrder.cancellationReason = reason || 'Rejected by seller';
+            returnOrder.cancelledBy = new mongoose.Types.ObjectId(actor);
+            returnOrder.cancelledAt = new Date();
+        }
+
+        returnOrder.addTimelineEntry(
+            decision === 'approved' ? 'seller_approved' : 'seller_rejected',
+            new mongoose.Types.ObjectId(actor),
+            decision === 'approved' ? 'Return approved by seller' : 'Return rejected by seller',
+            reason
+        );
+
+        await returnOrder.save();
+        return returnOrder;
     }
 
     // ========================================================================

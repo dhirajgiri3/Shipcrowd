@@ -58,7 +58,7 @@ router.get(
  */
 router.get(
     '/stats',
-    requireAccess({ roles: ['seller', 'admin'] }),
+    requireAccess({ roles: ['seller', 'staff', 'admin'] }),
     ReturnController.getReturnStats
 );
 
@@ -70,7 +70,21 @@ router.get(
  */
 router.get(
     '/:returnId',
+    requireAccess({ roles: ['customer', 'seller', 'staff', 'admin'] }),
     ReturnController.getReturnDetails
+);
+
+/**
+ * PATCH /api/v1/returns/:returnId/review
+ * Seller review decision for requested returns
+ *
+ * Access: Seller
+ */
+router.patch(
+    '/:returnId/review',
+    requireAccess({ roles: ['seller'] }),
+    apiRateLimiter,
+    ReturnController.reviewReturnRequest
 );
 
 /**

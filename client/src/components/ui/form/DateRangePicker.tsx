@@ -63,14 +63,14 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "flex items-center gap-2 h-10 px-3 rounded-lg border", // Match height and rounding of other inputs
-                    "bg-transparent border-transparent text-[var(--text-primary)] font-medium text-sm",
-                    "transition-all duration-[var(--duration-fast)]",
-                    "hover:bg-[var(--bg-tertiary)] hover:border-[var(--border-subtle)]", // Subtle hover state
-                    isOpen && "bg-[var(--bg-tertiary)] border-[var(--border-subtle)]" // Active state
+                    "flex items-center gap-2 h-10 px-3.5 rounded-xl border shadow-sm",
+                    "bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-primary)] font-medium text-sm",
+                    "transition-all duration-200",
+                    "hover:bg-[var(--bg-tertiary)]",
+                    isOpen && "bg-[var(--bg-tertiary)]"
                 )}
             >
-                <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
+                <Calendar className="h-4 w-4 text-[var(--text-secondary)]" />
                 <span className="text-sm font-medium whitespace-nowrap">
                     {dateRange.label === 'Custom Range'
                         ? `${formatDate(dateRange.from)} - ${formatDate(dateRange.to)}`
@@ -78,7 +78,7 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                     }
                 </span>
                 <ChevronDown className={cn(
-                    "h-4 w-4 text-[var(--text-muted)] transition-transform duration-[var(--duration-fast)]",
+                    "h-4 w-4 text-[var(--text-secondary)] transition-transform duration-200",
                     isOpen && "rotate-180"
                 )} />
             </button>
@@ -88,26 +88,26 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                 <div
                     className={cn(
                         "absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 z-[var(--z-dropdown-page)]",
-                        "bg-[var(--bg-elevated)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]",
-                        "shadow-[var(--shadow-dropdown)] overflow-hidden",
+                        "bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-subtle)]",
+                        "overflow-hidden",
                         "animate-fade-in"
                     )}
                 >
                     {/* Presets */}
-                    <div className="p-2 border-b border-[var(--border-subtle)]">
-                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase px-2 py-2 mb-1">
+                    <div className="p-3 border-b border-[var(--border-default)]">
+                        <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide px-2 mb-2">
                             Quick Select
                         </p>
-                        <div className="grid grid-cols-2 gap-1">
+                        <div className="grid grid-cols-2 gap-1.5">
                             {presets.map((preset, index) => (
                                 <button
                                     key={index}
                                     onClick={() => handlePresetClick(preset)}
                                     className={cn(
-                                        "flex items-center justify-between px-3 py-2 rounded-[var(--radius-lg)] text-sm text-left",
-                                        "transition-all duration-[var(--duration-fast)]",
+                                        "flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left",
+                                        "transition-all duration-200",
                                         dateRange.label === preset.label
-                                            ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] font-medium"
+                                            ? "bg-[var(--primary-blue)] text-white font-medium"
                                             : "hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                     )}
                                 >
@@ -122,33 +122,33 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
 
                     {/* Custom Range */}
                     <div className="p-3">
-                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase mb-2">
+                        <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide mb-3">
                             Custom Range
                         </p>
-                        <div className="flex gap-2 mb-2">
+                        <div className="flex gap-2 mb-3">
                             <input
                                 type="date"
                                 value={customFrom}
                                 onChange={(e) => setCustomFrom(e.target.value)}
                                 className={cn(
-                                    "flex-1 h-9 px-3 text-sm rounded-[var(--radius-lg)]",
+                                    "flex-1 h-9 px-3 text-sm rounded-lg",
                                     "bg-[var(--bg-tertiary)]",
                                     "border border-[var(--border-default)] text-[var(--text-primary)]",
-                                    "focus:outline-none focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)]",
-                                    "transition-colors duration-[var(--duration-fast)]"
+                                    "focus:outline-none focus:border-[var(--primary-blue)]",
+                                    "transition-colors duration-200"
                                 )}
                             />
-                            <span className="self-center text-[var(--text-muted)] text-sm">to</span>
+                            <span className="self-center text-[var(--text-muted)] text-sm font-medium">to</span>
                             <input
                                 type="date"
                                 value={customTo}
                                 onChange={(e) => setCustomTo(e.target.value)}
                                 className={cn(
-                                    "flex-1 h-9 px-3 text-sm rounded-[var(--radius-lg)]",
+                                    "flex-1 h-9 px-3 text-sm rounded-lg",
                                     "bg-[var(--bg-tertiary)]",
                                     "border border-[var(--border-default)] text-[var(--text-primary)]",
-                                    "focus:outline-none focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)]",
-                                    "transition-colors duration-[var(--duration-fast)]"
+                                    "focus:outline-none focus:border-[var(--primary-blue)]",
+                                    "transition-colors duration-200"
                                 )}
                             />
                         </div>
@@ -156,10 +156,10 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                             onClick={handleCustomApply}
                             disabled={!customFrom || !customTo}
                             className={cn(
-                                "w-full h-9 rounded-[var(--radius-lg)] text-sm font-medium",
-                                "transition-all duration-[var(--duration-fast)]",
+                                "w-full h-9 rounded-lg text-sm font-medium",
+                                "transition-all duration-200",
                                 customFrom && customTo
-                                    ? "bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-[var(--shadow-brand-sm)]"
+                                    ? "bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)]"
                                     : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
                             )}
                         >

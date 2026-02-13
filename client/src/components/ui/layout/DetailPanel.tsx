@@ -45,7 +45,7 @@ function DetailPanelComponent({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-hidden"
+                        className="fixed inset-0 h-[100dvh] bg-black/40 backdrop-blur-sm z-50 overflow-hidden"
                     />
 
                     {/* Panel */}
@@ -55,7 +55,7 @@ function DetailPanelComponent({
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                         className={cn(
-                            "fixed inset-y-0 right-0 w-full bg-[var(--bg-primary)] shadow-2xl z-50 border-l border-[var(--border-subtle)] flex flex-col",
+                            "fixed top-0 right-0 h-[100dvh] w-full bg-[var(--bg-primary)] shadow-2xl z-50 border-l border-[var(--border-subtle)] flex flex-col",
                             widthClasses[width]
                         )}
                     >

@@ -149,24 +149,23 @@ export function SmartFilterChips({
               transition={{ delay: index * 0.05 }}
               className={cn(
                 'group relative flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-2.5',
-                'px-3.5 py-2.5 rounded-2xl border transition-all duration-200',
+                'px-3.5 py-2.5 rounded-xl border transition-all duration-200',
                 'flex-shrink-0',
-                'hover:shadow-md active:scale-95 text-left',
+                'hover:scale-[1.02] active:scale-95 text-left',
                 isActive
                   ? cn(
-                    'border-[var(--primary-blue)] bg-[var(--primary-blue)] text-white',
-                    'shadow-lg shadow-blue-500/25 ring-1 ring-blue-500/50'
+                    'border-[var(--primary-blue)] bg-[var(--primary-blue)] text-white'
                   )
                   : cn(
-                    'bg-[var(--bg-primary)] border-[var(--border-subtle)]',
-                    'hover:border-[var(--border-strong)] hover:bg-[var(--bg-secondary)]'
+                    'bg-[var(--bg-primary)] border-[var(--border-default)]',
+                    'hover:border-[var(--primary-blue)] hover:bg-[var(--bg-secondary)]'
                   )
               )}
             >
               <div
                 className={cn(
-                  "p-2 rounded-lg transition-colors",
-                  isActive ? "bg-white/20 text-white" : cn("bg-[var(--bg-secondary)]", filter.color)
+                  "p-1.5 rounded-lg transition-colors",
+                  isActive ? "bg-white/15 text-white" : cn("bg-[var(--bg-secondary)]", filter.color)
                 )}
               >
                 <Icon className="w-4 h-4" />
