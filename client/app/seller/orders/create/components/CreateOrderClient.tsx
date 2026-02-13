@@ -280,7 +280,7 @@ export function CreateOrderClient() {
                 Phone Number <span className="text-[var(--error)]">*</span>
               </label>
               <Input
-                placeholder="+91 98765 43210"
+                placeholder="9876543210"
                 value={formData.customerPhone}
                 onChange={(e) => handleInputChange('customerPhone', e.target.value.replace(/\D/g, '').slice(0, 10))}
               />
@@ -346,7 +346,7 @@ export function CreateOrderClient() {
               <Input
                 placeholder="400001"
                 value={formData.postalCode}
-                onChange={(e) => handleInputChange('postalCode', e.target.value.slice(0, 6))}
+                onChange={(e) => handleInputChange('postalCode', e.target.value.replace(/\D/g, '').slice(0, 6))}
               />
             </div>
           </div>

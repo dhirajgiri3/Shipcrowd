@@ -1,17 +1,15 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import {
     Filter, RefreshCw, RotateCcw, Package,
-    CheckCircle2, AlertCircle, Clock, Search, Download, ChevronDown
+    CheckCircle2, AlertCircle, Clock, Search, Download
 } from 'lucide-react';
 
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { ReturnsTable } from '@/src/features/returns/components/ReturnsTable';
 import { Button } from '@/src/components/ui/core/Button';
-import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { ReturnDetailsPanel } from '@/src/components/seller/returns/ReturnDetailsPanel';
 import { EmptyState, NoSearchResults } from '@/src/components/ui/feedback/EmptyState';
 
@@ -32,8 +30,6 @@ const STATUS_TABS: { id: ReturnStatus | 'all'; label: string }[] = [
 ];
 
 export function ReturnsClient() {
-    const router = useRouter();
-
     // State
     const [activeTab, setActiveTab] = useState<ReturnStatus | 'all'>('all');
     const [search, setSearch] = useState('');
@@ -43,7 +39,7 @@ export function ReturnsClient() {
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Queries
-    const { data: metrics, isLoading: isMetricsLoading } = useReturnMetrics();
+    const { data: metrics } = useReturnMetrics();
 
     // Filters logic
     const filters = useMemo(() => ({

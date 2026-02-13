@@ -14,6 +14,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import Script from 'next/script';
 import { Plus, Wallet as WalletIcon } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import {
@@ -23,13 +24,16 @@ import {
     AutoRechargeSettings
 } from '@/src/components/seller/wallet';
 import type { PaymentMethod } from '@/src/components/seller/wallet';
+import type { Transaction as WalletUiTransaction } from '@/src/components/seller/wallet';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
 import { useAutoRechargeSettings, useUpdateAutoRecharge } from '@/src/core/api/hooks/finance/useAutoRecharge';
+import type { WalletTransaction } from '@/src/types/api/finance';
 
 export function WalletPageClient() {
     const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
     const [isAutoRechargeOpen, setIsAutoRechargeOpen] = useState(false);
+    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
     const { addToast } = useToast();
 
     const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useWalletBalance();
@@ -38,12 +42,74 @@ export function WalletPageClient() {
     const rechargeWallet = useRechargeWallet();
     const updateAutoRecharge = useUpdateAutoRecharge();
 
+    const mapWalletTransactionToUi = (tx: WalletTransaction): WalletUiTransaction => {
+        const categoryByReason: Record<string, WalletUiTransaction['category']> = {
+            recharge: 'recharge',
+            refund: 'refund',
+            cod_remittance: 'cod_remittance',
+            shipping_cost: 'order',
+            rto_charge: 'fee',
+            adjustment: 'fee',
+            promotional_credit: 'recharge',
+            weight_discrepancy: 'fee',
+            other: 'fee',
+        };
+
+        const transactionType: WalletUiTransaction['type'] = tx.type === 'debit' ? 'debit' : 'credit';
+
+        return {
+            id: tx._id,
+            type: transactionType,
+            amount: Number(tx.amount || 0),
+            category: categoryByReason[tx.reason] || 'fee',
+            description: tx.description || 'Wallet transaction',
+            context: {
+                orderId: tx.reference?.type === 'order' ? tx.reference.id : undefined,
+                awb: tx.reference?.type === 'shipment' ? tx.reference.externalId : undefined,
+            },
+            timestamp: tx.createdAt || tx.updatedAt || new Date().toISOString(),
+            runningBalance: Number(tx.balanceAfter ?? tx.balanceBefore ?? 0),
+        };
+    };
+
     const handleRechargeSubmit = async (amount: number, _method: PaymentMethod) => {
         try {
-            const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-            await rechargeWallet.mutateAsync({ amount, paymentId });
+            if (!isRazorpayLoaded) {
+                addToast('Payment gateway failed to load. Please refresh and try again.', 'error');
+                return;
+            }
+
+            const options: RazorpayOptions = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
+                amount: Math.round(amount * 100),
+                currency: 'INR',
+                name: 'Shipcrowd Logistics',
+                description: 'Wallet Recharge',
+                image: 'https://shipcrowd.com/logo.png',
+                order_id: '',
+                handler: async (response) => {
+                    try {
+                        await rechargeWallet.mutateAsync({
+                            amount,
+                            paymentId: response.razorpay_payment_id,
+                            orderId: response.razorpay_order_id,
+                            signature: response.razorpay_signature,
+                        });
+                        setIsAddMoneyOpen(false);
+                        addToast('Wallet recharged successfully', 'success');
+                    } catch (error) {
+                        console.error('Recharge verification failed:', error);
+                        addToast('Payment captured but wallet credit failed. Please contact support.', 'error');
+                    }
+                },
+                theme: {
+                    color: '#2563EB',
+                },
+            };
+
+            const razorpay = new window.Razorpay(options);
+            razorpay.open();
             setIsAddMoneyOpen(false);
-            addToast('Wallet recharged successfully', 'success');
         } catch (error) {
             console.error('Recharge failed:', error);
             addToast('Failed to process recharge. Please try again.', 'error');
@@ -106,7 +172,7 @@ export function WalletPageClient() {
     }
 
     const balance = balanceData?.balance || 0;
-    const transactions = transactionsData?.transactions || [];
+    const transactions = (transactionsData?.transactions || []).map(mapWalletTransactionToUi);
     const weeklyChange = 0; // TODO: Calculate from backend analytics
 
     // Empty State for Transactions
@@ -114,6 +180,11 @@ export function WalletPageClient() {
 
     return (
         <div className="min-h-screen bg-[var(--bg-secondary)]">
+            <Script
+                id="razorpay-checkout-js"
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                onLoad={() => setIsRazorpayLoaded(true)}
+            />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
                 {/* Wallet Hero Section */}
                 <motion.div
@@ -164,7 +235,7 @@ export function WalletPageClient() {
                 >
                     {hasTransactions ? (
                         <TransactionList
-                            transactions={transactions as any}
+                            transactions={transactions}
                             isLoading={transactionsLoading}
                         />
                     ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,13 +9,11 @@ import {
     Package,
     ShoppingCart,
     Building2,
-    Truck,
     Wallet,
     Settings,
     LogOut,
     PackageX,
     Calculator,
-    Search,
     HelpCircle,
     Plug,
     Shield,
@@ -45,22 +43,21 @@ import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 import { useSellerActions } from '@/src/core/api/hooks/seller/useSellerActions';
 import { Badge } from '@/src/components/ui/core/Badge';
 
-// Define navigation structure with sections
-interface NavItem {
+export interface SellerNavItem {
     label: string;
     href: string;
     icon: React.ComponentType<{ className?: string }>;
     badgeKey?: 'orders_ready' | 'ndr_pending';
 }
 
-interface NavSection {
+export interface SellerNavSection {
     id: string;
     title: string;
-    items: NavItem[];
+    items: SellerNavItem[];
     defaultOpen?: boolean;
 }
 
-const navSections: NavSection[] = [
+export const sellerNavSections: SellerNavSection[] = [
     {
         id: 'shipping',
         title: 'Shipping',
@@ -131,25 +128,24 @@ const navSections: NavSection[] = [
     },
 ];
 
-const accountItems: NavItem[] = [
+export const sellerAccountItems: SellerNavItem[] = [
     { label: 'Integrations', href: '/seller/integrations', icon: Plug },
     { label: 'KYC Verification', href: '/seller/kyc', icon: Shield },
     { label: 'Settings', href: '/seller/settings', icon: Settings },
 ];
 
-const supportItems = [
+export const sellerSupportItems: SellerNavItem[] = [
     { label: 'Help & Support', href: '/seller/support', icon: HelpCircle },
 ];
 
 export const Sidebar = React.memo(SidebarComponent);
 
-function SidebarComponent() {
+function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
     const pathname = usePathname();
     const { user } = useAuth();
     const { handleLogout } = useLogoutRedirect();
     const { data: actions } = useSellerActions();
 
-    // Load expanded state from localStorage
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('seller-sidebar-sections');
@@ -164,21 +160,43 @@ function SidebarComponent() {
         return { shipping: true, operations: false, financial: false, analytics: false, tools: false, communication: false };
     });
 
-    // Persist to localStorage
+    const allNavItems = useMemo(
+        () => [...sellerNavSections.flatMap((section) => section.items), ...sellerAccountItems, ...sellerSupportItems],
+        []
+    );
+
+    const activeHref = useMemo(() => {
+        if (pathname === '/seller') return '/seller';
+
+        const matches = allNavItems
+            .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+            .sort((a, b) => b.href.length - a.href.length);
+
+        return matches[0]?.href;
+    }, [allNavItems, pathname]);
+
     useEffect(() => {
         localStorage.setItem('seller-sidebar-sections', JSON.stringify(expandedSections));
     }, [expandedSections]);
 
-    // Get badge counts from actions
+    useEffect(() => {
+        const activeSection = sellerNavSections.find((section) => section.items.some((item) => item.href === activeHref));
+        if (!activeSection) return;
+
+        setExpandedSections((prev) => {
+            if (prev[activeSection.id]) return prev;
+            return { ...prev, [activeSection.id]: true };
+        });
+    }, [activeHref]);
+
     const getBadgeCount = (badgeKey?: 'orders_ready' | 'ndr_pending'): number => {
         if (!badgeKey || !actions?.items) return 0;
-        const action = actions.items.find(a => a.type === badgeKey);
+        const action = actions.items.find((a) => a.type === badgeKey);
         return action?.count || 0;
     };
 
-    // Get user initials
     const initials = user?.name
-        ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
         : 'SL';
 
     const handleSignOut = async () => {
@@ -186,66 +204,67 @@ function SidebarComponent() {
     };
 
     const toggleSection = (sectionId: string) => {
-        setExpandedSections(prev => ({
+        setExpandedSections((prev) => ({
             ...prev,
             [sectionId]: !prev[sectionId],
         }));
     };
 
-    const renderNavItem = (item: NavItem, showBadge = true) => {
-        const isActive = item.href === '/seller'
-            ? pathname === '/seller'
-            : pathname.startsWith(item.href);
+    const renderNavItem = (item: SellerNavItem, showBadge = true) => {
+        const isActive = item.href === activeHref;
         const badgeCount = showBadge ? getBadgeCount(item.badgeKey) : 0;
 
         return (
             <Link
                 key={item.href}
                 href={item.href}
+                onClick={onNavigate}
                 className={cn(
-                    "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group overflow-hidden",
+                    'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group overflow-hidden',
                     isActive
-                        ? "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]"
-                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                        ? 'bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                 )}
             >
-                {/* Active state indicator - subtle sidebar line */}
                 {isActive && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[var(--primary-blue)]" />
                 )}
 
-                <item.icon className={cn(
-                    "relative z-10 h-5 w-5 transition-all duration-200",
-                    isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
-                )} />
+                <item.icon
+                    className={cn(
+                        'relative z-10 h-5 w-5 transition-all duration-200',
+                        isActive ? 'text-[var(--primary-blue)]' : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
+                    )}
+                />
                 <span className="relative z-10 flex-1">{item.label}</span>
 
-                {/* Badge for actionable items */}
                 {badgeCount > 0 && (
-                    <span className={cn(
-                        "relative z-10 px-1.5 py-0.5 text-[10px] font-bold rounded-full min-w-[18px] text-center",
-                        isActive
-                            ? "bg-[var(--primary-blue)] text-white"
-                            : "bg-[var(--error)] text-white"
-                    )}>
+                    <span
+                        className={cn(
+                            'relative z-10 px-1.5 py-0.5 text-[10px] font-bold rounded-full min-w-[18px] text-center',
+                            isActive
+                                ? 'bg-[var(--primary-blue)] text-white'
+                                : 'bg-[var(--error)] text-white'
+                        )}
+                    >
                         {badgeCount}
                     </span>
                 )}
 
-                {/* Arrow indicator on hover */}
                 {!badgeCount && (
-                    <ChevronRight className={cn(
-                        "relative z-10 h-4 w-4 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0",
-                        isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
-                    )} />
+                    <ChevronRight
+                        className={cn(
+                            'relative z-10 h-4 w-4 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0',
+                            isActive ? 'text-[var(--primary-blue)]' : 'text-[var(--text-muted)]'
+                        )}
+                    />
                 )}
             </Link>
         );
     };
 
     return (
-        <aside className="fixed left-0 top-0 z-[var(--z-sidebar-desktop)] h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)] flex flex-col">
-            {/* Logo */}
+        <aside className="fixed left-0 top-0 z-[var(--z-sidebar-desktop)] h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)] flex flex-col" aria-label="Seller navigation sidebar">
             <div className="flex h-16 items-center px-6">
                 <img
                     src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
@@ -254,11 +273,9 @@ function SidebarComponent() {
                 />
             </div>
 
-            {/* Navigation */}
             <div className="flex-1 overflow-y-auto p-4 scrollbar-premium">
-                <nav className="space-y-2">
-                    {/* Collapsible Sections */}
-                    {navSections.map((section) => {
+                <nav className="space-y-2" aria-label="Seller sections">
+                    {sellerNavSections.map((section) => {
                         const isExpanded = expandedSections[section.id] ?? section.defaultOpen;
                         const sectionBadgeCount = section.items.reduce(
                             (sum, item) => sum + getBadgeCount(item.badgeKey),
@@ -267,10 +284,11 @@ function SidebarComponent() {
 
                         return (
                             <div key={section.id} className="mb-2">
-                                {/* Section Header - Clickable */}
                                 <button
                                     onClick={() => toggleSection(section.id)}
                                     className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider hover:text-[var(--text-secondary)] transition-colors rounded-lg hover:bg-[var(--bg-hover)]"
+                                    aria-expanded={isExpanded}
+                                    aria-controls={`seller-nav-${section.id}`}
                                 >
                                     <span className="flex items-center gap-2">
                                         {section.title}
@@ -288,18 +306,18 @@ function SidebarComponent() {
                                     </motion.div>
                                 </button>
 
-                                {/* Section Items */}
                                 <AnimatePresence initial={false}>
                                     {isExpanded && (
                                         <motion.div
+                                            id={`seller-nav-${section.id}`}
                                             initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                                            transition={{ duration: 0.2, ease: 'easeInOut' }}
                                             className="overflow-hidden"
                                         >
                                             <div className="space-y-1 mt-1">
-                                                {section.items.map(item => renderNavItem(item))}
+                                                {section.items.map((item) => renderNavItem(item))}
                                             </div>
                                         </motion.div>
                                     )}
@@ -308,37 +326,32 @@ function SidebarComponent() {
                         );
                     })}
 
-                    {/* Account Section - Always Visible */}
                     <div className="pt-4 mt-4 border-t border-[var(--border-subtle)]">
                         <div className="px-3 mb-2">
                             <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Account</span>
                         </div>
                         <div className="space-y-1">
-                            {accountItems.map(item => renderNavItem(item, false))}
+                            {sellerAccountItems.map((item) => renderNavItem(item, false))}
                         </div>
                     </div>
                 </nav>
 
-                {/* Support Section */}
                 <div className="mt-6 pt-6">
                     <div className="divider-soft mb-4" />
                     <div className="px-3 mb-2">
                         <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Support</span>
                     </div>
                     <nav className="space-y-1">
-                        {supportItems.map(item => renderNavItem(item, false))}
+                        {sellerSupportItems.map((item) => renderNavItem(item, false))}
                     </nav>
                 </div>
             </div>
 
-            {/* User Profile & Footer */}
             <div className="p-4 mt-auto">
                 <div className="h-px bg-[var(--border-subtle)] mb-4" />
 
-                {/* Company Badge - Clean & Premium */}
                 <div className="mb-3">
                     <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-tertiary)] p-3 shadow-sm group cursor-pointer hover:border-[var(--primary-blue)]/30 transition-all duration-300">
-                        {/* Glow Effect */}
                         <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-[var(--primary-blue)]/5 blur-2xl group-hover:bg-[var(--primary-blue)]/10 transition-colors duration-500" />
 
                         <div className="relative flex items-center justify-between">
@@ -353,7 +366,6 @@ function SidebarComponent() {
                     </div>
                 </div>
 
-                {/* User Info - Minimalist */}
                 <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-all duration-200 cursor-pointer">
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-primary)] font-bold text-xs">
                         {initials}
@@ -365,7 +377,6 @@ function SidebarComponent() {
                     <Settings className="w-4 h-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" />
                 </div>
 
-                {/* Sign Out */}
                 <button
                     onClick={handleSignOut}
                     className="w-full flex items-center justify-start gap-2 px-2 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-bg)] transition-all duration-200 group"

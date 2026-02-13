@@ -1113,4 +1113,4 @@ P.S. — **Backend alignment & “everything must already exist” checklist (ve
 
 Use existing centralized UI components instead of creating new reductnat, duplicate components and keep consistency in complete product's UI/UX design here...
 
-@global.css
+@global.css @StatsCard.tsx @OrderTable.tsx @PageHeader.tsx @OrdersClient.tsx @ShipmentsClient.tsx 

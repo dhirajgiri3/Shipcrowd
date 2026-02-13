@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
     Table,
     TableBody,
@@ -10,17 +10,13 @@ import {
 } from '@/src/components/ui/core/Table';
 import { ReturnRequest } from '@/src/types/api/returns/returns.types';
 import {
-    MoreHorizontal,
     ArrowUpDown,
-    Eye,
     RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { formatCurrency, cn, formatDate } from '@/src/lib/utils';
-import { Button } from '@/src/components/ui/core/Button';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
-import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
 
@@ -54,20 +50,9 @@ export function ReturnsTable({
     onRowClick,
     emptyState
 }: ReturnsTableProps) {
-    const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-
     const handleSortClick = (key: string) => {
         if (onSort) {
             onSort(key);
-        }
-    };
-
-    const toggleDropdown = (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (activeDropdown === id) {
-            setActiveDropdown(null);
-        } else {
-            setActiveDropdown(id);
         }
     };
 

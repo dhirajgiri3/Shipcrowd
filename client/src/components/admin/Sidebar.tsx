@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -22,15 +22,14 @@ import {
     Headphones,
     Scale as ScaleIcon,
     ChevronRight,
-    UserCog
+    UserCog,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { Button } from '@/src/components/ui/core/Button';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 
 type NavSection = 'core' | 'operations' | 'finance' | 'system';
-type NavItem = {
+export type AdminNavItem = {
     label: string;
     href: string;
     icon: LucideIcon;
@@ -38,7 +37,7 @@ type NavItem = {
     superAdminOnly?: boolean;
 };
 
-const navItems: NavItem[] = [
+export const adminNavItems: AdminNavItem[] = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, section: 'core' },
     { label: 'Sellers', href: '/admin/sellers', icon: Users, section: 'core' },
     { label: 'KYC Analytics', href: '/admin/kyc', icon: Boxes, section: 'core' },
@@ -67,79 +66,85 @@ const navItems: NavItem[] = [
 
 export const Sidebar = React.memo(SidebarComponent);
 
-function SidebarComponent({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
+function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
     const pathname = usePathname();
     const { user } = useAuth();
     const { handleLogout } = useLogoutRedirect();
 
-    // Get user initials for avatar
     const userInitials = user?.name
-        ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
         : 'AD';
+
+    const isSuperAdmin = user?.role === 'super_admin';
+    const filteredNavItems = useMemo(
+        () => adminNavItems.filter((item) => !item.superAdminOnly || isSuperAdmin),
+        [isSuperAdmin]
+    );
+
+    const activeHref = useMemo(() => {
+        if (pathname === '/admin') return '/admin';
+
+        const matches = filteredNavItems
+            .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+            .sort((a, b) => b.href.length - a.href.length);
+
+        return matches[0]?.href;
+    }, [filteredNavItems, pathname]);
 
     const handleSignOut = async () => {
         await handleLogout();
     };
 
-    // Filter items based on user role
-    const isSuperAdmin = user?.role === 'super_admin';
-    const filteredNavItems = navItems.filter(item => {
-        if (item.superAdminOnly) {
-            return isSuperAdmin;
-        }
-        return true;
-    });
+    const groupedItems: Record<NavSection, AdminNavItem[]> = {
+        core: filteredNavItems.filter((item) => item.section === 'core'),
+        operations: filteredNavItems.filter((item) => item.section === 'operations'),
+        finance: filteredNavItems.filter((item) => item.section === 'finance'),
+        system: filteredNavItems.filter((item) => item.section === 'system'),
+    };
 
-    const coreItems = filteredNavItems.filter((item) => item.section === 'core');
-    const operationsItems = filteredNavItems.filter((item) => item.section === 'operations');
-    const financeItems = filteredNavItems.filter((item) => item.section === 'finance');
-    const systemItems = filteredNavItems.filter((item) => item.section === 'system');
-
-    const renderNavItems = (items: typeof filteredNavItems, showDivider = false) => (
+    const renderNavItems = (items: AdminNavItem[]) => (
         <>
             {items.map((item) => {
-                // Precise matching for root admin, partial for sub-routes
-                const isActive = item.href === '/admin'
-                    ? pathname === '/admin'
-                    : pathname.startsWith(item.href);
+                const isActive = item.href === activeHref;
 
                 return (
                     <Link
                         key={item.href}
                         href={item.href}
+                        onClick={onNavigate}
                         className={cn(
-                            "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group overflow-hidden",
+                            'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group overflow-hidden',
                             isActive
-                                ? "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]"
-                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                                ? 'bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         )}
                     >
-                        {/* Active state indicator - subtle sidebar line */}
                         {isActive && (
                             <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[var(--primary-blue)]" />
                         )}
 
-                        <item.icon className={cn(
-                            "relative z-10 h-5 w-5 transition-all duration-200",
-                            isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
-                        )} />
+                        <item.icon
+                            className={cn(
+                                'relative z-10 h-5 w-5 transition-all duration-200',
+                                isActive ? 'text-[var(--primary-blue)]' : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
+                            )}
+                        />
                         <span className="relative z-10">{item.label}</span>
 
-                        {/* Arrow indicator on hover */}
-                        <ChevronRight className={cn(
-                            "relative z-10 ml-auto h-4 w-4 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0",
-                            isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
-                        )} />
+                        <ChevronRight
+                            className={cn(
+                                'relative z-10 ml-auto h-4 w-4 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0',
+                                isActive ? 'text-[var(--primary-blue)]' : 'text-[var(--text-muted)]'
+                            )}
+                        />
                     </Link>
                 );
             })}
-            {showDivider && <div className="divider-soft my-3" />}
         </>
     );
 
     return (
-        <aside className="fixed left-0 top-0 z-[var(--z-sidebar-desktop)] h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]">
-            {/* Logo section */}
+        <aside className="fixed left-0 top-0 z-[var(--z-sidebar-desktop)] h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]" aria-label="Admin navigation sidebar">
             <div className="flex h-16 items-center px-6">
                 <img
                     src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
@@ -148,47 +153,40 @@ function SidebarComponent({ isOpen, onClose }: { isOpen?: boolean; onClose?: () 
                 />
             </div>
 
-            {/* Navigation */}
             <div className="flex flex-col justify-between h-[calc(100vh-64px)] p-4 overflow-y-auto scrollbar-premium">
-                <nav className="space-y-1">
-                    {/* Core Section */}
+                <nav className="space-y-1" aria-label="Admin sections">
                     <div className="mb-4">
                         <div className="px-3 mb-2">
                             <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Core</span>
                         </div>
-                        {renderNavItems(coreItems)}
+                        {renderNavItems(groupedItems.core)}
                     </div>
 
-                    {/* Operations Section */}
                     <div className="mb-4">
                         <div className="px-3 mb-2">
                             <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Operations</span>
                         </div>
-                        {renderNavItems(operationsItems)}
+                        {renderNavItems(groupedItems.operations)}
                     </div>
 
-                    {/* Finance Section */}
                     <div className="mb-4">
                         <div className="px-3 mb-2">
                             <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Finance</span>
                         </div>
-                        {renderNavItems(financeItems)}
+                        {renderNavItems(groupedItems.finance)}
                     </div>
 
-                    {/* System Section */}
                     <div className="mb-4">
                         <div className="px-3 mb-2">
                             <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">System</span>
                         </div>
-                        {renderNavItems(systemItems)}
+                        {renderNavItems(groupedItems.system)}
                     </div>
                 </nav>
 
-                {/* User profile section */}
                 <div className="mt-auto pt-4">
                     <div className="divider-soft mb-4" />
 
-                    {/* User Info - Minimalist */}
                     <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-all duration-200 cursor-pointer">
                         <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-primary)] font-bold text-xs">
                             {userInitials}

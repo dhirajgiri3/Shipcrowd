@@ -70,7 +70,6 @@ router.get(
  */
 router.get(
     '/:returnId',
-    requireAccess({ roles: ['customer', 'seller', 'staff', 'admin'] }),
     ReturnController.getReturnDetails
 );
 

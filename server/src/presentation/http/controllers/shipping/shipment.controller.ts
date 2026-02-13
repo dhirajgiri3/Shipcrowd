@@ -362,8 +362,8 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
             };
         });
 
-        // Get origin from pickup details
-        const warehouse = shipment.pickupDetails?.warehouseId;
+        // Get origin from pickup details (warehouseId is populated via .populate())
+        const warehouse = shipment.pickupDetails?.warehouseId as any;
         const origin = warehouse?.address ?
             `${warehouse.address.city || 'N/A'}, ${warehouse.address.state || 'N/A'}` :
             'N/A';
@@ -549,8 +549,8 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
             };
         });
 
-        // Get origin from pickup details
-        const warehouse = shipment.pickupDetails?.warehouseId;
+        // Get origin from pickup details (warehouseId is populated via .populate())
+        const warehouse = shipment.pickupDetails?.warehouseId as any;
         const origin = warehouse?.address ?
             `${warehouse.address.city || 'N/A'}, ${warehouse.address.state || 'N/A'}` :
             'N/A';

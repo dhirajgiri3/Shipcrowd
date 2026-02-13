@@ -101,8 +101,8 @@
    --text-muted: hsl(220, 10%, 70%);
    --text-inverse: hsl(0, 0%, 100%);
 
-   /* Borders - Removed/Subtle for Flat Design */
-   --border-subtle: transparent; /* No borders by default */
+   /* Borders - subtle but visible for dashboard structure */
+   --border-subtle: hsl(220, 15%, 92%);
    --border-default: hsl(220, 15%, 94%); /* Very subtle separator if needed */
    --border-strong: hsl(220, 15%, 85%);
    --border-focus: var(--primary-blue);
@@ -334,34 +334,28 @@ body {
       padding-top: env(safe-area-inset-top);
    }
 
-   /* Clean Focus */
-   .focus-ring {
+   /* Accessible focus treatment */
+   .focus-ring:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.2);
+   }
+
+   :where(a, button, input, textarea, select, [role="button"], [tabindex]):focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.2);
+   }
+
+   :where(a, button, input, textarea, select, [role="button"], [tabindex]):focus:not(:focus-visible) {
       outline: none;
       box-shadow: none;
    }
 
-   /* Remove all focus outlines and rings */
-   *:focus,
-   *:focus-visible {
-      outline: none !important;
-      box-shadow: none !important;
-   }
-
-   *:focus-within {
-      outline: none !important;
-      box-shadow: none !important;
-   }
-
-   input:focus,
-   textarea:focus,
-   select:focus,
-   button:focus,
-   input:focus-visible,
-   textarea:focus-visible,
-   select:focus-visible,
-   button:focus-visible {
-      outline: none !important;
-      box-shadow: none !important;
+   .divider-soft {
+      height: 1px;
+      width: 100%;
+      background: var(--border-default);
    }
 
    /* Card Styles - Theme Aware - REMOVED per user request to prefer utility classes */
