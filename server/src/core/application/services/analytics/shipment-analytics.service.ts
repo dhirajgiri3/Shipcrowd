@@ -43,6 +43,15 @@ export interface DeliveryTimeBreakdown {
 }
 
 export default class ShipmentAnalyticsService {
+    private static toCarrierLabel(raw: unknown): string {
+        const normalized = String(raw || 'unknown').trim().toLowerCase();
+        if (!normalized || normalized === 'unknown') return 'Unknown';
+        return normalized
+            .split(/\s+|_/g)
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+    }
     /**
      * Get overall shipment statistics
      */
@@ -94,8 +103,22 @@ export default class ShipmentAnalyticsService {
             const results = await Shipment.aggregate([
                 matchStage,
                 {
+                    $project: {
+                        carrierKey: {
+                            $toLower: {
+                                $trim: {
+                                    input: { $ifNull: ['$carrier', 'unknown'] },
+                                },
+                            },
+                        },
+                        currentStatus: 1,
+                        actualDelivery: 1,
+                        createdAt: 1,
+                    },
+                },
+                {
                     $group: {
-                        _id: '$carrier',
+                        _id: '$carrierKey',
                         shipments: { $sum: 1 },
                         delivered: {
                             $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] }
@@ -160,7 +183,10 @@ export default class ShipmentAnalyticsService {
                 }
             ]);
 
-            return results;
+            return results.map((row: any) => ({
+                ...row,
+                carrier: this.toCarrierLabel(row.carrier),
+            }));
         } catch (error) {
             logger.error('Error getting courier performance:', error);
             throw error;

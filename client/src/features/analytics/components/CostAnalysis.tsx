@@ -117,9 +117,9 @@ export function CostAnalysis() {
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie data={zoneData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="amount">
+                                    <Pie data={zoneData} nameKey="category" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="amount">
                                         {zoneData.map((entry, index) => (
-                                            <Cell key={entry.category || index} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`${entry.category}-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
                                     <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
@@ -138,9 +138,9 @@ export function CostAnalysis() {
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie data={courierData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="amount">
+                                    <Pie data={courierData} nameKey="category" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="amount">
                                         {courierData.map((entry, index) => (
-                                            <Cell key={entry.category || index} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`${entry.category}-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
                                     <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />

@@ -2,18 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
-import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
-import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/OrderDetailsPanel';
 import {
     Search,
-    Eye,
     Filter,
     Download,
     Package,
@@ -21,35 +16,21 @@ import {
     AlertCircle,
     RefreshCw,
     CheckCircle2,
-    Calendar,
+    RotateCcw,
     ChevronDown,
-    MoreHorizontal,
-    FileText
+    FileText,
+    TrendingUp,
+    Clock,
+    AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { Order } from '@/src/types/domain/order';
-import {
-    LazyAreaChart as AreaChart,
-    LazyArea as Area,
-    LazyBarChart as BarChart,
-    LazyBar as Bar,
-    LazyResponsiveContainer as ResponsiveContainer
-} from '@/src/components/features/charts/LazyCharts';
 import { SmartFilterChips, FilterPreset } from '@/src/components/seller/orders/SmartFilterChips';
 import { ResponsiveOrderList } from '@/src/components/seller/orders/ResponsiveOrderList';
 import { useIsMobile } from '@/src/hooks/ux';
 import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
-
-// --- VISUALIZATION DATA ---
-const trendData = [
-    { name: 'Mon', orders: 12, value: 45000 },
-    { name: 'Tue', orders: 19, value: 62000 },
-    { name: 'Wed', orders: 15, value: 51000 },
-    { name: 'Thu', orders: 25, value: 98000 },
-    { name: 'Fri', orders: 32, value: 125000 },
-    { name: 'Sat', orders: 28, value: 110000 },
-    { name: 'Sun', orders: 22, value: 85000 },
-];
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 
 export function OrdersClient() {
     const isMobile = useIsMobile();
@@ -87,10 +68,10 @@ export function OrdersClient() {
         search: debouncedSearch || undefined,
     });
 
-    // Use real data from API
-    // Note: Backend sends { success, data: Order[], pagination } via sendPaginated()
-    // So we access response.data directly (not response.data.orders)
+    // Use real data from API directly
     const ordersData: Order[] = ordersResponse?.data || [];
+    const pagination = ordersResponse?.pagination;
+    const stats = ordersResponse?.stats;
 
     const refetch = async () => {
         setIsRefreshing(true);
@@ -98,12 +79,18 @@ export function OrdersClient() {
         setIsRefreshing(false);
     };
 
-    // Filter Data with Smart Filters (client-side filtering for mock, server-side for real API)
+    // Filter Logic (client-side for payment filter & smart filter if API doesn't support)
+    // In a real scenario, these should ideally be passed as params to the API
     const filteredOrders = useMemo(() => {
         let filtered = ordersData;
 
-        // Smart filter (takes precedence over tab filter)
-        // Note: Ideally this should be handled by the backend API
+        // Apply Payment Filter
+        if (paymentFilter !== 'all') {
+            filtered = filtered.filter(o => o.paymentStatus === paymentFilter);
+        }
+
+        // Apply Smart Filter (Only for visual filtering on current page if API not supported)
+        // Ideally, this should be a backend param
         if (smartFilter !== 'all') {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -142,317 +129,108 @@ export function OrdersClient() {
                     break;
             }
         }
-        // Tab filter is handled by API status param, so we don't need to filter again here unless it's 'unshipped' grouping
-        else if (activeTab === 'unshipped') {
-            // API might return all 'unshipped' statuses if we passed a specific param, 
-            // but if we passed 'unshipped' as status, the backend should handle it.
-            // If the backend treats 'unshipped' as a status alias, we are good.
-            // If not, we might need to filter here. Assuming backend handles it for now or we filter just in case.
-            filtered = filtered.filter(o => ['pending', 'processing', 'pickup_pending'].includes(o.currentStatus));
-        }
 
         return filtered;
-    }, [activeTab, smartFilter, ordersData]);
+    }, [ordersData, paymentFilter, smartFilter]);
 
-    const orders = filteredOrders.slice((page - 1) * limit, page * limit);
-    const pagination = {
-        total: filteredOrders.length,
-        pages: Math.ceil(filteredOrders.length / limit),
-        page,
-        limit
-    };
 
-    // Filter Logic (client-side for payment filter)
-    const filteredData = useMemo(() => {
-        return orders.filter((item: Order) => {
-            const matchesPayment = paymentFilter === 'all' || item.paymentStatus === paymentFilter;
-            return matchesPayment;
-        });
-    }, [orders, paymentFilter]);
-
-    // Derived Metrics
+    // Derived Metrics from available data (or use stats from API if available)
     const metrics = useMemo(() => {
-        const totalRevenue = filteredData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0);
-        const pendingPaymentCount = filteredData.filter((o: Order) => o.paymentStatus === 'pending').length;
-        return { totalRevenue, pendingPaymentCount };
-    }, [filteredData]);
-
-    // Smart Filter Counts
-    const filterCounts = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        return {
-            all: ordersData.length,
-            needs_attention: ordersData.filter((o: Order) =>
-                ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
-            ).length,
-            today: ordersData.filter((o: Order) => {
-                const orderDate = new Date(o.createdAt);
-                orderDate.setHours(0, 0, 0, 0);
-                return orderDate.getTime() === today.getTime();
-            }).length,
-            cod_pending: ordersData.filter((o: Order) =>
-                o.paymentMethod === 'cod' && o.currentStatus !== 'delivered'
-            ).length,
-            last_7_days: ordersData.filter((o: Order) => {
-                const orderDate = new Date(o.createdAt);
-                return orderDate >= sevenDaysAgo;
-            }).length,
-            zone_b: ordersData.filter((o: Order) => {
-                const state = o.customerInfo?.address?.state;
-                return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
-            }).length
-        };
+        // Fallback calculation from current page data if global stats missing
+        const totalRevenue = ordersData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0);
+        const pendingPaymentCount = ordersData.filter((o: Order) => o.paymentStatus === 'pending').length;
+        const pendingShipmentCount = ordersData.filter((o: Order) => o.currentStatus === 'pending').length;
+        return { totalRevenue, pendingPaymentCount, pendingShipmentCount };
     }, [ordersData]);
 
-    const handleRefresh = async () => {
-        setIsRefreshing(true);
-        await refetch();
-        setIsRefreshing(false);
-    };
-
-    // --- Columns Definition ---
-    const columns = [
-        {
-            header: 'Order ID',
-            accessorKey: 'orderNumber',
-            cell: (row: Order) => (
-                <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[var(--text-primary)] text-sm font-mono">{row.orderNumber}</span>
-                </div>
-            )
-        },
-        {
-            header: 'Date',
-            accessorKey: 'createdAt',
-            cell: (row: Order) => (
-                <div className="flex flex-col text-xs">
-                    <span className="text-[var(--text-primary)] font-medium">
-                        {new Date(row.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
-                    <span className="text-[var(--text-muted)]">
-                        {new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                </div>
-            )
-        },
-        {
-            header: 'Customer',
-            accessorKey: 'customerInfo',
-            cell: (row: Order) => (
-                <div className="max-w-[180px]">
-                    <div className="font-medium text-[var(--text-primary)] text-sm truncate">{row.customerInfo.name}</div>
-                    <div className="text-xs text-[var(--text-muted)] opacity-80 truncate">{row.customerInfo.phone}</div>
-                </div>
-            )
-        },
-        {
-            header: 'Product',
-            accessorKey: 'products',
-            cell: (row: Order) => {
-                const firstProduct = row.products[0];
-                const totalQty = row.products.reduce((sum, p) => sum + p.quantity, 0);
-                return (
-                    <div className="max-w-[200px] flex items-center gap-2">
-                        <div className="flex-1 truncate">
-                            <div className="font-medium text-[var(--text-primary)] text-sm truncate" title={firstProduct?.name}>
-                                {firstProduct?.name || 'No product'}
-                            </div>
-                        </div>
-                        {row.products.length > 1 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                                +{row.products.length - 1}
-                            </span>
-                        )}
-                        {totalQty > 1 && row.products.length === 1 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                                x{totalQty}
-                            </span>
-                        )}
-                    </div>
-                );
-            }
-        },
-        {
-            header: 'Payment',
-            accessorKey: 'paymentStatus',
-            cell: (row: Order) => (
-                <StatusBadge domain="payment" status={row.paymentStatus} />
-            )
-        },
-        {
-            header: 'Status',
-            accessorKey: 'currentStatus',
-            cell: (row: Order) => (
-                <StatusBadge domain="order" status={row.currentStatus} />
-            )
-        },
-        {
-            header: 'Amount',
-            accessorKey: 'totals',
-            cell: (row: Order) => (
-                <div className="font-semibold text-[var(--text-primary)] text-sm font-mono">{formatCurrency(row.totals?.total || 0)}</div>
-            )
-        },
-        {
-            header: 'Actions',
-            accessorKey: '_id',
-            cell: (row: Order) => (
-                <div className="flex items-center gap-1">
-                    <ViewActionButton
-                        onClick={(e) => { e.stopPropagation(); setSelectedOrder(row); }}
-                    />
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg">
-                        <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                </div>
-            )
-        }
-    ];
 
     return (
-        <div className="min-h-screen space-y-8 pb-20">
-            {/* Added OrderDetailsPanel here: */}
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
             <OrderDetailsPanel
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
             />
 
             {/* --- HEADER --- */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
+            <PageHeader
+                title="Orders"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller/dashboard' },
+                    { label: 'Orders', active: true }
+                ]}
+                actions={
                     <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Orders</h1>
-
+                        <DateRangePicker />
+                        <Button
+                            onClick={refetch}
+                            variant="ghost"
+                            size="sm"
+                            className={cn("h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm", isRefreshing && "animate-spin")}
+                        >
+                            <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Manifest feature coming soon', 'info')}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Bulk Manifest
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Label feature coming soon', 'info')}>
+                            <Package className="w-4 h-4 mr-2" />
+                            Bulk Label
+                        </Button>
+                        <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
+                            <Download className="w-4 h-4 mr-2" />
+                            Export CSV
+                        </Button>
                     </div>
-                    <p className="text-sm text-[var(--text-muted)] mt-1">Manage your orders and fulfillments</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <DateRangePicker />
-                    <Button
-                        onClick={handleRefresh}
-                        variant="ghost"
-                        size="sm"
-                        className={cn("h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm", isRefreshing && "animate-spin")}
-                    >
-                        <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Manifest feature coming soon', 'info')}>
-                        <FileText className="w-4 h-4 mr-2" />
-                        Bulk Manifest
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Label feature coming soon', 'info')}>
-                        <Package className="w-4 h-4 mr-2" />
-                        Bulk Label
-                    </Button>
-                    <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export CSV
-                    </Button>
-                </div>
-            </header>
+                }
+            />
 
             {/* --- METRICS --- */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Orders */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-6 rounded-[var(--radius-xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
-                >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Total Orders</p>
-                            <h3 className="text-3xl font-bold text-[var(--text-primary)] mt-2">
-                                <AnimatedNumber value={pagination?.total || 0} />
-                            </h3>
-                        </div>
-                        <div className="text-[var(--success)] flex items-center gap-1 text-xs font-bold bg-[var(--success-bg)] px-2 py-1 rounded-lg">
-                            <ArrowUpRight className="w-3 h-3" /> 12%
-                        </div>
-                    </div>
-                    <div className="h-12 w-full mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={trendData}>
-                                <Bar dataKey="orders" fill="var(--primary-blue)" radius={[4, 4, 0, 0]} opacity={0.8} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </motion.div>
-
-                {/* Revenue */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="p-6 rounded-[var(--radius-xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
-                >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Revenue</p>
-                            <h3 className="text-3xl font-bold text-[var(--text-primary)] mt-2">
-                                {formatCurrency(metrics.totalRevenue)}
-                            </h3>
-                        </div>
-                        <div className="text-[var(--success)] flex items-center gap-1 text-xs font-bold bg-[var(--success-bg)] px-2 py-1 rounded-lg">
-                            <ArrowUpRight className="w-3 h-3" /> 8.4%
-                        </div>
-                    </div>
-                    <div className="h-12 w-full mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={trendData}>
-                                <defs>
-                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
-                                        <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <Area type="monotone" dataKey="value" stroke="var(--success)" strokeWidth={2} fill="url(#colorValue)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </motion.div>
-
-                {/* Actions */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="p-6 rounded-[var(--radius-xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-                >
-                    <div>
-                        <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Pending Actions</p>
-                        <div className="mt-3 flex items-center gap-3">
-                            <div className="flex-1 p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{metrics.pendingPaymentCount}</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Payments Pending</p>
-                            </div>
-                            <div className="flex-1 p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{orders.filter((o: Order) => o.currentStatus === 'pending').length}</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">To Ship</p>
-                            </div>
-                        </div>
-                    </div>
-                    <Button variant="link" className="self-start p-0 h-auto text-xs text-[var(--primary-blue)] font-bold mt-4 hover:text-[var(--primary-blue-deep)] flex items-center gap-1">
-                        View Action Center <ArrowUpRight className="w-3 h-3" />
-                    </Button>
-                </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                    title="Total Orders"
+                    value={pagination?.total || 0}
+                    icon={Package}
+                    iconColor="text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
+                    trend={{ value: 12, label: 'vs last week', positive: true }}
+                    delay={0}
+                />
+                <StatsCard
+                    title="Revenue"
+                    value={formatCurrency(metrics.totalRevenue)} // Note: This might be page-only revenue if API doesn't provide global
+                    icon={TrendingUp}
+                    iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    trend={{ value: 8.4, label: 'vs last week', positive: true }}
+                    delay={1}
+                />
+                <StatsCard
+                    title="Pending Shipments"
+                    value={metrics.pendingShipmentCount}
+                    icon={Clock}
+                    iconColor="text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400"
+                    description="Orders waiting to be shipped"
+                    delay={2}
+                />
+                <StatsCard
+                    title="Pending Payments"
+                    value={metrics.pendingPaymentCount}
+                    icon={AlertTriangle}
+                    iconColor="text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400"
+                    delay={3}
+                />
             </div>
 
             {/* --- TABLE & CONTROLS --- */}
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                     {/* Tabs */}
-                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)]">
+                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
                         {['all', 'unshipped', 'shipped', 'delivered'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize",
+                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap",
                                     activeTab === tab
                                         ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
                                         : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
@@ -508,7 +286,14 @@ export function OrdersClient() {
                         setSmartFilter(filter);
                         setPage(1); // Reset pagination
                     }}
-                    counts={filterCounts}
+                    counts={{
+                        all: pagination?.total || 0,
+                        needs_attention: 0, // Todo: Get from API facets
+                        today: 0,
+                        cod_pending: 0,
+                        last_7_days: 0,
+                        zone_b: 0
+                    }}
                 />
 
                 {/* Error State */}
@@ -532,7 +317,7 @@ export function OrdersClient() {
                 {/* Responsive Order List */}
                 {!error && (
                     <ResponsiveOrderList
-                        orders={filteredData}
+                        orders={filteredOrders}
                         isLoading={isLoading}
                         onOrderClick={(order) => setSelectedOrder(order)}
                         className={isMobile ? '' : 'bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm'}
@@ -540,8 +325,9 @@ export function OrdersClient() {
                 )}
 
                 {/* Empty State with Clear Filters */}
-                {!isLoading && !error && filteredData.length === 0 && (
-                    <div className="text-center mt-4">
+                {!isLoading && !error && filteredOrders.length === 0 && (
+                    <div className="text-center mt-4 py-8">
+                        <p className="text-[var(--text-muted)] mb-4">No orders found matching your criteria</p>
                         <Button
                             variant="outline"
                             onClick={() => {

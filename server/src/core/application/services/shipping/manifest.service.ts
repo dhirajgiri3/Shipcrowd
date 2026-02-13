@@ -2,12 +2,13 @@ import mongoose from 'mongoose';
 import PDFDocument from 'pdfkit';
 import Manifest from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest.model';
 import ManifestCounter from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest-counter.model';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Shipment, Warehouse } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { CourierFactory } from '../courier/courier.factory';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
+import { getManifestCarrierStrategy } from './manifest-carrier-strategy';
 
 /**
  * Manifest Service
@@ -94,9 +95,11 @@ class ManifestService {
                 throw new ValidationError('At least one shipment is required');
             }
 
-            // Fetch shipments
+            // Fetch shipments (company-scoped)
             const shipments = await Shipment.find({
                 _id: { $in: data.shipmentIds },
+                companyId: new mongoose.Types.ObjectId(data.companyId),
+                isDeleted: false,
             }).session(session);
 
             if (shipments.length === 0) {
@@ -104,29 +107,57 @@ class ManifestService {
             }
 
             if (shipments.length !== data.shipmentIds.length) {
-                throw new ValidationError('Some shipment IDs are invalid');
+                throw new ValidationError('Some shipment IDs are invalid or do not belong to your company');
+            }
+
+            // Validate shipment statuses for manifesting
+            const invalidStatusShipments = shipments.filter(
+                (s: any) => !this.ELIGIBLE_STATUSES.includes(s.currentStatus)
+            );
+            if (invalidStatusShipments.length > 0) {
+                throw new ValidationError(
+                    `Cannot manifest ${invalidStatusShipments.length} shipment(s): invalid status. Allowed statuses: ${this.ELIGIBLE_STATUSES.join(', ')}`
+                );
+            }
+
+            // Prevent duplicate manifest membership for any shipment ID
+            const existingManifest = await Manifest.findOne({
+                companyId: new mongoose.Types.ObjectId(data.companyId),
+                'shipments.shipmentId': {
+                    $in: shipments.map((s: any) => s._id),
+                },
+            })
+                .select('manifestNumber')
+                .session(session);
+
+            if (existingManifest) {
+                throw new ValidationError(
+                    `One or more shipments are already part of manifest ${existingManifest.manifestNumber}`
+                );
             }
 
             // Derive warehouseId from shipments if not provided
+            const warehouseIds = [
+                ...new Set(
+                    shipments
+                        .map((s: any) => s.pickupDetails?.warehouseId?.toString())
+                        .filter(Boolean)
+                ),
+            ];
+
+            if (warehouseIds.length === 0) {
+                throw new ValidationError('Warehouse ID is required for manifest creation');
+            }
+
+            if (warehouseIds.length > 1) {
+                throw new ValidationError('Shipments must belong to the same warehouse');
+            }
+
             let resolvedWarehouseId = data.warehouseId;
             if (!resolvedWarehouseId) {
-                const warehouseIds = [
-                    ...new Set(
-                        shipments
-                            .map((s: any) => s.pickupDetails?.warehouseId?.toString())
-                            .filter(Boolean)
-                    ),
-                ];
-
-                if (warehouseIds.length === 0) {
-                    throw new ValidationError('Warehouse ID is required for manifest creation');
-                }
-
-                if (warehouseIds.length > 1) {
-                    throw new ValidationError('Shipments must belong to the same warehouse');
-                }
-
                 resolvedWarehouseId = warehouseIds[0];
+            } else if (resolvedWarehouseId.toString() !== warehouseIds[0]) {
+                throw new ValidationError('Provided warehouseId does not match shipment pickup warehouse');
             }
 
             // Validate all shipments belong to same carrier
@@ -161,6 +192,7 @@ class ManifestService {
             // Call Carrier API for Manifest Creation (if supported)
             let carrierManifestId: string | undefined;
             let carrierManifestUrl: string | undefined;
+            const carrierStrategy = getManifestCarrierStrategy(requestedCarrier);
 
             try {
                 const provider = await CourierFactory.getProvider(
@@ -168,8 +200,19 @@ class ManifestService {
                     new mongoose.Types.ObjectId(data.companyId)
                 );
 
-                // Check if provider supports createManifest
-                if (provider && typeof (provider as any).createManifest === 'function') {
+                logger.info('Resolved manifest carrier strategy', {
+                    carrier: requestedCarrier,
+                    externalManifestMode: carrierStrategy.externalManifestMode,
+                    pickupMode: carrierStrategy.pickupMode,
+                    pickupTrigger: carrierStrategy.pickupTrigger,
+                });
+
+                // Call external manifest API only when strategy explicitly allows it.
+                if (
+                    carrierStrategy.externalManifestMode === 'api' &&
+                    provider &&
+                    typeof (provider as any).createManifest === 'function'
+                ) {
                     logger.info(`Calling ${requestedCarrier} API for manifest creation...`);
 
                     const apiResult = await (provider as any).createManifest({
@@ -183,6 +226,11 @@ class ManifestService {
                         carrierManifestUrl = apiResult.manifestUrl;
                         logger.info(`Carrier manifest created: ${carrierManifestId}`, { carrier: requestedCarrier });
                     }
+                } else {
+                    logger.info('Skipping external carrier manifest call due to configured strategy', {
+                        carrier: requestedCarrier,
+                        externalManifestMode: carrierStrategy.externalManifestMode,
+                    });
                 }
             } catch (carrierError: any) {
                 // We log error but proceed with internal manifest to avoid blocking operations
@@ -245,15 +293,62 @@ class ManifestService {
     /**
      * Generate manifest PDF (A4 handover sheet)
      */
-    async generatePDF(manifestId: string): Promise<Buffer> {
+    async generatePDF(manifestId: string, companyId: string): Promise<Buffer> {
         return new Promise(async (resolve, reject) => {
             try {
-                const manifest = await Manifest.findById(manifestId)
-                    .populate('warehouseId');
+                if (!mongoose.Types.ObjectId.isValid(manifestId)) {
+                    throw new ValidationError('Invalid manifest ID format');
+                }
+
+                const manifest = await Manifest.findOne({
+                    _id: manifestId,
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                }).populate('warehouseId');
 
                 if (!manifest) {
                     throw new NotFoundError('Manifest not found');
                 }
+
+                const shipmentIds = manifest.shipments.map((s: any) => s.shipmentId).filter(Boolean);
+                const shipmentDocs = shipmentIds.length > 0
+                    ? await Shipment.find({ _id: { $in: shipmentIds } })
+                        .select('trackingNumber deliveryDetails.recipientName deliveryDetails.address')
+                        .lean()
+                    : [];
+
+                const shipmentMap = new Map<string, any>();
+                shipmentDocs.forEach((shipment: any) => {
+                    shipmentMap.set(shipment._id.toString(), shipment);
+                });
+
+                const formatNumber = (value: number): string => {
+                    if (!Number.isFinite(value)) return '0.00';
+                    return value.toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    });
+                };
+
+                const formatWeight = (value: number): string => `${formatNumber(value)} kg`;
+                const formatMoney = (value: number): string => `INR ${formatNumber(value)}`;
+                const formatDate = (value: Date): string =>
+                    new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                const warehouse: any = manifest.warehouseId || {};
+                const address = warehouse?.address || {};
+                const addressParts = [
+                    address.line1,
+                    address.line2,
+                    address.city,
+                    address.state,
+                    address.postalCode,
+                ].filter((part: any) => typeof part === 'string' && part.trim().length > 0);
+                const warehouseAddress = addressParts.length > 0 ? addressParts.join(', ') : 'N/A';
+                const warehouseContact =
+                    warehouse?.contactInfo?.phone ||
+                    warehouse?.phone ||
+                    manifest.pickup.contactPhone ||
+                    'N/A';
 
                 // Create PDF document (A4 size)
                 const doc = new PDFDocument({
@@ -266,136 +361,191 @@ class ManifestService {
                 doc.on('end', () => resolve(Buffer.concat(chunks)));
                 doc.on('error', reject);
 
-                // ====== Header ======
+                const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+                const footerY = doc.page.height - doc.page.margins.bottom + 4;
+
+                const drawFooter = () => {
+                    doc
+                        .fontSize(8)
+                        .fillColor('#6B7280')
+                        .text(`Generated on ${new Date().toLocaleString('en-IN')}`, doc.page.margins.left, footerY, {
+                            width: pageWidth,
+                            align: 'center',
+                        })
+                        .fillColor('#111827');
+                };
+
+                const tableStartX = doc.page.margins.left;
+                const tableTopPadding = 6;
+                const rowHeight = 20;
+                const headerHeight = 18;
+                const maxTableY = doc.page.height - doc.page.margins.bottom - 70;
+                const colWidths = [26, 94, 164, 64, 48, 80];
+                const headers = ['#', 'AWB', 'Consignee / Destination', 'Weight', 'Pkgs', 'COD'];
+                const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
+
+                const drawTableHeader = (y: number) => {
+                    doc
+                        .rect(tableStartX, y, tableWidth, headerHeight)
+                        .fill('#F3F4F6')
+                        .strokeColor('#D1D5DB')
+                        .stroke();
+
+                    let x = tableStartX;
+                    doc.fontSize(8).font('Helvetica-Bold').fillColor('#111827');
+                    headers.forEach((header, index) => {
+                        doc.text(header, x + 4, y + tableTopPadding, {
+                            width: colWidths[index] - 8,
+                            align: index >= 3 ? 'right' : 'left',
+                        });
+                        x += colWidths[index];
+                        if (index < headers.length - 1) {
+                            doc.moveTo(x, y).lineTo(x, y + headerHeight).strokeColor('#D1D5DB').stroke();
+                        }
+                    });
+                };
+
+                const drawRow = (row: string[], y: number, index: number) => {
+                    const isEven = index % 2 === 0;
+                    doc
+                        .rect(tableStartX, y, tableWidth, rowHeight)
+                        .fill(isEven ? '#FFFFFF' : '#FAFAFA')
+                        .strokeColor('#E5E7EB')
+                        .stroke();
+
+                    let x = tableStartX;
+                    doc.fontSize(8).font('Helvetica').fillColor('#111827');
+                    row.forEach((value, columnIndex) => {
+                        doc.text(value, x + 4, y + tableTopPadding, {
+                            width: colWidths[columnIndex] - 8,
+                            align: columnIndex >= 3 ? 'right' : 'left',
+                            ellipsis: true,
+                        });
+                        x += colWidths[columnIndex];
+                        if (columnIndex < row.length - 1) {
+                            doc.moveTo(x, y).lineTo(x, y + rowHeight).strokeColor('#E5E7EB').stroke();
+                        }
+                    });
+                };
+
+                // Header
                 doc
-                    .fontSize(20)
+                    .fontSize(18)
                     .font('Helvetica-Bold')
+                    .fillColor('#111827')
                     .text('SHIPPING MANIFEST', { align: 'center' });
 
-                doc.moveDown(0.5);
+                doc.moveDown(0.3);
 
                 doc
-                    .fontSize(12)
+                    .fontSize(11)
                     .font('Helvetica')
-                    .text(`Manifest #: ${manifest.manifestNumber}`, { align: 'center' });
+                    .fillColor('#374151')
+                    .text(`Manifest: ${manifest.manifestNumber}`, { align: 'center' });
+
+                doc
+                    .fontSize(9)
+                    .fillColor('#6B7280')
+                    .text(`Created: ${formatDate(manifest.createdAt)}`, { align: 'center' });
 
                 doc.moveDown(1);
 
-                // ====== Warehouse & Carrier Info ======
-                doc.fontSize(10).font('Helvetica-Bold').text('Warehouse Details:');
+                // Warehouse + pickup
+                doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827').text('Warehouse Details');
                 doc
                     .fontSize(9)
                     .font('Helvetica')
-                    .text(`Name: ${(manifest.warehouseId as any)?.name || 'N/A'}`);
-                doc.text(
-                    `Address: ${(manifest.warehouseId as any)?.address || 'N/A'}`
-                );
-                doc.text(
-                    `Contact: ${(manifest.warehouseId as any)?.phone || 'N/A'}`
-                );
+                    .fillColor('#111827')
+                    .text(`Name: ${warehouse?.name || 'N/A'}`)
+                    .text(`Address: ${warehouseAddress}`)
+                    .text(`Contact: ${warehouseContact}`);
 
                 doc.moveDown(0.5);
 
-                doc.fontSize(10).font('Helvetica-Bold').text('Carrier & Pickup:');
+                doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827').text('Carrier & Pickup');
                 doc
                     .fontSize(9)
                     .font('Helvetica')
-                    .text(`Carrier: ${manifest.carrier.toUpperCase()}`);
-                doc.text(
-                    `Scheduled Date: ${manifest.pickup.scheduledDate.toLocaleDateString()}`
-                );
-                doc.text(`Time Slot: ${manifest.pickup.timeSlot}`);
-                doc.text(`Contact Person: ${manifest.pickup.contactPerson}`);
-                doc.text(`Contact Phone: ${manifest.pickup.contactPhone}`);
+                    .fillColor('#111827')
+                    .text(`Carrier: ${manifest.carrier.toUpperCase()}`)
+                    .text(`Scheduled Date: ${formatDate(manifest.pickup.scheduledDate)}`)
+                    .text(`Time Slot: ${manifest.pickup.timeSlot}`)
+                    .text(`Contact Person: ${manifest.pickup.contactPerson}`)
+                    .text(`Contact Phone: ${manifest.pickup.contactPhone}`);
 
-                doc.moveDown(1);
-
-                // ====== Shipments Table ======
-                doc.fontSize(10).font('Helvetica-Bold').text('Shipments:');
-                doc.moveDown(0.5);
-
-                const tableTop = doc.y;
-                const colWidths = [30, 100, 150, 60, 50, 60];
-                const headers = ['#', 'AWB', 'Consignee', 'Weight', 'Pkgs', 'COD'];
-
-                // Table headers
-                doc.fontSize(8).font('Helvetica-Bold');
-                let xPos = 50;
-                headers.forEach((header, i) => {
-                    doc.text(header, xPos, tableTop, { width: colWidths[i] });
-                    xPos += colWidths[i];
-                });
-
-                // Underline headers
-                doc
-                    .moveTo(50, tableTop + 12)
-                    .lineTo(50 + colWidths.reduce((a, b) => a + b, 0), tableTop + 12)
-                    .stroke();
-
-                // Table rows
-                let yPos = tableTop + 20;
-                doc.fontSize(7).font('Helvetica');
-
-                for (let i = 0; i < manifest.shipments.length; i++) {
-                    const shipment = manifest.shipments[i];
-                    xPos = 50;
-
-                    doc.text(String(i + 1), xPos, yPos, { width: colWidths[0] });
-                    xPos += colWidths[0];
-
-                    doc.text(shipment.awb, xPos, yPos, { width: colWidths[1] });
-                    xPos += colWidths[1];
-
-                    doc.text('Customer Name', xPos, yPos, { width: colWidths[2] }); // Placeholder
-                    xPos += colWidths[2];
-
-                    doc.text(`${shipment.weight}kg`, xPos, yPos, { width: colWidths[3] });
-                    xPos += colWidths[3];
-
-                    doc.text(String(shipment.packages), xPos, yPos, { width: colWidths[4] });
-                    xPos += colWidths[4];
-
-                    doc.text(`₹${shipment.codAmount}`, xPos, yPos, { width: colWidths[5] });
-
-                    yPos += 15;
-
-                    // Add new page if needed
-                    if (yPos > 700 && i < manifest.shipments.length - 1) {
-                        doc.addPage();
-                        yPos = 50;
-                    }
+                if ((manifest as any)?.metadata?.carrierManifestId) {
+                    doc.text(`Carrier Manifest ID: ${(manifest as any).metadata.carrierManifestId}`);
                 }
 
-                // ====== Summary ======
-                doc.moveDown(2);
-                doc.fontSize(10).font('Helvetica-Bold').text('Summary:');
-                doc.fontSize(9).font('Helvetica');
-                doc.text(`Total Shipments: ${manifest.summary.totalShipments}`);
-                doc.text(`Total Weight: ${manifest.summary.totalWeight}kg`);
-                doc.text(`Total Packages: ${manifest.summary.totalPackages}`);
-                doc.text(`Total COD Amount: ₹${manifest.summary.totalCODAmount}`);
+                doc.moveDown(1);
 
-                // ====== Signature Blocks ======
+                // Shipments
+                doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827').text('Shipments');
+                doc.moveDown(0.5);
+
+                let yPos = doc.y;
+                drawTableHeader(yPos);
+                yPos += headerHeight;
+                for (let i = 0; i < manifest.shipments.length; i++) {
+                    if (yPos + rowHeight > maxTableY) {
+                        doc.addPage();
+                        yPos = doc.page.margins.top;
+                        drawTableHeader(yPos);
+                        yPos += headerHeight;
+                    }
+
+                    const shipment: any = manifest.shipments[i];
+                    const shipmentDoc: any = shipmentMap.get(shipment.shipmentId.toString());
+                    const city = shipmentDoc?.deliveryDetails?.address?.city || 'N/A';
+                    const state = shipmentDoc?.deliveryDetails?.address?.state || '';
+                    const destination = state ? `${city}, ${state}` : city;
+                    const consignee = shipmentDoc?.deliveryDetails?.recipientName || 'N/A';
+
+                    drawRow(
+                        [
+                            String(i + 1),
+                            shipment.awb || shipmentDoc?.trackingNumber || 'N/A',
+                            `${consignee} - ${destination}`,
+                            formatWeight(Number(shipment.weight || 0)),
+                            String(shipment.packages || 0),
+                            formatMoney(Number(shipment.codAmount || 0)),
+                        ],
+                        yPos,
+                        i
+                    );
+                    yPos += rowHeight;
+                }
+
+                doc.y = yPos + 16;
+                if (doc.y > maxTableY) {
+                    doc.addPage();
+                    doc.y = doc.page.margins.top;
+                }
+
+                // Summary
+                doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827').text('Summary');
+                doc
+                    .fontSize(9)
+                    .font('Helvetica')
+                    .fillColor('#111827')
+                    .text(`Total Shipments: ${manifest.summary.totalShipments}`)
+                    .text(`Total Weight: ${formatWeight(Number(manifest.summary.totalWeight || 0))}`)
+                    .text(`Total Packages: ${manifest.summary.totalPackages}`)
+                    .text(`Total COD Amount: ${formatMoney(Number(manifest.summary.totalCODAmount || 0))}`);
+
+                // Signatures
                 doc.moveDown(3);
                 doc.fontSize(9);
+                const signatureY = doc.y;
+                doc.text('________________________', 50, signatureY);
+                doc.text('Seller Signature', 50, signatureY + 12);
+                doc.text('Date: __________', 50, signatureY + 24);
 
-                doc.text('_____________________', 50, doc.y);
-                doc.text('Seller Signature', 50, doc.y + 5);
-                doc.text('Date: __________', 50, doc.y + 5);
+                doc.text('________________________', 340, signatureY);
+                doc.text('Carrier Signature', 340, signatureY + 12);
+                doc.text('Date: __________', 340, signatureY + 24);
 
-                doc.text('_____________________', 350, doc.y - 35);
-                doc.text('Carrier Signature', 350, doc.y + 5);
-                doc.text('Date: __________', 350, doc.y + 5);
-
-                // ====== Footer ======
-                doc
-                    .fontSize(8)
-                    .text(
-                        `Generated on ${new Date().toLocaleString()}`,
-                        50,
-                        750,
-                        { align: 'center' }
-                    );
+                drawFooter();
 
                 doc.end();
             } catch (error: any) {
@@ -405,14 +555,22 @@ class ManifestService {
         });
     }
 
+
     /**
      * Close manifest and schedule pickup
      *
-     * Attempts to schedule pickups with carriers. Failed pickups are queued for retry
-     * rather than silently failing, ensuring operational visibility.
+     * Uses explicit carrier strategy so courier-specific behavior remains
+     * centralized and predictable.
      */
-    async closeManifest(manifestId: string, userId: string) {
-        const manifest = await Manifest.findById(manifestId);
+    async closeManifest(manifestId: string, companyId: string, userId: string) {
+        if (!mongoose.Types.ObjectId.isValid(manifestId)) {
+            throw new ValidationError('Invalid manifest ID format');
+        }
+
+        const manifest = await Manifest.findOne({
+            _id: manifestId,
+            companyId: new mongoose.Types.ObjectId(companyId),
+        });
 
         if (!manifest) {
             throw new NotFoundError('Manifest not found');
@@ -422,178 +580,167 @@ class ManifestService {
             throw new ValidationError('Manifest is already closed or handed over');
         }
 
-        // Track pickup scheduling results for audit
         const pickupResults = {
             successful: 0,
             failed: 0,
-            failedShipments: [] as Array<{ shipmentId: string; trackingNumber: string; error: string }>
+            skipped: 0,
+            failedShipments: [] as Array<{ shipmentId: string; trackingNumber: string; error: string }>,
+            skippedCarriers: [] as Array<{ carrier: string; reason: string; count: number }>,
         };
 
-        // Call carrier API to schedule pickup if supported
         try {
             const shipments = await Shipment.find({
-                _id: { $in: manifest.shipments.map(s => s.shipmentId) }
+                _id: { $in: manifest.shipments.map((s) => s.shipmentId) },
+                companyId: manifest.companyId,
             });
 
-            // Group by carrier
             const carrierShipments = new Map<string, typeof shipments>();
             for (const shipment of shipments) {
-                const carrier = shipment.carrier;
+                const carrier = this.normalizeCarrier(shipment.carrier);
                 if (!carrierShipments.has(carrier)) {
                     carrierShipments.set(carrier, []);
                 }
                 carrierShipments.get(carrier)!.push(shipment);
             }
 
-            // Schedule pickup for each carrier's shipments
             for (const [carrier, carrierBatch] of carrierShipments) {
+                const strategy = getManifestCarrierStrategy(carrier);
                 try {
+                    logger.info('Resolved pickup strategy for manifest close', {
+                        manifestId,
+                        carrier,
+                        mode: strategy.pickupMode,
+                        trigger: strategy.pickupTrigger,
+                        shipmentCount: carrierBatch.length,
+                    });
+
+                    if (strategy.pickupMode === 'none') {
+                        pickupResults.skipped += carrierBatch.length;
+                        pickupResults.skippedCarriers.push({
+                            carrier,
+                            reason: strategy.notes,
+                            count: carrierBatch.length,
+                        });
+                        continue;
+                    }
+
                     const provider = await CourierFactory.getProvider(carrier, manifest.companyId);
 
-                    if (provider.schedulePickup) {
-                        logger.info(`Scheduling pickups for manifest ${manifest.manifestNumber} (${carrier})`, {
-                            shipmentCount: carrierBatch.length
+                    if (!provider.schedulePickup) {
+                        pickupResults.skipped += carrierBatch.length;
+                        pickupResults.skippedCarriers.push({
+                            carrier,
+                            reason: 'Provider does not implement schedulePickup',
+                            count: carrierBatch.length,
                         });
+                        continue;
+                    }
 
-                        // Delhivery pickup requests are warehouse-level, not shipment-level
-                        if (carrier === 'delhivery') {
-                            const first = carrierBatch[0];
-                            const warehouseId = first.pickupDetails?.warehouseId;
-                            if (!warehouseId) {
-                                logger.warn('Missing warehouse for Delhivery pickup scheduling', {
-                                    manifestId,
-                                    carrier
-                                });
-                                continue;
-                            }
-
-                            const warehouse = await (await import('../../../../infrastructure/database/mongoose/models/logistics/warehouse/structure/warehouse.model.js')).default.findById(warehouseId).lean();
-
-                            const pickupLocationName = warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name;
-                            if (!pickupLocationName) {
-                                logger.warn('Missing pickup location name for Delhivery scheduling', {
-                                    warehouseId: warehouseId.toString()
-                                });
-                                continue;
-                            }
-
-                            try {
-                                await provider.schedulePickup({
-                                    pickupDate: manifest.pickup.scheduledDate.toISOString().split('T')[0],
-                                    pickupTime: `${manifest.pickup.timeSlot.split('-')[0]}:00`,
-                                    pickupLocation: pickupLocationName,
-                                    expectedCount: carrierBatch.length
-                                });
-                                pickupResults.successful += carrierBatch.length;
-                            } catch (pickupError: any) {
-                                const errorMsg = pickupError.message || 'Unknown error';
-                                logger.error('Failed to schedule Delhivery pickup', {
-                                    manifestId,
-                                    error: errorMsg
-                                });
-                                pickupResults.failed += carrierBatch.length;
-                                carrierBatch.forEach((shipment) => {
-                                    pickupResults.failedShipments.push({
-                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                        trackingNumber: shipment.trackingNumber,
-                                        error: errorMsg
-                                    });
-                                });
-                            }
-
+                    if (strategy.pickupMode === 'warehouse') {
+                        const first = carrierBatch[0];
+                        const warehouseId = first?.pickupDetails?.warehouseId;
+                        if (!warehouseId) {
+                            pickupResults.failed += carrierBatch.length;
                             continue;
                         }
 
-                        // Process serially to avoid rate limits
-                        for (const shipment of carrierBatch) {
-                            if (shipment.carrierDetails?.providerShipmentId) {
-                                try {
-                                    await provider.schedulePickup({
-                                        providerShipmentId: shipment.carrierDetails.providerShipmentId
-                                    });
+                        const warehouse = await Warehouse.findById(warehouseId).lean();
+                        const pickupLocationName = warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name;
 
-                                    pickupResults.successful++;
-                                    logger.info(`Pickup scheduled successfully`, {
-                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                        trackingNumber: shipment.trackingNumber
-                                    });
-                                } catch (pickupError: any) {
-                                    const errorMsg = pickupError.message || 'Unknown error';
+                        if (!pickupLocationName) {
+                            pickupResults.failed += carrierBatch.length;
+                            continue;
+                        }
 
-                                    logger.error(`Failed to schedule pickup for shipment ${shipment.trackingNumber}`, {
-                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                        error: errorMsg
-                                    });
+                        await provider.schedulePickup({
+                            pickupDate: manifest.pickup.scheduledDate.toISOString().split('T')[0],
+                            pickupTime: `${manifest.pickup.timeSlot.split('-')[0]}:00`,
+                            pickupLocation: pickupLocationName,
+                            expectedCount: carrierBatch.length,
+                        });
 
-                                    pickupResults.failed++;
-                                    pickupResults.failedShipments.push({
-                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                        trackingNumber: shipment.trackingNumber,
-                                        error: errorMsg
-                                    });
+                        pickupResults.successful += carrierBatch.length;
+                        continue;
+                    }
 
-                                    // ✅ Queue failed pickup for retry (instead of silencing it)
-                                    try {
-                                        await QueueManager.addJob(
-                                            'manifest-pickup-retry',
-                                            'schedule-pickup',
-                                            {
-                                                manifestId,
-                                                shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                                carrier,
-                                                providerShipmentId: shipment.carrierDetails.providerShipmentId
-                                            },
-                                            {
-                                                attempts: 3,
-                                                backoff: { type: 'exponential', delay: 60000 } // 1 minute initial delay
-                                            }
-                                        );
+                    for (const shipment of carrierBatch) {
+                        const shipmentId = (shipment._id as mongoose.Types.ObjectId).toString();
+                        const providerShipmentId = shipment.carrierDetails?.providerShipmentId;
 
-                                        logger.info(`Queued pickup retry for shipment`, {
-                                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                            trackingNumber: shipment.trackingNumber
-                                        });
-                                    } catch (queueError) {
-                                        logger.error(`Failed to queue pickup retry`, {
-                                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                            error: queueError instanceof Error ? queueError.message : 'Unknown error'
-                                        });
+                        if (!providerShipmentId) {
+                            pickupResults.failed++;
+                            pickupResults.failedShipments.push({
+                                shipmentId,
+                                trackingNumber: shipment.trackingNumber,
+                                error: 'Missing providerShipmentId',
+                            });
+                            continue;
+                        }
+
+                        try {
+                            await provider.schedulePickup({ providerShipmentId });
+                            pickupResults.successful++;
+                        } catch (pickupError: any) {
+                            const errorMsg = pickupError.message || 'Unknown error';
+                            pickupResults.failed++;
+                            pickupResults.failedShipments.push({
+                                shipmentId,
+                                trackingNumber: shipment.trackingNumber,
+                                error: errorMsg,
+                            });
+
+                            try {
+                                await QueueManager.addJob(
+                                    'manifest-pickup-retry',
+                                    'schedule-pickup',
+                                    {
+                                        manifestId,
+                                        shipmentId,
+                                        carrier,
+                                        providerShipmentId,
+                                    },
+                                    {
+                                        attempts: 3,
+                                        backoff: { type: 'exponential', delay: 60000 },
                                     }
-                                }
-                            } else {
-                                logger.warn(`Shipment missing providerShipmentId, cannot schedule pickup`, {
-                                    shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
-                                    trackingNumber: shipment.trackingNumber
+                                );
+                            } catch (queueError) {
+                                logger.error('Failed to queue pickup retry', {
+                                    shipmentId,
+                                    error: queueError instanceof Error ? queueError.message : 'Unknown error',
                                 });
                             }
                         }
-                    } else {
-                        logger.info(`Provider does not support pickup scheduling`, { carrier });
                     }
                 } catch (providerError) {
-                    logger.warn(`Could not get provider '${carrier}' for manifest pickup scheduling`, {
-                        error: providerError instanceof Error ? providerError.message : 'Unknown error'
+                    pickupResults.failed += carrierBatch.length;
+                    carrierBatch.forEach((shipment) => {
+                        pickupResults.failedShipments.push({
+                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                            trackingNumber: shipment.trackingNumber,
+                            error: providerError instanceof Error ? providerError.message : 'Unknown provider error',
+                        });
+                    });
+                    logger.warn(`Could not schedule pickup for carrier '${carrier}'`, {
+                        error: providerError instanceof Error ? providerError.message : 'Unknown error',
                     });
                 }
             }
         } catch (error) {
             logger.error(`Error processing carrier pickup for manifest ${manifestId}:`, error);
-            // Don't throw - allow manifest to close even if pickup scheduling had errors
         }
 
-        // Mark manifest as closed
         manifest.status = 'closed';
         manifest.closedAt = new Date();
         manifest.closedBy = new mongoose.Types.ObjectId(userId);
 
-        // ✅ Store pickup scheduling results in manifest notes for audit trail
-        const resultsNote = `Pickup scheduling results: ${pickupResults.successful} successful, ${pickupResults.failed} failed`;
+        const resultsNote = `Pickup scheduling results: ${pickupResults.successful} successful, ${pickupResults.failed} failed, ${pickupResults.skipped} skipped`;
         manifest.notes = (manifest.notes ? manifest.notes + '\n' : '') + resultsNote;
 
         await manifest.save();
 
         logger.info(`Manifest ${manifest.manifestNumber} closed by user ${userId}`, {
-            pickupResults
+            pickupResults,
         });
 
         return manifest;
@@ -602,8 +749,15 @@ class ManifestService {
     /**
      * Mark manifest as handed over
      */
-    async handoverManifest(manifestId: string, userId: string) {
-        const manifest = await Manifest.findById(manifestId);
+    async handoverManifest(manifestId: string, companyId: string, userId: string) {
+        if (!mongoose.Types.ObjectId.isValid(manifestId)) {
+            throw new ValidationError('Invalid manifest ID format');
+        }
+
+        const manifest = await Manifest.findOne({
+            _id: manifestId,
+            companyId: new mongoose.Types.ObjectId(companyId),
+        });
 
         if (!manifest) {
             throw new NotFoundError('Manifest not found');
@@ -629,9 +783,17 @@ class ManifestService {
     /**
      * Get manifest by ID
      */
-    async getManifest(manifestId: string) {
-        const manifest = await Manifest.findById(manifestId)
-            .populate('companyId')
+    async getManifest(manifestId: string, companyId: string) {
+        if (!mongoose.Types.ObjectId.isValid(manifestId)) {
+            throw new ValidationError('Invalid manifest ID format');
+        }
+
+        const manifest = await Manifest.findOne({
+            _id: manifestId,
+            companyId: new mongoose.Types.ObjectId(companyId),
+        })
+            // Do not populate companyId: Company has field-level encryption and
+            // malformed legacy records can crash this endpoint during decrypt.
             .populate('warehouseId')
             .populate('shipments.shipmentId');
 
@@ -869,6 +1031,8 @@ class ManifestService {
             // Fetch new shipments
             const shipments = await Shipment.find({
                 _id: { $in: shipmentIds },
+                companyId: new mongoose.Types.ObjectId(companyId),
+                isDeleted: false,
             }).session(session);
 
             if (shipments.length === 0) {
@@ -876,14 +1040,50 @@ class ManifestService {
             }
 
             if (shipments.length !== shipmentIds.length) {
-                throw new ValidationError('Some shipment IDs are invalid');
+                throw new ValidationError('Some shipment IDs are invalid or do not belong to your company');
+            }
+
+            const invalidStatusShipments = shipments.filter(
+                (s: any) => !this.ELIGIBLE_STATUSES.includes(s.currentStatus)
+            );
+            if (invalidStatusShipments.length > 0) {
+                throw new ValidationError(
+                    `Cannot add ${invalidStatusShipments.length} shipment(s): invalid status. Allowed statuses: ${this.ELIGIBLE_STATUSES.join(', ')}`
+                );
+            }
+
+            const invalidWarehouseShipments = shipments.filter(
+                (s: any) => s.pickupDetails?.warehouseId?.toString() !== manifest.warehouseId.toString()
+            );
+            if (invalidWarehouseShipments.length > 0) {
+                throw new ValidationError(
+                    `Cannot add shipments from different warehouse. Manifest warehouse: ${manifest.warehouseId.toString()}`
+                );
             }
 
             // Validate all new shipments belong to the same carrier as manifest
-            const invalidShipments = shipments.filter((s: any) => s.carrier !== manifest.carrier);
+            const invalidShipments = shipments.filter(
+                (s: any) => this.normalizeCarrier(s.carrier) !== manifest.carrier
+            );
             if (invalidShipments.length > 0) {
                 throw new ValidationError(
                     `Cannot add shipments: ${invalidShipments.length} shipment(s) belong to different carrier. Manifest is for ${manifest.carrier}.`
+                );
+            }
+
+            const duplicateAcrossManifests = await Manifest.findOne({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                _id: { $ne: manifest._id },
+                'shipments.shipmentId': {
+                    $in: shipments.map((s: any) => s._id),
+                },
+            })
+                .select('manifestNumber')
+                .session(session);
+
+            if (duplicateAcrossManifests) {
+                throw new ValidationError(
+                    `One or more shipments are already part of manifest ${duplicateAcrossManifests.manifestNumber}`
                 );
             }
 
@@ -897,10 +1097,10 @@ class ManifestService {
             // Add new shipments
             const newManifestShipments = shipments.map((s: any) => ({
                 shipmentId: s._id,
-                awb: s.awb,
-                weight: s.weights?.total || 0,
-                packages: s.no_of_boxes || 1,
-                codAmount: s.payment_method === 'cod' ? s.cod_amount || 0 : 0,
+                awb: s.carrierDetails?.carrierTrackingNumber || s.trackingNumber,
+                weight: s.packageDetails?.weight || 0,
+                packages: s.packageDetails?.packageCount || 1,
+                codAmount: s.paymentDetails?.type === 'cod' ? s.paymentDetails?.codAmount || 0 : 0,
             }));
 
             manifest.shipments.push(...newManifestShipments);

@@ -1,27 +1,21 @@
-/**
- * ReportBuilder Component
- * 
- * Interactive tool for building custom analytics reports.
- * Allows selecting chart type, metrics, and date range.
- */
-
 'use client';
 
-import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Loader
-} from '@/src/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Loader } from '@/src/components/ui';
 import { ChartTypeSelector } from './ChartTypeSelector';
 import { DateRangeFilter } from './DateRangeFilter';
 import { MetricSelector, AVAILABLE_METRICS } from './MetricSelector';
-import { useCustomReport, useAnalyticsParams } from '@/src/hooks';
-import { ClientChartType as ChartType, ReportConfig } from '@/src/types/analytics/client-analytics.types';
-import { Download, Play } from 'lucide-react';
-import { useState } from 'react';
+import { useAnalyticsParams } from '@/src/hooks';
+import {
+    useDeleteReport,
+    useExportReport,
+    useGenerateReport,
+    useSaveReport,
+    useSavedReports,
+} from '@/src/core/api/hooks/analytics/useAnalytics';
+import type { ReportConfiguration } from '@/src/types/api/analytics';
+import { ClientChartType as ChartType } from '@/src/types/analytics/client-analytics.types';
+import { Download, Play, Save, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
     ResponsiveContainer,
     LineChart,
@@ -37,74 +31,110 @@ import {
     Legend,
     PieChart,
     Pie,
-    Cell
+    Cell,
 } from 'recharts';
 
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
 export function ReportBuilder() {
-    const { timeRange, setTimeRange, dateRange } = useAnalyticsParams();
+    const { timeRange, setTimeRange, apiFilters } = useAnalyticsParams();
     const [chartType, setChartType] = useState<ChartType>('line');
-    const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['total_shipments', 'delivered_shipments']);
+    const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
+        'total_shipments',
+        'delivered_shipments',
+        'delivery_success_rate',
+        'avg_delivery_time',
+        'rto_shipments',
+    ]);
+    const [reportName, setReportName] = useState('Shipment Performance Report');
 
-    // Configuration state for the query
-    const [activeConfig, setActiveConfig] = useState<ReportConfig | null>(null);
+    const generateReport = useGenerateReport();
+    const saveReport = useSaveReport();
+    const exportReport = useExportReport();
+    const deleteReport = useDeleteReport();
+    const { data: savedReports = [] } = useSavedReports();
 
-    const { data, isLoading } = useCustomReport(activeConfig);
+    const reportConfig = useMemo<ReportConfiguration>(() => ({
+        name: reportName,
+        description: 'Generated from seller analytics report builder.',
+        metrics: selectedMetrics,
+        dimensions: ['date'],
+        filters: apiFilters,
+        chartType,
+        groupBy: 'date',
+    }), [reportName, selectedMetrics, apiFilters, chartType]);
+
+    const chartData = useMemo(() => {
+        const points = generateReport.data?.data || [];
+        return points.map((point) => {
+            const row: Record<string, string | number> = { label: point.label };
+            selectedMetrics.forEach((metric) => {
+                const sourceValue = point.metadata?.[metric];
+                row[metric] = typeof sourceValue === 'number' ? sourceValue : point.value;
+            });
+            return row;
+        });
+    }, [generateReport.data, selectedMetrics]);
 
     const handleGenerate = () => {
-        setActiveConfig({
-            metrics: selectedMetrics,
-            dimensions: ['date'],
-            filters: {},
-            chartType,
-            dateRange
+        generateReport.mutate(reportConfig);
+    };
+
+    const handleSave = () => {
+        saveReport.mutate(reportConfig);
+    };
+
+    const handleExport = () => {
+        exportReport.mutate({
+            format: 'csv',
+            config: reportConfig,
+            includeCharts: false,
         });
     };
 
-    const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-
     const renderChart = () => {
-        if (!data) return (
-            <div className="h-[400px] flex items-center justify-center text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded-xl border border-dashed border-[var(--border-default)]">
-                Select metrics and click Generate Report
-            </div>
-        );
+        if (!generateReport.data) {
+            return (
+                <div className="h-[400px] flex items-center justify-center text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded-xl border border-dashed border-[var(--border-default)]">
+                    Select metrics and click Generate Report
+                </div>
+            );
+        }
 
-        if (isLoading) return (
-            <div className="h-[400px] flex items-center justify-center bg-[var(--bg-secondary)] rounded-xl">
-                <Loader variant="spinner" size="lg" />
-            </div>
-        );
+        if (generateReport.isPending) {
+            return (
+                <div className="h-[400px] flex items-center justify-center bg-[var(--bg-secondary)] rounded-xl">
+                    <Loader variant="spinner" size="lg" />
+                </div>
+            );
+        }
 
-        const CommonProps = {
-            data,
-            margin: { top: 10, right: 30, left: 0, bottom: 0 }
+        const commonProps = {
+            data: chartData,
+            margin: { top: 10, right: 30, left: 0, bottom: 0 },
         };
 
-        const renderMetrics = () => selectedMetrics.map((mid, index) => {
-            const metric = AVAILABLE_METRICS.find(m => m.id === mid);
+        const metricsConfig = selectedMetrics.map((metricId, index) => {
+            const metric = AVAILABLE_METRICS.find((item) => item.id === metricId);
             return {
-                key: mid,
+                key: metricId,
                 color: COLORS[index % COLORS.length],
-                name: metric?.label || mid
+                name: metric?.label || metricId,
             };
         });
-
-        const metricsConfig = renderMetrics();
 
         switch (chartType) {
             case 'bar':
                 return (
                     <ResponsiveContainer width="100%" height={400}>
-                        <BarChart {...CommonProps}>
+                        <BarChart {...commonProps}>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                            <XAxis dataKey="date" />
+                            <XAxis dataKey="label" />
                             <YAxis />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                            />
+                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
                             <Legend />
-                            {metricsConfig.map(m => (
-                                <Bar key={m.key} dataKey={m.key} name={m.name} fill={m.color} />
+                            {metricsConfig.map((metric) => (
+                                <Bar key={metric.key} dataKey={metric.key} name={metric.name} fill={metric.color} />
                             ))}
                         </BarChart>
                     </ResponsiveContainer>
@@ -112,36 +142,24 @@ export function ReportBuilder() {
             case 'area':
                 return (
                     <ResponsiveContainer width="100%" height={400}>
-                        <AreaChart {...CommonProps}>
+                        <AreaChart {...commonProps}>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                            <XAxis dataKey="date" />
+                            <XAxis dataKey="label" />
                             <YAxis />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                            />
+                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
                             <Legend />
-                            {metricsConfig.map(m => (
-                                <Area key={m.key} type="monotone" dataKey={m.key} name={m.name} stroke={m.color} fill={m.color} fillOpacity={0.3} />
+                            {metricsConfig.map((metric) => (
+                                <Area key={metric.key} type="monotone" dataKey={metric.key} name={metric.name} stroke={metric.color} fill={metric.color} fillOpacity={0.3} />
                             ))}
                         </AreaChart>
                     </ResponsiveContainer>
                 );
             case 'pie':
-                // Pie chart usually visualizes one metric distribution or multiple metrics at a snapshot
-                // For simplicity, we'll visualize the first selected metric's distribution over time (or mock categories)
                 return (
                     <ResponsiveContainer width="100%" height={400}>
                         <PieChart>
-                            <Pie
-                                data={data}
-                                dataKey={metricsConfig[0].key}
-                                nameKey="date"
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={150}
-                                label
-                            >
-                                {data.map((_, index) => (
+                            <Pie data={chartData} dataKey={metricsConfig[0]?.key} nameKey="label" cx="50%" cy="50%" outerRadius={150} label>
+                                {chartData.map((_, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
@@ -150,19 +168,17 @@ export function ReportBuilder() {
                         </PieChart>
                     </ResponsiveContainer>
                 );
-            default: // line
+            default:
                 return (
                     <ResponsiveContainer width="100%" height={400}>
-                        <LineChart {...CommonProps}>
+                        <LineChart {...commonProps}>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                            <XAxis dataKey="date" />
+                            <XAxis dataKey="label" />
                             <YAxis />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                            />
+                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
                             <Legend />
-                            {metricsConfig.map(m => (
-                                <Line key={m.key} type="monotone" dataKey={m.key} name={m.name} stroke={m.color} strokeWidth={2} dot={false} />
+                            {metricsConfig.map((metric) => (
+                                <Line key={metric.key} type="monotone" dataKey={metric.key} name={metric.name} stroke={metric.color} strokeWidth={2} dot={false} />
                             ))}
                         </LineChart>
                     </ResponsiveContainer>
@@ -177,41 +193,39 @@ export function ReportBuilder() {
                     <CardTitle>Report Configuration</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="flex flex-col md:flex-row gap-6">
-                        <div className="flex-1 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                    Visualization
-                                </label>
+                                <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Report Name</label>
+                                <input
+                                    value={reportName}
+                                    onChange={(event) => setReportName(event.target.value)}
+                                    className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Visualization</label>
                                 <ChartTypeSelector value={chartType} onChange={setChartType} />
                             </div>
-
                             <div>
-                                <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                    Date Range
-                                </label>
+                                <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Date Range</label>
                                 <DateRangeFilter value={timeRange} onChange={setTimeRange} />
                             </div>
                         </div>
-
-                        <div className="flex-1">
-                            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                Metrics
-                            </label>
+                        <div>
+                            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Metrics</label>
                             <MetricSelector selectedMetrics={selectedMetrics} onChange={setSelectedMetrics} />
                         </div>
                     </div>
 
-                    <div className="flex justify-end pt-4 border-t border-[var(--border-subtle)]">
-                        <Button onClick={handleGenerate} disabled={selectedMetrics.length === 0 || isLoading}>
-                            {isLoading ? (
-                                <>Generating...</>
-                            ) : (
-                                <>
-                                    <Play className="w-4 h-4 mr-2" />
-                                    Generate Report
-                                </>
-                            )}
+                    <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-[var(--border-subtle)]">
+                        <Button variant="outline" onClick={handleSave} disabled={selectedMetrics.length === 0 || saveReport.isPending}>
+                            <Save className="w-4 h-4 mr-2" />
+                            Save
+                        </Button>
+                        <Button onClick={handleGenerate} disabled={selectedMetrics.length === 0 || generateReport.isPending}>
+                            <Play className="w-4 h-4 mr-2" />
+                            {generateReport.isPending ? 'Generating...' : 'Generate Report'}
                         </Button>
                     </div>
                 </CardContent>
@@ -220,17 +234,43 @@ export function ReportBuilder() {
             <Card className="min-h-[500px]">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Report Preview</CardTitle>
-                    {data && (
-                        <Button variant="outline" size="sm">
+                    {generateReport.data && (
+                        <Button variant="outline" size="sm" onClick={handleExport} disabled={exportReport.isPending}>
                             <Download className="w-4 h-4 mr-2" />
-                            Export
+                            {exportReport.isPending ? 'Exporting...' : 'Export CSV'}
                         </Button>
                     )}
                 </CardHeader>
-                <CardContent>
-                    {renderChart()}
-                </CardContent>
+                <CardContent>{renderChart()}</CardContent>
             </Card>
+
+            {savedReports.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Saved Reports</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {savedReports.slice(0, 8).map((report) => (
+                                <div key={report.reportId} className="flex items-center justify-between rounded-lg border border-[var(--border-subtle)] p-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-[var(--text-primary)]">{report.name}</p>
+                                        <p className="text-xs text-[var(--text-muted)]">{new Date(report.createdAt).toLocaleString()}</p>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteReport.mutate(report.reportId)}
+                                        disabled={deleteReport.isPending}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

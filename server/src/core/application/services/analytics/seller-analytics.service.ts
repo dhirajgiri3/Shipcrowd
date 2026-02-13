@@ -2,10 +2,10 @@ import mongoose from 'mongoose';
 import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import OrderAnalyticsService from './order-analytics.service';
 import ShipmentAnalyticsService from './shipment-analytics.service';
-import RevenueAnalyticsService from './revenue-analytics.service';
 import NDRAnalyticsService from '../ndr/ndr-analytics.service';
 import { CODAnalyticsService } from '../finance/cod-analytics.service';
 import RTOService from '../rto/rto.service';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 export interface SellerAnalyticsDateRange {
     start: Date;
@@ -40,6 +40,24 @@ const round = (value: number, precision = 2) => {
     return Math.round(value * factor) / factor;
 };
 
+const normalizeCarrierKey = (value: unknown) => String(value || 'unknown').trim().toLowerCase();
+const toCarrierId = (value: unknown) => normalizeCarrierKey(value).replace(/\s+/g, '_');
+const canonicalizeCarrierKey = (value: unknown) => {
+    const normalized = normalizeCarrierKey(value);
+    const canonical = CourierProviderRegistry.toCanonical(normalized);
+    return canonical || normalized;
+};
+
+const toCarrierLabel = (value: unknown) => {
+    const normalized = canonicalizeCarrierKey(value);
+    if (!normalized || normalized === 'unknown') return 'Unknown';
+    return normalized
+        .split(/\s+|_/g)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
 const buildStatus = (value: number, target: number, inverse = false): 'excellent' | 'good' | 'warning' | 'critical' => {
     if (!inverse) {
         if (value >= target + 2) return 'excellent';
@@ -52,6 +70,36 @@ const buildStatus = (value: number, target: number, inverse = false): 'excellent
     if (value <= target) return 'good';
     if (value <= target * 1.3) return 'warning';
     return 'critical';
+};
+
+type CostCourierRow = {
+    courierId: string;
+    courierName: string;
+    shipmentCount: number;
+    cost: number;
+    avgCostPerShipment: number;
+};
+
+const mergeCostCourierRows = (rows: any[]): CostCourierRow[] => {
+    const merged = new Map<string, { shipmentCount: number; cost: number }>();
+
+    rows.forEach((row: any) => {
+        const key = canonicalizeCarrierKey(row?.courierId || row?.courierName || row?._id);
+        const current = merged.get(key) || { shipmentCount: 0, cost: 0 };
+        current.shipmentCount += Number(row?.shipmentCount || 0);
+        current.cost += Number(row?.cost || 0);
+        merged.set(key, current);
+    });
+
+    return Array.from(merged.entries())
+        .map(([key, value]) => ({
+            courierId: toCarrierId(key),
+            courierName: toCarrierLabel(key),
+            shipmentCount: value.shipmentCount,
+            cost: round(value.cost, 2),
+            avgCostPerShipment: value.shipmentCount > 0 ? round(value.cost / value.shipmentCount, 2) : 0,
+        }))
+        .sort((a, b) => b.cost - a.cost);
 };
 
 export default class SellerAnalyticsService {
@@ -186,14 +234,27 @@ export default class SellerAnalyticsService {
                     },
                 },
                 {
+                    $project: {
+                        carrierKey: {
+                            $toLower: {
+                                $trim: {
+                                    input: { $ifNull: ['$carrier', 'unknown'] },
+                                },
+                            },
+                        },
+                        shippingCost: { $ifNull: ['$paymentDetails.shippingCost', 0] },
+                        codCharges: { $ifNull: ['$paymentDetails.codCharges', 0] },
+                    },
+                },
+                {
                     $group: {
-                        _id: '$carrier',
+                        _id: '$carrierKey',
                         shipmentCount: { $sum: 1 },
                         cost: {
                             $sum: {
                                 $add: [
-                                    { $ifNull: ['$paymentDetails.shippingCost', 0] },
-                                    { $ifNull: ['$paymentDetails.codCharges', 0] },
+                                    '$shippingCost',
+                                    '$codCharges',
                                 ],
                             },
                         },
@@ -203,8 +264,8 @@ export default class SellerAnalyticsService {
                 {
                     $project: {
                         _id: 0,
-                        courierId: { $toLower: { $replaceAll: { input: { $ifNull: ['$_id', 'unknown'] }, find: ' ', replacement: '_' } } },
-                        courierName: { $ifNull: ['$_id', 'Unknown'] },
+                        courierId: { $replaceAll: { input: { $ifNull: ['$_id', 'unknown'] }, find: ' ', replacement: '_' } },
+                        courierName: { $ifNull: ['$_id', 'unknown'] },
                         shipmentCount: 1,
                         cost: { $round: ['$cost', 2] },
                         avgCostPerShipment: {
@@ -296,8 +357,14 @@ export default class SellerAnalyticsService {
         const codRow = byPaymentMethod.find((row: any) => row._id === 'cod');
         const prepaidRow = byPaymentMethod.find((row: any) => row._id === 'prepaid');
 
-        const minCourierAvg = byCourier.length > 0 ? Math.min(...byCourier.map((row: any) => row.avgCostPerShipment)) : 0;
-        const expensiveCourier = byCourier[0];
+        const normalizedByCourier = byCourier.map((row: any) => ({
+            ...row,
+            courierId: normalizeCarrierKey(row.courierId).replace(/\s+/g, '_'),
+            courierName: toCarrierLabel(row.courierName),
+        }));
+
+        const minCourierAvg = normalizedByCourier.length > 0 ? Math.min(...normalizedByCourier.map((row: any) => row.avgCostPerShipment)) : 0;
+        const expensiveCourier = normalizedByCourier[0];
 
         const savingsOpportunities = [] as Array<{
             id: string;
@@ -344,7 +411,7 @@ export default class SellerAnalyticsService {
             current: {
                 totalCost: current.totalCost,
                 breakdown: current.breakdown,
-                byCourier,
+                byCourier: normalizedByCourier,
                 byZone,
                 byPaymentMethod: {
                     cod: { cost: round(codRow?.cost || 0), count: codRow?.count || 0 },
@@ -389,8 +456,24 @@ export default class SellerAnalyticsService {
                     },
                 },
                 {
+                    $project: {
+                        carrierKey: {
+                            $toLower: {
+                                $trim: {
+                                    input: { $ifNull: ['$carrier', 'unknown'] },
+                                },
+                            },
+                        },
+                        currentStatus: 1,
+                        paymentDetails: 1,
+                        actualDelivery: 1,
+                        estimatedDelivery: 1,
+                        createdAt: 1,
+                    },
+                },
+                {
                     $group: {
-                        _id: '$carrier',
+                        _id: '$carrierKey',
                         totalShipments: { $sum: 1 },
                         delivered: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
                         rto: { $sum: { $cond: [{ $eq: ['$currentStatus', 'rto'] }, 1, 0] } },
@@ -457,7 +540,9 @@ export default class SellerAnalyticsService {
             ShipmentAnalyticsService.getCourierPerformance(companyId, dateRange),
         ]);
 
-        const performanceMap = new Map(shipmentPerformance.map((item) => [item.carrier, item]));
+        const performanceMap = new Map(
+            shipmentPerformance.map((item) => [normalizeCarrierKey(item.carrier), item])
+        );
 
         const couriers = shipmentsByCourier.map((item: any) => {
             const totalShipments = item.totalShipments || 0;
@@ -466,13 +551,14 @@ export default class SellerAnalyticsService {
             const ndrRate = totalShipments > 0 ? (item.ndr / totalShipments) * 100 : 0;
             const avgDeliveryTime = item.deliveredWithTime > 0
                 ? item.totalDeliveryHours / item.deliveredWithTime
-                : (performanceMap.get(item._id)?.avgDeliveryDays || 0) * 24;
+                : (performanceMap.get(normalizeCarrierKey(item._id))?.avgDeliveryDays || 0) * 24;
             const onTimeDelivery = item.delivered > 0 ? (item.onTimeDelivered / item.delivered) * 100 : 0;
             const avgCost = totalShipments > 0 ? item.totalCost / totalShipments : 0;
+            const courierId = normalizeCarrierKey(item._id).replace(/\s+/g, '_');
 
             return {
-                courierId: String(item._id || 'unknown').toLowerCase().replace(/\s+/g, '_'),
-                courierName: item._id || 'Unknown',
+                courierId,
+                courierName: toCarrierLabel(item._id),
                 totalShipments,
                 successRate: round(deliveryRate, 1),
                 avgDeliveryTime: round(avgDeliveryTime, 1),
@@ -487,7 +573,11 @@ export default class SellerAnalyticsService {
             };
         });
 
-        const byScore = couriers
+        const dedupedCouriers = Array.from(
+            new Map(couriers.map((courier) => [courier.courierId, courier])).values()
+        );
+
+        const byScore = dedupedCouriers
             .map((courier) => {
                 const score =
                     courier.successRate * 0.35 +
@@ -500,11 +590,11 @@ export default class SellerAnalyticsService {
             .sort((a, b) => b.score - a.score);
 
         const bestPerformance = byScore[0];
-        const bestCost = [...couriers].sort((a, b) => a.avgCost - b.avgCost)[0];
-        const bestSpeed = [...couriers].sort((a, b) => a.avgDeliveryTime - b.avgDeliveryTime)[0];
+        const bestCost = [...dedupedCouriers].sort((a, b) => a.avgCost - b.avgCost)[0];
+        const bestSpeed = [...dedupedCouriers].sort((a, b) => a.avgDeliveryTime - b.avgDeliveryTime)[0];
 
         return {
-            couriers,
+            couriers: dedupedCouriers,
             dateRange: {
                 startDate: dateRange.start.toISOString(),
                 endDate: dateRange.end.toISOString(),
@@ -536,6 +626,7 @@ export default class SellerAnalyticsService {
                     $group: {
                         _id: null,
                         total: { $sum: 1 },
+                        picked: { $sum: { $cond: [{ $ne: ['$pickupDetails.pickupDate', null] }, 1, 0] } },
                         onTimePickup: {
                             $sum: {
                                 $cond: [
@@ -601,8 +692,15 @@ export default class SellerAnalyticsService {
                 },
                 {
                     $group: {
-                        _id: '$carrier',
+                        _id: {
+                            $toLower: {
+                                $trim: {
+                                    input: { $ifNull: ['$carrier', 'unknown'] },
+                                },
+                            },
+                        },
                         total: { $sum: 1 },
+                        picked: { $sum: { $cond: [{ $ne: ['$pickupDetails.pickupDate', null] }, 1, 0] } },
                         onTimePickup: {
                             $sum: {
                                 $cond: [
@@ -700,6 +798,7 @@ export default class SellerAnalyticsService {
                     $group: {
                         _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                         total: { $sum: 1 },
+                        picked: { $sum: { $cond: [{ $ne: ['$pickupDetails.pickupDate', null] }, 1, 0] } },
                         onTimePickup: {
                             $sum: {
                                 $cond: [
@@ -742,7 +841,7 @@ export default class SellerAnalyticsService {
             ]),
         ]);
 
-        const pickupTotal = pickupStats[0]?.total || 0;
+        const pickupTotal = pickupStats[0]?.picked || 0;
         const pickupOnTime = pickupStats[0]?.onTimePickup || 0;
         const pickupCompliance = pickupTotal > 0 ? (pickupOnTime / pickupTotal) * 100 : 0;
 
@@ -752,9 +851,16 @@ export default class SellerAnalyticsService {
 
         const ndrResponseHours = ndrStats.avgResolutionTime || 0;
         const codSettlementDays = codHealth.averageRemittanceTime || 0;
+        const hasNdrData = (ndrStats.total || 0) > 0;
+        const hasCodData = (codHealth.totalOrders || 0) > 0;
 
         const overallCompliance = round(
-            (pickupCompliance + deliveryCompliance + Math.max(0, 100 - (ndrResponseHours / DEFAULT_NDR_RESPONSE_TARGET_HOURS) * 100) + Math.max(0, 100 - (codSettlementDays / DEFAULT_COD_SETTLEMENT_TARGET_DAYS) * 100)) / 4,
+            (
+                pickupCompliance +
+                deliveryCompliance +
+                (hasNdrData ? Math.max(0, 100 - (ndrResponseHours / DEFAULT_NDR_RESPONSE_TARGET_HOURS) * 100) : 0) +
+                (hasCodData ? Math.max(0, 100 - (codSettlementDays / DEFAULT_COD_SETTLEMENT_TARGET_DAYS) * 100) : 0)
+            ) / 4,
             1
         );
 
@@ -786,8 +892,12 @@ export default class SellerAnalyticsService {
                 description: 'Average time to resolve NDR cases.',
                 target: DEFAULT_NDR_RESPONSE_TARGET_HOURS,
                 actual: round(ndrResponseHours, 1),
-                compliance: round(Math.max(0, (DEFAULT_NDR_RESPONSE_TARGET_HOURS / Math.max(ndrResponseHours || 1, 1)) * 100), 1),
-                status: buildStatus(ndrResponseHours, DEFAULT_NDR_RESPONSE_TARGET_HOURS, true),
+                compliance: hasNdrData
+                    ? round(Math.max(0, (DEFAULT_NDR_RESPONSE_TARGET_HOURS / Math.max(ndrResponseHours || 1, 1)) * 100), 1)
+                    : 0,
+                status: hasNdrData
+                    ? buildStatus(ndrResponseHours, DEFAULT_NDR_RESPONSE_TARGET_HOURS, true)
+                    : 'warning',
                 trend: 'stable',
             },
             codSettlementSLA: {
@@ -795,16 +905,20 @@ export default class SellerAnalyticsService {
                 description: 'Average remittance turnaround for COD deliveries.',
                 target: DEFAULT_COD_SETTLEMENT_TARGET_DAYS,
                 actual: round(codSettlementDays, 1),
-                compliance: round(Math.max(0, (DEFAULT_COD_SETTLEMENT_TARGET_DAYS / Math.max(codSettlementDays || 1, 1)) * 100), 1),
-                status: buildStatus(codSettlementDays, DEFAULT_COD_SETTLEMENT_TARGET_DAYS, true),
+                compliance: hasCodData
+                    ? round(Math.max(0, (DEFAULT_COD_SETTLEMENT_TARGET_DAYS / Math.max(codSettlementDays || 1, 1)) * 100), 1)
+                    : 0,
+                status: hasCodData
+                    ? buildStatus(codSettlementDays, DEFAULT_COD_SETTLEMENT_TARGET_DAYS, true)
+                    : 'warning',
                 trend: 'stable',
             },
             byCourier: courierData.map((item: any) => {
-                const pickup = item.total > 0 ? (item.onTimePickup / item.total) * 100 : 0;
+                const pickup = item.picked > 0 ? (item.onTimePickup / item.picked) * 100 : 0;
                 const delivery = item.delivered > 0 ? (item.onTimeDelivery / item.delivered) * 100 : 0;
                 return {
-                    courierId: String(item._id || 'unknown').toLowerCase().replace(/\s+/g, '_'),
-                    courierName: item._id || 'Unknown',
+                    courierId: normalizeCarrierKey(item._id).replace(/\s+/g, '_'),
+                    courierName: toCarrierLabel(item._id),
                     compliance: round((pickup + delivery) / 2, 1),
                     pickupSLA: round(pickup, 1),
                     deliverySLA: round(delivery, 1),
@@ -822,7 +936,7 @@ export default class SellerAnalyticsService {
             timeSeries: timeSeries.map((item: any) => ({
                 date: item._id,
                 compliance: item.total > 0 ? round(((item.onTimePickup + item.onTimeDelivery) / Math.max(item.total, 1)) * 100, 1) : 0,
-                pickupOnTime: item.total > 0 ? round((item.onTimePickup / item.total) * 100, 1) : 0,
+                pickupOnTime: item.picked > 0 ? round((item.onTimePickup / item.picked) * 100, 1) : 0,
                 deliveryOnTime: item.delivered > 0 ? round((item.onTimeDelivery / item.delivered) * 100, 1) : 0,
             })),
             targets: {

@@ -187,9 +187,11 @@ class ManifestController {
      */
     async getManifest(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
 
-            const manifest = await ManifestService.getManifest(id);
+            const manifest = await ManifestService.getManifest(id, auth.companyId);
 
             sendSuccess(res, manifest);
         } catch (error) {
@@ -203,10 +205,20 @@ class ManifestController {
      */
     downloadManifest = async (req: Request, res: Response, next: NextFunction) => {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
+            const companyId = auth.companyId;
+
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                throw new ValidationError('Invalid manifest ID format');
+            }
             logger.info(`Downloading manifest PDF for ${id}`);
 
-            const manifest = await Manifest.findById(id)
+            const manifest = await Manifest.findOne({
+                _id: id,
+                companyId: new mongoose.Types.ObjectId(companyId),
+            })
                 .select('manifestNumber carrier metadata')
                 .lean();
             if (!manifest) {
@@ -247,7 +259,7 @@ class ManifestController {
 
             // Fallback to internal PDF generation
             logger.info(`Generating internal PDF...`);
-            const pdfBuffer = await ManifestService.generatePDF(id);
+            const pdfBuffer = await ManifestService.generatePDF(id, companyId);
             logger.info(`Internal PDF generated, size: ${pdfBuffer.length}`);
 
             res.setHeader('Content-Type', 'application/pdf');
@@ -271,14 +283,17 @@ class ManifestController {
      */
     async closeManifest(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
+            const companyId = auth.companyId;
             const userId = req.user?._id?.toString();
 
             if (!userId) {
                 throw new ValidationError('User ID is required');
             }
 
-            const manifest = await ManifestService.closeManifest(id, userId);
+            const manifest = await ManifestService.closeManifest(id, companyId, userId);
 
             sendSuccess(res, manifest, 'Manifest closed and pickup scheduled');
         } catch (error) {
@@ -292,14 +307,17 @@ class ManifestController {
      */
     async handoverManifest(req: Request, res: Response, next: NextFunction) {
         try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
             const { id } = req.params;
+            const companyId = auth.companyId;
             const userId = req.user?._id?.toString();
 
             if (!userId) {
                 throw new ValidationError('User ID is required');
             }
 
-            const manifest = await ManifestService.handoverManifest(id, userId);
+            const manifest = await ManifestService.handoverManifest(id, companyId, userId);
 
             sendSuccess(res, manifest, 'Manifest marked as handed over');
         } catch (error) {

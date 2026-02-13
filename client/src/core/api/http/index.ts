@@ -349,11 +349,17 @@ const createApiClient = (): AxiosInstance => {
                     errorDetails.status = 'NETWORK_ERROR';
                 }
 
-                console.group('🚫 [API Response Error]');
-                console.error('Context:', { url: errorDetails.url, method: errorDetails.method, status: errorDetails.status });
-                console.error('Message:', errorDetails.message);
-                console.error('Code:', errorDetails.code);
-                if (errorDetails.data) console.error('Response Data:', errorDetails.data);
+                const hasResponseData =
+                    errorDetails.data &&
+                    typeof errorDetails.data === 'object' &&
+                    Object.keys(errorDetails.data).length > 0;
+
+                // Use warnings to avoid noisy Next.js dev overlay for handled API failures.
+                console.groupCollapsed('⚠️ [API Response Error]');
+                console.warn('Context:', { url: errorDetails.url, method: errorDetails.method, status: errorDetails.status });
+                console.warn('Message:', errorDetails.message);
+                console.warn('Code:', errorDetails.code);
+                if (hasResponseData) console.warn('Response Data:', errorDetails.data);
                 console.groupEnd();
             }
 

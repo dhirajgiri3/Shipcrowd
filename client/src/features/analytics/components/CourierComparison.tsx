@@ -115,7 +115,7 @@ export function CourierComparison() {
                                     <PolarRadiusAxis angle={30} domain={[0, 100]} />
                                     {couriers.slice(0, 3).map((courier, index) => (
                                         <Radar
-                                            key={courier.courierId}
+                                            key={`${courier.courierId}-${index}`}
                                             name={courier.courierName}
                                             dataKey={String.fromCharCode(65 + index)}
                                             stroke={courier.color}
@@ -151,8 +151,8 @@ export function CourierComparison() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--border-subtle)]">
-                                {couriers.map((courier) => (
-                                    <tr key={courier.courierId} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                                {couriers.map((courier, index) => (
+                                    <tr key={`${courier.courierId}-${index}`} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="px-4 py-3 font-medium flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: courier.color }} />
                                             {courier.courierName}

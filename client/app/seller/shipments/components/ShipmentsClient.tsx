@@ -1,53 +1,60 @@
 "use client";
 
-import { useMemo, useState } from 'react';
-import { useDebouncedValue } from '@/src/hooks/data';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/src/components/ui/data/DataTable';
-import { Checkbox } from '@/src/components/ui/core/Checkbox';
 import { Button } from '@/src/components/ui/core/Button';
-import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn } from '@/src/lib/utils';
-import { apiClient } from '@/src/core/api/http';
-import { handleApiError, showInfoToast } from '@/src/lib/error';
-import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
-import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
-import { getCourierLogo, isUsingMockData } from '@/src/constants';
 import {
     Search,
-    Eye,
-    FileText,
-    ClipboardCheck,
-    Package,
-    Truck,
-    CheckCircle,
-    Clock,
-    AlertTriangle,
-    RotateCcw,
     Filter,
     Download,
-    BarChart3
+    Truck,
+    Package,
+    AlertCircle,
+    CheckCircle2,
+    Clock,
+    XCircle,
+    Printer,
+    RefreshCw,
+    TrendingUp,
+    ChevronDown,
+    FileText
 } from 'lucide-react';
-import { Shipment } from '@/src/types/domain/admin';
-import { useShipments, useGenerateBulkLabels } from '@/src/core/api/hooks/orders/useShipments';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import { useShipments, useGenerateBulkLabels, useShipmentStats } from '@/src/core/api/hooks/orders/useShipments';
+import { ShipmentDetailsPanel } from '@/src/components/seller/ShipmentDetailsPanel';
+import { format } from 'date-fns';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { cn } from '@/src/lib/utils';
+import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
+
+// Function to get courier logo (placeholder for now)
+const getCourierLogo = (courier: string) => {
+    // In a real app, this would return an image URL or component
+    return null;
+};
 
 export function ShipmentsClient() {
-    const [search, setSearch] = useState('');
-    const debouncedSearch = useDebouncedValue(search, 300);
-    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
-    const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
     const limit = 20;
+    const [search, setSearch] = useState("");
+    const debouncedSearch = useDebouncedValue(search, 500);
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const { addToast } = useToast();
 
-    // Bulk Actions State
-    const [selectedShipmentIds, setSelectedShipmentIds] = useState<Set<string>>(new Set());
-
-    // --- REAL API INTEGRATION ---
+    // Data Fetching
     const {
         data: shipmentsResponse,
         isLoading,
-        error
+        error,
+        refetch: refetchShipments
     } = useShipments({
         page,
         limit,
@@ -55,393 +62,245 @@ export function ShipmentsClient() {
         search: debouncedSearch || undefined
     });
 
-    const generateBulkLabels = useGenerateBulkLabels();
+    const { data: stats } = useShipmentStats();
 
-    // Use real data from API
-    const shipmentsData: any[] = shipmentsResponse?.shipments || [];
-
-    // Filtering is done server-side via API
-    const filteredData = shipmentsData;
-
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            const allIds = new Set(filteredData.map((s: any) => s._id || s.id));
-            setSelectedShipmentIds(allIds);
-        } else {
-            setSelectedShipmentIds(new Set());
+    const { mutate: generateBulkLabels, isPending: isGeneratingLabels } = useGenerateBulkLabels({
+        onSuccess: () => {
+            addToast('Labels generated successfully', 'success');
         }
+    });
+
+    // Reset page when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, statusFilter]);
+
+    const shipmentsData = shipmentsResponse?.shipments || [];
+    const pagination = shipmentsResponse?.pagination || { total: 0, pages: 1 };
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await refetchShipments();
+        setIsRefreshing(false);
     };
 
-    const handleSelectRow = (id: string, checked: boolean) => {
-        const newSelected = new Set(selectedShipmentIds);
-        if (checked) {
-            newSelected.add(id);
-        } else {
-            newSelected.delete(id);
-        }
-        setSelectedShipmentIds(newSelected);
-    };
 
-    const handleBulkPrint = () => {
-        if (selectedShipmentIds.size === 0) return;
-        generateBulkLabels.mutate(Array.from(selectedShipmentIds));
-    };
-
-    const handleViewPOD = async (shipmentId: string) => {
-        try {
-            const response = await apiClient.get(`/shipments/${shipmentId}/pod`);
-            const podUrl = response?.data?.data?.podUrl;
-
-            if (podUrl) {
-                window.open(podUrl, '_blank');
-            } else {
-                showInfoToast('POD not available yet');
-            }
-        } catch (error) {
-            handleApiError(error, 'POD not available');
-        }
-    };
-
-    // Status Cards Data
-    const statusGrid = [
-        { id: 'all', label: 'Total Shipments', icon: Package, color: 'blue', count: shipmentsData.length },
-        { id: 'pending', label: 'Pending Pickup', icon: Clock, color: 'amber', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'pending' || (s.status || s.currentStatus) === 'created').length },
-        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'violet', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'in-transit' || (s.status || s.currentStatus) === 'in_transit').length },
-        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'emerald', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'delivered').length },
-        { id: 'ndr', label: 'NDR / Issues', icon: AlertTriangle, color: 'orange', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'ndr').length },
-        { id: 'rto', label: 'RTO / Returned', icon: RotateCcw, color: 'rose', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'rto').length },
-    ];
-
-    // Helper to get color classes based on status color ID
-    const getStatusColorClasses = (color: string) => {
-        switch (color) {
-            case 'blue': return "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]";
-            case 'amber': return "bg-[var(--warning-bg)] text-[var(--warning)]";
-            case 'emerald': return "bg-[var(--success-bg)] text-[var(--success)]";
-            case 'rose': return "bg-[var(--error-bg)] text-[var(--error)]";
-            case 'violet': return "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"; // Mapped to primary blue for consistency
-            case 'orange': return "bg-[var(--warning-bg)] text-[var(--warning)]"; // Mapped to warning for consistency
-            default: return "bg-[var(--bg-secondary)] text-[var(--text-muted)]";
-        }
-    };
-
-    // Columns
+    // Columns definition
     const columns = [
-        {
-            header: '',
-            accessorKey: 'select',
-            width: 'w-10',
-            cell: (row: any) => (
-                <div className="flex items-center justify-center -ml-2" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                        checked={selectedShipmentIds.has(row._id || row.id)}
-                        onCheckedChange={(checked) => handleSelectRow(row._id || row.id, checked)}
-                    />
-                </div>
-            )
-        },
         {
             header: 'Shipment Details',
             accessorKey: 'awb',
             cell: (row: any) => (
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                        <Package className="w-4 h-4 text-[var(--text-muted)]" />
+                    <div className="p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                        <Truck className="w-5 h-5 text-[var(--primary-blue)]" />
                     </div>
                     <div>
-                        <div className="font-bold text-[var(--text-primary)] text-sm">{row.trackingNumber || row.awb}</div>
-                        <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 font-medium">
-                            Order #{row.orderId?.orderNumber || row.orderNumber}
+                        <div className="font-bold text-[var(--text-primary)] text-sm font-mono">
+                            AWB: {row.awb}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
+                            {row.carrier?.toUpperCase() || 'N/A'}
+                            {row.serviceType && (
+                                <>
+                                    <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-50" />
+                                    {row.serviceType}
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
             )
         },
         {
-            header: 'Customer',
-            accessorKey: 'customer',
+            header: 'Order Info',
+            accessorKey: 'orderId',
             cell: (row: any) => {
-                const name = row.deliveryDetails?.recipientName || row.orderId?.customerInfo?.name || 'N/A';
-                const phone = row.deliveryDetails?.recipientPhone || row.orderId?.customerInfo?.phone || 'N/A';
+                const orderNumber = typeof row.orderId === 'object' ? row.orderId?.orderNumber : 'N/A';
+                const customerName = typeof row.orderId === 'object' && row.orderId?.customerInfo?.name ? row.orderId.customerInfo.name : 'Unknown';
+
                 return (
                     <div>
-                        <div className="font-semibold text-[var(--text-primary)] text-sm">{name}</div>
-                        <div className="text-xs text-[var(--text-muted)]">{phone}</div>
+                        <div className="font-medium text-[var(--text-primary)] text-sm">{orderNumber}</div>
+                        <div className="text-xs text-[var(--text-muted)]">{customerName}</div>
                     </div>
                 );
             }
         },
         {
-            header: 'Route',
-            accessorKey: 'origin',
-            cell: (row: any) => {
-                const originCity = row.pickupDetails?.warehouseId?.address?.city || row.origin?.city || 'N/A';
-                const destCity = row.deliveryDetails?.address?.city || row.destination?.city || 'N/A';
-                return (
-                    <div className="flex items-center gap-2 text-sm">
-                        <span className="text-[var(--text-secondary)] font-medium">{originCity}</span>
-                        <span className="text-[var(--text-muted)]">→</span>
-                        <span className="text-[var(--text-primary)] font-bold">{destCity}</span>
-                    </div>
-                );
-            }
-        },
-        {
-            header: 'Courier',
-            accessorKey: 'courier',
+            header: 'Date',
+            accessorKey: 'createdAt',
             cell: (row: any) => (
-                <div className="flex items-center gap-2">
-                    <img
-                        src={getCourierLogo(row.carrier || row.courier)}
-                        className="w-5 h-5 object-contain opacity-80"
-                        alt={row.carrier || row.courier}
-                        onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${row.carrier || row.courier}&background=random&color=fff&size=20`;
-                        }}
-                    />
-                    <span className="text-sm font-medium text-[var(--text-secondary)]">{row.carrier || row.courier}</span>
+                <div className="text-sm text-[var(--text-secondary)]">
+                    {format(new Date(row.createdAt), 'MMM d, yyyy')}
+                    <div className="text-xs text-[var(--text-muted)]">
+                        {format(new Date(row.createdAt), 'h:mm a')}
+                    </div>
                 </div>
             )
         },
         {
             header: 'Status',
-            accessorKey: 'status',
-            cell: (row: any) => <StatusBadge domain="shipment" status={row.currentStatus || row.status} />
-        },
-        {
-            header: 'Amount',
-            accessorKey: 'codAmount',
-            cell: (row: any) => {
-                const amount = row.paymentDetails?.codAmount || row.codAmount || 0;
-                const paymentMode = row.paymentDetails?.type || row.paymentMode || 'prepaid';
-                return (
-                    <div>
-                        <div className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(amount)}</div>
-                        <span className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
-                            paymentMode === 'prepaid' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
-                        )}>
-                            {paymentMode}
-                        </span>
-                    </div>
-                );
-            }
+            accessorKey: 'currentStatus',
+            cell: (row: any) => (
+                <StatusBadge domain="shipment" status={row.currentStatus} />
+            )
         },
         {
             header: 'Actions',
-            accessorKey: 'id',
+            accessorKey: 'actions',
             cell: (row: any) => (
                 <div className="flex items-center gap-2">
                     <ViewActionButton
-                        onClick={() => setSelectedShipment(row)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedShipment(row);
+                        }}
                     />
-                    <Button variant="ghost" size="sm" className="hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
-                        <FileText className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
-                        onClick={() => handleViewPOD(row._id || row.id)}
-                        title="View POD"
-                    >
-                        <ClipboardCheck className="w-4 h-4" />
-                    </Button>
                 </div>
             )
         }
     ];
 
     return (
-        <div className="min-h-screen space-y-8 pb-20">
-            {/* Header */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-2"
-                    >
-                        <div className="px-2.5 py-1 rounded-lg bg-[var(--primary-blue-soft)] border border-[var(--primary-blue-light)]/20 flex items-center gap-2">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary-blue)] opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary-blue)]"></span>
-                            </span>
-                            Tracking Live
-                        </div>
-                    </motion.div>
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            {/* Shipment Detail Panel */}
+            <ShipmentDetailsPanel
+                shipment={selectedShipment}
+                onClose={() => setSelectedShipment(null)}
+            />
+
+            {/* --- HEADER --- */}
+            <PageHeader
+                title="Shipments"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller/dashboard' },
+                    { label: 'Shipments', active: true }
+                ]}
+                actions={
                     <div className="flex items-center gap-3">
-                        <motion.h1
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
-                        >
-                            Shipments
-                        </motion.h1>
-                        {isUsingMockData && (
-                            <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning)]/20">
-                                ⚠️ Mock Data
-                            </span>
-                        )}
-                    </div>
-                    <p className="text-[var(--text-muted)] mt-1 font-medium">Track and manage all your deliveries</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <DateRangePicker />
-                    <button className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-colors shadow-sm">
-                        <Filter className="w-5 h-5" />
-                    </button>
-                    <button className="h-10 px-6 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] transition-all flex items-center gap-2 font-semibold shadow-lg shadow-blue-500/20 active:scale-95">
-                        <Download className="w-4 h-4" />
-                        <span>Export</span>
-                    </button>
-                </div>
-            </header>
-
-            {/* Status Grid */}
-            <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {statusGrid.map((status, i) => {
-                    const isActive = statusFilter === status.id;
-                    const colorClass = getStatusColorClasses(status.color);
-
-                    return (
-                        <motion.button
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            key={status.id}
-                            onClick={() => setStatusFilter(status.id)}
-                            className={cn(
-                                "relative p-4 rounded-[var(--radius-xl)] border transition-all text-left group overflow-hidden h-full flex flex-col justify-between",
-                                isActive
-                                    ? "bg-[var(--bg-primary)] border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)] shadow-md"
-                                    : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-sm"
-                            )}
-                        >
-                            <div className="flex items-start justify-between mb-3 w-full">
-                                <div className={cn(
-                                    "p-2.5 rounded-xl transition-colors",
-                                    colorClass
-                                )}>
-                                    <status.icon className="w-4 h-4" />
-                                </div>
-                                {isActive && (
-                                    <div className="w-2 h-2 rounded-full bg-[var(--primary-blue)] animate-pulse" />
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{status.count}</p>
-                                <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wide mt-1 line-clamp-1">{status.label}</p>
-                            </div>
-                        </motion.button>
-                    );
-                })}
-            </section>
-
-            {/* Search & Filters */}
-            <div className="bg-[var(--bg-primary)] p-4 rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm">
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
-                    <input
-                        type="text"
-                        placeholder="Search by AWB, Order ID, or Customer..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl bg-[var(--bg-secondary)] border border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-base transition-all text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-                    />
-                </div>
-            </div>
-
-            {/* Bulk Action Bar */}
-            {selectedShipmentIds.size > 0 && (
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="flex items-center justify-between p-4 bg-[var(--primary-blue-soft)] border border-[var(--primary-blue-light)]/30 rounded-[var(--radius-xl)]"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[var(--primary-blue)] text-white text-sm font-bold">
-                            {selectedShipmentIds.size}
-                        </div>
-                        <span className="text-[var(--primary-blue-deep)] font-medium">Shipments Selected</span>
-                    </div>
-                    <div className="flex items-center gap-3">
+                        <DateRangePicker />
                         <Button
+                            onClick={handleRefresh}
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedShipmentIds(new Set())}
-                            className="text-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/5"
+                            className={cn("h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm", isRefreshing && "animate-spin")}
                         >
-                            Cancel
+                            <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                         </Button>
-                        <Button
-                            size="sm"
-                            onClick={handleBulkPrint}
-                            disabled={generateBulkLabels.isPending}
-                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white gap-2"
-                        >
-                            {generateBulkLabels.isPending ? (
-                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                <Download className="w-4 h-4" />
-                            )}
-                            Print Bulk Labels
+                        <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Feature coming soon', 'info')}>
+                            <Printer className="w-4 h-4 mr-2" />
+                            Print Manifest
+                        </Button>
+                        <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
+                            <Download className="w-4 h-4 mr-2" />
+                            Export CSV
                         </Button>
                     </div>
-                </motion.div>
-            )}
+                }
+            />
 
-            {/* Shipments Table */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm"
-            >
-                <div className="p-6 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">All Shipments</h3>
-                            <p className="text-sm text-[var(--text-secondary)] mt-0.5">
-                                {filteredData.length} {filteredData.length === 1 ? 'shipment' : 'shipments'} found
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)] bg-[var(--bg-secondary)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
-                            <BarChart3 className="w-3.5 h-3.5" />
-                            <span>Real-time updates enabled</span>
+            {/* --- STATS GRID --- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                    title="Total Shipments"
+                    value={stats?.total || 0}
+                    icon={Package}
+                    iconColor="text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
+                    trend={{ value: 5, label: 'vs last week', positive: true }}
+                    delay={0}
+                />
+                <StatsCard
+                    title="In Transit"
+                    value={stats?.in_transit || 0}
+                    icon={Truck}
+                    iconColor="text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400"
+                    description="Active shipments on the way"
+                    delay={1}
+                />
+                <StatsCard
+                    title="Delivered"
+                    value={stats?.delivered || 0}
+                    icon={CheckCircle2}
+                    iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    trend={{ value: 12, label: 'vs last week', positive: true }}
+                    delay={2}
+                />
+                <StatsCard
+                    title="Exceptions (RTO/NDR)"
+                    value={(stats?.rto || 0) + (stats?.ndr || 0)}
+                    icon={AlertCircle}
+                    iconColor="text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400"
+                    variant="critical"
+                    description="Requires attention"
+                    delay={3}
+                />
+            </div>
+
+            {/* --- TABLE SECTION --- */}
+            <div className="space-y-4">
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
+                        {['all', 'in_transit', 'delivered', 'rto', 'ndr'].map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setStatusFilter(tab)}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap",
+                                    statusFilter === tab
+                                        ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                                )}
+                            >
+                                {tab.replace('_', ' ')}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                            <input
+                                type="text"
+                                placeholder="Search by AWB or Order ID..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
+                            />
                         </div>
                     </div>
                 </div>
 
-                <div className='relative'>
-                    <div className='absolute top-3 left-6 z-10' onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                            checked={
-                                filteredData.length > 0 && selectedShipmentIds.size === filteredData.length
-                                    ? true
-                                    : selectedShipmentIds.size > 0
-                                        ? 'indeterminate'
-                                        : false
-                            }
-                            onCheckedChange={(checked) => handleSelectAll(checked === true)}
-                        />
+                {/* Error State */}
+                {error ? (
+                    <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm py-20 text-center">
+                        <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertCircle className="w-10 h-10 text-[var(--error)]" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Failed to load shipments</h3>
+                        <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">{error.message || 'An unexpected error occurred. Please try again.'}</p>
+                        <Button variant="primary" onClick={() => refetchShipments()} className="mx-auto">
+                            <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
+                        </Button>
                     </div>
+                ) : (
                     <DataTable
                         columns={columns}
-                        data={filteredData}
+                        data={shipmentsData}
+                        isLoading={isLoading}
                         onRowClick={(row) => setSelectedShipment(row)}
+                        // Removed unsupported props: enableRowSelection, onBulkAction, bulkActionLabel
+                        pagination={{
+                            currentPage: page,
+                            totalPages: pagination.pages,
+                            onPageChange: setPage,
+                            totalItems: pagination.total
+                            // Removed invalid prop: limit
+                        }}
                     />
-                </div>
-            </motion.div>
-
-            {/* Detail Modal */}
-            <ShipmentDetailModal
-                isOpen={!!selectedShipment}
-                onClose={() => setSelectedShipment(null)}
-                shipment={selectedShipment}
-            />
+                )}
+            </div>
         </div>
     );
 }

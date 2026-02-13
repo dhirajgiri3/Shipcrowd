@@ -35,7 +35,7 @@ export const buildReportSchema = z.object({
         orderStatus: z.array(z.string()).optional(),
         paymentMethod: z.array(z.string()).optional(),
         courier: z.array(z.string()).optional(),
-        warehouse: z.array(z.string()).optional()
+        warehouse: z.array(z.string()).optional(),
         custom: z.record(z.any()).optional()
     }).optional(),
     metrics: z.array(z.string()).min(1),

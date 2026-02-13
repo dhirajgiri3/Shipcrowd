@@ -55,6 +55,7 @@ interface SmartFilterChipsProps {
   onFilterChange: (filter: FilterPreset) => void;
   counts?: Record<FilterPreset, number>;
   className?: string;
+  context?: 'order' | 'shipment';
 }
 
 /**
@@ -64,12 +65,13 @@ export function SmartFilterChips({
   activeFilter,
   onFilterChange,
   counts,
-  className
+  className,
+  context = 'order'
 }: SmartFilterChipsProps) {
   const filters: FilterChip[] = [
     {
       id: 'all',
-      label: 'All Orders',
+      label: context === 'order' ? 'All Orders' : 'All Shipments',
       icon: Package,
       count: counts?.all,
       color: 'text-gray-700 dark:text-gray-300',
@@ -87,7 +89,7 @@ export function SmartFilterChips({
     },
     {
       id: 'today',
-      label: "Today's Orders",
+      label: context === 'order' ? "Today's Orders" : "Today's Shipments",
       icon: Calendar,
       count: counts?.today,
       color: 'text-blue-700 dark:text-blue-400',
@@ -133,8 +135,7 @@ export function SmartFilterChips({
 
   return (
     <div className={cn('relative', className)}>
-      {/* Mobile: Horizontal scroll */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:flex-wrap md:overflow-visible">
+      <div className="flex gap-3 overflow-x-auto pb-4 pt-1 scrollbar-hide md:flex-wrap md:overflow-visible px-1">
         {filters.map((filter, index) => {
           const Icon = filter.icon;
           const isActive = activeFilter === filter.id;
@@ -143,47 +144,65 @@ export function SmartFilterChips({
             <motion.button
               key={filter.id}
               onClick={() => handleFilterClick(filter.id)}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.05 }}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition-all',
-                'whitespace-nowrap flex-shrink-0 md:flex-shrink',
-                'hover:shadow-sm active:scale-95',
+                'group relative flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-2.5',
+                'px-3.5 py-2.5 rounded-2xl border transition-all duration-200',
+                'flex-shrink-0',
+                'hover:shadow-md active:scale-95 text-left',
                 isActive
                   ? cn(
-                      'border-[var(--primary-blue)] bg-[var(--primary-blue)] text-white',
-                      'shadow-md shadow-blue-500/20'
-                    )
+                    'border-[var(--primary-blue)] bg-[var(--primary-blue)] text-white',
+                    'shadow-lg shadow-blue-500/25 ring-1 ring-blue-500/50'
+                  )
                   : cn(
-                      filter.borderColor,
-                      filter.bgColor,
-                      filter.color,
-                      'hover:border-[var(--primary-blue)]/30'
-                    )
+                    'bg-[var(--bg-primary)] border-[var(--border-subtle)]',
+                    'hover:border-[var(--border-strong)] hover:bg-[var(--bg-secondary)]'
+                  )
               )}
             >
-              <Icon className={cn('w-4 h-4', isActive && 'text-white')} />
-              <span className="text-sm font-medium">{filter.label}</span>
-              {filter.count !== undefined && filter.count > 0 && (
-                <span
-                  className={cn(
-                    'text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center',
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-subtle)]'
-                  )}
-                >
-                  {filter.count > 99 ? '99+' : filter.count}
+              <div
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
+                  isActive ? "bg-white/20 text-white" : cn("bg-[var(--bg-secondary)]", filter.color)
+                )}
+              >
+                <Icon className="w-4 h-4" />
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center gap-0.5 md:gap-2">
+                <span className={cn(
+                  "text-sm font-semibold whitespace-nowrap",
+                  isActive ? "text-white" : "text-[var(--text-primary)]"
+                )}>
+                  {filter.label}
                 </span>
+
+                {filter.count !== undefined && (
+                  <span className={cn(
+                    "text-xs md:text-sm transition-colors",
+                    isActive ? "text-blue-100" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
+                  )}>
+                    {filter.count}
+                  </span>
+                )}
+              </div>
+
+              {isActive && (
+                <motion.div
+                  layoutId="active-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 md:hidden"
+                />
               )}
             </motion.button>
           );
         })}
       </div>
 
-      {/* Scroll hint for mobile (gradient fade) */}
-      <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[var(--bg-primary)] to-transparent pointer-events-none md:hidden" />
+      {/* Scroll hint for mobile */}
+      <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--bg-primary)] to-transparent pointer-events-none md:hidden transition-opacity" />
     </div>
   );
 }

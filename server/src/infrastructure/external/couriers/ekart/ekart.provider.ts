@@ -746,6 +746,34 @@ export class EkartProvider implements ICourierAdapter {
     }
 
     /**
+     * Create manifest (ICourierAdapter optional method)
+     *
+     * ManifestService passes AWBs in `awbs`. For Ekart these are tracking IDs.
+     */
+    async createManifest(data: { shipmentIds?: string[]; awbs?: string[]; warehouseId?: string }): Promise<{ manifestId?: string; manifestUrl?: string } | null> {
+        const trackingIds = (data.awbs || []).filter((awb) => typeof awb === 'string' && awb.trim().length > 0);
+        if (trackingIds.length === 0) {
+            logger.warn('Ekart createManifest skipped: no AWBs provided');
+            return null;
+        }
+
+        // Ekart supports up to 100 IDs/request. Our manifest metadata currently stores
+        // a single carrier manifest reference, so avoid partial persistence for chunked runs.
+        if (trackingIds.length > 100) {
+            logger.warn('Ekart createManifest skipped: shipment count exceeds 100 IDs per manifest request', {
+                count: trackingIds.length,
+            });
+            return null;
+        }
+
+        const result = await this.generateManifest(trackingIds);
+        return {
+            manifestId: String(result.manifestNumber),
+            manifestUrl: result.downloadUrl,
+        };
+    }
+
+    /**
      * Get Label(s)
      * 
      * Downloads shipping labels for given tracking IDs

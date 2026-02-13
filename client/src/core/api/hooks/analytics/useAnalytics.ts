@@ -74,29 +74,74 @@ const toBuildReportPayload = (config: ReportConfiguration) => {
     };
 };
 
-const normalizeReportRows = (rawData: any, selectedMetrics: string[]): ReportData['data'] => {
-    if (Array.isArray(rawData)) {
-        return rawData.map((row, index) => {
-            const label = row?.date || row?.label || `Row ${index + 1}`;
-            const metricValue = selectedMetrics.find((metric) => typeof row?.[metric] === 'number');
-            const value = metricValue ? Number(row[metricValue]) : Number(row?.value || 0);
-            return {
-                label: String(label),
-                value,
-                metadata: row,
-            };
-        });
+const resolveMetricValue = (row: Record<string, any>, metric: string): number => {
+    const direct = row?.[metric];
+    if (typeof direct === 'number' && Number.isFinite(direct)) return direct;
+
+    const aliases: Record<string, string[]> = {
+        total_shipments: ['shipments', 'total', 'totalShipments', 'count', 'totalOrders'],
+        delivered_shipments: ['delivered', 'deliveredOrders'],
+        rto_shipments: ['rto', 'rtoCount', 'totalRTO'],
+        delivery_success_rate: ['deliveryRate', 'successRate'],
+        rto_rate: ['rtoRate'],
+        avg_delivery_time: ['avgDeliveryDays', 'avgDeliveryTime'],
+        total_revenue: ['totalRevenue', 'revenue'],
+        shipping_spend: ['totalCost', 'shippingCost', 'totalSpend'],
+        avg_cost_per_order: ['averageOrderValue', 'avgCost', 'avgCostPerShipment'],
+        cod_remitted: ['receivedAmount', 'codRevenue'],
+    };
+
+    for (const alias of aliases[metric] || []) {
+        const value = row?.[alias];
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
     }
 
-    if (rawData && typeof rawData === 'object') {
-        return Object.entries(rawData).map(([label, value]) => ({
-            label,
-            value: typeof value === 'number' ? value : 0,
-            metadata: typeof value === 'object' && value !== null ? value as Record<string, any> : { value },
+    return 0;
+};
+
+const extractReportRows = (rawData: any): Array<Record<string, any>> => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+
+    if (Array.isArray(rawData?.trends)) return rawData.trends;
+    if (Array.isArray(rawData?.timeSeries)) return rawData.timeSeries;
+    if (Array.isArray(rawData?.courierPerformance)) {
+        return rawData.courierPerformance.map((row: any) => ({
+            ...(rawData.stats || {}),
+            ...row,
+            label: row.carrier || row.courier || row.courierName,
         }));
     }
 
-    return [];
+    if (rawData?.stats && typeof rawData.stats === 'object') {
+        return [{ label: 'Summary', ...rawData.stats }];
+    }
+
+    const firstArray = Object.values(rawData).find((value) => Array.isArray(value)) as Array<Record<string, any>> | undefined;
+    if (firstArray) return firstArray;
+
+    return [{ label: 'Summary', ...rawData }];
+};
+
+const normalizeReportRows = (rawData: any, selectedMetrics: string[]): ReportData['data'] => {
+    const rows = extractReportRows(rawData);
+    const primaryMetric = selectedMetrics[0] || 'value';
+
+    return rows.map((row, index) => {
+        const metadata: Record<string, any> = { ...row };
+        selectedMetrics.forEach((metric) => {
+            metadata[metric] = resolveMetricValue(row, metric);
+        });
+
+        const label = row?.date || row?.carrier || row?.courierName || row?.label || `Row ${index + 1}`;
+        const value = resolveMetricValue(row, primaryMetric);
+
+        return {
+            label: String(label),
+            value,
+            metadata,
+        };
+    });
 };
 
 // ==================== Dashboard ====================
