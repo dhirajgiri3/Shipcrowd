@@ -43,6 +43,62 @@ export interface AnalyticsData {
     statusDistribution: Array<{ status: string; count: number; color: string }>;
 }
 
+type BuildReportType = 'order' | 'shipment' | 'revenue' | 'customer' | 'inventory' | 'custom';
+
+const metricToReportType = (metrics: string[]): BuildReportType => {
+    if (metrics.some((metric) => metric.includes('revenue') || metric.includes('cod'))) {
+        return 'revenue';
+    }
+    if (metrics.some((metric) => metric.includes('customer'))) {
+        return 'customer';
+    }
+    if (metrics.some((metric) => metric.includes('inventory') || metric.includes('stock'))) {
+        return 'inventory';
+    }
+    return 'shipment';
+};
+
+const toBuildReportPayload = (config: ReportConfiguration) => {
+    const start = config.filters?.startDate;
+    const end = config.filters?.endDate;
+    const groupBy = config.groupBy === 'date'
+        ? 'day'
+        : config.groupBy === 'courier'
+            ? 'day'
+            : undefined;
+    return {
+        reportType: metricToReportType(config.metrics),
+        filters: start && end ? { dateRange: { start, end } } : undefined,
+        metrics: config.metrics,
+        groupBy,
+    };
+};
+
+const normalizeReportRows = (rawData: any, selectedMetrics: string[]): ReportData['data'] => {
+    if (Array.isArray(rawData)) {
+        return rawData.map((row, index) => {
+            const label = row?.date || row?.label || `Row ${index + 1}`;
+            const metricValue = selectedMetrics.find((metric) => typeof row?.[metric] === 'number');
+            const value = metricValue ? Number(row[metricValue]) : Number(row?.value || 0);
+            return {
+                label: String(label),
+                value,
+                metadata: row,
+            };
+        });
+    }
+
+    if (rawData && typeof rawData === 'object') {
+        return Object.entries(rawData).map(([label, value]) => ({
+            label,
+            value: typeof value === 'number' ? value : 0,
+            metadata: typeof value === 'object' && value !== null ? value as Record<string, any> : { value },
+        }));
+    }
+
+    return [];
+};
+
 // ==================== Dashboard ====================
 
 /**
@@ -147,11 +203,27 @@ export function useGenerateReport(
 ) {
     return useMutation<ReportData, ApiError, ReportConfiguration>({
         mutationFn: async (config: ReportConfiguration) => {
-            const { data } = await apiClient.post<AnalyticsResponse<ReportData>>(
-                '/analytics/reports/generate',
-                config
+            const payload = toBuildReportPayload(config);
+            const { data } = await apiClient.post<AnalyticsResponse<any>>(
+                '/analytics/reports/build',
+                payload
             );
-            return data.data;
+
+            const reportRows = normalizeReportRows(data.data?.data, config.metrics);
+            const values = reportRows.map((item) => item.value);
+            const total = values.reduce((sum, value) => sum + value, 0);
+
+            return {
+                config,
+                data: reportRows,
+                summary: {
+                    total,
+                    average: values.length ? total / values.length : 0,
+                    min: values.length ? Math.min(...values) : 0,
+                    max: values.length ? Math.max(...values) : 0,
+                },
+                generatedAt: data.data?.generatedAt || new Date().toISOString(),
+            };
         },
         onError: (error) => handleApiError(error),
         onSuccess: () => showSuccessToast('Report generated successfully'),
@@ -169,9 +241,19 @@ export function useSaveReport(
 
     return useMutation<SavedReport, ApiError, ReportConfiguration>({
         mutationFn: async (config: ReportConfiguration) => {
+            const payload = {
+                name: config.name || `Report ${new Date().toLocaleDateString()}`,
+                description: config.description,
+                reportType: metricToReportType(config.metrics),
+                filters: config.filters?.startDate && config.filters?.endDate
+                    ? { dateRange: { start: config.filters.startDate, end: config.filters.endDate } }
+                    : undefined,
+                metrics: config.metrics,
+                groupBy: config.groupBy === 'date' ? 'day' : undefined,
+            };
             const { data } = await apiClient.post<AnalyticsResponse<SavedReport>>(
                 '/analytics/reports/save',
-                config
+                payload
             );
             return data.data;
         },
@@ -193,10 +275,32 @@ export function useSavedReports(
     return useQuery<SavedReport[], ApiError>({
         queryKey: queryKeys.analytics.savedReports(),
         queryFn: async () => {
-            const { data } = await apiClient.get<AnalyticsResponse<SavedReport[]>>(
-                '/analytics/reports/saved'
+            const { data } = await apiClient.get<AnalyticsResponse<{ configs: any[] }>>(
+                '/analytics/reports'
             );
-            return data.data;
+            const configs = Array.isArray(data.data?.configs) ? data.data.configs : [];
+            return configs.map((config: any) => ({
+                reportId: String(config._id),
+                userId: String(config.createdBy || ''),
+                createdAt: config.createdAt || new Date().toISOString(),
+                lastRunAt: config.updatedAt,
+                isScheduled: Boolean(config.schedule?.enabled),
+                scheduleFrequency: config.schedule?.frequency,
+                name: config.name || 'Untitled report',
+                description: config.description,
+                metrics: config.metrics || [],
+                dimensions: ['date'],
+                filters: {
+                    startDate: config.filters?.dateRange?.start
+                        ? new Date(config.filters.dateRange.start).toISOString()
+                        : undefined,
+                    endDate: config.filters?.dateRange?.end
+                        ? new Date(config.filters.dateRange.end).toISOString()
+                        : undefined,
+                },
+                chartType: 'line',
+                groupBy: 'date',
+            })) as SavedReport[];
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
@@ -307,9 +411,23 @@ export function useExportReport(
 ) {
     return useMutation<ExportResponse, ApiError, ExportRequest>({
         mutationFn: async (request: ExportRequest) => {
+            const payload = {
+                format: request.format,
+                reportType: metricToReportType(request.config.metrics),
+                filters: request.config.filters?.startDate && request.config.filters?.endDate
+                    ? {
+                        dateRange: {
+                            start: request.config.filters.startDate,
+                            end: request.config.filters.endDate,
+                        },
+                    }
+                    : undefined,
+                metrics: request.config.metrics,
+                groupBy: request.config.groupBy === 'date' ? 'day' : undefined,
+            };
             const { data } = await apiClient.post<AnalyticsResponse<ExportResponse>>(
-                '/analytics/export',
-                request
+                '/analytics/reports/export',
+                payload
             );
             return data.data;
         },

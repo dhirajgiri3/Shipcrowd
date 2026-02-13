@@ -1,21 +1,9 @@
-/**
- * CostAnalysis Component
- * 
- * Tool for analyzing shipping costs and expenditures.
- * Visualizes spend by zone, courier, and trends over time.
- */
-
 'use client';
 
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    StatusBadge
-} from '@/src/components/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui';
 import { DateRangeFilter } from './DateRangeFilter';
-import { useAnalyticsParams, useCostAnalysis } from '@/src/hooks';
+import { useAnalyticsParams } from '@/src/hooks';
+import { useCostAnalysis } from '@/src/core/api/hooks/analytics/useAnalytics';
 import {
     ResponsiveContainer,
     PieChart,
@@ -27,14 +15,16 @@ import {
     Area,
     XAxis,
     YAxis,
-    CartesianGrid
+    CartesianGrid,
 } from 'recharts';
 import { formatCompactCurrency, formatCurrency } from '@/src/lib/utils';
 import { IndianRupee, TrendingUp, Wallet, type LucideIcon } from 'lucide-react';
 
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
 export function CostAnalysis() {
-    const { timeRange, setTimeRange, dateRange } = useAnalyticsParams();
-    const { data: costs, isLoading } = useCostAnalysis(dateRange);
+    const { timeRange, setTimeRange, apiFilters } = useAnalyticsParams();
+    const { data: costs, isLoading } = useCostAnalysis(apiFilters);
 
     if (isLoading || !costs) {
         return (
@@ -49,7 +39,21 @@ export function CostAnalysis() {
         );
     }
 
-    const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+    const zoneData = costs.current.byZone.map((zone) => ({
+        category: zone.zoneName,
+        amount: zone.cost,
+    }));
+
+    const courierData = costs.current.byCourier.map((courier) => ({
+        category: courier.courierName,
+        amount: courier.cost,
+    }));
+
+    const trendData = costs.current.timeSeries.map((item) => ({
+        date: item.date,
+        shipping: item.shippingCost,
+        rto: costs.current.breakdown.rtoCharges,
+    }));
 
     const SummaryCard = ({ title, value, subtext, icon: Icon }: { title: string; value: string; subtext: string; icon: LucideIcon }) => (
         <Card>
@@ -68,12 +72,17 @@ export function CostAnalysis() {
         </Card>
     );
 
+    const codCost = costs.current.byPaymentMethod.cod.cost;
+    const prepaidCost = costs.current.byPaymentMethod.prepaid.cost;
+    const codShare = codCost + prepaidCost > 0 ? Math.round((codCost / (codCost + prepaidCost)) * 100) : 0;
+    const totalShipments = costs.current.byPaymentMethod.cod.count + costs.current.byPaymentMethod.prepaid.count;
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-lg font-semibold text-[var(--text-primary)]">Cost Analysis</h2>
-                    <p className="text-sm text-[var(--text-muted)]">Analyze your shipping spend and financial efficiency</p>
+                    <p className="text-sm text-[var(--text-muted)]">Analyze shipping spend and financial efficiency</p>
                 </div>
                 <DateRangeFilter value={timeRange} onChange={setTimeRange} />
             </div>
@@ -81,26 +90,25 @@ export function CostAnalysis() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <SummaryCard
                     title="Total Spend"
-                    value={formatCurrency(costs.totalSpend)}
+                    value={formatCurrency(costs.current.totalCost)}
                     subtext="Total shipping expenditure"
                     icon={IndianRupee}
                 />
                 <SummaryCard
                     title="Avg Cost / Order"
-                    value={formatCurrency(costs.avgCostPerOrder)}
+                    value={formatCurrency(costs.current.totalCost / Math.max(1, totalShipments))}
                     subtext="Average cost per shipment"
                     icon={TrendingUp}
                 />
                 <SummaryCard
                     title="COD Volume"
-                    value={formatCompactCurrency(costs.paymentModeSplit.cod)}
-                    subtext={`${Math.round((costs.paymentModeSplit.cod / (costs.paymentModeSplit.cod + costs.paymentModeSplit.prepaid)) * 100)}% of total volume`}
+                    value={formatCompactCurrency(codCost)}
+                    subtext={`${codShare}% of total cost`}
                     icon={Wallet}
                 />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Cost Comparison Pie Charts */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Spend by Zone</CardTitle>
@@ -109,23 +117,12 @@ export function CostAnalysis() {
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie
-                                        data={costs.costPerZone as any[]}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
-                                        paddingAngle={5}
-                                        dataKey="amount"
-                                    >
-                                        {costs.costPerZone.map((entry, index) => (
+                                    <Pie data={zoneData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="amount">
+                                        {zoneData.map((entry, index) => (
                                             <Cell key={entry.category || index} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip
-                                        formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                                    />
+                                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -141,23 +138,12 @@ export function CostAnalysis() {
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie
-                                        data={costs.costPerCourier as any[]}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
-                                        paddingAngle={5}
-                                        dataKey="amount"
-                                    >
-                                        {costs.costPerCourier.map((entry, index) => (
+                                    <Pie data={courierData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="amount">
+                                        {courierData.map((entry, index) => (
                                             <Cell key={entry.category || index} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip
-                                        formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                                    />
+                                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -166,7 +152,6 @@ export function CostAnalysis() {
                 </Card>
             </div>
 
-            {/* Trend Chart */}
             <Card>
                 <CardHeader>
                     <CardTitle>Shipping Spend Trend</CardTitle>
@@ -174,7 +159,7 @@ export function CostAnalysis() {
                 <CardContent>
                     <div className="h-[400px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={costs.trend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorShipping" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
@@ -188,10 +173,7 @@ export function CostAnalysis() {
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                                <Tooltip
-                                    formatter={(value: number) => formatCurrency(value)}
-                                    contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                                />
+                                <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
                                 <Legend />
                                 <Area type="monotone" dataKey="shipping" name="Shipping" stroke="#3B82F6" fillOpacity={1} fill="url(#colorShipping)" />
                                 <Area type="monotone" dataKey="rto" name="RTO Charges" stroke="#EF4444" fillOpacity={1} fill="url(#colorRTO)" />

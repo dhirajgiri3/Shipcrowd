@@ -1,21 +1,9 @@
-/**
- * CourierComparison Component
- * 
- * Tool for comparing courier performance side-by-side.
- * Visualizes metrics like Delivery %, RTO %, and Avg Cost.
- */
-
 'use client';
 
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    StatusBadge
-} from '@/src/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, StatusBadge } from '@/src/components/ui';
 import { DateRangeFilter } from './DateRangeFilter';
-import { useAnalyticsParams, useCourierComparison } from '@/src/hooks';
+import { useAnalyticsParams } from '@/src/hooks';
+import { useCourierComparison } from '@/src/core/api/hooks/analytics/useAnalytics';
 import {
     ResponsiveContainer,
     BarChart,
@@ -29,15 +17,16 @@ import {
     Radar,
     PolarGrid,
     PolarAngleAxis,
-    PolarRadiusAxis
+    PolarRadiusAxis,
 } from 'recharts';
-import { useState } from 'react';
+
+const PALETTE = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EF4444'];
 
 export function CourierComparison() {
-    const { timeRange, setTimeRange, dateRange } = useAnalyticsParams();
-    const { data: couriers, isLoading } = useCourierComparison(dateRange);
+    const { timeRange, setTimeRange, apiFilters } = useAnalyticsParams();
+    const { data: comparison, isLoading } = useCourierComparison(apiFilters);
 
-    if (isLoading || !couriers) {
+    if (isLoading || !comparison) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="h-[400px] animate-pulse bg-[var(--bg-secondary)]" />
@@ -45,6 +34,41 @@ export function CourierComparison() {
             </div>
         );
     }
+
+    const couriers = comparison.couriers.map((courier, index) => ({
+        ...courier,
+        color: PALETTE[index % PALETTE.length],
+        metrics: {
+            deliverySuccessRate: courier.successRate,
+            avgDeliveryTime: courier.avgDeliveryTime,
+            rtoRate: courier.rtoRate,
+            ndrRate: courier.ndrRate,
+            avgCostPerKg: courier.avgCost,
+        },
+    }));
+
+    const radarData = [
+        { metric: 'Delivery', fullMark: 100 },
+        { metric: 'RTO Control', fullMark: 100 },
+        { metric: 'NDR Control', fullMark: 100 },
+        { metric: 'On Time', fullMark: 100 },
+        { metric: 'Cost Efficiency', fullMark: 100 },
+    ].map((base) => {
+        const row: Record<string, string | number> = { ...base };
+        couriers.slice(0, 3).forEach((courier, index) => {
+            const key = String.fromCharCode(65 + index);
+            row[key] = base.metric === 'Delivery'
+                ? courier.successRate
+                : base.metric === 'RTO Control'
+                    ? 100 - courier.rtoRate
+                    : base.metric === 'NDR Control'
+                        ? 100 - courier.ndrRate
+                        : base.metric === 'On Time'
+                            ? courier.onTimeDelivery
+                            : Math.max(0, 100 - courier.avgCost);
+        });
+        return row;
+    });
 
     return (
         <div className="space-y-6">
@@ -57,7 +81,6 @@ export function CourierComparison() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Delivery Performance Comparison */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Delivery & RTO Rates</CardTitle>
@@ -68,11 +91,8 @@ export function CourierComparison() {
                                 <BarChart data={couriers} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
                                     <XAxis type="number" domain={[0, 100]} />
-                                    <YAxis dataKey="courierName" type="category" width={100} />
-                                    <Tooltip
-                                        cursor={{ fill: 'var(--bg-elevated)', opacity: 0.1 }}
-                                        contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                                    />
+                                    <YAxis dataKey="courierName" type="category" width={120} />
+                                    <Tooltip cursor={{ fill: 'var(--bg-elevated)', opacity: 0.1 }} contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
                                     <Legend />
                                     <Bar dataKey="metrics.deliverySuccessRate" name="Delivery %" fill="#10B981" radius={[0, 4, 4, 0]} />
                                     <Bar dataKey="metrics.rtoRate" name="RTO %" fill="#EF4444" radius={[0, 4, 4, 0]} />
@@ -82,7 +102,6 @@ export function CourierComparison() {
                     </CardContent>
                 </Card>
 
-                {/* Radar Chart for Overall Score */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Performance Profile</CardTitle>
@@ -90,13 +109,7 @@ export function CourierComparison() {
                     <CardContent>
                         <div className="h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart outerRadius={150} data={[
-                                    { metric: 'Speed', A: 80, B: 90, C: 60, fullMark: 100 },
-                                    { metric: 'Reliability', A: 95, B: 85, C: 75, fullMark: 100 },
-                                    { metric: 'Cost', A: 60, B: 40, C: 90, fullMark: 100 },
-                                    { metric: 'Coverage', A: 70, B: 80, C: 85, fullMark: 100 },
-                                    { metric: 'Experience', A: 85, B: 75, C: 65, fullMark: 100 },
-                                ]}>
+                                <RadarChart outerRadius={140} data={radarData}>
                                     <PolarGrid opacity={0.3} />
                                     <PolarAngleAxis dataKey="metric" />
                                     <PolarRadiusAxis angle={30} domain={[0, 100]} />
@@ -104,10 +117,10 @@ export function CourierComparison() {
                                         <Radar
                                             key={courier.courierId}
                                             name={courier.courierName}
-                                            dataKey={String.fromCharCode(65 + index)} // Mapping mock data to A, B, C
+                                            dataKey={String.fromCharCode(65 + index)}
                                             stroke={courier.color}
                                             fill={courier.color}
-                                            fillOpacity={0.3}
+                                            fillOpacity={0.2}
                                         />
                                     ))}
                                     <Legend />
@@ -119,7 +132,6 @@ export function CourierComparison() {
                 </Card>
             </div>
 
-            {/* Detailed Table */}
             <Card>
                 <CardHeader>
                     <CardTitle>Detailed Metrics</CardTitle>
@@ -133,7 +145,7 @@ export function CourierComparison() {
                                     <th className="px-4 py-3">Delivery %</th>
                                     <th className="px-4 py-3">RTO %</th>
                                     <th className="px-4 py-3">Avg Time</th>
-                                    <th className="px-4 py-3">Avg Cost/Kg</th>
+                                    <th className="px-4 py-3">Avg Cost</th>
                                     <th className="px-4 py-3">NDR %</th>
                                     <th className="px-4 py-3 rounded-r-lg">Score</th>
                                 </tr>
@@ -147,12 +159,12 @@ export function CourierComparison() {
                                         </td>
                                         <td className="px-4 py-3 text-green-600 font-medium">{courier.metrics.deliverySuccessRate}%</td>
                                         <td className="px-4 py-3 text-red-600 font-medium">{courier.metrics.rtoRate}%</td>
-                                        <td className="px-4 py-3">{courier.metrics.avgDeliveryTime} days</td>
+                                        <td className="px-4 py-3">{courier.metrics.avgDeliveryTime} hours</td>
                                         <td className="px-4 py-3">₹{courier.metrics.avgCostPerKg}</td>
                                         <td className="px-4 py-3 text-orange-600">{courier.metrics.ndrRate}%</td>
                                         <td className="px-4 py-3">
                                             <StatusBadge
-                                                domain="return" // reusing for style
+                                                domain="return"
                                                 status={courier.metrics.deliverySuccessRate > 95 ? 'approved' : courier.metrics.deliverySuccessRate > 90 ? 'requested' : 'rejected'}
                                                 size="sm"
                                             />
