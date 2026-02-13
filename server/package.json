@@ -41,6 +41,8 @@
     "migrate:backfill-service-level-selected-quote": "npx ts-node --transpile-only scripts/migrations/backfill-service-level-selected-quote.ts",
     "verify:legacy-cutover": "npx ts-node --transpile-only scripts/verification/verify-legacy-cutover.ts",
     "verify:legacy-ratecard-retired": "npx ts-node --transpile-only scripts/verification/verify-legacy-ratecard-retired.ts",
+    "verify:auth-test-hygiene": "npx ts-node --transpile-only scripts/verification/verify-auth-integration-skips.ts",
+    "verify:cleanup-gate": "npm run verify:auth-test-hygiene && npm run verify:legacy-cutover && npm run verify:legacy-ratecard-retired",
     "verify:ratecard-parity-window": "npx ts-node --transpile-only scripts/verification/verify-ratecard-parity-window.ts",
     "verify:service-level-pricing-seed": "npx tsx scripts/verification/verify-service-level-pricing-seed.ts",
     "db:backup": "bash scripts/backup-database.sh",

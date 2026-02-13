@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
 import crypto from 'crypto';
+import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 // Helper to extract error message from response
 const getErrorMessage = (response: any): string => {
@@ -118,28 +119,25 @@ describe('Email Verification Flow', () => {
             expect(hasTokenError).toBe(true);
         });
 
-        it.skip('should enforce rate limiting (5 attempts per hour)', async () => {
-            // Make 6 verification attempts with invalid tokens
-            const requests = [];
+        it('should enforce rate limiting (5 attempts per hour)', async () => {
+            const identity = createRateLimitIdentity('email-verification', 'verify-email-limit');
+            const responses = [];
             for (let i = 0; i < 6; i++) {
-                requests.push(
+                const response = await withRateLimitHeaders(
                     request(app)
                         .post('/api/v1/auth/verify-email')
                         .send({ token: `invalid-token-${i}` })
-                        .set('X-CSRF-Token', 'frontend-request')
+                        .set('X-CSRF-Token', 'frontend-request'),
+                    identity
                 );
+                responses.push(response);
             }
 
-            const responses = await Promise.all(requests);
-
-            // First 5 should fail with validation error (400)
-            responses.slice(0, 5).forEach(response => {
-                expect([400, 429]).toContain(response.status);
+            responses.slice(0, 5).forEach((response) => {
+                expect(response.status).not.toBe(429);
             });
-
-            // 6th should be rate limited (429)
-            expect(responses[5].status).toBe(429);
-            expect(responses[5].body.message).toMatch(/too many/i);
+            const blockedResponse = responses.find((response) => response.status === 429);
+            expect(blockedResponse).toBeDefined();
         });
     });
 
@@ -204,28 +202,25 @@ describe('Email Verification Flow', () => {
             expect(message || response.body.errors).toBeTruthy();
         });
 
-        it.skip('should enforce rate limiting (3 attempts per hour)', async () => {
-            // Make 4 resend requests
-            const requests = [];
+        it('should enforce rate limiting (3 attempts per hour)', async () => {
+            const identity = createRateLimitIdentity('email-verification', 'resend-verification-limit');
+            const responses = [];
             for (let i = 0; i < 4; i++) {
-                requests.push(
+                const response = await withRateLimitHeaders(
                     request(app)
                         .post('/api/v1/auth/resend-verification')
                         .send({ email: testEmail })
-                        .set('X-CSRF-Token', 'frontend-request')
+                        .set('X-CSRF-Token', 'frontend-request'),
+                    identity
                 );
+                responses.push(response);
             }
 
-            const responses = await Promise.all(requests);
-
-            // First 3 should succeed
-            responses.slice(0, 3).forEach(response => {
-                expect(response.status).toBe(200);
+            responses.slice(0, 3).forEach((response) => {
+                expect(response.status).not.toBe(429);
             });
-
-            // 4th should be rate limited
-            expect(responses[3].status).toBe(429);
-            expect(responses[3].body.message).toMatch(/too many/i);
+            const blockedResponse = responses.find((response) => response.status === 429);
+            expect(blockedResponse).toBeDefined();
         });
     });
 

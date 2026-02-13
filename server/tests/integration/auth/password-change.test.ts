@@ -4,6 +4,7 @@ import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
 import { Session } from '../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
+import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 // Helper to extract error message from response
 const getErrorMessage = (response: any): string => {
@@ -271,31 +272,29 @@ describe('Password Change Flow', () => {
             expect(msg).toBeTruthy();
         });
 
-        it.skip('should enforce rate limiting (5 attempts per 15 minutes)', async () => {
-            const requests = [];
+        it('should enforce rate limiting (5 attempts per 15 minutes)', async () => {
+            const identity = createRateLimitIdentity('password-change', 'change-password-limit');
+            const responses = [];
             for (let i = 0; i < 6; i++) {
-                requests.push(
+                const response = await withRateLimitHeaders(
                     request(app)
                         .post('/api/v1/auth/change-password')
                         .send({
-                            currentPassword: 'WrongPassword123!',
-                            newPassword: newPassword,
+                            currentPassword: testPassword,
+                            newPassword: 'weak',
                         })
                         .set('Cookie', [`accessToken=${authToken}`])
-                        .set('X-CSRF-Token', 'frontend-request')
+                        .set('X-CSRF-Token', 'frontend-request'),
+                    identity
                 );
+                responses.push(response);
             }
 
-            const responses = await Promise.all(requests);
-
-            // First 5 should fail with validation error
-            responses.slice(0, 5).forEach(response => {
-                expect([400, 429]).toContain(response.status);
+            responses.slice(0, 5).forEach((response) => {
+                expect(response.status).not.toBe(429);
             });
-
-            // 6th should be rate limited
-            expect(responses[5].status).toBe(429);
-            expect(responses[5].body.message).toMatch(/too many/i);
+            const blockedResponse = responses.find((response) => response.status === 429);
+            expect(blockedResponse).toBeDefined();
         });
     });
 

@@ -2,19 +2,21 @@
 
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { Button } from '@/src/components/ui/core/Button';
 import {
     Truck,
     Clock,
     MapPin,
     Star,
     TrendingUp,
-    Zap,
     ChevronDown,
     ChevronUp,
     Award,
     IndianRupee,
     Timer,
-    Info
+    Info,
+    CheckCircle2,
+    ShieldCheck
 } from 'lucide-react';
 import { CourierRateOption } from '@/src/core/api/clients/shipping/ratesApi';
 import { cn } from '@/src/lib/utils';
@@ -41,52 +43,40 @@ export function RateCard({ rate, isExpanded, onToggle }: RateCardProps) {
         }
     };
 
+    const handleBookNow = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log('Book Now clicked for:', rate.courierName);
+        // Future: Implement booking logic
+    };
+
     return (
         <Card
             className={cn(
-                "transition-all hover:shadow-sm border-[var(--border-subtle)]",
-                rate.tags.includes('RECOMMENDED') && "border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)]/10"
+                "transition-all duration-300 hover:shadow-md border-[var(--border-subtle)] group",
+                rate.tags.includes('RECOMMENDED') && "border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)]/10 bg-[var(--primary-blue-soft)]/5"
             )}
         >
-            <CardContent className="p-5">
-                <div className="space-y-4">
-                    {/* Header */}
+            <CardContent className="p-0">
+                <div className="p-5 space-y-4">
+                    {/* Header Row: Courier Info & Price */}
                     <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-[var(--bg-secondary)] flex items-center justify-center border border-[var(--border-subtle)]">
-                                <Truck className="h-5 w-5 text-[var(--text-secondary)]" />
+                            <div className="h-12 w-12 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center border border-[var(--border-subtle)] shadow-sm group-hover:border-[var(--primary-blue)]/30 transition-colors">
+                                <Truck className="h-6 w-6 text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)] transition-colors" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-[var(--text-primary)]">
+                                <h3 className="text-base font-bold text-[var(--text-primary)] leading-tight">
                                     {rate.courierName}
                                 </h3>
-                                <div className="flex items-center gap-2">
-                                    <p className="text-sm text-[var(--text-secondary)] capitalize">
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">
                                         {rate.serviceType}
-                                    </p>
+                                    </span>
                                     {/* Pricing Resolution Badge */}
-                                    {rate.pricingResolution && (
-                                        <>
-                                            {(() => {
-                                                const res = rate.pricingResolution;
-                                                let variant: 'success' | 'warning' | 'neutral' = 'neutral';
-                                                let label = 'Generic Rule';
-
-                                                if (res.matchType === 'EXACT') {
-                                                    variant = 'success';
-                                                    label = 'Exact Rate';
-                                                } else if (res.matchType === 'CARRIER_DEFAULT') {
-                                                    variant = 'warning';
-                                                    label = 'Carrier Default';
-                                                }
-
-                                                return (
-                                                    <Badge variant={variant} className="text-[10px] h-5 px-1.5 font-normal">
-                                                        {label}
-                                                    </Badge>
-                                                );
-                                            })()}
-                                        </>
+                                    {rate.pricingResolution && rate.pricingResolution.matchType === 'EXACT' && (
+                                        <Badge variant="success" className="text-[10px] h-4 px-1 font-normal bg-green-100 text-green-700 hover:bg-green-100 border-0">
+                                            <CheckCircle2 className="h-3 w-3 mr-1" /> Verified Rate
+                                        </Badge>
                                     )}
                                 </div>
                             </div>
@@ -94,160 +84,189 @@ export function RateCard({ rate, isExpanded, onToggle }: RateCardProps) {
 
                         <div className="text-right">
                             <div className="flex items-baseline justify-end gap-1">
-                                <span className="text-2xl font-bold text-[var(--text-primary)]">
-                                    ₹{rate.totalAmount.toFixed(2)}
+                                <span className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
+                                    ₹{Math.round(rate.totalAmount)}
+                                </span>
+                                <span className="text-sm font-medium text-[var(--text-secondary)]">
+                                    .{rate.totalAmount.toFixed(2).split('.')[1]}
                                 </span>
                             </div>
-                            <p className="text-xs text-[var(--text-secondary)]">
-                                Inc. GST
+                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                                Inclusive of GST
                             </p>
                         </div>
                     </div>
 
-                    {/* Tags - Premium Flat Design */}
-                    {rate.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {rate.tags.map((tag) => (
-                                <Badge
-                                    key={tag}
-                                    className={cn("text-xs font-medium border-0 px-2 py-0.5", getMedalColor(tag))}
-                                >
-                                    {getBadgeIcon(tag)} {tag.replace('_', ' ')}
-                                </Badge>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Delivery & Performance Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t border-[var(--border-subtle)] pt-4 mt-2">
-                        <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-[var(--text-secondary)]" />
+                    {/* Middle Row: Key Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 border-y border-[var(--border-subtle)]/50 border-dashed">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-blue-50 text-blue-600">
+                                <Clock className="h-4 w-4" />
+                            </div>
                             <div>
-                                <p className="text-[var(--text-secondary)] text-xs">Delivery</p>
-                                <p className="font-medium text-[var(--text-primary)]">
-                                    {rate.estimatedDeliveryDays} days
+                                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Delivery</p>
+                                <p className="text-sm font-bold text-[var(--text-primary)]">
+                                    {rate.estimatedDeliveryDays} Days
                                 </p>
                             </div>
                         </div>
-                        {rate.zone && (
-                            <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-[var(--text-secondary)]" />
-                                <div>
-                                    <p className="text-[var(--text-secondary)] text-xs">Zone</p>
-                                    <p className="font-medium text-[var(--text-primary)]">
-                                        {rate.zone.replace('zone', 'Zone ').toUpperCase()}
-                                    </p>
-                                </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-amber-50 text-amber-500">
+                                <Star className="h-4 w-4 fill-amber-500" />
                             </div>
-                        )}
-                        {rate.rating > 0 && (
-                            <div className="flex items-center gap-2">
-                                <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                                <div>
-                                    <p className="text-[var(--text-secondary)] text-xs">Rating</p>
-                                    <p className="font-medium text-[var(--text-primary)]">
-                                        {rate.rating.toFixed(1)}/5
-                                    </p>
-                                </div>
+                            <div>
+                                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Rating</p>
+                                <p className="text-sm font-bold text-[var(--text-primary)]">
+                                    {rate.rating.toFixed(1)}/5
+                                </p>
                             </div>
-                        )}
+                        </div>
+
                         {rate.deliverySuccessRate > 0 && (
-                            <div className="flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-green-600" />
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-full bg-green-50 text-green-600">
+                                    <ShieldCheck className="h-4 w-4" />
+                                </div>
                                 <div>
-                                    <p className="text-[var(--text-secondary)] text-xs">Success Rate</p>
-                                    <p className="font-medium text-[var(--text-primary)]">
+                                    <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Success Rate</p>
+                                    <p className="text-sm font-bold text-[var(--text-primary)]">
                                         {rate.deliverySuccessRate.toFixed(0)}%
                                     </p>
                                 </div>
                             </div>
                         )}
-                    </div>
 
-                    {/* Performance Scores - Flat Cards */}
-                    {rate.scores.overallScore > 0 && (
-                        <div className="pt-2">
-                            <div className="grid grid-cols-5 gap-2 text-center text-xs">
-                                {Object.entries(rate.scores).map(([key, value]) => (
-                                    <div key={key} className="bg-[var(--bg-secondary)] rounded-md py-1.5 border border-[var(--border-subtle)]/50">
-                                        <p className="text-[var(--text-secondary)] capitalize mb-0.5 text-[10px]">
-                                            {key.replace('Score', '')}
-                                        </p>
-                                        <p className={cn("font-bold text-sm", getScoreColor(value))}>
-                                            {Math.round(value)}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Pricing Breakdown Accordion */}
-                    <div className="border-t border-[var(--border-subtle)] pt-3">
-                        <button
-                            onClick={onToggle}
-                            className="flex items-center gap-2 text-xs font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] transition-colors"
-                        >
-                            View Pricing Breakdown
-                            {isExpanded ? (
-                                <ChevronUp className="h-3 w-3" />
-                            ) : (
-                                <ChevronDown className="h-3 w-3" />
-                            )}
-                        </button>
-
-                        {isExpanded && (
-                            <div className="mt-3 space-y-2 text-xs bg-[var(--bg-secondary)]/50 p-3 rounded-lg border border-[var(--border-subtle)]/50">
-                                <div className="flex justify-between">
-                                    <span className="text-[var(--text-secondary)]">Base Rate</span>
-                                    <span className="font-medium">₹{rate.baseRate.toFixed(2)}</span>
+                        {rate.zone && (
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-full bg-purple-50 text-purple-600">
+                                    <MapPin className="h-4 w-4" />
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[var(--text-secondary)]">Weight Charge</span>
-                                        {rate.weightCharge === 0 && (
-                                            <div className="group relative">
-                                                <Info className="h-3 w-3 text-[var(--text-muted)] cursor-help" />
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg hidden group-hover:block z-10">
-                                                    Weight fits within base slab. No extra charge.
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className="font-medium">₹{rate.weightCharge.toFixed(2)}</span>
-                                </div>
-                                {rate.codCharge > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-[var(--text-secondary)]">COD Charge</span>
-                                        <span className="font-medium">₹{rate.codCharge.toFixed(2)}</span>
-                                    </div>
-                                )}
-                                {rate.fuelCharge > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-[var(--text-secondary)]">Fuel Surcharge</span>
-                                        <span className="font-medium">₹{rate.fuelCharge.toFixed(2)}</span>
-                                    </div>
-                                )}
-                                {rate.rtoCharge > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-[var(--text-secondary)]">RTO Charge</span>
-                                        <span className="font-medium">₹{rate.rtoCharge.toFixed(2)}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between">
-                                    <span className="text-[var(--text-secondary)]">GST</span>
-                                    <span className="font-medium">₹{rate.gstAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between pt-2 border-t border-[var(--border-subtle)] font-bold text-[var(--text-primary)]">
-                                    <span>Total Amount</span>
-                                    <span>₹{rate.totalAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-[10px] text-[var(--text-muted)] pt-1">
-                                    <span>Chargeable Weight</span>
-                                    <span>{rate.chargeableWeight.toFixed(3)} kg</span>
+                                <div>
+                                    <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Zone</p>
+                                    <p className="text-sm font-bold text-[var(--text-primary)]">
+                                        {rate.zone.toUpperCase()}
+                                    </p>
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Bottom Row: Actions & Tags */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
+                        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                            {rate.tags.map((tag) => (
+                                <Badge
+                                    key={tag}
+                                    className={cn(
+                                        "text-[10px] font-medium border-0 px-2 py-1 rounded-md",
+                                        getMedalColor(tag)
+                                    )}
+                                >
+                                    {getBadgeIcon(tag)} {tag.replace('_', ' ')}
+                                </Badge>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <button
+                                onClick={onToggle}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] transition-colors py-2"
+                            >
+                                {isExpanded ? 'Hide Details' : 'View Details'}
+                                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            </button>
+                            <Button
+                                onClick={handleBookNow}
+                                size="sm"
+                                className="flex-1 sm:flex-none shadow-sm hover:shadow-md transition-all active:scale-95"
+                            >
+                                Ship Now
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Expanded Details Section */}
+                <div className={cn(
+                    "grid grid-rows-[0fr] transition-all duration-300 ease-in-out bg-[var(--bg-secondary)]/30 border-t border-[var(--border-subtle)]",
+                    isExpanded ? "grid-rows-[1fr] py-4" : "overflow-hidden"
+                )}>
+                    <div className="overflow-hidden px-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Breakdown */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-2">Cost Breakdown</h4>
+                                <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between text-[var(--text-secondary)]">
+                                        <span>Base Freight</span>
+                                        <span className="font-medium text-[var(--text-primary)]">₹{rate.baseRate.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[var(--text-secondary)]">
+                                        <span className="flex items-center gap-1">
+                                            Weight Charge
+                                            {rate.weightCharge === 0 && <span className="text-[10px] text-green-600 bg-green-50 px-1 rounded">Free</span>}
+                                        </span>
+                                        <span className="font-medium text-[var(--text-primary)]">₹{rate.weightCharge.toFixed(2)}</span>
+                                    </div>
+                                    {rate.codCharge > 0 && (
+                                        <div className="flex justify-between text-[var(--text-secondary)]">
+                                            <span>COD Handling</span>
+                                            <span className="font-medium text-[var(--text-primary)]">₹{rate.codCharge.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    {rate.fuelCharge > 0 && (
+                                        <div className="flex justify-between text-[var(--text-secondary)]">
+                                            <span>Fuel Surcharge</span>
+                                            <span className="font-medium text-[var(--text-primary)]">₹{rate.fuelCharge.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between text-[var(--text-secondary)] pt-2 border-t border-dashed border-[var(--border-subtle)]">
+                                        <span>Subtotal</span>
+                                        <span className="font-medium text-[var(--text-primary)]">₹{(rate.totalAmount - rate.gstAmount).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[var(--text-secondary)]">
+                                        <span>GST (18%)</span>
+                                        <span className="font-medium text-[var(--text-primary)]">₹{rate.gstAmount.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between pt-2 border-t border-[var(--border-subtle)] font-bold text-[var(--text-primary)] text-sm">
+                                        <span>Total Payable</span>
+                                        <span>₹{rate.totalAmount.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Performance Scores */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-3">AI Performance Score</h4>
+                                <div className="space-y-3">
+                                    {Object.entries(rate.scores).filter(([key]) => key !== 'overallScore').map(([key, value]) => (
+                                        <div key={key} className="space-y-1">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-[var(--text-secondary)] capitalize">{key.replace('Score', '')}</span>
+                                                <span className={cn("font-bold", getScoreColor(value))}>{Math.round(value)}/100</span>
+                                            </div>
+                                            <div className="h-1.5 w-full bg-[var(--border-subtle)] rounded-full overflow-hidden">
+                                                <div
+                                                    className={cn("h-full rounded-full transition-all duration-500",
+                                                        value >= 80 ? "bg-green-500" :
+                                                            value >= 60 ? "bg-blue-500" :
+                                                                value >= 40 ? "bg-yellow-500" : "bg-red-500"
+                                                    )}
+                                                    style={{ width: `${value}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]/50 flex items-center justify-between">
+                                        <span className="text-xs font-medium text-[var(--text-secondary)]">Overall Match</span>
+                                        <Badge variant={rate.scores.overallScore >= 80 ? 'success' : 'neutral'} className="text-xs">
+                                            {Math.round(rate.scores.overallScore)}% Match
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </CardContent>

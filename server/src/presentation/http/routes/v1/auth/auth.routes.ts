@@ -11,6 +11,8 @@ import {
   resendVerificationRateLimiter,
   magicLinkRateLimiter,
   setPasswordRateLimiter,
+  changePasswordRateLimiter,
+  changeEmailRateLimiter,
 } from '../../../../../shared/config/rateLimit.config';
 import mfaRoutes from './mfa.routes';
 
@@ -190,14 +192,14 @@ router.post('/set-password', authenticate, setPasswordRateLimiter, csrfProtectio
  * @desc Change password for authenticated user (requires current password)
  * @access Private
  */
-router.post('/change-password', authenticate, csrfProtection, authController.changePassword);
+router.post('/change-password', changePasswordRateLimiter, authenticate, csrfProtection, authController.changePassword);
 
 /**
  * @route POST /auth/change-email
  * @desc Request email change (sends verification to new email)
  * @access Private
  */
-router.post('/change-email', authenticate, csrfProtection, authController.changeEmail);
+router.post('/change-email', changeEmailRateLimiter, authenticate, csrfProtection, authController.changeEmail);
 
 /**
  * @route POST /auth/verify-email-change

@@ -400,9 +400,9 @@ export function CreateOrderClient() {
     switch (currentStep) {
       case 0:
         return (
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="customerName" className="text-sm font-medium text-[var(--text-primary)]">
+          <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
+            <div>
+              <label htmlFor="customerName" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 Customer Name <span className="text-[var(--error)]">*</span>
               </label>
               <Input
@@ -413,11 +413,11 @@ export function CreateOrderClient() {
                 aria-describedby={getFieldError('customerName') ? 'customerName-error' : undefined}
                 onChange={(e) => handleInputChange('customerName', e.target.value)}
               />
-              {getFieldError('customerName') && <p id="customerName-error" className="text-xs text-[var(--error)]">{getFieldError('customerName')}</p>}
+              {getFieldError('customerName') && <p id="customerName-error" className="text-xs text-[var(--error)] mt-1.5">{getFieldError('customerName')}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="customerPhone" className="text-sm font-medium text-[var(--text-primary)]">
+            <div>
+              <label htmlFor="customerPhone" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 Phone Number <span className="text-[var(--error)]">*</span>
               </label>
               <Input
@@ -429,11 +429,13 @@ export function CreateOrderClient() {
                 aria-describedby={getFieldError('customerPhone') ? 'customerPhone-error' : undefined}
                 onChange={(e) => handleInputChange('customerPhone', e.target.value.replace(/\D/g, '').slice(0, 10))}
               />
-              {getFieldError('customerPhone') && <p id="customerPhone-error" className="text-xs text-[var(--error)]">{getFieldError('customerPhone')}</p>}
+              {getFieldError('customerPhone') && <p id="customerPhone-error" className="text-xs text-[var(--error)] mt-1.5">{getFieldError('customerPhone')}</p>}
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <label htmlFor="customerEmail" className="text-sm font-medium text-[var(--text-primary)]">Email (Optional)</label>
+            <div className="md:col-span-2">
+              <label htmlFor="customerEmail" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                Email <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+              </label>
               <Input
                 id="customerEmail"
                 type="email"
@@ -443,8 +445,10 @@ export function CreateOrderClient() {
               />
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <label htmlFor="addressLine1" className="text-sm font-medium text-[var(--text-primary)]">
+            <div className="md:col-span-2 border-t border-[var(--border-subtle)]"></div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="addressLine1" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 Address Line 1 <span className="text-[var(--error)]">*</span>
               </label>
               <Input
@@ -455,11 +459,13 @@ export function CreateOrderClient() {
                 aria-describedby={getFieldError('addressLine1') ? 'addressLine1-error' : undefined}
                 onChange={(e) => handleInputChange('addressLine1', e.target.value)}
               />
-              {getFieldError('addressLine1') && <p id="addressLine1-error" className="text-xs text-[var(--error)]">{getFieldError('addressLine1')}</p>}
+              {getFieldError('addressLine1') && <p id="addressLine1-error" className="text-xs text-[var(--error)] mt-1.5">{getFieldError('addressLine1')}</p>}
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <label htmlFor="addressLine2" className="text-sm font-medium text-[var(--text-primary)]">Address Line 2 (Optional)</label>
+            <div className="md:col-span-2">
+              <label htmlFor="addressLine2" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                Address Line 2 <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+              </label>
               <Input
                 id="addressLine2"
                 value={formData.addressLine2}
@@ -468,8 +474,8 @@ export function CreateOrderClient() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="city" className="text-sm font-medium text-[var(--text-primary)]">
+            <div>
+              <label htmlFor="city" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 City <span className="text-[var(--error)]">*</span>
               </label>
               <Input
@@ -479,30 +485,35 @@ export function CreateOrderClient() {
                 aria-invalid={!!getFieldError('city')}
                 onChange={(e) => handleInputChange('city', e.target.value)}
               />
-              {getFieldError('city') && <p className="text-xs text-[var(--error)]">{getFieldError('city')}</p>}
+              {getFieldError('city') && <p className="text-xs text-[var(--error)] mt-1.5">{getFieldError('city')}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="state" className="text-sm font-medium text-[var(--text-primary)]">
+            <div>
+              <label htmlFor="state" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 State <span className="text-[var(--error)]">*</span>
               </label>
-              <select
-                id="state"
-                value={formData.state}
-                aria-invalid={!!getFieldError('state')}
-                onChange={(e) => handleInputChange('state', e.target.value)}
-                className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-secondary)]"
-              >
-                <option value="">Select a state</option>
-                {INDIAN_STATES.map((state) => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
-              {getFieldError('state') && <p className="text-xs text-[var(--error)]">{getFieldError('state')}</p>}
+              <div className="relative">
+                <select
+                  id="state"
+                  value={formData.state}
+                  aria-invalid={!!getFieldError('state')}
+                  onChange={(e) => handleInputChange('state', e.target.value)}
+                  className="w-full h-10 px-3 py-2 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue-soft)] focus:border-[var(--primary-blue)] transition-all appearance-none"
+                >
+                  <option value="">Select a state</option>
+                  {INDIAN_STATES.map((state) => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] rotate-90" />
+                </div>
+              </div>
+              {getFieldError('state') && <p className="text-xs text-[var(--error)] mt-1.5">{getFieldError('state')}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="postalCode" className="text-sm font-medium text-[var(--text-primary)]">
+            <div>
+              <label htmlFor="postalCode" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 Postal Code <span className="text-[var(--error)]">*</span>
               </label>
               <div className="relative">
@@ -515,66 +526,75 @@ export function CreateOrderClient() {
                 />
                 <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
               </div>
-              <div className="text-xs text-[var(--text-secondary)] min-h-[20px]">
+              <div className="text-xs text-[var(--text-secondary)] min-h-[20px] mt-1.5 pl-1">
                 {isPincodeLoading && <span className="inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Validating pincode...</span>}
                 {!isPincodeLoading && formData.postalCode.length === 6 && isPincodeSuccess && pincodeInfo && (
-                  <span className="text-[var(--success)]">Verified: {pincodeInfo.city}, {pincodeInfo.state}</span>
+                  <span className="text-[var(--success)] flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified: {pincodeInfo.city}, {pincodeInfo.state}</span>
                 )}
                 {!isPincodeLoading && formData.postalCode.length === 6 && pincodeLookupError && (
-                  <span className="text-[var(--error)]">Pincode validation failed</span>
+                  <span className="text-[var(--error)] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Invalid pincode</span>
                 )}
               </div>
-              {getFieldError('postalCode') && <p className="text-xs text-[var(--error)]">{getFieldError('postalCode')}</p>}
+              {getFieldError('postalCode') && <p className="text-xs text-[var(--error)] mt-1">{getFieldError('postalCode')}</p>}
             </div>
           </div>
         );
 
       case 1:
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {formData.products.map((product, index) => (
-              <div key={product.id} className="p-4 border border-[var(--border-subtle)] rounded-lg space-y-4 relative">
+              <div key={product.id} className="p-6 border border-[var(--border-subtle)] rounded-xl space-y-6 relative bg-[var(--bg-secondary)]/30">
                 {formData.products.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeProduct(product.id)}
-                    className="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--error)] transition-colors"
+                    className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--error)] transition-colors p-1"
                     aria-label={`Remove product ${index + 1}`}
                   >
                     <X className="w-5 h-5" />
                   </button>
                 )}
 
-                <h4 className="font-medium text-[var(--text-primary)]">Product {index + 1}</h4>
+                <div className="flex items-center gap-3 pb-2 border-b border-[var(--border-subtle)]">
+                  <div className="h-8 w-8 rounded-full bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] flex items-center justify-center font-bold text-sm">
+                    {index + 1}
+                  </div>
+                  <h4 className="font-semibold text-[var(--text-primary)]">Product Details</h4>
+                </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor={`product-name-${product.id}`} className="text-sm font-medium text-[var(--text-primary)]">
+                <div className="grid gap-x-6 gap-y-6 md:grid-cols-2">
+                  <div>
+                    <label htmlFor={`product-name-${product.id}`} className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                       Product Name <span className="text-[var(--error)]">*</span>
                     </label>
                     <Input
                       id={`product-name-${product.id}`}
                       value={product.name}
-                      placeholder="Blue Denim Jacket"
+                      placeholder="e.g. Blue Denim Jacket"
                       aria-invalid={!!getFieldError(`products.${index}.name`) || !!getFieldError('products')}
                       onChange={(e) => handleProductChange(product.id, 'name', e.target.value)}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor={`product-sku-${product.id}`} className="text-sm font-medium text-[var(--text-primary)]">SKU (Optional)</label>
+                  <div>
+                    <label htmlFor={`product-sku-${product.id}`} className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                      SKU <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+                    </label>
                     <Input
                       id={`product-sku-${product.id}`}
                       value={product.sku}
-                      placeholder="SKU-123"
+                      placeholder="e.g. SKU-123"
                       onChange={(e) => handleProductChange(product.id, 'sku', e.target.value)}
                     />
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <label htmlFor={`product-qty-${product.id}`} className="text-sm font-medium text-[var(--text-primary)]">Quantity <span className="text-[var(--error)]">*</span></label>
+                <div className="grid gap-x-6 gap-y-6 md:grid-cols-3">
+                  <div>
+                    <label htmlFor={`product-qty-${product.id}`} className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                      Quantity <span className="text-[var(--error)]">*</span>
+                    </label>
                     <Input
                       id={`product-qty-${product.id}`}
                       type="number"
@@ -585,8 +605,10 @@ export function CreateOrderClient() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor={`product-price-${product.id}`} className="text-sm font-medium text-[var(--text-primary)]">Price (₹) <span className="text-[var(--error)]">*</span></label>
+                  <div>
+                    <label htmlFor={`product-price-${product.id}`} className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                      Price (₹) <span className="text-[var(--error)]">*</span>
+                    </label>
                     <Input
                       id={`product-price-${product.id}`}
                       type="number"
@@ -598,8 +620,10 @@ export function CreateOrderClient() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor={`product-weight-${product.id}`} className="text-sm font-medium text-[var(--text-primary)]">Weight (kg)</label>
+                  <div>
+                    <label htmlFor={`product-weight-${product.id}`} className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                      Weight (kg) <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+                    </label>
                     <Input
                       id={`product-weight-${product.id}`}
                       type="number"
@@ -610,18 +634,22 @@ export function CreateOrderClient() {
                   </div>
                 </div>
 
-                <div className="text-sm text-[var(--text-secondary)]">Subtotal: ₹{(product.quantity * product.price).toFixed(2)}</div>
+                <div className="flex justify-end p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Subtotal: <span className="font-bold text-[var(--text-primary)]">₹{(product.quantity * product.price).toFixed(2)}</span>
+                  </p>
+                </div>
               </div>
             ))}
 
-            {getFieldError('products') && <p className="text-xs text-[var(--error)]">{getFieldError('products')}</p>}
+            {getFieldError('products') && <p className="text-xs text-[var(--error)] text-center p-2 bg-[var(--error-bg)] rounded-md">{getFieldError('products')}</p>}
 
             <button
               type="button"
               onClick={addProduct}
-              className="w-full py-3 border border-dashed border-[var(--border-subtle)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors flex items-center justify-center gap-2"
+              className="w-full py-4 border border-dashed border-[var(--border-subtle)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)]/10 transition-all flex items-center justify-center gap-2 font-medium"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5" />
               Add Another Product
             </button>
           </div>
@@ -629,9 +657,9 @@ export function CreateOrderClient() {
 
       case 2:
         return (
-          <div className="space-y-6">
-            <fieldset className="space-y-3">
-              <legend className="text-sm font-medium text-[var(--text-primary)]">Payment Method</legend>
+          <div>
+            <fieldset className="mb-8">
+              <legend className="text-base font-semibold text-[var(--text-primary)] mb-4">Payment Method</legend>
               <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
                   { value: 'prepaid', label: 'Prepaid' },
@@ -641,10 +669,10 @@ export function CreateOrderClient() {
                     key={option.value}
                     htmlFor={`payment-${option.value}`}
                     className={cn(
-                      'cursor-pointer p-4 rounded-xl border flex items-center gap-3 transition-all',
+                      'cursor-pointer relative p-5 rounded-xl border-2 flex items-center gap-4 transition-all duration-200',
                       formData.paymentMethod === option.value
-                        ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]/20 shadow-sm'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]'
+                        ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]/10 shadow-sm ring-1 ring-[var(--primary-blue)]/10'
+                        : 'border-[var(--border-subtle)] bg-[var(--bg-secondary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-tertiary)]'
                     )}
                   >
                     <input
@@ -657,86 +685,112 @@ export function CreateOrderClient() {
                       className="sr-only"
                     />
                     <div className={cn(
-                      'w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                      'w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors',
                       formData.paymentMethod === option.value ? 'border-[var(--primary-blue)]' : 'border-[var(--text-muted)]'
                     )}>
-                      {formData.paymentMethod === option.value && <div className="w-2.5 h-2.5 rounded-full bg-[var(--primary-blue)]" />}
+                      {formData.paymentMethod === option.value && <div className="w-3 h-3 rounded-full bg-[var(--primary-blue)] animate-scale-in" />}
                     </div>
-                    <span className="font-medium text-[var(--text-primary)]">{option.label}</span>
+                    <div>
+                      <span className="font-semibold text-[var(--text-primary)] block text-base">{option.label}</span>
+                      <span className="text-xs text-[var(--text-secondary)]">
+                        {option.value === 'prepaid' ? 'Pay online securely' : 'Collect cash upon delivery'}
+                      </span>
+                    </div>
                   </label>
                 ))}
               </div>
             </fieldset>
 
-            <div className="space-y-2">
-              <label htmlFor="warehouseId" className="text-sm font-medium text-[var(--text-primary)]">
+            <div className="mb-8">
+              <label htmlFor="warehouseId" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
                 Fulfillment Warehouse <span className="text-[var(--error)]">*</span>
               </label>
-              <select
-                id="warehouseId"
-                value={formData.warehouseId || ''}
-                onChange={(e) => handleInputChange('warehouseId', e.target.value)}
-                disabled={isWarehousesLoading}
-                aria-invalid={!!getFieldError('warehouseId')}
-                className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-secondary)]"
-              >
-                <option value="">{isWarehousesLoading ? 'Loading warehouses...' : 'Select warehouse'}</option>
-                {warehouses.map((warehouse) => (
-                  <option key={warehouse._id} value={warehouse._id}>
-                    {warehouse.name}{warehouse.isDefault ? ' (Default)' : ''} - {warehouse.address.city}
-                  </option>
-                ))}
-              </select>
-              {getFieldError('warehouseId') && <p className="text-xs text-[var(--error)]">{getFieldError('warehouseId')}</p>}
+              <div className="relative">
+                <select
+                  id="warehouseId"
+                  value={formData.warehouseId || ''}
+                  onChange={(e) => handleInputChange('warehouseId', e.target.value)}
+                  disabled={isWarehousesLoading}
+                  aria-invalid={!!getFieldError('warehouseId')}
+                  className="w-full h-10 px-3 py-2 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue-soft)] focus:border-[var(--primary-blue)] appearance-none transition-all"
+                >
+                  <option value="">{isWarehousesLoading ? 'Loading warehouses...' : 'Select warehouse'}</option>
+                  {warehouses.map((warehouse) => (
+                    <option key={warehouse._id} value={warehouse._id}>
+                      {warehouse.name}{warehouse.isDefault ? ' (Default)' : ''} - {warehouse.address.city}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] rotate-90" />
+                </div>
+              </div>
+              {getFieldError('warehouseId') && <p className="text-xs text-[var(--error)] mt-1.5">{getFieldError('warehouseId')}</p>}
             </div>
 
-            <div
-              className={cn(
-                'rounded-lg border px-3 py-2 text-sm',
-                routePreflight.status === 'success' && 'border-[var(--success)]/30 bg-[var(--success)]/10 text-[var(--success)]',
-                routePreflight.status === 'error' && 'border-[var(--error)]/30 bg-[var(--error-bg)] text-[var(--error)]',
-                routePreflight.status === 'checking' && 'border-[var(--border-subtle)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]',
-                routePreflight.status === 'idle' && 'border-[var(--border-subtle)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
-              )}
-            >
-              {routePreflight.status === 'checking' && (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {routePreflight.message}
-                </span>
-              )}
-              {routePreflight.status !== 'checking' && (routePreflight.message || 'Route serviceability check will run automatically.')}
-            </div>
-            {getFieldError('preflight') && <p className="text-xs text-[var(--error)]">{getFieldError('preflight')}</p>}
+            <AnimatePresence>
+              {routePreflight.status !== 'idle' && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className={cn(
+                    'rounded-xl border px-4 py-3 text-sm flex items-center gap-3 mt-6 mb-8',
+                    routePreflight.status === 'success' && 'border-[var(--success)]/20 bg-[var(--success)]/5 text-[var(--success)]',
+                    routePreflight.status === 'error' && 'border-[var(--error)]/20 bg-[var(--error-bg)] text-[var(--error)]',
+                    routePreflight.status === 'checking' && 'border-[var(--border-subtle)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
+                  )}
+                >
+                  {routePreflight.status === 'checking' ? (
+                    <Loader2 className="w-5 h-5 animate-spin shrink-0" />
+                  ) : routePreflight.status === 'success' ? (
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                  )}
 
-            <div className="space-y-2">
-              <label htmlFor="externalOrderNumber" className="text-sm font-medium text-[var(--text-primary)]">External Order Number (Optional)</label>
+                  <p className="font-medium">
+                    {routePreflight.message || 'Route serviceability check will run automatically.'}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {getFieldError('preflight') && <p className="text-xs text-[var(--error)] mt-1.5">{getFieldError('preflight')}</p>}
+
+            <div className="mb-8">
+              <label htmlFor="externalOrderNumber" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                External Order Number <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+              </label>
               <Input
                 id="externalOrderNumber"
                 value={formData.externalOrderNumber}
-                placeholder="ORD-001"
+                placeholder="e.g. ORD-001"
                 onChange={(e) => handleInputChange('externalOrderNumber', e.target.value)}
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="notes" className="text-sm font-medium text-[var(--text-primary)]">Notes (Optional)</label>
+            <div className="mb-8">
+              <label htmlFor="notes" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                Notes <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+              </label>
               <textarea
                 id="notes"
                 value={formData.notes}
                 rows={3}
                 placeholder="Add any special instructions..."
                 onChange={(e) => handleInputChange('notes', e.target.value)}
-                className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-secondary)] text-[var(--text-primary)] resize-none"
+                className="w-full px-4 py-3 border border-[var(--border-subtle)] rounded-xl bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue-soft)] focus:border-[var(--primary-blue)] transition-all"
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="tags" className="text-sm font-medium text-[var(--text-primary)]">Tags (Optional, comma-separated)</label>
+            <div>
+              <label htmlFor="tags" className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+                Tags <span className="text-[var(--text-muted)] font-normal ml-1">(Optional)</span>
+              </label>
               <Input
                 id="tags"
                 value={formData.tags}
-                placeholder="priority, fragile, repeat-customer"
+                placeholder="e.g. priority, fragile, repeat-customer"
                 onChange={(e) => handleInputChange('tags', e.target.value)}
               />
             </div>

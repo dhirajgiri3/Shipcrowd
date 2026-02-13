@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
+import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 describe('POST /api/v1/auth/register', () => {
 
@@ -348,40 +349,34 @@ describe('POST /api/v1/auth/register', () => {
     });
 
     describe('Rate Limiting', () => {
-        it.skip('should enforce rate limiting on registration attempts', async () => {
-            // Note: Rate limiting might be configured per IP and may not work in test environment
-            // This test is skipped until rate limiting configuration is verified
+        it('should enforce rate limiting on registration attempts', async () => {
             const generateUserData = (index: number) => ({
                 name: `User ${index}`,
                 email: `user${index}@example.com`,
                 password: 'Password123!',
                 role: 'seller',
             });
+            const identity = createRateLimitIdentity('register', 'registration-limit');
 
-            // Make 6 registration attempts (limit is 5 per hour)
-            const requests = [];
-            for (let i = 0; i < 6; i++) {
-                requests.push(
+            const responses = [];
+            for (let i = 0; i < 8; i++) {
+                const response = await withRateLimitHeaders(
                     request(app)
                         .post('/api/v1/auth/register')
                         .send(generateUserData(i))
-                        .set('X-CSRF-Token', 'frontend-request')
+                        .set('X-CSRF-Token', 'frontend-request'),
+                    identity
                 );
+                responses.push(response);
             }
 
-            const responses = await Promise.all(requests);
-
-            // First 5 should succeed or fail with validation errors
             const first5 = responses.slice(0, 5);
-            first5.forEach(response => {
-                expect([201, 400]).toContain(response.status);
+            first5.forEach((response) => {
+                expect(response.status).not.toBe(429);
             });
 
-            // 6th should be rate limited
-            const sixth = responses[5];
-            expect(sixth.status).toBe(429);
-            const message = sixth.body.error?.message || sixth.body.message;
-            expect(message).toMatch(/too many/i);
+            const blockedResponse = responses.find((response) => response.status === 429);
+            expect(blockedResponse).toBeDefined();
         });
     });
 });

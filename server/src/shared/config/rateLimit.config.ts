@@ -38,6 +38,7 @@ const createLimiterConfig = (
     prefix: string,
     extra: any = {}
 ) => {
+    const extraSkip = typeof extra?.skip === 'function' ? extra.skip : undefined;
     return rateLimit({
         windowMs,
         max,
@@ -45,6 +46,13 @@ const createLimiterConfig = (
         standardHeaders: true,
         legacyHeaders: false,
         ...extra,
+        skip: (req: any, res: any) => {
+            // In tests, rate limiting is opt-in to avoid cross-suite interference.
+            if (process.env.NODE_ENV === 'test' && req.headers['x-test-rate-limit'] !== 'enforce') {
+                return true;
+            }
+            return extraSkip ? extraSkip(req, res) : false;
+        },
         store: rateLimitRedisClient ? new RedisStore({
             // @ts-ignore - Compatibility shim for ioredis + rate-limit-redis
             sendCommand: (...args: string[]) => {
@@ -235,7 +243,7 @@ export const registrationRateLimiter = createLimiterConfig(
  */
 export const emailVerificationRateLimiter = createLimiterConfig(
     60 * 60 * 1000,
-    10,
+    5,
     'Too many verification attempts, please try again later',
     'rl:email_verify:'
 );
@@ -271,6 +279,28 @@ export const setPasswordRateLimiter = createLimiterConfig(
     5,
     'Too many password set attempts, please try again later',
     'rl:set_pwd:'
+);
+
+/**
+ * Rate limiter for change password (authenticated)
+ * Strict: 5 requests per 15 minutes
+ */
+export const changePasswordRateLimiter = createLimiterConfig(
+    15 * 60 * 1000,
+    5,
+    'Too many password change attempts, please try again later',
+    'rl:change_pwd:'
+);
+
+/**
+ * Rate limiter for change email requests (authenticated)
+ * Strict: 3 requests per hour
+ */
+export const changeEmailRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    3,
+    'Too many email change attempts, please try again later',
+    'rl:change_email:'
 );
 
 /**

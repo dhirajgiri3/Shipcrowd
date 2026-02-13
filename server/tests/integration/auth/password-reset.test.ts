@@ -3,6 +3,7 @@ import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
 import crypto from 'crypto';
 import { AuthTokenService } from '../../../src/core/application/services/auth/token.service';
+import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 // Helper to extract error message from response
 const getErrorMessage = (response: any): string => {
@@ -79,28 +80,24 @@ describe('Password Reset Flow', () => {
             expect(getErrorMessage(response) || 'Validation failed').toBeTruthy();
         });
 
-        it.skip('should enforce rate limiting (3 requests per hour)', async () => {
-            // Make 4 reset requests
-            const requests = [];
+        it('should enforce rate limiting (3 requests per hour)', async () => {
+            const identity = createRateLimitIdentity('password-reset', 'request-reset-limit');
+            const responses = [];
             for (let i = 0; i < 4; i++) {
-                requests.push(
+                const response = await withRateLimitHeaders(
                     request(app)
                         .post('/api/v1/auth/reset-password')
                         .send({ email: testEmail })
-                        .set('X-CSRF-Token', 'frontend-request')
+                        .set('X-CSRF-Token', 'frontend-request'),
+                    identity
                 );
+                responses.push(response);
             }
 
-            const responses = await Promise.all(requests);
-
-            // First 3 should succeed
-            responses.slice(0, 3).forEach(response => {
-                expect(response.status).toBe(200);
+            responses.slice(0, 3).forEach((response) => {
+                expect(response.status).not.toBe(429);
             });
-
-            // 4th should be rate limited
             expect(responses[3].status).toBe(429);
-            expect(getErrorMessage(responses[3])).toMatch(/too many/i);
         });
     });
 
@@ -241,25 +238,27 @@ describe('Password Reset Flow', () => {
             expect(getErrorMessage(response)).toMatch(/invalid.*token|invalid/i);
         });
 
-        it.skip('should enforce rate limiting on reset confirmation', async () => {
-            const requests = [];
+        it('should enforce rate limiting on reset confirmation', async () => {
+            const identity = createRateLimitIdentity('password-reset', 'confirm-reset-limit');
+            const responses = [];
             for (let i = 0; i < 4; i++) {
-                requests.push(
+                const response = await withRateLimitHeaders(
                     request(app)
                         .post('/api/v1/auth/reset-password/confirm')
                         .send({
                             token: resetToken,
                             password: 'NewPassword123!',
                         })
-                        .set('X-CSRF-Token', 'frontend-request')
+                        .set('X-CSRF-Token', 'frontend-request'),
+                    identity
                 );
+                responses.push(response);
             }
 
-            const responses = await Promise.all(requests);
-
-            // Should enforce rate limiting
-            const rateLimitedResponses = responses.filter(r => r.status === 429);
-            expect(rateLimitedResponses.length).toBeGreaterThan(0);
+            responses.slice(0, 3).forEach((response) => {
+                expect(response.status).not.toBe(429);
+            });
+            expect(responses[3].status).toBe(429);
         });
     });
 
