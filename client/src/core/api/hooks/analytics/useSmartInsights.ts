@@ -36,6 +36,12 @@ export interface SmartInsight {
     };
     socialProof: string;
     confidence: number; // 0-100
+    evidence?: {
+        source: string;
+        window: string;
+        sampleSize: number;
+        method: 'direct_aggregation' | 'derived_comparison' | 'pattern_analysis';
+    };
     projectedImpact?: {
         savings?: number;
         reduction?: number;

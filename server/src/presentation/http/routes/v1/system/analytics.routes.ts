@@ -100,8 +100,16 @@ router.get('/orders/top-products', authenticate, asyncHandler(analyticsControlle
  */
 router.get('/reports', authenticate, asyncHandler(analyticsController.listReportConfigs));
 router.post('/reports/build', authenticate, asyncHandler(analyticsController.buildCustomReport));
+router.post('/reports/export', authenticate, asyncHandler(analyticsController.exportReport));
 router.post('/reports/save', authenticate, asyncHandler(analyticsController.saveReportConfig));
 router.delete('/reports/:id', authenticate, asyncHandler(analyticsController.deleteReportConfig));
+
+/**
+ * Seller Analytics
+ */
+router.get('/cost', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getCostAnalysis));
+router.get('/courier-comparison', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getCourierComparison));
+router.get('/sla', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getSLAPerformance));
 
 /**
  * Seller Actions (Dashboard Widgets)

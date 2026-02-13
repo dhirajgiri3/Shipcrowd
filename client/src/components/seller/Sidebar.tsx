@@ -33,6 +33,12 @@ import {
     Trophy,
     Timer,
     FileBarChart,
+    ClipboardList,
+    CornerUpLeft,
+    Wrench,
+    CheckSquare,
+    MessageSquare,
+    Landmark,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
@@ -63,6 +69,7 @@ const navSections: NavSection[] = [
             { label: 'Dashboard', href: '/seller', icon: LayoutDashboard },
             { label: 'Orders', href: '/seller/orders', icon: ShoppingCart, badgeKey: 'orders_ready' },
             { label: 'Shipments', href: '/seller/shipments', icon: Package },
+            { label: 'Manifests', href: '/seller/manifests', icon: ClipboardList },
             { label: 'Shipping Labels', href: '/seller/label', icon: FileText },
             { label: 'Track & Trace', href: '/seller/tracking', icon: MapPin },
         ],
@@ -73,7 +80,8 @@ const navSections: NavSection[] = [
         defaultOpen: false,
         items: [
             { label: 'NDR Management', href: '/seller/ndr', icon: PackageX, badgeKey: 'ndr_pending' },
-            { label: 'RTO Management', href: '/seller/rto', icon: RotateCcw },
+            { label: 'Returns (RTO)', href: '/seller/rto', icon: RotateCcw },
+            { label: 'Customer Returns', href: '/seller/returns', icon: CornerUpLeft },
             { label: 'Warehouses', href: '/seller/warehouses', icon: Building2 },
             { label: 'Weight Discrepancy', href: '/seller/weight', icon: ScaleIcon },
             { label: 'Rate Calculator', href: '/seller/rates', icon: Calculator },
@@ -85,6 +93,7 @@ const navSections: NavSection[] = [
         defaultOpen: false,
         items: [
             { label: 'Wallet & Billing', href: '/seller/wallet', icon: Wallet },
+            { label: 'Bank Accounts', href: '/seller/bank-accounts', icon: Landmark },
             { label: 'COD Overview', href: '/seller/cod', icon: Banknote },
             { label: 'COD Health', href: '/seller/cod/health', icon: Activity },
             { label: 'Discrepancies', href: '/seller/cod/discrepancies', icon: AlertTriangle },
@@ -100,6 +109,24 @@ const navSections: NavSection[] = [
             { label: 'Courier Comparison', href: '/seller/analytics/comparison', icon: Trophy },
             { label: 'SLA Dashboard', href: '/seller/analytics/sla', icon: Timer },
             { label: 'Custom Reports', href: '/seller/analytics/reports', icon: FileBarChart },
+        ],
+    },
+    {
+        id: 'tools',
+        title: 'Tools',
+        defaultOpen: false,
+        items: [
+            { label: 'Pincode Checker', href: '/seller/tools/pincode-checker', icon: MapPin },
+            { label: 'Address Validation', href: '/seller/tools/bulk-address-validation', icon: CheckSquare },
+        ],
+    },
+    {
+        id: 'communication',
+        title: 'Communication',
+        defaultOpen: false,
+        items: [
+            { label: 'Notification Rules', href: '/seller/communication/rules', icon: Wrench },
+            { label: 'Templates', href: '/seller/communication/templates', icon: MessageSquare },
         ],
     },
 ];
@@ -130,11 +157,11 @@ function SidebarComponent() {
                 try {
                     return JSON.parse(saved);
                 } catch {
-                    return { shipping: true, operations: false, financial: false, analytics: false };
+                    return { shipping: true, operations: false, financial: false, analytics: false, tools: false, communication: false };
                 }
             }
         }
-        return { shipping: true, operations: false, financial: false, analytics: false };
+        return { shipping: true, operations: false, financial: false, analytics: false, tools: false, communication: false };
     });
 
     // Persist to localStorage

@@ -38,7 +38,7 @@ export const useTemplates = (
         queryKey: queryKeys.communication.templates(filters),
         queryFn: async () => {
             const response = await apiClient.get('/communication/templates', { params: filters });
-            return response.data.data;
+            return response.data.data.templates;
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,

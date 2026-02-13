@@ -12,4 +12,4 @@ export { default as RevenueAnalyticsService } from './revenue-analytics.service'
 export { default as CustomerAnalyticsService } from './customer-analytics.service';
 export { default as InventoryAnalyticsService } from './inventory-analytics.service';
 export { default as ReportBuilderService } from './report-builder.service';
-
+export { default as SellerAnalyticsService } from './seller-analytics.service';

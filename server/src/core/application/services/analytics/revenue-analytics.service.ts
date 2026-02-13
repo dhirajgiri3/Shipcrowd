@@ -14,7 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
 import WalletService from '../wallet/wallet.service';
 import AnalyticsService, { DateRange } from './analytics.service';
@@ -251,8 +251,8 @@ export default class RevenueAnalyticsService {
             const previousEnd = new Date(currentStart.getTime() - 1);
             const previousStart = new Date(previousEnd.getTime() - periodMs);
 
-            // Current month profitability using Order model
-            const [currentStats] = await Order.aggregate([
+            // Revenue comes from orders
+            const [currentRevenueStats] = await Order.aggregate([
                 {
                     $match: {
                         companyId: new mongoose.Types.ObjectId(companyId),
@@ -263,43 +263,49 @@ export default class RevenueAnalyticsService {
                 {
                     $project: {
                         revenue: '$totals.total',
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: '$revenue' },
+                        orderCount: { $sum: 1 }
+                    }
+                }
+            ]);
+
+            // Costs come from shipment-level financial fields
+            const [currentCostStats] = await Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        createdAt: { $gte: currentStart, $lte: currentEnd },
+                        isDeleted: false
+                    }
+                },
+                {
+                    $project: {
                         shippingCost: {
-                            $ifNull: [
-                                '$shippingDetails.shippingCost',
-                                { $ifNull: ['$totals.shipping', 0] },
-                            ],
+                            $ifNull: ['$paymentDetails.shippingCost', 0],
                         },
                         codCharge: {
-                            $ifNull: [
-                                '$shippingDetails.codCharges',
-                                { $ifNull: ['$codCharge', 0] },
-                            ],
+                            $ifNull: ['$paymentDetails.codCharges', 0],
                         },
-                        platformFee: { $ifNull: ['$platformFee', 0] },
-                        gst: { $ifNull: ['$totals.tax', 0] },
-                        // RTO cost (only for RTO orders - double shipping)
+                        platformFee: {
+                            $ifNull: ['$carrierDetails.charges.platformFee', 0],
+                        },
+                        // Shipping-side GST (not product GST from order totals)
+                        gst: { $ifNull: ['$pricingDetails.gstAmount', 0] },
                         rtoCost: {
-                            $cond: [
-                                { $regexMatch: { input: '$currentStatus', regex: /rto/i } },
-                                {
-                                    $multiply: [
-                                        {
-                                            $ifNull: [
-                                                '$shippingDetails.shippingCost',
-                                                { $ifNull: ['$totals.shipping', 0] },
-                                            ],
-                                        },
-                                        2,
-                                    ],
-                                },
-                                0
-                            ]
+                            $ifNull: [
+                                '$rtoDetails.rtoShippingCost',
+                                { $ifNull: ['$carrierDetails.charges.rtoCharges', 0] },
+                            ],
                         }
                     }
                 },
                 {
                     $project: {
-                        revenue: 1,
                         shippingCost: 1,
                         codCharge: 1,
                         platformFee: 1,
@@ -313,90 +319,81 @@ export default class RevenueAnalyticsService {
                 {
                     $group: {
                         _id: null,
-                        totalRevenue: { $sum: '$revenue' },
                         shippingCosts: { $sum: '$shippingCost' },
                         codCharges: { $sum: '$codCharge' },
                         platformFees: { $sum: '$platformFee' },
                         gst: { $sum: '$gst' },
                         rtoCosts: { $sum: '$rtoCost' },
-                        totalCosts: { $sum: '$totalCosts' },
-                        orderCount: { $sum: 1 }
-                    }
-                }
-            ]);
-
-            // Previous month stats for comparison
-            const [previousStats] = await Order.aggregate([
-                {
-                    $match: {
-                        companyId: new mongoose.Types.ObjectId(companyId),
-                        createdAt: { $gte: previousStart, $lte: previousEnd },
-                        isDeleted: false
-                    }
-                },
-                {
-                    $project: {
-                        revenue: '$totals.total',
-                        shippingCost: {
-                            $ifNull: [
-                                '$shippingDetails.shippingCost',
-                                { $ifNull: ['$totals.shipping', 0] },
-                            ],
-                        },
-                        codCharge: {
-                            $ifNull: [
-                                '$shippingDetails.codCharges',
-                                { $ifNull: ['$codCharge', 0] },
-                            ],
-                        },
-                        platformFee: { $ifNull: ['$platformFee', 0] },
-                        gst: { $ifNull: ['$totals.tax', 0] },
-                        rtoCost: {
-                            $cond: [
-                                { $regexMatch: { input: '$currentStatus', regex: /rto/i } },
-                                {
-                                    $multiply: [
-                                        {
-                                            $ifNull: [
-                                                '$shippingDetails.shippingCost',
-                                                { $ifNull: ['$totals.shipping', 0] },
-                                            ],
-                                        },
-                                        2,
-                                    ],
-                                },
-                                0
-                            ]
-                        }
-                    }
-                },
-                {
-                    $project: {
-                        revenue: 1,
-                        totalCosts: {
-                            $add: ['$shippingCost', '$codCharge', '$platformFee', '$gst', '$rtoCost']
-                        }
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        totalRevenue: { $sum: '$revenue' },
                         totalCosts: { $sum: '$totalCosts' }
                     }
                 }
             ]);
 
+            // Previous period revenue + cost stats for comparison
+            const [previousRevenueStats, previousCostStats] = await Promise.all([
+                Order.aggregate([
+                    {
+                        $match: {
+                            companyId: new mongoose.Types.ObjectId(companyId),
+                            createdAt: { $gte: previousStart, $lte: previousEnd },
+                            isDeleted: false
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: { $sum: '$totals.total' }
+                        }
+                    }
+                ]).then(rows => rows[0]),
+                Shipment.aggregate([
+                    {
+                        $match: {
+                            companyId: new mongoose.Types.ObjectId(companyId),
+                            createdAt: { $gte: previousStart, $lte: previousEnd },
+                            isDeleted: false
+                        }
+                    },
+                    {
+                        $project: {
+                            shippingCost: { $ifNull: ['$paymentDetails.shippingCost', 0] },
+                            codCharge: { $ifNull: ['$paymentDetails.codCharges', 0] },
+                            platformFee: { $ifNull: ['$carrierDetails.charges.platformFee', 0] },
+                            gst: { $ifNull: ['$pricingDetails.gstAmount', 0] },
+                            rtoCost: {
+                                $ifNull: [
+                                    '$rtoDetails.rtoShippingCost',
+                                    { $ifNull: ['$carrierDetails.charges.rtoCharges', 0] },
+                                ],
+                            },
+                        }
+                    },
+                    {
+                        $project: {
+                            totalCosts: {
+                                $add: ['$shippingCost', '$codCharge', '$platformFee', '$gst', '$rtoCost']
+                            }
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            totalCosts: { $sum: '$totalCosts' }
+                        }
+                    }
+                ]).then(rows => rows[0]),
+            ]);
+
             // Calculate current period metrics
-            const totalRevenue = currentStats?.totalRevenue || 0;
-            const totalCosts = currentStats?.totalCosts || 0;
+            const totalRevenue = currentRevenueStats?.totalRevenue || 0;
+            const totalCosts = currentCostStats?.totalCosts || 0;
             const netProfit = totalRevenue - totalCosts;
             const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-            const orderCount = currentStats?.orderCount || 0;
+            const orderCount = currentRevenueStats?.orderCount || 0;
 
             // Calculate previous period margin for comparison
-            const prevRevenue = previousStats?.totalRevenue || 0;
-            const prevCosts = previousStats?.totalCosts || 0;
+            const prevRevenue = previousRevenueStats?.totalRevenue || 0;
+            const prevCosts = previousCostStats?.totalCosts || 0;
             const prevProfit = prevRevenue - prevCosts;
             const prevMargin = prevRevenue > 0 ? (prevProfit / prevRevenue) * 100 : 0;
             const marginChange = prevMargin > 0 ? profitMargin - prevMargin : 0;
@@ -409,11 +406,11 @@ export default class RevenueAnalyticsService {
                     profitMargin: Math.round(profitMargin * 10) / 10
                 },
                 breakdown: {
-                    shippingCosts: Math.round((currentStats?.shippingCosts || 0) * 100) / 100,
-                    codCharges: Math.round((currentStats?.codCharges || 0) * 100) / 100,
-                    platformFees: Math.round((currentStats?.platformFees || 0) * 100) / 100,
-                    gst: Math.round((currentStats?.gst || 0) * 100) / 100,
-                    rtoCosts: Math.round((currentStats?.rtoCosts || 0) * 100) / 100
+                    shippingCosts: Math.round((currentCostStats?.shippingCosts || 0) * 100) / 100,
+                    codCharges: Math.round((currentCostStats?.codCharges || 0) * 100) / 100,
+                    platformFees: Math.round((currentCostStats?.platformFees || 0) * 100) / 100,
+                    gst: Math.round((currentCostStats?.gst || 0) * 100) / 100,
+                    rtoCosts: Math.round((currentCostStats?.rtoCosts || 0) * 100) / 100
                 },
                 averagePerOrder: {
                     revenue: orderCount > 0 ? Math.round((totalRevenue / orderCount) * 100) / 100 : 0,

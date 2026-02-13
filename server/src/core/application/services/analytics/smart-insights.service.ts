@@ -10,7 +10,7 @@
  */
 
 import mongoose from 'mongoose';
-import { Order, Shipment, Company, WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Shipment, Company, WalletTransaction, RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import CacheService from '../../../../infrastructure/utilities/cache.service';
 import { NotFoundError } from '../../../../shared/errors/app.error';
@@ -41,6 +41,12 @@ export interface SmartInsight {
     };
     socialProof: string;
     confidence: number; // 0-100
+    evidence?: {
+        source: string;
+        window: string;
+        sampleSize: number;
+        method: 'direct_aggregation' | 'derived_comparison' | 'pattern_analysis';
+    };
     projectedImpact?: {
         savings?: number;
         reduction?: number;
@@ -70,6 +76,39 @@ export interface RTOPattern {
 // ===== SERVICE =====
 
 export default class SmartInsightsService {
+    private static clamp(value: number, min: number, max: number): number {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static confidenceFromSignal(sampleSize: number, signalStrength: number): number {
+        const sampleBoost = Math.min(25, sampleSize / 8);
+        const signalBoost = Math.min(20, signalStrength / 2);
+        return Math.round(this.clamp(50 + sampleBoost + signalBoost, 50, 95));
+    }
+
+    private static isActionableInsight(insight: SmartInsight): boolean {
+        const value = Math.max(0, insight.impact?.value || 0);
+        const sampleSize = insight.evidence?.sampleSize || 0;
+
+        if (sampleSize < 5) return false;
+
+        switch (insight.type) {
+            case 'cost_saving':
+                // At least meaningful weekly savings
+                return value >= 100;
+            case 'rto_prevention':
+                // Avoid very tiny avoidable-loss / reduction cards
+                return value >= 300 || (insight.projectedImpact?.reduction || 0) >= 10;
+            case 'growth_opportunity':
+                return value >= 500;
+            case 'speed':
+            case 'efficiency':
+                return value >= 5;
+            default:
+                return value > 0;
+        }
+    }
+
     /**
      * Generate all smart insights for a company
      * Returns TOP 5 most impactful recommendations
@@ -102,8 +141,11 @@ export default class SmartInsightsService {
                 ...growthInsights
             );
 
+            // Keep only meaningful and statistically useful insights
+            const actionableInsights = insights.filter((insight) => this.isActionableInsight(insight));
+
             // Sort by priority and impact value
-            const sortedInsights = insights
+            const sortedInsights = actionableInsights
                 .sort((a, b) => {
                     const priorityOrder = { high: 0, medium: 1, low: 2 };
                     if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
@@ -182,6 +224,9 @@ export default class SmartInsightsService {
                     if (costDiff > 15) {
                         const weeklyOrders = Math.round((mostUsedCourier.orderCount / 30) * 7);
                         const weeklySavings = Math.round(costDiff * weeklyOrders);
+                        const sampleSize = shipments.reduce((sum, item) => sum + item.orderCount, 0);
+                        const signalStrength = (costDiff / Math.max(1, mostUsedCourier.avgCost)) * 100;
+                        const confidence = this.confidenceFromSignal(sampleSize, signalStrength);
 
                         insights.push({
                             id: `cost_carrier_${Date.now()}`,
@@ -210,7 +255,13 @@ export default class SmartInsightsService {
                                 confirmMessage: `Review courier performance and consider using ${cheapestCourier._id} more frequently to reduce costs.`
                             },
                             socialProof: `Based on ${mostUsedCourier.orderCount + cheapestCourier.orderCount} orders in last 30 days`,
-                            confidence: 80,
+                            confidence,
+                            evidence: {
+                                source: 'Shipment.paymentDetails.shippingCost grouped by carrier',
+                                window: 'Last 30 days',
+                                sampleSize,
+                                method: 'direct_aggregation',
+                            },
                             projectedImpact: {
                                 savings: weeklySavings * 4 // Monthly savings
                             },
@@ -240,186 +291,156 @@ export default class SmartInsightsService {
             const previous30Days = new Date();
             previous30Days.setDate(previous30Days.getDate() - 60);
 
-            // Get RTO shipments from last 30 days (RTO data lives in Shipment model, not Order)
-            const [currentRTOs, previousRTOs] = await Promise.all([
-                Shipment.aggregate([
+            const [currentReasonBreakdown, currentTotalRTOs, previousTotalRTOs] = await Promise.all([
+                RTOEvent.aggregate([
                     {
                         $match: {
-                            companyId: new mongoose.Types.ObjectId(companyId),
-                            currentStatus: { $regex: /rto/i },
-                            createdAt: { $gte: last30Days }
-                        }
+                            company: new mongoose.Types.ObjectId(companyId),
+                            triggeredAt: { $gte: last30Days },
+                        },
                     },
                     {
-                        $lookup: {
-                            from: 'orders',
-                            localField: 'orderId',
-                            foreignField: '_id',
-                            as: 'orderData'
-                        }
+                        $group: {
+                            _id: '$rtoReason',
+                            count: { $sum: 1 },
+                            totalLoss: { $sum: { $ifNull: ['$rtoCharges', 0] } },
+                            avgLoss: { $avg: { $ifNull: ['$rtoCharges', 0] } },
+                        },
                     },
-                    { $unwind: { path: '$orderData', preserveNullAndEmptyArrays: true } },
-                    {
-                        $project: {
-                            city: '$deliveryDetails.address.city',
-                            orderValue: '$orderData.totals.total',
-                            rtoReason: '$rtoDetails.rtoReason',
-                            paymentMode: '$paymentDetails.type'
-                        }
-                    }
+                    { $sort: { count: -1 } },
                 ]),
-
-                Shipment.aggregate([
-                    {
-                        $match: {
-                            companyId: new mongoose.Types.ObjectId(companyId),
-                            currentStatus: { $regex: /rto/i },
-                            createdAt: { $gte: previous30Days, $lt: last30Days }
-                        }
-                    },
-                    {
-                        $lookup: {
-                            from: 'orders',
-                            localField: 'orderId',
-                            foreignField: '_id',
-                            as: 'orderData'
-                        }
-                    },
-                    { $unwind: { path: '$orderData', preserveNullAndEmptyArrays: true } },
-                    {
-                        $project: {
-                            orderValue: '$orderData.totals.total'
-                        }
-                    }
-                ])
+                RTOEvent.countDocuments({
+                    company: new mongoose.Types.ObjectId(companyId),
+                    triggeredAt: { $gte: last30Days },
+                }),
+                RTOEvent.countDocuments({
+                    company: new mongoose.Types.ObjectId(companyId),
+                    triggeredAt: { $gte: previous30Days, $lt: last30Days },
+                }),
             ]);
 
-            // Calculate RTO rate change
-            if (currentRTOs.length > 0) {
-                const rtoIncrease = previousRTOs.length > 0
-                    ? ((currentRTOs.length - previousRTOs.length) / previousRTOs.length) * 100
+            if (currentTotalRTOs > 0) {
+                const rtoIncrease = previousTotalRTOs > 0
+                    ? ((currentTotalRTOs - previousTotalRTOs) / previousTotalRTOs) * 100
                     : 0;
 
-                // Analyze RTO patterns
-                const reasonMap = new Map<string, { count: number; cities: Set<string>; avgLoss: number }>();
+                const topReason = currentReasonBreakdown[0];
+                const topReasonCount = topReason?.count || 0;
+                const topReasonKey = topReason?._id || 'other';
+                const topReasonShare = topReasonCount > 0 ? (topReasonCount / currentTotalRTOs) * 100 : 0;
 
-                for (const rto of currentRTOs) {
-                    const reason = rto.rtoReason || 'Unknown';
-                    if (!reasonMap.has(reason)) {
-                        reasonMap.set(reason, { count: 0, cities: new Set(), avgLoss: 0 });
-                    }
-                    const data = reasonMap.get(reason)!;
-                    data.count++;
-                    if (rto.city) {
-                        data.cities.add(rto.city);
-                    }
-                    data.avgLoss = ((data.avgLoss * (data.count - 1)) + (rto.orderValue || 0)) / data.count;
-                }
+                if (topReasonCount >= 3) {
+                    const reasonLabelMap: Record<string, string> = {
+                        ndr_unresolved: 'Customer unavailable',
+                        customer_cancellation: 'Customer refused/cancelled',
+                        refused: 'Customer refused',
+                        incorrect_product: 'Address/Order mismatch',
+                        damaged_in_transit: 'Shipment damage',
+                        qc_failure: 'QC failure',
+                        other: 'Other',
+                    };
 
-                // Find top RTO reason
-                const topReason = Array.from(reasonMap.entries())
-                    .sort((a, b) => b[1].count - a[1].count)[0];
+                    const strategyMap: Record<string, { solution: string; costPerOrder: number }> = {
+                        ndr_unresolved: { solution: 'IVR Confirmation', costPerOrder: 2 },
+                        customer_cancellation: { solution: 'Pre-delivery SMS Confirmation', costPerOrder: 0.5 },
+                        refused: { solution: 'Pre-delivery SMS Confirmation', costPerOrder: 0.5 },
+                        incorrect_product: { solution: 'Address Verification', costPerOrder: 1 },
+                        damaged_in_transit: { solution: 'Packaging & Courier Audit', costPerOrder: 0 },
+                        qc_failure: { solution: 'Product QC Checklist', costPerOrder: 0 },
+                        other: { solution: 'Manual RTO Root-Cause Review', costPerOrder: 0 },
+                    };
 
-                if (topReason && topReason[1].count >= 3) {
-                    const [reason, data] = topReason;
-                    const percentage = (data.count / currentRTOs.length) * 100;
-                    const avgLoss = Math.round(data.avgLoss);
-                    const totalLoss = Math.round(data.count * avgLoss);
+                    const strategy = strategyMap[topReasonKey] || strategyMap.other;
+                    // Conservative reduction estimate derived from reason concentration, not fixed constants.
+                    const expectedReduction = Math.round(this.clamp(topReasonShare * 0.35, 8, 30));
+                    const estimatedAvoidableLoss = Math.round((topReason.totalLoss || 0) * (expectedReduction / 100));
+                    const monthlyCost = Math.round((topReasonCount || 0) * strategy.costPerOrder);
+                    const signalStrength = topReasonShare + Math.abs(Math.min(rtoIncrease, 30));
+                    const confidence = this.confidenceFromSignal(currentTotalRTOs, signalStrength);
 
-                    // Determine recommended solution based on reason
-                    let solution = '';
-                    let solutionCost = 0;
-                    let expectedReduction = 0;
-
-                    if (reason.toLowerCase().includes('customer unavailable') ||
-                        reason.toLowerCase().includes('not reachable')) {
-                        solution = 'IVR Confirmation';
-                        solutionCost = 2;
-                        expectedReduction = 60;
-                    } else if (reason.toLowerCase().includes('wrong address') ||
-                        reason.toLowerCase().includes('address')) {
-                        solution = 'Address Verification';
-                        solutionCost = 1;
-                        expectedReduction = 45;
-                    } else if (reason.toLowerCase().includes('refused') ||
-                        reason.toLowerCase().includes('cancelled')) {
-                        solution = 'Pre-delivery SMS Confirmation';
-                        solutionCost = 0.5;
-                        expectedReduction = 30;
-                    }
-
-                    if (solution) {
-                        const preventableRTOs = Math.round((data.count * expectedReduction) / 100);
-                        const monthlySavings = Math.round(preventableRTOs * avgLoss);
-                        const monthlyCost = Math.round(data.count * solutionCost * (30 / 30)); // Current month projection
-
-                        insights.push({
-                            id: `rto_prevent_${reason.replace(/\s+/g, '_')}_${Date.now()}`,
-                            type: 'rto_prevention',
-                            priority: percentage > 30 ? 'high' : 'medium',
-                            title: `Reduce RTOs by ${expectedReduction}% with ${solution}`,
-                            description: `${data.count} RTOs (${percentage.toFixed(1)}%) in last 30 days due to "${reason}". ${solution} could prevent ~${preventableRTOs} RTOs, saving ₹${monthlySavings.toLocaleString('en-IN')}/month.`,
-                            impact: {
-                                metric: 'rto_reduction',
-                                value: expectedReduction,
-                                period: 'month',
-                                formatted: `Reduce RTOs by ${expectedReduction}%`
-                            },
-                            data: {
-                                currentRTOCount: data.count,
-                                rtoPercentage: Math.round(percentage),
-                                topReason: reason,
-                                affectedCities: Array.from(data.cities).slice(0, 5),
-                                avgLossPerRTO: avgLoss,
-                                totalLoss: totalLoss,
-                                recommendedSolution: solution,
-                                costPerOrder: solutionCost
-                            },
-                            action: {
-                                type: 'enable_feature',
-                                label: `Enable ${solution}`,
-                                costImpact: `₹${solutionCost} per order`,
-                                confirmMessage: `${solution} will cost ₹${monthlyCost.toLocaleString('en-IN')}/month but save ₹${monthlySavings.toLocaleString('en-IN')}/month by preventing RTOs.`
-                            },
-                            socialProof: `Based on ${data.count} RTOs in last 30 days`,
-                            confidence: 80,
-                            projectedImpact: {
-                                reduction: expectedReduction,
-                                savings: monthlySavings,
-                                additionalCost: monthlyCost
-                            },
-                            createdAt: new Date()
-                        });
-                    }
+                    insights.push({
+                        id: `rto_prevent_${String(topReasonKey).replace(/\s+/g, '_')}_${Date.now()}`,
+                        type: 'rto_prevention',
+                        priority: topReasonShare > 30 ? 'high' : 'medium',
+                        title: `Reduce dominant RTO cause with ${strategy.solution}`,
+                        description: `${topReasonCount} of ${currentTotalRTOs} RTOs (${topReasonShare.toFixed(1)}%) were "${reasonLabelMap[topReasonKey] || topReasonKey}" in last 30 days. Prioritize ${strategy.solution} to reduce this dominant pattern.`,
+                        impact: {
+                            metric: 'avoidable_loss',
+                            value: estimatedAvoidableLoss,
+                            period: 'month',
+                            formatted: `Potentially avoid ₹${estimatedAvoidableLoss.toLocaleString('en-IN')}/month`,
+                        },
+                        data: {
+                            currentRTOCount: currentTotalRTOs,
+                            topReason: topReasonKey,
+                            topReasonLabel: reasonLabelMap[topReasonKey] || topReasonKey,
+                            topReasonCount,
+                            topReasonShare: Math.round(topReasonShare * 10) / 10,
+                            avgLossPerRTO: Math.round(topReason.avgLoss || 0),
+                            totalLossTopReason: Math.round(topReason.totalLoss || 0),
+                            recommendedSolution: strategy.solution,
+                            costPerOrder: strategy.costPerOrder,
+                        },
+                        action: {
+                            type: 'enable_feature',
+                            label: `Prioritize ${strategy.solution}`,
+                            costImpact: strategy.costPerOrder > 0 ? `₹${strategy.costPerOrder} per order` : 'Operational process change',
+                            confirmMessage: `Target the top RTO cause first using ${strategy.solution}.`,
+                        },
+                        socialProof: `Top reason across ${currentTotalRTOs} RTOs in last 30 days`,
+                        confidence,
+                        evidence: {
+                            source: 'RTOEvent.rtoReason + RTOEvent.rtoCharges',
+                            window: 'Last 30 days',
+                            sampleSize: currentTotalRTOs,
+                            method: 'pattern_analysis',
+                        },
+                        projectedImpact: {
+                            reduction: expectedReduction,
+                            savings: estimatedAvoidableLoss,
+                            additionalCost: monthlyCost,
+                        },
+                        createdAt: new Date(),
+                    });
                 }
 
                 // RTO spike alert
-                if (rtoIncrease > 30 && currentRTOs.length >= 5) {
+                if (rtoIncrease > 30 && currentTotalRTOs >= 5) {
+                    const confidence = this.confidenceFromSignal(
+                        currentTotalRTOs + previousTotalRTOs,
+                        Math.min(50, rtoIncrease)
+                    );
                     insights.push({
                         id: `rto_spike_${Date.now()}`,
                         type: 'rto_prevention',
                         priority: 'high',
-                        title: `RTO rate increased ${Math.round(rtoIncrease)}% in last 30 days`,
-                        description: `${currentRTOs.length} RTOs vs ${previousRTOs.length} in previous period. Investigate courier performance and customer communication.`,
+                        title: `RTO volume increased ${Math.round(rtoIncrease)}% in last 30 days`,
+                        description: `${currentTotalRTOs} RTOs vs ${previousTotalRTOs} in previous period. Investigate courier performance and customer communication immediately.`,
                         impact: {
                             metric: 'rto_increase',
                             value: Math.round(rtoIncrease),
                             period: 'month',
-                            formatted: `${Math.round(rtoIncrease)}% increase`
+                            formatted: `${Math.round(rtoIncrease)}% increase`,
                         },
                         data: {
-                            currentRTOs: currentRTOs.length,
-                            previousRTOs: previousRTOs.length,
-                            increase: Math.round(rtoIncrease)
+                            currentRTOs: currentTotalRTOs,
+                            previousRTOs: previousTotalRTOs,
+                            increase: Math.round(rtoIncrease),
                         },
                         action: {
                             type: 'manual',
                             label: 'View RTO Analytics',
-                            confirmMessage: 'Review detailed RTO breakdown by courier, zone, and reason.'
+                            confirmMessage: 'Review courier-wise and reason-wise RTO distribution.',
                         },
-                        socialProof: `Compared to previous 30 days`,
-                        confidence: 90,
-                        createdAt: new Date()
+                        socialProof: `Compared to previous 30-day period`,
+                        confidence,
+                        evidence: {
+                            source: 'RTOEvent count by period',
+                            window: 'Last 60 days',
+                            sampleSize: currentTotalRTOs + previousTotalRTOs,
+                            method: 'derived_comparison',
+                        },
+                        createdAt: new Date(),
                     });
                 }
             }
@@ -491,6 +512,8 @@ export default class SmartInsightsService {
                     // Only recommend if improvement > 0.5 days (12 hours)
                     if (timeDiff > 0.5) {
                         const improvement = Math.round((timeDiff / mostUsedCourier.avgDeliveryDays) * 100);
+                        const sampleSize = deliveryPerformance.reduce((sum, item) => sum + item.orderCount, 0);
+                        const confidence = this.confidenceFromSignal(sampleSize, improvement);
 
                         insights.push({
                             id: `efficiency_carrier_${Date.now()}`,
@@ -518,7 +541,13 @@ export default class SmartInsightsService {
                                 confirmMessage: 'Faster delivery improves customer satisfaction and reduces complaints.'
                             },
                             socialProof: `Based on ${mostUsedCourier.orderCount} deliveries in last 30 days`,
-                            confidence: 75,
+                            confidence,
+                            evidence: {
+                                source: 'Shipment deliveredAt vs createdAt grouped by carrier',
+                                window: 'Last 30 days',
+                                sampleSize,
+                                method: 'direct_aggregation',
+                            },
                             projectedImpact: {
                                 improvement
                             },
@@ -581,6 +610,8 @@ export default class SmartInsightsService {
                         sum + c.avgOrderValue, 0
                     ) / underservedCities.length;
                     const potentialRevenue = Math.round(potentialOrders * avgOrderValue);
+                    const sampleSize = cityDistribution.reduce((sum, city) => sum + city.orderCount, 0);
+                    const confidence = this.confidenceFromSignal(sampleSize, 12);
 
                     insights.push({
                         id: `growth_cities_${Date.now()}`,
@@ -606,7 +637,13 @@ export default class SmartInsightsService {
                             confirmMessage: 'See detailed breakdown of underserved markets and growth potential.'
                         },
                         socialProof: `Based on ${cityDistribution.length} cities in last 60 days`,
-                        confidence: 60,
+                        confidence,
+                        evidence: {
+                            source: 'Order customerInfo.address.city distribution',
+                            window: 'Last 60 days',
+                            sampleSize,
+                            method: 'pattern_analysis',
+                        },
                         projectedImpact: {
                             savings: potentialRevenue
                         },

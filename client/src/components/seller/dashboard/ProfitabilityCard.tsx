@@ -203,6 +203,9 @@ const ProfitabilityCard = memo(function ProfitabilityCard({
                                 <p className="text-xs text-[var(--text-secondary)]">
                                     Based on {periodLabel.toLowerCase()} orders
                                 </p>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                                    Costs are calculated from shipment financial records (shipping/COD/platform/RTO/GST)
+                                </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-6">

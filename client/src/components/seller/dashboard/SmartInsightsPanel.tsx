@@ -107,6 +107,19 @@ export function SmartInsightsPanel({ insights, onApply }: SmartInsightsPanelProp
                                 </div>
                             )}
 
+                            <div className="mb-3 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-secondary)]/40 px-2 py-1.5">
+                                <p className="text-[10px] text-[var(--text-secondary)]">
+                                    Data source: <span className="text-[var(--text-primary)]">{insight.evidence?.source || 'Analytics aggregates'}</span>
+                                </p>
+                                <p className="text-[10px] text-[var(--text-secondary)]">
+                                    Sample: <span className="text-[var(--text-primary)]">{insight.evidence?.sampleSize || 0}</span> records
+                                    {' '}({insight.evidence?.window || 'selected period'})
+                                </p>
+                                <p className="text-[10px] text-[var(--text-secondary)]">
+                                    Confidence: <span className="text-[var(--text-primary)]">{Math.round(insight.confidence)}%</span>
+                                </p>
+                            </div>
+
                             {onApply && (
                                 <button
                                     onClick={() => onApply(insight.id)}

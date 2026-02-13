@@ -1,0 +1,836 @@
+import mongoose from 'mongoose';
+import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
+import OrderAnalyticsService from './order-analytics.service';
+import ShipmentAnalyticsService from './shipment-analytics.service';
+import RevenueAnalyticsService from './revenue-analytics.service';
+import NDRAnalyticsService from '../ndr/ndr-analytics.service';
+import { CODAnalyticsService } from '../finance/cod-analytics.service';
+import RTOService from '../rto/rto.service';
+
+export interface SellerAnalyticsDateRange {
+    start: Date;
+    end: Date;
+}
+
+interface SellerAnalyticsFilters {
+    startDate?: string;
+    endDate?: string;
+    dateRange?: string;
+}
+
+const DEFAULT_PICKUP_SLA_TARGET = 98;
+const DEFAULT_DELIVERY_SLA_TARGET = 95;
+const DEFAULT_NDR_RESPONSE_TARGET_HOURS = 4;
+const DEFAULT_COD_SETTLEMENT_TARGET_DAYS = 3;
+
+const startOfDay = (date: Date) => {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
+};
+
+const endOfDay = (date: Date) => {
+    const next = new Date(date);
+    next.setHours(23, 59, 59, 999);
+    return next;
+};
+
+const round = (value: number, precision = 2) => {
+    const factor = 10 ** precision;
+    return Math.round(value * factor) / factor;
+};
+
+const buildStatus = (value: number, target: number, inverse = false): 'excellent' | 'good' | 'warning' | 'critical' => {
+    if (!inverse) {
+        if (value >= target + 2) return 'excellent';
+        if (value >= target) return 'good';
+        if (value >= target - 5) return 'warning';
+        return 'critical';
+    }
+
+    if (value <= target * 0.8) return 'excellent';
+    if (value <= target) return 'good';
+    if (value <= target * 1.3) return 'warning';
+    return 'critical';
+};
+
+export default class SellerAnalyticsService {
+    static resolveDateRange(filters?: SellerAnalyticsFilters): SellerAnalyticsDateRange {
+        const now = new Date();
+
+        if (filters?.startDate && filters?.endDate) {
+            return {
+                start: startOfDay(new Date(filters.startDate)),
+                end: endOfDay(new Date(filters.endDate)),
+            };
+        }
+
+        const range = filters?.dateRange;
+        if (range === 'today') {
+            return { start: startOfDay(now), end: endOfDay(now) };
+        }
+        if (range === 'yesterday') {
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            return { start: startOfDay(yesterday), end: endOfDay(yesterday) };
+        }
+
+        const days = range === '7days' ? 7 : range === '90days' ? 90 : 30;
+        const start = new Date(now);
+        start.setDate(start.getDate() - days + 1);
+        return { start: startOfDay(start), end: endOfDay(now) };
+    }
+
+    private static getPreviousRange(range: SellerAnalyticsDateRange): SellerAnalyticsDateRange {
+        const durationMs = Math.max(24 * 60 * 60 * 1000, range.end.getTime() - range.start.getTime());
+        const previousEnd = new Date(range.start.getTime() - 1);
+        const previousStart = new Date(previousEnd.getTime() - durationMs);
+        return {
+            start: startOfDay(previousStart),
+            end: endOfDay(previousEnd),
+        };
+    }
+
+    private static async aggregateCostBreakdown(companyId: string, dateRange: SellerAnalyticsDateRange) {
+        const companyObjectId = new mongoose.Types.ObjectId(companyId);
+
+        const [summary] = await Shipment.aggregate([
+            {
+                $match: {
+                    companyId: companyObjectId,
+                    isDeleted: false,
+                    createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    shipmentCount: { $sum: 1 },
+                    shippingCost: { $sum: { $ifNull: ['$paymentDetails.shippingCost', 0] } },
+                    codCharges: {
+                        $sum: {
+                            $ifNull: ['$paymentDetails.codCharges', { $ifNull: ['$pricingDetails.codCharge', 0] }],
+                        },
+                    },
+                    weightCharges: { $sum: { $ifNull: ['$pricingDetails.weightCharge', 0] } },
+                    fuelSurcharge: {
+                        $sum: {
+                            $ifNull: [
+                                '$pricingDetails.selectedQuote.costBreakdown.fuelSurcharge',
+                                { $ifNull: ['$pricingDetails.selectedQuote.sellBreakdown.fuelSurcharge', 0] },
+                            ],
+                        },
+                    },
+                    otherCharges: {
+                        $sum: {
+                            $add: [
+                                { $ifNull: ['$pricingDetails.gstAmount', 0] },
+                                { $ifNull: ['$carrierDetails.charges.platformFee', 0] },
+                            ],
+                        },
+                    },
+                },
+            },
+        ]);
+
+        const rtoAnalytics = await RTOService.getRTOAnalytics(companyId, dateRange);
+
+        const normalized = {
+            shipmentCount: summary?.shipmentCount || 0,
+            shippingCost: round(summary?.shippingCost || 0),
+            codCharges: round(summary?.codCharges || 0),
+            weightCharges: round(summary?.weightCharges || 0),
+            fuelSurcharge: round(summary?.fuelSurcharge || 0),
+            rtoCharges: round(rtoAnalytics.summary.estimatedLoss || 0),
+            otherCharges: round(summary?.otherCharges || 0),
+        };
+
+        const totalCost = round(
+            normalized.shippingCost +
+            normalized.codCharges +
+            normalized.weightCharges +
+            normalized.fuelSurcharge +
+            normalized.rtoCharges +
+            normalized.otherCharges
+        );
+
+        return {
+            totalCost,
+            breakdown: {
+                shippingCost: normalized.shippingCost,
+                codCharges: normalized.codCharges,
+                weightCharges: normalized.weightCharges,
+                fuelSurcharge: normalized.fuelSurcharge,
+                rtoCharges: normalized.rtoCharges,
+                otherCharges: normalized.otherCharges,
+            },
+            shipmentCount: normalized.shipmentCount,
+        };
+    }
+
+    static async getCostAnalysis(companyId: string, filters?: SellerAnalyticsFilters) {
+        const dateRange = this.resolveDateRange(filters);
+        const previousRange = this.getPreviousRange(dateRange);
+        const companyObjectId = new mongoose.Types.ObjectId(companyId);
+
+        const [current, previous, orderStats, byCourier, byZone, byPaymentMethod, timeSeries] = await Promise.all([
+            this.aggregateCostBreakdown(companyId, dateRange),
+            this.aggregateCostBreakdown(companyId, previousRange),
+            OrderAnalyticsService.getOrderStats(companyId, dateRange),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$carrier',
+                        shipmentCount: { $sum: 1 },
+                        cost: {
+                            $sum: {
+                                $add: [
+                                    { $ifNull: ['$paymentDetails.shippingCost', 0] },
+                                    { $ifNull: ['$paymentDetails.codCharges', 0] },
+                                ],
+                            },
+                        },
+                    },
+                },
+                { $sort: { cost: -1 } },
+                {
+                    $project: {
+                        _id: 0,
+                        courierId: { $toLower: { $replaceAll: { input: { $ifNull: ['$_id', 'unknown'] }, find: ' ', replacement: '_' } } },
+                        courierName: { $ifNull: ['$_id', 'Unknown'] },
+                        shipmentCount: 1,
+                        cost: { $round: ['$cost', 2] },
+                        avgCostPerShipment: {
+                            $cond: [{ $gt: ['$shipmentCount', 0] }, { $round: [{ $divide: ['$cost', '$shipmentCount'] }, 2] }, 0],
+                        },
+                    },
+                },
+            ]),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: { $ifNull: ['$deliveryDetails.address.state', 'Unknown'] },
+                        shipmentCount: { $sum: 1 },
+                        cost: { $sum: { $ifNull: ['$paymentDetails.shippingCost', 0] } },
+                    },
+                },
+                { $sort: { cost: -1 } },
+                {
+                    $project: {
+                        _id: 0,
+                        zoneName: '$_id',
+                        shipmentCount: 1,
+                        cost: { $round: ['$cost', 2] },
+                        avgCostPerShipment: {
+                            $cond: [{ $gt: ['$shipmentCount', 0] }, { $round: [{ $divide: ['$cost', '$shipmentCount'] }, 2] }, 0],
+                        },
+                    },
+                },
+            ]),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$paymentDetails.type',
+                        count: { $sum: 1 },
+                        cost: {
+                            $sum: {
+                                $add: [
+                                    { $ifNull: ['$paymentDetails.shippingCost', 0] },
+                                    { $ifNull: ['$paymentDetails.codCharges', 0] },
+                                ],
+                            },
+                        },
+                    },
+                },
+            ]),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                        totalCost: { $sum: { $ifNull: ['$paymentDetails.shippingCost', 0] } },
+                        shippingCost: { $sum: { $ifNull: ['$paymentDetails.shippingCost', 0] } },
+                        codCharges: { $sum: { $ifNull: ['$paymentDetails.codCharges', 0] } },
+                    },
+                },
+                { $sort: { _id: 1 } },
+                {
+                    $project: {
+                        _id: 0,
+                        date: '$_id',
+                        totalCost: { $round: ['$totalCost', 2] },
+                        shippingCost: { $round: ['$shippingCost', 2] },
+                        codCharges: { $round: ['$codCharges', 2] },
+                    },
+                },
+            ]),
+        ]);
+
+        const codRow = byPaymentMethod.find((row: any) => row._id === 'cod');
+        const prepaidRow = byPaymentMethod.find((row: any) => row._id === 'prepaid');
+
+        const minCourierAvg = byCourier.length > 0 ? Math.min(...byCourier.map((row: any) => row.avgCostPerShipment)) : 0;
+        const expensiveCourier = byCourier[0];
+
+        const savingsOpportunities = [] as Array<{
+            id: string;
+            type: 'courier_switch' | 'weight_audit' | 'zone_optimization' | 'cod_reduction';
+            title: string;
+            description: string;
+            potentialSavings: number;
+            impact: 'high' | 'medium' | 'low';
+            effort: 'easy' | 'moderate' | 'complex';
+            recommendation: string;
+        }>;
+
+        if (expensiveCourier && minCourierAvg > 0 && expensiveCourier.avgCostPerShipment > minCourierAvg) {
+            const potential = round((expensiveCourier.avgCostPerShipment - minCourierAvg) * expensiveCourier.shipmentCount);
+            if (potential > 0) {
+                savingsOpportunities.push({
+                    id: 'courier-switch',
+                    type: 'courier_switch',
+                    title: `Optimize ${expensiveCourier.courierName} allocation`,
+                    description: 'Shift eligible volume to your most cost-efficient carrier.',
+                    potentialSavings: potential,
+                    impact: potential > 10000 ? 'high' : 'medium',
+                    effort: 'moderate',
+                    recommendation: `Move low-priority lanes from ${expensiveCourier.courierName} to a lower-cost courier where SLA allows.`,
+                });
+            }
+        }
+
+        if ((codRow?.cost || 0) > 0) {
+            const potential = round((codRow.cost || 0) * 0.1);
+            savingsOpportunities.push({
+                id: 'cod-reduction',
+                type: 'cod_reduction',
+                title: 'Reduce COD handling cost',
+                description: 'Increase prepaid adoption to reduce COD-linked charges.',
+                potentialSavings: potential,
+                impact: potential > 5000 ? 'high' : 'medium',
+                effort: 'easy',
+                recommendation: 'Promote prepaid discounts for repeat buyers and high-RTO lanes.',
+            });
+        }
+
+        return {
+            current: {
+                totalCost: current.totalCost,
+                breakdown: current.breakdown,
+                byCourier,
+                byZone,
+                byPaymentMethod: {
+                    cod: { cost: round(codRow?.cost || 0), count: codRow?.count || 0 },
+                    prepaid: { cost: round(prepaidRow?.cost || 0), count: prepaidRow?.count || 0 },
+                },
+                timeSeries,
+            },
+            previous: {
+                totalCost: previous.totalCost,
+                breakdown: previous.breakdown,
+                byCourier: [],
+                byZone: [],
+                byPaymentMethod: {
+                    cod: { cost: 0, count: 0 },
+                    prepaid: { cost: 0, count: 0 },
+                },
+                timeSeries: [],
+            },
+            savingsOpportunities,
+            metadata: {
+                totalOrders: orderStats.totalOrders,
+                averageOrderValue: orderStats.averageOrderValue,
+                dateRange: {
+                    startDate: dateRange.start.toISOString(),
+                    endDate: dateRange.end.toISOString(),
+                },
+            },
+        };
+    }
+
+    static async getCourierComparison(companyId: string, filters?: SellerAnalyticsFilters) {
+        const dateRange = this.resolveDateRange(filters);
+        const companyObjectId = new mongoose.Types.ObjectId(companyId);
+
+        const [shipmentsByCourier, codHealth, shipmentPerformance] = await Promise.all([
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$carrier',
+                        totalShipments: { $sum: 1 },
+                        delivered: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
+                        rto: { $sum: { $cond: [{ $eq: ['$currentStatus', 'rto'] }, 1, 0] } },
+                        ndr: { $sum: { $cond: [{ $eq: ['$currentStatus', 'ndr'] }, 1, 0] } },
+                        damaged: { $sum: { $cond: [{ $eq: ['$currentStatus', 'damaged'] }, 1, 0] } },
+                        lost: { $sum: { $cond: [{ $eq: ['$currentStatus', 'lost'] }, 1, 0] } },
+                        totalCost: {
+                            $sum: {
+                                $add: [
+                                    { $ifNull: ['$paymentDetails.shippingCost', 0] },
+                                    { $ifNull: ['$paymentDetails.codCharges', 0] },
+                                ],
+                            },
+                        },
+                        totalDeliveryHours: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                        ],
+                                    },
+                                    { $divide: [{ $subtract: ['$actualDelivery', '$createdAt'] }, 1000 * 60 * 60] },
+                                    0,
+                                ],
+                            },
+                        },
+                        deliveredWithTime: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                        onTimeDelivered: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                            { $ne: ['$estimatedDelivery', null] },
+                                            { $lte: ['$actualDelivery', '$estimatedDelivery'] },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                    },
+                },
+                { $sort: { totalShipments: -1 } },
+            ]),
+            CODAnalyticsService.getHealthMetrics(companyId, dateRange.start, dateRange.end),
+            ShipmentAnalyticsService.getCourierPerformance(companyId, dateRange),
+        ]);
+
+        const performanceMap = new Map(shipmentPerformance.map((item) => [item.carrier, item]));
+
+        const couriers = shipmentsByCourier.map((item: any) => {
+            const totalShipments = item.totalShipments || 0;
+            const deliveryRate = totalShipments > 0 ? (item.delivered / totalShipments) * 100 : 0;
+            const rtoRate = totalShipments > 0 ? (item.rto / totalShipments) * 100 : 0;
+            const ndrRate = totalShipments > 0 ? (item.ndr / totalShipments) * 100 : 0;
+            const avgDeliveryTime = item.deliveredWithTime > 0
+                ? item.totalDeliveryHours / item.deliveredWithTime
+                : (performanceMap.get(item._id)?.avgDeliveryDays || 0) * 24;
+            const onTimeDelivery = item.delivered > 0 ? (item.onTimeDelivered / item.delivered) * 100 : 0;
+            const avgCost = totalShipments > 0 ? item.totalCost / totalShipments : 0;
+
+            return {
+                courierId: String(item._id || 'unknown').toLowerCase().replace(/\s+/g, '_'),
+                courierName: item._id || 'Unknown',
+                totalShipments,
+                successRate: round(deliveryRate, 1),
+                avgDeliveryTime: round(avgDeliveryTime, 1),
+                rtoRate: round(rtoRate, 1),
+                ndrRate: round(ndrRate, 1),
+                weightDisputes: 0,
+                avgCost: round(avgCost, 2),
+                codRemittanceTime: round(codHealth.averageRemittanceTime || 0, 1),
+                onTimeDelivery: round(onTimeDelivery, 1),
+                damagedShipments: item.damaged || 0,
+                lostShipments: item.lost || 0,
+            };
+        });
+
+        const byScore = couriers
+            .map((courier) => {
+                const score =
+                    courier.successRate * 0.35 +
+                    courier.onTimeDelivery * 0.25 +
+                    (100 - courier.rtoRate) * 0.2 +
+                    (100 - courier.ndrRate) * 0.1 +
+                    Math.max(0, 100 - courier.avgCost) * 0.1;
+                return { ...courier, score };
+            })
+            .sort((a, b) => b.score - a.score);
+
+        const bestPerformance = byScore[0];
+        const bestCost = [...couriers].sort((a, b) => a.avgCost - b.avgCost)[0];
+        const bestSpeed = [...couriers].sort((a, b) => a.avgDeliveryTime - b.avgDeliveryTime)[0];
+
+        return {
+            couriers,
+            dateRange: {
+                startDate: dateRange.start.toISOString(),
+                endDate: dateRange.end.toISOString(),
+            },
+            recommendation: bestPerformance ? {
+                bestPerformance: bestPerformance.courierId,
+                bestCost: bestCost?.courierId || bestPerformance.courierId,
+                bestSpeed: bestSpeed?.courierId || bestPerformance.courierId,
+                overall: bestPerformance.courierId,
+                reasoning: `${bestPerformance.courierName} leads on delivery reliability and overall weighted performance for this period.`,
+            } : undefined,
+        };
+    }
+
+    static async getSLAPerformance(companyId: string, filters?: SellerAnalyticsFilters) {
+        const dateRange = this.resolveDateRange(filters);
+        const companyObjectId = new mongoose.Types.ObjectId(companyId);
+
+        const [pickupStats, deliveryStats, ndrStats, codHealth, courierData, zoneData, timeSeries] = await Promise.all([
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: 1 },
+                        onTimePickup: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $ne: ['$pickupDetails.pickupDate', null] },
+                                            {
+                                                $lte: [
+                                                    { $divide: [{ $subtract: ['$pickupDetails.pickupDate', '$createdAt'] }, 1000 * 60 * 60] },
+                                                    24,
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                    },
+                },
+            ]),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        delivered: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
+                        onTime: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                            { $ne: ['$estimatedDelivery', null] },
+                                            { $lte: ['$actualDelivery', '$estimatedDelivery'] },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                    },
+                },
+            ]),
+            NDRAnalyticsService.getNDRStats(companyId, dateRange),
+            CODAnalyticsService.getHealthMetrics(companyId, dateRange.start, dateRange.end),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$carrier',
+                        total: { $sum: 1 },
+                        onTimePickup: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $ne: ['$pickupDetails.pickupDate', null] },
+                                            {
+                                                $lte: [
+                                                    { $divide: [{ $subtract: ['$pickupDetails.pickupDate', '$createdAt'] }, 1000 * 60 * 60] },
+                                                    24,
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                        delivered: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
+                        onTimeDelivery: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                            { $ne: ['$estimatedDelivery', null] },
+                                            { $lte: ['$actualDelivery', '$estimatedDelivery'] },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                    },
+                },
+            ]),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: { $ifNull: ['$deliveryDetails.address.state', 'Unknown'] },
+                        total: { $sum: 1 },
+                        delivered: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
+                        onTimeDelivery: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                            { $ne: ['$estimatedDelivery', null] },
+                                            { $lte: ['$actualDelivery', '$estimatedDelivery'] },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                        totalDeliveryHours: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                        ],
+                                    },
+                                    { $divide: [{ $subtract: ['$actualDelivery', '$createdAt'] }, 1000 * 60 * 60] },
+                                    0,
+                                ],
+                            },
+                        },
+                    },
+                },
+            ]),
+            Shipment.aggregate([
+                {
+                    $match: {
+                        companyId: companyObjectId,
+                        isDeleted: false,
+                        createdAt: { $gte: dateRange.start, $lte: dateRange.end },
+                    },
+                },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                        total: { $sum: 1 },
+                        onTimePickup: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $ne: ['$pickupDetails.pickupDate', null] },
+                                            {
+                                                $lte: [
+                                                    { $divide: [{ $subtract: ['$pickupDetails.pickupDate', '$createdAt'] }, 1000 * 60 * 60] },
+                                                    24,
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                        delivered: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
+                        onTimeDelivery: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $eq: ['$currentStatus', 'delivered'] },
+                                            { $ne: ['$actualDelivery', null] },
+                                            { $ne: ['$estimatedDelivery', null] },
+                                            { $lte: ['$actualDelivery', '$estimatedDelivery'] },
+                                        ],
+                                    },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                    },
+                },
+                { $sort: { _id: 1 } },
+            ]),
+        ]);
+
+        const pickupTotal = pickupStats[0]?.total || 0;
+        const pickupOnTime = pickupStats[0]?.onTimePickup || 0;
+        const pickupCompliance = pickupTotal > 0 ? (pickupOnTime / pickupTotal) * 100 : 0;
+
+        const deliveredTotal = deliveryStats[0]?.delivered || 0;
+        const deliveryOnTime = deliveryStats[0]?.onTime || 0;
+        const deliveryCompliance = deliveredTotal > 0 ? (deliveryOnTime / deliveredTotal) * 100 : 0;
+
+        const ndrResponseHours = ndrStats.avgResolutionTime || 0;
+        const codSettlementDays = codHealth.averageRemittanceTime || 0;
+
+        const overallCompliance = round(
+            (pickupCompliance + deliveryCompliance + Math.max(0, 100 - (ndrResponseHours / DEFAULT_NDR_RESPONSE_TARGET_HOURS) * 100) + Math.max(0, 100 - (codSettlementDays / DEFAULT_COD_SETTLEMENT_TARGET_DAYS) * 100)) / 4,
+            1
+        );
+
+        return {
+            overall: {
+                compliance: overallCompliance,
+                status: buildStatus(overallCompliance, 90),
+            },
+            pickupSLA: {
+                name: 'Pickup within 24 hours',
+                description: 'Shipments picked within SLA window from order creation.',
+                target: DEFAULT_PICKUP_SLA_TARGET,
+                actual: round(pickupCompliance, 1),
+                compliance: round((pickupCompliance / DEFAULT_PICKUP_SLA_TARGET) * 100, 1),
+                status: buildStatus(pickupCompliance, DEFAULT_PICKUP_SLA_TARGET),
+                trend: 'stable',
+            },
+            deliverySLA: {
+                name: 'Delivery within promised date',
+                description: 'Delivered shipments completed on or before EDD.',
+                target: DEFAULT_DELIVERY_SLA_TARGET,
+                actual: round(deliveryCompliance, 1),
+                compliance: round((deliveryCompliance / DEFAULT_DELIVERY_SLA_TARGET) * 100, 1),
+                status: buildStatus(deliveryCompliance, DEFAULT_DELIVERY_SLA_TARGET),
+                trend: 'stable',
+            },
+            ndrResponseSLA: {
+                name: 'NDR response turnaround',
+                description: 'Average time to resolve NDR cases.',
+                target: DEFAULT_NDR_RESPONSE_TARGET_HOURS,
+                actual: round(ndrResponseHours, 1),
+                compliance: round(Math.max(0, (DEFAULT_NDR_RESPONSE_TARGET_HOURS / Math.max(ndrResponseHours || 1, 1)) * 100), 1),
+                status: buildStatus(ndrResponseHours, DEFAULT_NDR_RESPONSE_TARGET_HOURS, true),
+                trend: 'stable',
+            },
+            codSettlementSLA: {
+                name: 'COD settlement cycle',
+                description: 'Average remittance turnaround for COD deliveries.',
+                target: DEFAULT_COD_SETTLEMENT_TARGET_DAYS,
+                actual: round(codSettlementDays, 1),
+                compliance: round(Math.max(0, (DEFAULT_COD_SETTLEMENT_TARGET_DAYS / Math.max(codSettlementDays || 1, 1)) * 100), 1),
+                status: buildStatus(codSettlementDays, DEFAULT_COD_SETTLEMENT_TARGET_DAYS, true),
+                trend: 'stable',
+            },
+            byCourier: courierData.map((item: any) => {
+                const pickup = item.total > 0 ? (item.onTimePickup / item.total) * 100 : 0;
+                const delivery = item.delivered > 0 ? (item.onTimeDelivery / item.delivered) * 100 : 0;
+                return {
+                    courierId: String(item._id || 'unknown').toLowerCase().replace(/\s+/g, '_'),
+                    courierName: item._id || 'Unknown',
+                    compliance: round((pickup + delivery) / 2, 1),
+                    pickupSLA: round(pickup, 1),
+                    deliverySLA: round(delivery, 1),
+                };
+            }),
+            byZone: zoneData.map((item: any) => {
+                const compliance = item.delivered > 0 ? (item.onTimeDelivery / item.delivered) * 100 : 0;
+                return {
+                    zoneId: String(item._id || 'unknown').toLowerCase().replace(/\s+/g, '_'),
+                    zoneName: item._id || 'Unknown',
+                    compliance: round(compliance, 1),
+                    avgDeliveryTime: item.delivered > 0 ? round(item.totalDeliveryHours / item.delivered, 1) : 0,
+                };
+            }),
+            timeSeries: timeSeries.map((item: any) => ({
+                date: item._id,
+                compliance: item.total > 0 ? round(((item.onTimePickup + item.onTimeDelivery) / Math.max(item.total, 1)) * 100, 1) : 0,
+                pickupOnTime: item.total > 0 ? round((item.onTimePickup / item.total) * 100, 1) : 0,
+                deliveryOnTime: item.delivered > 0 ? round((item.onTimeDelivery / item.delivered) * 100, 1) : 0,
+            })),
+            targets: {
+                pickup: DEFAULT_PICKUP_SLA_TARGET,
+                delivery: DEFAULT_DELIVERY_SLA_TARGET,
+                ndrResponseHours: DEFAULT_NDR_RESPONSE_TARGET_HOURS,
+                codSettlementDays: DEFAULT_COD_SETTLEMENT_TARGET_DAYS,
+            },
+        };
+    }
+}

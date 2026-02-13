@@ -763,7 +763,154 @@ import CustomerAnalyticsService from '../../../../core/application/services/anal
 import InventoryAnalyticsService from '../../../../core/application/services/analytics/inventory-analytics.service';
 import OrderAnalyticsService from '../../../../core/application/services/analytics/order-analytics.service';
 import ReportBuilderService from '../../../../core/application/services/analytics/report-builder.service';
-import { buildReportSchema, saveReportConfigSchema } from '../../../../shared/validation/analytics-schemas';
+import SellerAnalyticsService from '../../../../core/application/services/analytics/seller-analytics.service';
+import CSVExportService from '../../../../core/application/services/analytics/export/csv-export.service';
+import ExcelExportService from '../../../../core/application/services/analytics/export/excel-export.service';
+import PDFExportService from '../../../../core/application/services/analytics/export/pdf-export.service';
+import StorageService from '../../../../core/application/services/storage/storage.service';
+import {
+    buildReportSchema,
+    reportExportSchema,
+    saveReportConfigSchema,
+} from '../../../../shared/validation/analytics-schemas';
+
+const isSpacesConfigured = () => {
+    return Boolean(
+        process.env.SPACES_ENDPOINT &&
+        process.env.SPACES_ACCESS_KEY &&
+        process.env.SPACES_SECRET_KEY &&
+        process.env.SPACES_BUCKET
+    );
+};
+
+const toExportRows = (payload: any): Record<string, unknown>[] => {
+    if (!payload || typeof payload !== 'object') return [];
+
+    const rows: Array<Record<string, unknown>> = [];
+    const entries = Object.entries(payload);
+
+    entries.forEach(([section, value]) => {
+        if (Array.isArray(value)) {
+            value.forEach((row, index) => {
+                if (row && typeof row === 'object') {
+                    rows.push({ section, row: index + 1, ...row });
+                }
+            });
+            return;
+        }
+
+        if (value && typeof value === 'object') {
+            rows.push({ section, ...(value as Record<string, unknown>) });
+            return;
+        }
+
+        rows.push({ section, value });
+    });
+
+    return rows;
+};
+
+/**
+ * Get seller cost analysis
+ * @route GET /api/v1/analytics/cost
+ */
+export const getCostAnalysis = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
+
+        const cacheKey = `analytics:cost:${auth.companyId}:${req.query.startDate || 'default'}:${req.query.endDate || 'default'}:${req.query.dateRange || 'default'}`;
+        const cached = await cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Cost analysis retrieved from cache');
+            return;
+        }
+
+        const data = await SellerAnalyticsService.getCostAnalysis(auth.companyId, {
+            startDate: req.query.startDate as string | undefined,
+            endDate: req.query.endDate as string | undefined,
+            dateRange: req.query.dateRange as string | undefined,
+        });
+
+        await cacheService.set(cacheKey, data, 300);
+        sendSuccess(res, data, 'Cost analysis retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching cost analysis:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get seller courier comparison analytics
+ * @route GET /api/v1/analytics/courier-comparison
+ */
+export const getCourierComparison = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
+
+        const cacheKey = `analytics:courier-comparison:${auth.companyId}:${req.query.startDate || 'default'}:${req.query.endDate || 'default'}:${req.query.dateRange || 'default'}`;
+        const cached = await cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Courier comparison retrieved from cache');
+            return;
+        }
+
+        const data = await SellerAnalyticsService.getCourierComparison(auth.companyId, {
+            startDate: req.query.startDate as string | undefined,
+            endDate: req.query.endDate as string | undefined,
+            dateRange: req.query.dateRange as string | undefined,
+        });
+
+        await cacheService.set(cacheKey, data, 300);
+        sendSuccess(res, data, 'Courier comparison retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching courier comparison analytics:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get seller SLA analytics
+ * @route GET /api/v1/analytics/sla
+ */
+export const getSLAPerformance = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
+
+        const cacheKey = `analytics:sla:${auth.companyId}:${req.query.startDate || 'default'}:${req.query.endDate || 'default'}:${req.query.dateRange || 'default'}`;
+        const cached = await cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'SLA performance retrieved from cache');
+            return;
+        }
+
+        const data = await SellerAnalyticsService.getSLAPerformance(auth.companyId, {
+            startDate: req.query.startDate as string | undefined,
+            endDate: req.query.endDate as string | undefined,
+            dateRange: req.query.dateRange as string | undefined,
+        });
+
+        await cacheService.set(cacheKey, data, 300);
+        sendSuccess(res, data, 'SLA performance retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching SLA analytics:', error);
+        next(error);
+    }
+};
 
 /**
  * Get revenue statistics
@@ -999,6 +1146,107 @@ export const buildCustomReport = async (
         sendSuccess(res, report, 'Report generated successfully');
     } catch (error) {
         logger.error('Error building custom report:', error);
+        next(error);
+    }
+};
+
+/**
+ * Export report output
+ * @route POST /api/v1/analytics/reports/export
+ */
+export const exportReport = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+        requireCompanyContext(auth);
+
+        const validation = reportExportSchema.safeParse(req.body);
+        if (!validation.success) {
+            throw new ValidationError(validation.error.errors[0].message);
+        }
+
+        const { format, reportType, filters, metrics, groupBy, fileName } = validation.data;
+        const report = await ReportBuilderService.buildCustomReport(
+            auth.companyId,
+            reportType as any,
+            (filters || {}) as any,
+            metrics,
+            groupBy as any
+        );
+
+        const rows = toExportRows(report.data);
+        if (rows.length === 0) {
+            throw new ValidationError('No report data available to export');
+        }
+
+        const columns = Object.keys(rows[0]).map((key) => ({
+            key,
+            label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        }));
+
+        const safeBaseName = (fileName || `${reportType}-report-${Date.now()}`)
+            .replace(/[^a-zA-Z0-9-_]/g, '-')
+            .toLowerCase();
+
+        let buffer: Buffer;
+        let extension: 'csv' | 'xlsx' | 'pdf';
+        let contentType: string;
+
+        if (format === 'csv') {
+            buffer = await CSVExportService.exportToCSV(rows as any[], columns as any[]);
+            extension = 'csv';
+            contentType = 'text/csv';
+        } else if (format === 'excel') {
+            buffer = await ExcelExportService.exportToExcel(rows as any[], columns as any[], {
+                title: `${reportType.toUpperCase()} Report`,
+                sheetName: 'Report',
+            });
+            extension = 'xlsx';
+            contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        } else {
+            buffer = await PDFExportService.exportToPDF(rows as any[], columns as any[], {
+                title: `${reportType.toUpperCase()} Report`,
+                subtitle: 'Generated from Analytics > Reports',
+            });
+            extension = 'pdf';
+            contentType = 'application/pdf';
+        }
+
+        const filename = `${safeBaseName}.${extension}`;
+
+        if (isSpacesConfigured()) {
+            const folder = `exports/${auth.companyId}`;
+            const key = `${folder}/${filename}`;
+            await StorageService.upload(buffer, {
+                folder,
+                fileName: filename,
+                contentType,
+            });
+
+            const downloadUrl = await StorageService.getFileUrl(key);
+            sendSuccess(res, {
+                downloadUrl,
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                fileSize: buffer.length,
+                format,
+                filename,
+            }, 'Report exported successfully');
+            return;
+        }
+
+        const dataUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
+        sendSuccess(res, {
+            downloadUrl: dataUrl,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            fileSize: buffer.length,
+            format,
+            filename,
+        }, 'Report exported successfully');
+    } catch (error) {
+        logger.error('Error exporting report:', error);
         next(error);
     }
 };
@@ -1411,7 +1659,11 @@ export default {
     getTopCustomers,
     getInventoryStats,
     getTopProducts,
+    getCostAnalysis,
+    getCourierComparison,
+    getSLAPerformance,
     buildCustomReport,
+    exportReport,
     saveReportConfig,
     listReportConfigs,
     deleteReportConfig,
