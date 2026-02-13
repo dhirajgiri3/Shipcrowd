@@ -1,15 +1,17 @@
 /**
  * Manifests Dashboard Page
- * 
+ *
  * Main page for manifest management with:
  * - Stats cards (Total, Pending Pickup, Today's)
  * - Create manifest button
- * - Manifests table with filters
+ * - Status tabs + search + courier filter (aligned with OrdersClient/ShipmentsClient)
+ * - Table with pagination
+ * - Error state, empty state, loading states
  */
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     useShipmentManifestsList,
@@ -19,65 +21,69 @@ import {
 import { ManifestTable } from '@/src/features/manifests/components/ManifestTable';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
-import { Loader } from '@/src/components/ui/feedback/Loader';
-import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
-import { Pagination } from '@/src/components/ui/data/Pagination';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import { cn } from '@/src/lib/utils';
 import {
     Plus,
     FileText,
     Clock,
-    Package,
     CheckCircle2,
     Search,
-    Filter,
     Calendar,
     Truck,
     RefreshCw,
+    AlertCircle,
+    ChevronDown,
+    Package,
 } from 'lucide-react';
 import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest, ManifestListResponse } from '@/src/types/api/orders';
 
-// ==================== Status Options ====================
+// ==================== Filter Options ====================
 
-const statusOptions: { value: ManifestStatus | ''; label: string }[] = [
-    { value: '', label: 'All Statuses' },
+const STATUS_TABS: { value: ManifestStatus | ''; label: string }[] = [
+    { value: '', label: 'All' },
     { value: 'open', label: 'Open' },
     { value: 'closed', label: 'Closed' },
     { value: 'handed_over', label: 'Handed Over' },
 ];
 
-const courierOptions: { value: CourierPartner | ''; label: string }[] = [
+const COURIER_OPTIONS: { value: CourierPartner | ''; label: string }[] = [
     { value: '', label: 'All Couriers' },
     { value: 'velocity', label: 'Velocity' },
     { value: 'delhivery', label: 'Delhivery' },
     { value: 'ekart', label: 'Ekart' },
-
 ];
 
 // ==================== Component ====================
 
 export default function ManifestsPage() {
     const router = useRouter();
+    const { addToast } = useToast();
 
-    // Filters state
-    const [filters, setFilters] = useState<ManifestListFilters>({
-        page: 1,
-        limit: 10,
-    });
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<ManifestStatus | ''>('');
+    const limit = 20;
+    const [page, setPage] = useState(1);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 300);
+    const [statusTab, setStatusTab] = useState<ManifestStatus | ''>('');
     const [courierFilter, setCourierFilter] = useState<CourierPartner | ''>('');
 
-    // Build filter object
-    const buildFilters = (): ManifestListFilters => ({
-        ...filters,
-        status: statusFilter || undefined,
-        carrier: courierFilter || undefined,
-        search: searchQuery || undefined,
-    });
+    // Build filter object (debounced search for list API)
+    const listFilters = useMemo<ManifestListFilters>(
+        () => ({
+            page,
+            limit,
+            status: statusTab || undefined,
+            carrier: courierFilter || undefined,
+            search: debouncedSearch.trim() || undefined,
+        }),
+        [page, statusTab, courierFilter, debouncedSearch]
+    );
 
     // API hooks
-    const { data, isLoading, refetch } = useShipmentManifestsList(buildFilters());
+    const { data, isLoading, error, refetch } = useShipmentManifestsList(listFilters);
     const manifestsData = data as ManifestListResponse | undefined;
 
     const { data: stats, isLoading: isStatsLoading } = useShipmentManifestStats();
@@ -89,238 +95,289 @@ export default function ManifestsPage() {
     };
 
     const handleDownloadPdf = async (manifestId: string) => {
-        const url = await downloadPdf(manifestId);
-        window.open(url, '_blank');
+        try {
+            const url = await downloadPdf(manifestId);
+            window.open(url, '_blank');
+            addToast('Manifest PDF is ready', 'success');
+        } catch {
+            addToast('Failed to download manifest PDF. Please try again.', 'error');
+        }
     };
 
     const handleCreateManifest = () => {
         router.push('/seller/manifests/create');
     };
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        setFilters(prev => ({ ...prev, page: 1 }));
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await refetch();
+        setIsRefreshing(false);
     };
 
-    const handleRefresh = () => {
-        refetch();
+    const clearFilters = () => {
+        setSearch('');
+        setStatusTab('');
+        setCourierFilter('');
+        setPage(1);
     };
 
-    const handlePageChange = (page: number) => {
-        setFilters(prev => ({ ...prev, page }));
-    };
+    const hasActiveFilters = !!search || !!statusTab || !!courierFilter;
 
-    // Check if we have active filters
-    const hasActiveFilters = !!searchQuery || !!statusFilter || !!courierFilter;
+    // Reset to page 1 when search or filters change
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, statusTab, courierFilter]);
 
-    // Loading overlay for table
-    const renderTableContent = () => {
-        if (isLoading && (!manifestsData?.manifests || manifestsData.manifests.length === 0)) {
-            return (
-                <div className="flex flex-col items-center justify-center py-20">
-                    <Loader size="lg" variant="spinner" className="text-[var(--primary-blue)] mb-4" />
-                    <p className="text-[var(--text-muted)]">Loading manifests...</p>
-                </div>
-            );
-        }
-
-        if (!isLoading && (!manifestsData?.manifests || manifestsData.manifests.length === 0)) {
-            return (
-                <div className="py-12">
-                    <EmptyState
-                        icon={<FileText className="w-12 h-12" />}
-                        title={hasActiveFilters ? "No manifests found" : "No manifests created yet"}
-                        description={hasActiveFilters
-                            ? "Try adjusting your search or filters to find what you're looking for."
-                            : "Create your first manifest to start grouping shipments for pickup."}
-                        action={!hasActiveFilters ? {
-                            label: "Create Manifest",
-                            onClick: handleCreateManifest,
-                            icon: <Plus className="w-4 h-4 mr-2" />
-                        } : {
-                            label: "Clear Filters",
-                            onClick: () => {
-                                setSearchQuery('');
-                                setStatusFilter('');
-                                setCourierFilter('');
-                                setFilters(prev => ({ ...prev, page: 1 }));
-                            },
-                            variant: "outline"
-                        }}
-                    />
-                </div>
-            );
-        }
-
-        return (
-            <>
-                <div className="relative">
-                    {isLoading && (
-                        <div className="absolute inset-0 bg-[var(--bg-primary)]/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
-                            <Loader size="md" variant="spinner" />
-                        </div>
-                    )}
-                    <ManifestTable
-                        manifests={manifestsData?.manifests ?? []}
-                        isLoading={false} // We handle loading state above
-                        onManifestClick={handleManifestClick}
-                        onDownloadPdf={handleDownloadPdf}
-                    />
-                </div>
-
-                {manifestsData && (
-                    <Pagination
-                        currentPage={filters.page || 1}
-                        totalPages={manifestsData.pages}
-                        totalItems={manifestsData.total}
-                        pageSize={filters.limit || 10}
-                        onPageChange={handlePageChange}
-                        className="bg-transparent border-t border-[var(--border-subtle)]"
-                    />
-                )}
-            </>
-        );
-    };
+    const manifests = manifestsData?.manifests ?? [];
+    const pagination = manifestsData
+        ? { total: manifestsData.total, pages: manifestsData.pages }
+        : null;
 
     return (
-        <div className="min-h-screen space-y-8 pb-20">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] text-xs font-bold uppercase tracking-wider mb-2 border border-[var(--primary-blue-light)]/20">
-                        <span className="w-2 h-2 rounded-full bg-[var(--primary-blue)] animate-pulse" />
-                        Logistics Management
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            <PageHeader
+                title="Manifests"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller/dashboard' },
+                    { label: 'Manifests', active: true },
+                ]}
+                description="Manage pickup manifests and coordinate with courier partners"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <Button
+                            onClick={handleRefresh}
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                'h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm',
+                                isRefreshing && 'animate-spin'
+                            )}
+                            title="Refresh"
+                        >
+                            <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                        </Button>
+                        <Button
+                            onClick={handleCreateManifest}
+                            size="sm"
+                            className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Manifest
+                        </Button>
                     </div>
-                    <h1 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">
-                        Manifests
-                    </h1>
-                    <p className="text-[var(--text-secondary)] mt-1">
-                        Manage pickup manifests and coordinate with courier partners
-                    </p>
-                </div>
-                <Button
-                    onClick={handleCreateManifest}
-                    className="h-12 px-6 rounded-xl shadow-brand-lg font-semibold"
-                    variant="primary"
-                >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Create Manifest
-                </Button>
-            </div>
+                }
+            />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {isStatsLoading ? (
-                    // Loading skeletons for stats
-                    Array(4).fill(0).map((_, i) => (
-                        <div key={i} className="h-32 bg-[var(--bg-elevated)] rounded-2xl animate-pulse border border-[var(--border-subtle)]" />
-                    ))
+                    Array(4)
+                        .fill(0)
+                        .map((_, i) => (
+                            <div
+                                key={i}
+                                className="h-32 rounded-2xl animate-pulse border border-[var(--border-subtle)] bg-[var(--bg-secondary)]"
+                            />
+                        ))
                 ) : (
                     <>
                         <StatsCard
                             title="Total Manifests"
                             value={stats?.totalManifests ?? 0}
                             icon={FileText}
-                            variant="default"
+                            iconColor="text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
                             delay={0}
                         />
                         <StatsCard
                             title="Pending Pickup"
                             value={stats?.pendingPickup ?? 0}
                             icon={Clock}
-                            variant="warning"
+                            iconColor="text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400"
                             delay={1}
                         />
                         <StatsCard
                             title="Scheduled Today"
                             value={stats?.scheduledToday ?? 0}
                             icon={Calendar}
-                            variant="info"
+                            iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
                             delay={2}
                         />
                         <StatsCard
                             title="Picked Up Today"
                             value={stats?.pickedUpToday ?? 0}
                             icon={CheckCircle2}
-                            variant="success"
+                            iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
                             delay={3}
                         />
                     </>
                 )}
             </div>
 
-            {/* Filters & Table Section */}
-            <div className="bg-[var(--bg-elevated)] rounded-3xl border border-[var(--border-subtle)] shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/50">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        {/* Search */}
-                        <form onSubmit={handleSearch} className="flex-1">
-                            <Input
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+            {/* Table & Controls (aligned with OrdersClient) */}
+            <div className="space-y-4">
+                {/* Tabs + Search + Filter row */}
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    {/* Status tabs */}
+                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
+                        {STATUS_TABS.map((tab) => (
+                            <button
+                                key={tab.value || 'all'}
+                                onClick={() => setStatusTab(tab.value)}
+                                className={cn(
+                                    'px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+                                    statusTab === tab.value
+                                        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                                )}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search + Courier filter */}
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                            <input
+                                type="text"
                                 placeholder="Search by manifest ID..."
-                                icon={<Search className="w-4 h-4 text-[var(--text-muted)]" />}
-                                className="h-10 bg-[var(--bg-tertiary)]"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
                             />
-                        </form>
-
-                        {/* Status Filter */}
-                        <div className="w-full md:w-48">
-                            <div className="relative">
-                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none z-10" />
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => {
-                                        setStatusFilter(e.target.value as ManifestStatus | '');
-                                        setFilters(prev => ({ ...prev, page: 1 }));
-                                    }}
-                                    className="w-full h-10 pl-9 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-sm focus:ring-1 focus:ring-[var(--primary-blue)] focus:border-[var(--primary-blue)] appearance-none cursor-pointer"
-                                >
-                                    {statusOptions.map(option => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
+                        </div>
+                        <div className="relative group">
+                            <button
+                                type="button"
+                                className="h-11 px-4 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] text-sm font-medium flex items-center gap-2 hover:bg-[var(--bg-secondary)] transition-colors shadow-sm"
+                            >
+                                <Truck className="w-4 h-4" />
+                                <span>{courierFilter ? COURIER_OPTIONS.find((o) => o.value === courierFilter)?.label : 'All Couriers'}</span>
+                                <ChevronDown className="w-4 h-4 opacity-50" />
+                            </button>
+                            <div className="absolute top-full right-0 mt-2 w-48 p-1.5 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                                {COURIER_OPTIONS.map((opt) => (
+                                    <button
+                                        key={opt.value || 'all'}
+                                        type="button"
+                                        onClick={() => setCourierFilter(opt.value)}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 text-sm rounded-lg capitalize transition-colors flex items-center justify-between',
+                                            courierFilter === opt.value
+                                                ? 'bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium'
+                                                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
+                                        )}
+                                    >
+                                        {opt.label}
+                                        {courierFilter === opt.value && (
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--primary-blue)]" />
+                                        )}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-
-                        {/* Courier Filter */}
-                        <div className="w-full md:w-48">
-                            <div className="relative">
-                                <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none z-10" />
-                                <select
-                                    value={courierFilter}
-                                    onChange={(e) => {
-                                        setCourierFilter(e.target.value as CourierPartner | '');
-                                        setFilters(prev => ({ ...prev, page: 1 }));
-                                    }}
-                                    className="w-full h-10 pl-9 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-sm focus:ring-1 focus:ring-[var(--primary-blue)] focus:border-[var(--primary-blue)] appearance-none cursor-pointer"
-                                >
-                                    {courierOptions.map(option => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Refresh Button */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleRefresh}
-                            className="h-10 w-10 text-[var(--text-secondary)] hover:text-[var(--primary-blue)]"
-                            title="Refresh"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        </Button>
                     </div>
                 </div>
 
-                {/* Table Content */}
-                {renderTableContent()}
+                {/* Error state */}
+                {error && (
+                    <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm py-20 text-center">
+                        <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertCircle className="w-10 h-10 text-[var(--error)]" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Failed to load manifests</h3>
+                        <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">
+                            {(error as { message?: string })?.message ?? 'An unexpected error occurred. Please try again.'}
+                        </p>
+                        <Button variant="primary" onClick={() => refetch()} className="mx-auto">
+                            <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
+                        </Button>
+                    </div>
+                )}
+
+                {/* Table (show when loading or has data) */}
+                {!error && (isLoading || manifests.length > 0) && (
+                    <ManifestTable
+                        manifests={manifests}
+                        isLoading={isLoading}
+                        onManifestClick={handleManifestClick}
+                        onDownloadPdf={handleDownloadPdf}
+                        className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm"
+                    />
+                )}
+
+                {/* Empty state (when no error, not loading, no data) */}
+                {!isLoading && !error && manifests.length === 0 && (
+                    <div className="py-24 text-center bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]">
+                        <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Package className="w-10 h-10 text-[var(--text-muted)]" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                            {hasActiveFilters ? 'No manifests found' : 'No manifests created yet'}
+                        </h3>
+                        <p className="text-[var(--text-muted)] text-sm mt-2 mb-6">
+                            {hasActiveFilters
+                                ? 'No manifests match your current filters'
+                                : 'Create your first manifest to start grouping shipments for pickup'}
+                        </p>
+                        {hasActiveFilters ? (
+                            <Button
+                                variant="outline"
+                                onClick={clearFilters}
+                                className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
+                            >
+                                Clear all filters
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                onClick={handleCreateManifest}
+                                className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Manifest
+                            </Button>
+                        )}
+                    </div>
+                )}
+
+                {/* Pagination (OrdersClient style) */}
+                {pagination && pagination.pages > 1 && manifests.length > 0 && (
+                    <div className="flex items-center justify-between px-2 pt-4">
+                        <p className="text-sm text-[var(--text-muted)]">
+                            Showing{' '}
+                            <span className="font-bold text-[var(--text-primary)]">{(page - 1) * limit + 1}</span> to{' '}
+                            <span className="font-bold text-[var(--text-primary)]">
+                                {Math.min(page * limit, pagination.total)}
+                            </span>{' '}
+                            of <span className="font-bold text-[var(--text-primary)]">{pagination.total}</span> results
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
+                            >
+                                Previous
+                            </Button>
+                            <span className="text-sm font-medium text-[var(--text-primary)] bg-[var(--bg-secondary)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
+                                Page {page} / {pagination.pages}
+                            </span>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                                disabled={page === pagination.pages}
+                                className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

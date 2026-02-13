@@ -154,8 +154,9 @@ sendPaginated(res, result.orders, {
             hasNext: result.page < result.pages,
             hasPrev: result.page > 1
         }, 'Orders retrieved successfully', {
-            stats: result.stats, // Attach stats to response metadata
-            filterCounts: result.filterCounts // Attach smart filter counts
+            stats: result.stats,
+            filterCounts: result.filterCounts,
+            globalStats: result.globalStats
         });
     } catch (error) {
         logger.error('Error fetching orders:', error);

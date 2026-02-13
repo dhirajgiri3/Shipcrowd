@@ -1,5 +1,105 @@
 # ShipCrowd Developer Instructions
 
+## Seller Shipping UX Modernization (Order-Centric + Quote-Locked)
+
+### Objective
+Modernize seller shipping UX to be order-centric and easier to use, while preserving Shipcrowd's advanced shipping guarantees:
+- quote-locked rates (`sessionId` + `optionId`)
+- wallet balance enforcement
+- `BookFromQuoteService` reliability and fallback behavior
+- strict backend eligibility (`pending`, `ready_to_ship` only)
+
+### Non-Negotiable Constraints
+- Do not modify backend shipping contracts for quote booking.
+- Do not bypass quote session flow in seller UI.
+- Do not treat Blueship-only statuses (`new`, `ready`) as shippable in Shipcrowd.
+
+### Feature Flag and Rollback
+- Flag: `NEXT_PUBLIC_SELLER_ORDER_CENTRIC_SHIPPING`
+- Location: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/.env.example`
+- Behavior:
+  - missing/undefined: enabled (default) — Ship button visible on Orders page
+  - `"false"`: hides Ship button on Orders page (no shipment creation UI anywhere)
+- **Note:** Legacy "Create Shipment" on Shipments page was removed (Feb 2025). Orders page is the only place to create shipments.
+
+### Phase Sequence (Required)
+1. Utilities and flag
+2. Order quote-ship modal
+3. Mobile status mapping and ship action wiring
+4. Orders page integration
+5. ~~Shipments page gating~~ → Legacy Shipments create flow removed (Feb 2025)
+6. Shipping analytics events
+7. Documentation and QA sign-off
+
+### Implemented Contract Details
+
+#### Eligibility Utility
+- File: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/src/lib/utils/order-shipping-eligibility.ts`
+- Shippable statuses: `pending`, `ready_to_ship`
+- API:
+  - `isSellerOrderShippable(order): boolean`
+  - `getShipDisabledReason(order): string | null`
+
+#### Order-Centric Feature Flag Utility
+- File: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/src/lib/utils/seller-shipping-flags.ts`
+- API:
+  - `isOrderCentricShippingEnabled(): boolean`
+
+#### Quote Booking Modal
+- File: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/src/components/seller/shipping/OrderQuoteShipModal.tsx`
+- Uses:
+  - `useGetCourierRates`
+  - `useShipOrder`
+  - `useWalletBalance`
+  - `useWarehouses`
+  - `useOrder(orderId)` fallback (`data?.data?.order`)
+- Required behaviors:
+  - resolve origin pincode from populated `warehouseId.address.postalCode` or warehouse lookup
+  - clear blocking state when warehouse origin missing ("Assign a warehouse first")
+  - quote expiry timer + auto-refresh
+  - preserve selected option after quote refresh when still present
+  - duplicate submit protection (`isPending` disable + in-flight lock)
+  - wallet insufficiency block + recharge CTA
+  - explicit handling for expired quote / active shipment / invalid status race
+
+#### Orders UI Integration
+- Entry points:
+  - Desktop order table "Ship" action for eligible rows
+  - Mobile order card actions panel "Ship"
+  - Order details panel "Ship Order"
+- All entry points open `OrderQuoteShipModal` using order in parent closure context.
+
+#### Shipments Page (Tracking Only)
+- File: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/app/seller/shipments/components/ShipmentsClient.tsx`
+- Legacy "Create Shipment" modal and button **removed** (Feb 2025).
+- Shipments page now only displays existing shipments (tracking, labels, manifests).
+- To create shipments, sellers use the Orders page (Ship Now from order detail).
+
+#### Analytics Events
+- File: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/src/lib/analytics/events.ts`
+- Added canonical events:
+  - `SHIPPING_MODAL_OPENED`
+  - `SHIPPING_QUOTE_FETCHED`
+  - `SHIPPING_QUOTE_REFRESHED`
+  - `SHIPPING_CONFIRMED`
+  - `SHIPPING_SUCCESS`
+  - `SHIPPING_FAILED`
+
+### QA Checklist (Blocking)
+- Eligible order (`pending` or `ready_to_ship`) can ship from Orders page.
+- Ineligible order cannot ship and shows correct disabled reason.
+- Missing warehouse origin blocks quotes with assign-warehouse guidance.
+- Quote expiry auto-refreshes and preserves selected courier when available.
+- Wallet-insufficient flow blocks booking and supports recharge CTA.
+- Double-click on confirm does not submit twice.
+- Flag `false` restores legacy Shipments create flow.
+- Successful booking refreshes order/shipment data in UI.
+- Error states surface mapped messages:
+  - insufficient balance
+  - quote expired
+  - active shipment exists
+  - order no longer eligible
+
 ## DEVELOPER 1 - Delhivery Courier Integration Lead
 
 Your responsibility is implementing the complete Delhivery B2C courier integration from scratch. You have API credentials ready and documentation available at `docs/Resources/API/Courier/Delhivery/B2C/`.

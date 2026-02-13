@@ -19,7 +19,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 import {
   Package,
@@ -39,6 +39,9 @@ import { trackEvent, EVENTS } from '@/src/lib/analytics';
 
 // Order status type
 export type OrderStatus =
+  | 'pending'
+  | 'ready_to_ship'
+  | 'shipped'
   | 'created'
   | 'pickup_pending'
   | 'pickup_failed'
@@ -70,6 +73,7 @@ interface MobileOrderCardProps {
   order: MobileOrderCardData;
   onTrack?: (order: MobileOrderCardData) => void;
   onCall?: (order: MobileOrderCardData) => void;
+  onShip?: () => void;
   onClick?: (order: MobileOrderCardData) => void;
   className?: string;
 }
@@ -101,6 +105,30 @@ const statusConfig: Record<
     bgColor: 'bg-red-50 dark:bg-red-950/20',
     borderColor: 'border-red-200 dark:border-red-800',
     priority: 'urgent'
+  },
+  pending: {
+    label: 'Pending',
+    icon: Clock,
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/20',
+    borderColor: 'border-amber-200 dark:border-amber-800',
+    priority: 'normal'
+  },
+  ready_to_ship: {
+    label: 'Ready to Ship',
+    icon: Package,
+    color: 'text-indigo-600 dark:text-indigo-400',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-950/20',
+    borderColor: 'border-indigo-200 dark:border-indigo-800',
+    priority: 'normal'
+  },
+  shipped: {
+    label: 'Shipped',
+    icon: Truck,
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/20',
+    borderColor: 'border-blue-200 dark:border-blue-800',
+    priority: 'normal'
   },
   created: {
     label: 'Created',
@@ -191,10 +219,11 @@ export function MobileOrderCard({
   order,
   onTrack,
   onCall,
+  onShip,
   onClick,
   className
 }: MobileOrderCardProps) {
-  const config = statusConfig[order.status];
+  const config = statusConfig[order.status] || statusConfig.created;
   const Icon = config.icon;
   const [isCopied, setIsCopied] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -403,6 +432,18 @@ export function MobileOrderCard({
               >
                 <Phone className="w-4 h-4" />
                 <span>Call</span>
+              </button>
+            )}
+            {onShip && (
+              <button
+                onClick={() => {
+                  onShip();
+                  setShowActions(false);
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-sm font-medium text-white transition-colors"
+              >
+                <Truck className="w-4 h-4" />
+                <span>Ship</span>
               </button>
             )}
           </div>

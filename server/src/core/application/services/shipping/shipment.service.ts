@@ -552,11 +552,28 @@ export class ShipmentService {
 
             let selectedOption: any;
             let carrierResult: CarrierSelectionResult | null = null;
+            const selectedQuote = pricingDetails?.selectedQuote;
+            const quoteLockedAmount = Number(
+                pricingDetails?.totalPrice ??
+                selectedQuote?.quotedSellAmount ??
+                selectedQuote?.sellBreakdown?.total ??
+                0
+            );
+            const hasQuoteLockedSelection = Boolean(selectedQuote && quoteLockedAmount > 0);
+
+            // Quote-booked shipments must use quote-locked pricing to avoid re-pricing drift.
+            if (selectedQuote && quoteLockedAmount > 0) {
+                selectedOption = {
+                    carrier: selectedQuote.provider || payload.carrierOverride || 'velocity',
+                    rate: quoteLockedAmount,
+                    deliveryTime: serviceType === 'express' ? 2 : 4,
+                };
+            }
 
             // NEW: API-based carrier selection (feature flagged)
             const useApiRates = (payload as any).useApiRates || process.env.USE_VELOCITY_API_RATES === 'true';
 
-            if (useApiRates) {
+            if (!hasQuoteLockedSelection && useApiRates) {
                 try {
                     const preferredProvider = payload.carrierOverride || 'velocity';
                     const providerKey = ShipmentService.resolveProviderLookupKey(preferredProvider);
@@ -636,7 +653,15 @@ export class ShipmentService {
             // ========================================================================
             // WALLET INTEGRATION: Check balance and deduct shipping cost
             // ========================================================================
-            const shippingCost = selectedOption.rate;
+            const shippingCost = Number(selectedOption?.rate || 0);
+
+            if (!(shippingCost > 0)) {
+                throw new AppError(
+                    'Invalid shipping quote amount. Please refresh courier quotes and retry.',
+                    ErrorCode.BIZ_INVALID_STATE,
+                    400
+                );
+            }
 
             // Step 1: Check if wallet has sufficient balance
             const hasBalance = await WalletService.hasMinimumBalance(

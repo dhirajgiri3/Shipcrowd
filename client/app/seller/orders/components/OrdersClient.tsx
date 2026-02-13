@@ -31,6 +31,9 @@ import { useIsMobile } from '@/src/hooks/ux';
 import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { OrderQuoteShipModal } from '@/src/components/seller/shipping/OrderQuoteShipModal';
+import { getShipDisabledReason } from '@/src/lib/utils/order-shipping-eligibility';
+import { isOrderCentricShippingEnabled } from '@/src/lib/utils/seller-shipping-flags';
 
 export function OrdersClient() {
     const isMobile = useIsMobile();
@@ -42,8 +45,10 @@ export function OrdersClient() {
     const [smartFilter, setSmartFilter] = useState<FilterPreset>('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [page, setPage] = useState(1);
+    const [shipTargetOrder, setShipTargetOrder] = useState<Order | null>(null);
     const { addToast } = useToast();
     const limit = 20;
+    const isOrderCentricShipping = isOrderCentricShippingEnabled();
 
     // Reset page when any filter changes
     useEffect(() => {
@@ -68,7 +73,7 @@ export function OrdersClient() {
     // Use real data from API directly
     const ordersData: Order[] = ordersResponse?.data || [];
     const pagination = ordersResponse?.pagination;
-    const stats = ordersResponse?.stats;
+    const globalStats = ordersResponse?.globalStats;
 
     const refetch = async () => {
         setIsRefreshing(true);
@@ -79,15 +84,23 @@ export function OrdersClient() {
     // No client-side filtering needed - all filtering is done server-side for better performance
     const filteredOrders = ordersData;
 
-
-    // Derived Metrics from available data (or use stats from API if available)
+    // Stats cards always use global (unfiltered) stats for consistent UX
     const metrics = useMemo(() => {
-        // Fallback calculation from current page data if global stats missing
-        const totalRevenue = ordersData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0);
-        const pendingPaymentCount = ordersData.filter((o: Order) => o.paymentStatus === 'pending').length;
-        const pendingShipmentCount = ordersData.filter((o: Order) => o.currentStatus === 'pending').length;
-        return { totalRevenue, pendingPaymentCount, pendingShipmentCount };
-    }, [ordersData]);
+        if (globalStats) {
+            return {
+                totalOrders: globalStats.totalOrders,
+                totalRevenue: globalStats.totalRevenue,
+                pendingShipmentCount: globalStats.pendingShipments,
+                pendingPaymentCount: globalStats.pendingPayments
+            };
+        }
+        return {
+            totalOrders: pagination?.total || 0,
+            totalRevenue: ordersData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0),
+            pendingShipmentCount: ordersData.filter((o: Order) => o.currentStatus === 'pending').length,
+            pendingPaymentCount: ordersData.filter((o: Order) => o.paymentStatus === 'pending').length
+        };
+    }, [globalStats, pagination?.total, ordersData]);
 
 
     return (
@@ -95,6 +108,22 @@ export function OrdersClient() {
             <OrderDetailsPanel
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
+                onShipOrder={isOrderCentricShipping ? (order) => {
+                    const disabledReason = getShipDisabledReason(order);
+                    if (disabledReason) {
+                        addToast(disabledReason, 'error');
+                        return;
+                    }
+                    setShipTargetOrder(order);
+                } : undefined}
+            />
+            <OrderQuoteShipModal
+                order={shipTargetOrder}
+                isOpen={!!shipTargetOrder}
+                onClose={() => setShipTargetOrder(null)}
+                onShipSuccess={() => {
+                    setShipTargetOrder(null);
+                }}
             />
 
             {/* --- HEADER --- */}
@@ -135,7 +164,7 @@ export function OrdersClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                     title="Total Orders"
-                    value={pagination?.total || 0}
+                    value={metrics.totalOrders}
                     icon={Package}
                     iconColor="text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
                     trend={{ value: 12, label: 'vs last week', positive: true }}
@@ -143,7 +172,7 @@ export function OrdersClient() {
                 />
                 <StatsCard
                     title="Revenue"
-                    value={formatCurrency(metrics.totalRevenue)} // Note: This might be page-only revenue if API doesn't provide global
+                    value={formatCurrency(metrics.totalRevenue)}
                     icon={TrendingUp}
                     iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
                     trend={{ value: 8.4, label: 'vs last week', positive: true }}
@@ -266,26 +295,44 @@ export function OrdersClient() {
                         orders={filteredOrders}
                         isLoading={isLoading}
                         onOrderClick={(order) => setSelectedOrder(order)}
+                        onShipClick={isOrderCentricShipping ? (order) => {
+                            const disabledReason = getShipDisabledReason(order);
+                            if (disabledReason) {
+                                addToast(disabledReason, 'error');
+                                return;
+                            }
+                            setShipTargetOrder(order);
+                        } : undefined}
                         className={isMobile ? '' : 'bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm'}
                     />
                 )}
 
-                {/* Empty State with Clear Filters */}
+                {/* Empty State - consolidated (no duplicate from ResponsiveOrderList) */}
                 {!isLoading && !error && filteredOrders.length === 0 && (
-                    <div className="text-center mt-4 py-8">
-                        <p className="text-[var(--text-muted)] mb-4">No orders found matching your criteria</p>
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setSearch('');
-                                setActiveTab('all');
-                                setPaymentFilter('all');
-                                setSmartFilter('all');
-                            }}
-                            className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
-                        >
-                            Clear all filters
-                        </Button>
+                    <div className="py-24 text-center bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]">
+                        <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Package className="w-10 h-10 text-[var(--text-muted)]" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)]">No orders found</h3>
+                        <p className="text-[var(--text-muted)] text-sm mt-2 mb-6">
+                            {(smartFilter !== 'all' || search || activeTab !== 'all' || paymentFilter !== 'all')
+                                ? 'No orders match your current filters'
+                                : 'Your orders will appear here once created'}
+                        </p>
+                        {(smartFilter !== 'all' || search || activeTab !== 'all' || paymentFilter !== 'all') && (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setSearch('');
+                                    setActiveTab('all');
+                                    setPaymentFilter('all');
+                                    setSmartFilter('all');
+                                }}
+                                className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
+                            >
+                                Clear all filters
+                            </Button>
+                        )}
                     </div>
                 )}
 

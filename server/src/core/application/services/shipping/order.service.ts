@@ -255,30 +255,31 @@ export class OrderService extends CachedService {
 
     /**
      * List Orders with Stats (Faceted Search)
-     * 
+     *
      * Efficiently fetches:
      * 1. Paginated order list (filtered & sorted)
      * 2. Status counts (based on current filters, for tabs)
      * 3. Total count (for pagination)
-     * 
-     * All in a single DB round-trip.
+     * 4. Global filterCounts and globalStats (always unfiltered by smartFilter for consistent UX)
+     *
+     * Runs two parallel aggregations: one for global counts/stats, one for filtered list.
      */
     async listOrdersWithStats(companyId: string | null, queryParams: any, pagination: { page: number; limit: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) {
         const { page, limit, sortBy = 'createdAt', sortOrder = 'desc' } = pagination;
 
-        // 1. Build Match Stage (Base Filters)
-        const matchStage: any = {
+        // 1. Build Base Match Stage (without smartFilter) - for filterCounts & globalStats
+        const matchStageBase: any = {
             isDeleted: false
         };
 
         if (companyId) {
-            matchStage.companyId = new mongoose.Types.ObjectId(companyId);
+            matchStageBase.companyId = new mongoose.Types.ObjectId(companyId);
         }
 
         // Text Search
         if (queryParams.search) {
             const searchRegex = { $regex: queryParams.search, $options: 'i' };
-            matchStage.$or = [
+            matchStageBase.$or = [
                 { orderNumber: searchRegex },
                 { 'customerInfo.name': searchRegex },
                 { 'customerInfo.phone': searchRegex },
@@ -288,67 +289,63 @@ export class OrderService extends CachedService {
 
         // Date Range (endDate as date-only YYYY-MM-DD is treated as end-of-day for inclusive range)
         if (queryParams.startDate || queryParams.endDate) {
-            matchStage.createdAt = {};
-            if (queryParams.startDate) matchStage.createdAt.$gte = new Date(queryParams.startDate);
+            matchStageBase.createdAt = {};
+            if (queryParams.startDate) matchStageBase.createdAt.$gte = new Date(queryParams.startDate);
             if (queryParams.endDate) {
                 const endRaw = String(queryParams.endDate).trim();
                 const endD = new Date(queryParams.endDate);
                 if (/^\d{4}-\d{2}-\d{2}$/.test(endRaw)) {
                     endD.setUTCHours(23, 59, 59, 999);
                 }
-                matchStage.createdAt.$lte = endD;
+                matchStageBase.createdAt.$lte = endD;
             }
         }
 
-// Warehouse Filter
+        // Warehouse Filter
         if (queryParams.warehouse) {
-            matchStage.warehouseId = new mongoose.Types.ObjectId(queryParams.warehouse);
+            matchStageBase.warehouseId = new mongoose.Types.ObjectId(queryParams.warehouse);
         }
 
         // Payment Status Filter
         if (queryParams.paymentStatus && queryParams.paymentStatus !== 'all') {
-            matchStage.paymentStatus = queryParams.paymentStatus;
+            matchStageBase.paymentStatus = queryParams.paymentStatus;
         }
 
-        // Smart Filter (Server-side filtering for better UX)
-        if (queryParams.smartFilter && queryParams.smartFilter !== 'all') {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const sevenDaysAgo = new Date(today);
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        // 2. Build Filtered Match Stage (with smartFilter) - for orders list & pagination
+        const matchStageFiltered = { ...matchStageBase };
+        const todayStart = new Date();
+        todayStart.setUTCHours(0, 0, 0, 0);
+        const todayEnd = new Date(todayStart);
+        todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+        const sevenDaysAgo = new Date(todayStart);
+        sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
 
+        if (queryParams.smartFilter && queryParams.smartFilter !== 'all') {
             switch (queryParams.smartFilter) {
                 case 'needs_attention':
-                    matchStage.currentStatus = {
+                    matchStageFiltered.currentStatus = {
                         $in: ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception', 'ready', 'new']
                     };
                     break;
                 case 'today':
-                    matchStage.createdAt = {
-                        $gte: today,
-                        $lt: tomorrow
-                    };
+                    matchStageFiltered.createdAt = { $gte: todayStart, $lt: todayEnd };
                     break;
                 case 'cod_pending':
-                    matchStage.paymentMethod = 'cod';
-                    matchStage.currentStatus = { $ne: 'delivered' };
+                    matchStageFiltered.paymentMethod = 'cod';
+                    matchStageFiltered.currentStatus = { $ne: 'delivered' };
                     break;
                 case 'last_7_days':
-                    matchStage.createdAt = {
-                        $gte: sevenDaysAgo
-                    };
+                    matchStageFiltered.createdAt = { $gte: sevenDaysAgo };
                     break;
                 case 'zone_b':
-                    matchStage['customerInfo.address.state'] = {
+                    matchStageFiltered['customerInfo.address.state'] = {
                         $in: ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh']
                     };
                     break;
             }
         }
 
-        // 2. Build Sort Stage
+        // 3. Build Sort Stage
         // Map frontend sort keys to DB paths
         const sortMapping: Record<string, string> = {
             'orderNumber': 'orderNumber',
@@ -361,51 +358,40 @@ export class OrderService extends CachedService {
         const dbSortKey = sortMapping[sortBy] || 'createdAt';
         const sortStage: any = { [dbSortKey]: sortOrder === 'asc' ? 1 : -1 };
 
-        // 3. Status Filter (Only applies to the 'orders' facet, NOT the 'stats' facet)
-        // We want stats to show counts for ALL statuses given the current search/date filters
+        // 4. Status Filter (Only applies to the 'orders' facet, NOT the 'stats' facet)
         const statusMatch = OrderService.resolveStatusFilter(queryParams.status as string | undefined);
 
-// 4. Aggregation Pipeline
-        const pipeline: any[] = [
-            { $match: matchStage },
+        // 5. Build pipelines: one for global filterCounts/stats (base match), one for filtered list
+        const pipelineFiltered: any[] = [
+            { $match: matchStageFiltered },
             {
                 $facet: {
-                    // Facet 1: The Paginated List
                     orders: [
-                        { $match: statusMatch }, // Apply status filter only here
+                        { $match: statusMatch },
                         { $sort: sortStage },
                         { $skip: (page - 1) * limit },
                         { $limit: limit },
-                        // Populate equivalent (using $lookup would be expensive, usually better to secondary fetch or simple lookup)
-                        // For simplicity/performance in aggregation, we often stick to what's in the doc or do simple lookups.
-                        // But Mongoose `lean()` + `populate()` is easier. 
-                        // Since we are using aggregate, we must manual lookup if we need joined data.
-                        // Order model has `warehouseId` ref.
                         {
                             $lookup: {
-                                from: 'warehouses', // collection name
+                                from: 'warehouses',
                                 localField: 'warehouseId',
                                 foreignField: '_id',
                                 as: 'warehouse'
                             }
                         },
-                        { $unwind: { path: '$warehouse', preserveNullAndEmptyArrays: true } },
-                        // Project only needed fields if necessary, or keep all
+                        { $unwind: { path: '$warehouse', preserveNullAndEmptyArrays: true } }
                     ],
-// Facet 2: Status Counts (for Tabs)
-                    stats: [
-                        { $group: { _id: '$currentStatus', count: { $sum: 1 } } }
-                    ],
-                    // Facet 3: Total Count (for Pagination of the list, with status filter applied)
-                    total: [
-                        { $match: statusMatch },
-                        { $count: 'count' }
-                    ],
-                    // Facet 3.5: All Count (total without status filter, for "All Orders" chip)
-                    allCount: [
-                        { $count: 'count' }
-                    ],
-                    // Facet 4: Needs Attention Count
+                    stats: [{ $group: { _id: '$currentStatus', count: { $sum: 1 } } }],
+                    total: [{ $match: statusMatch }, { $count: 'count' }]
+                }
+            }
+        ];
+
+        const pipelineGlobal: any[] = [
+            { $match: matchStageBase },
+            {
+                $facet: {
+                    allCount: [{ $count: 'count' }],
                     needsAttentionCount: [
                         {
                             $match: {
@@ -416,26 +402,14 @@ export class OrderService extends CachedService {
                         },
                         { $count: 'count' }
                     ],
-                    // Facet 5: Today's Orders Count
                     todayCount: [
                         {
-                            $addFields: {
-                                orderDateOnly: {
-                                    $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
-                                },
-                                todayDateOnly: {
-                                    $dateToString: { format: '%Y-%m-%d', date: new Date() }
-                                }
-                            }
-                        },
-                        {
                             $match: {
-                                $expr: { $eq: ['$orderDateOnly', '$todayDateOnly'] }
+                                createdAt: { $gte: todayStart, $lt: todayEnd }
                             }
                         },
                         { $count: 'count' }
                     ],
-                    // Facet 6: COD Pending Count
                     codPendingCount: [
                         {
                             $match: {
@@ -445,18 +419,14 @@ export class OrderService extends CachedService {
                         },
                         { $count: 'count' }
                     ],
-                    // Facet 7: Last 7 Days Count
                     last7DaysCount: [
                         {
                             $match: {
-                                createdAt: {
-                                    $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                                }
+                                createdAt: { $gte: sevenDaysAgo }
                             }
                         },
                         { $count: 'count' }
                     ],
-                    // Facet 8: Zone B Count
                     zoneBCount: [
                         {
                             $match: {
@@ -466,43 +436,61 @@ export class OrderService extends CachedService {
                             }
                         },
                         { $count: 'count' }
+                    ],
+                    globalStats: [
+                        {
+                            $group: {
+                                _id: null,
+                                totalOrders: { $sum: 1 },
+                                totalRevenue: { $sum: { $ifNull: ['$totals.total', 0] } },
+                                pendingShipments: { $sum: { $cond: [{ $eq: ['$currentStatus', 'pending'] }, 1, 0] } },
+                                pendingPayments: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'pending'] }, 1, 0] } }
+                            }
+                        }
                     ]
                 }
             }
         ];
 
-        // 5. Execute
-        const [result] = await Order.aggregate(pipeline);
+        // 6. Execute both pipelines in parallel
+        const [resultFiltered, resultGlobal] = await Promise.all([
+            Order.aggregate(pipelineFiltered).then((r) => r[0]),
+            Order.aggregate(pipelineGlobal).then((r) => r[0])
+        ]);
 
-        // 6. Format Result
-        const orders = result.orders.map((o: any) => ({
+        // 7. Format Result
+        const orders = (resultFiltered.orders || []).map((o: any) => ({
             ...o,
-            warehouseId: o.warehouse, // mapping back to match populate structure roughly
+            warehouseId: o.warehouse,
             id: o._id
         }));
 
-const total = result.total[0]?.count || 0;
+        const total = resultFiltered.total?.[0]?.count || 0;
 
         const stats: Record<string, number> = {};
-        result.stats.forEach((s: any) => {
+        (resultFiltered.stats || []).forEach((s: any) => {
             stats[s._id] = s.count;
         });
-
-        // Ensure all statuses have a key
         const allStatuses = ['new', 'ready', 'shipped', 'delivered', 'rto', 'cancelled', 'pending'];
         allStatuses.forEach(s => {
             if (!stats[s]) stats[s] = 0;
         });
 
-// Extract smart filter counts from individual facets
-        const allCount = result.allCount?.[0]?.count || 0;
+        const gs = resultGlobal.globalStats?.[0];
+        const globalStats = {
+            totalOrders: gs?.totalOrders ?? 0,
+            totalRevenue: gs?.totalRevenue ?? 0,
+            pendingShipments: gs?.pendingShipments ?? 0,
+            pendingPayments: gs?.pendingPayments ?? 0
+        };
+
         const filterCounts: Record<string, number> = {
-            all: allCount,
-            needs_attention: result.needsAttentionCount?.[0]?.count || 0,
-            today: result.todayCount?.[0]?.count || 0,
-            cod_pending: result.codPendingCount?.[0]?.count || 0,
-            last_7_days: result.last7DaysCount?.[0]?.count || 0,
-            zone_b: result.zoneBCount?.[0]?.count || 0
+            all: resultGlobal.allCount?.[0]?.count || 0,
+            needs_attention: resultGlobal.needsAttentionCount?.[0]?.count || 0,
+            today: resultGlobal.todayCount?.[0]?.count || 0,
+            cod_pending: resultGlobal.codPendingCount?.[0]?.count || 0,
+            last_7_days: resultGlobal.last7DaysCount?.[0]?.count || 0,
+            zone_b: resultGlobal.zoneBCount?.[0]?.count || 0
         };
 
         return {
@@ -510,6 +498,7 @@ const total = result.total[0]?.count || 0;
             total,
             stats,
             filterCounts,
+            globalStats,
             page,
             pages: Math.ceil(total / limit)
         };

@@ -1,32 +1,28 @@
 /**
  * Manifest Table Component
- * 
- * Displays manifests in a sortable, filterable table.
- * Features:
- * - Status badges with colors
- * - Courier partner logos
- * - Quick actions (View, Download PDF, Reconcile)
- * - Loading skeletons
- * - Empty states
+ *
+ * Displays manifests in a table aligned with OrderTable/DataTable patterns.
+ * Uses Table components, TableSkeleton for loading, StatusBadge, ViewActionButton.
  */
 
 'use client';
 
 import {
-    FileText,
-    Truck,
-    Download,
-    Eye,
-    Clock,
-    Package,
-} from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import type { Manifest, ManifestStatus, CourierPartner } from '@/src/types/api/orders';
-
-// ==================== Status Badge Config ====================
-
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/src/components/ui/core/Table';
+import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
+import { Button } from '@/src/components/ui/core/Button';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { cn } from '@/src/lib/utils';
+import { FileText, Truck, Download, Clock, Package } from 'lucide-react';
+import { formatDistanceToNow, format } from 'date-fns';
+import type { Manifest, CourierPartner } from '@/src/types/api/orders';
 
 const courierDisplayNames: Record<CourierPartner, string> = {
     velocity: 'Velocity',
@@ -34,186 +30,113 @@ const courierDisplayNames: Record<CourierPartner, string> = {
     ekart: 'Ekart',
 };
 
-// ==================== Props ====================
-
 interface ManifestTableProps {
     manifests: Manifest[];
     isLoading: boolean;
     onManifestClick?: (manifest: Manifest) => void;
     onDownloadPdf?: (manifestId: string) => void;
+    className?: string;
 }
-
-// ==================== Component ====================
 
 export function ManifestTable({
     manifests,
     isLoading,
     onManifestClick,
     onDownloadPdf,
+    className,
 }: ManifestTableProps) {
-    // Loading skeleton
-    if (isLoading) {
+    if (isLoading && manifests.length === 0) {
         return (
-            <div className="overflow-hidden rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)]">
-                <table className="w-full">
-                    <thead className="bg-[var(--bg-secondary)]">
-                        <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Manifest</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Courier</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Shipments</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border-subtle)]">
-                        {Array.from({ length: 5 }).map((_, idx) => (
-                            <tr key={idx} className="animate-pulse">
-                                <td className="px-4 py-4"><div className="h-4 bg-[var(--bg-tertiary)] rounded w-24" /></td>
-                                <td className="px-4 py-4"><div className="h-4 bg-[var(--bg-tertiary)] rounded w-20" /></td>
-                                <td className="px-4 py-4"><div className="h-4 bg-[var(--bg-tertiary)] rounded w-28" /></td>
-                                <td className="px-4 py-4"><div className="h-4 bg-[var(--bg-tertiary)] rounded w-12" /></td>
-                                <td className="px-4 py-4"><div className="h-6 bg-[var(--bg-tertiary)] rounded w-24" /></td>
-                                <td className="px-4 py-4"><div className="h-4 bg-[var(--bg-tertiary)] rounded w-8 ml-auto" /></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className={className}>
+                <TableSkeleton rows={10} columns={6} />
             </div>
         );
     }
 
-    // Empty state
-    if (manifests.length === 0) {
-        return (
-            <div className="text-center py-12 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-default)]">
-                <FileText className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" />
-                <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
-                    No Manifests Found
-                </h3>
-                <p className="text-[var(--text-secondary)]">
-                    Create a manifest to group shipments for pickup
-                </p>
-            </div>
-        );
+    if (!isLoading && manifests.length === 0) {
+        return null; // Parent handles empty state
     }
 
     return (
-        <div className="overflow-hidden rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)]">
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead className="bg-[var(--bg-secondary)]">
-                        <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">
-                                Manifest
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">
-                                Courier
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">
-                                Pickup Date
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">
-                                Shipments
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">
-                                Status
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border-subtle)] bg-[var(--bg-elevated)]">
+        <div className={cn('overflow-hidden flex flex-col', className)}>
+            <div className="overflow-auto flex-1">
+                <Table>
+                    <TableHeader className="bg-[var(--bg-secondary)] sticky top-0 z-10">
+                        <TableRow className="border-b border-[var(--border-default)] hover:bg-transparent">
+                            <TableHead className="w-[200px] text-[var(--text-secondary)]">Manifest</TableHead>
+                            <TableHead className="text-[var(--text-secondary)]">Courier</TableHead>
+                            <TableHead className="text-[var(--text-secondary)]">Pickup Date</TableHead>
+                            <TableHead className="text-[var(--text-secondary)]">Shipments</TableHead>
+                            <TableHead className="text-[var(--text-secondary)]">Status</TableHead>
+                            <TableHead className="text-right text-[var(--text-secondary)]">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {manifests.map((manifest) => (
-                            <tr
+                            <TableRow
                                 key={manifest._id}
-                                className="hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                                className="group hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-b last:border-0 border-[var(--border-subtle)]"
                                 onClick={() => onManifestClick?.(manifest)}
                             >
-                                {/* Manifest ID */}
-                                <td className="px-4 py-4">
+                                <TableCell>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                        <div className="w-10 h-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center shrink-0">
                                             <FileText className="w-5 h-5 text-[var(--primary-blue)]" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-[var(--text-primary)]">
-                                                {manifest.manifestNumber}
-                                            </p>
-                                            <p className="text-xs text-[var(--text-muted)]">
-                                                Created {formatDistanceToNow(new Date(manifest.createdAt), { addSuffix: true })}
-                                            </p>
+                                            <div className="font-medium text-[var(--text-primary)]">{manifest.manifestNumber}</div>
+                                            <div className="text-xs text-[var(--text-tertiary)]">
+                                                {formatDistanceToNow(new Date(manifest.createdAt), { addSuffix: true })}
+                                            </div>
                                         </div>
                                     </div>
-                                </td>
-
-                                {/* Courier */}
-                                <td className="px-4 py-4">
+                                </TableCell>
+                                <TableCell>
                                     <div className="flex items-center gap-2">
                                         <Truck className="w-4 h-4 text-[var(--text-muted)]" />
-                                        <span className="text-sm text-[var(--text-secondary)]">
-                                            {courierDisplayNames[manifest.carrier]}
-                                        </span>
+                                        <span className="text-[var(--text-secondary)]">{courierDisplayNames[manifest.carrier]}</span>
                                     </div>
-                                </td>
-
-                                {/* Pickup Date */}
-                                <td className="px-4 py-4">
-                                    <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                                        <Clock className="w-4 h-4 text-[var(--text-muted)]" />
-                                        <span>
-                                            {new Date(manifest.pickup.scheduledDate).toLocaleDateString('en-IN', {
-                                                day: 'numeric',
-                                                month: 'short',
-                                                year: 'numeric',
-                                            })}
-                                        </span>
+                                </TableCell>
+                                <TableCell>
+                                    <div>
+                                        <div className="text-[var(--text-primary)] font-medium">
+                                            {format(new Date(manifest.pickup.scheduledDate), 'MMM d, yyyy')}
+                                        </div>
                                         {manifest.pickup?.timeSlot && (
-                                            <span className="text-xs text-[var(--text-muted)]">
-                                                {manifest.pickup.timeSlot}
-                                            </span>
+                                            <div className="text-xs text-[var(--text-tertiary)]">{manifest.pickup.timeSlot}</div>
                                         )}
                                     </div>
-                                </td>
-
-                                {/* Shipments */}
-                                <td className="px-4 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <Package className="w-4 h-4 text-[var(--text-muted)]" />
-                                        <span className="text-sm font-medium text-[var(--text-primary)]">
-                                            {manifest.summary.totalShipments}
-                                        </span>
+                                </TableCell>
+                                <TableCell>
+                                    <div>
+                                        <div className="font-medium text-[var(--text-primary)]">{manifest.summary.totalShipments}</div>
+                                        <div className="text-xs text-[var(--text-tertiary)]">
+                                            {manifest.summary.totalWeight.toFixed(2)} kg • ₹{manifest.summary.totalCODAmount.toLocaleString()} COD
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                                        {manifest.summary.totalWeight.toFixed(2)} kg • ₹{manifest.summary.totalCODAmount.toLocaleString()} COD
-                                    </p>
-                                </td>
-
-                                {/* Status */}
-                                <td className="px-4 py-4">
+                                </TableCell>
+                                <TableCell>
                                     <StatusBadge domain="manifest" status={manifest.status} />
-                                </td>
-
-                                {/* Actions */}
-                                <td className="px-4 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                        <ViewActionButton
-                                            onClick={() => onManifestClick?.(manifest)}
-                                        />
-                                        <button
+                                </TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex justify-end items-center gap-2">
+                                        <ViewActionButton onClick={() => onManifestClick?.(manifest)} />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             onClick={() => onDownloadPdf?.(manifest._id)}
-                                            className="p-2 text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
+                                            className="h-8 w-8 rounded-md text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--bg-hover)]"
                                             title="Download PDF"
+                                            aria-label="Download manifest PDF"
                                         >
-                                            <Download className="w-4 h-4" />
-                                        </button>
+                                            <Download className="h-4 w-4" />
+                                        </Button>
                                     </div>
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         ))}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
         </div>
     );

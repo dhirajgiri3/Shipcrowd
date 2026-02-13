@@ -29,6 +29,7 @@ export const useOrdersList = (
     return useQuery<GetOrdersResponse, ApiError>({
         queryKey: queryKeys.orders.list(params),
         queryFn: async () => await orderApi.getOrders(params),
+        placeholderData: (previousData) => previousData,
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,

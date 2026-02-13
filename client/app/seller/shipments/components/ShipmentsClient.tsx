@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import {
@@ -12,8 +12,6 @@ import {
     CheckCircle2,
     Printer,
     RefreshCw,
-    Wallet,
-    Loader2,
 } from 'lucide-react';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { useShipments, useShipmentStats } from '@/src/core/api/hooks/orders/useShipments';
@@ -25,13 +23,7 @@ import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { Modal } from '@/src/components/ui/feedback/Modal';
-import { cn, formatCurrency } from '@/src/lib/utils';
-import { useGetCourierRates, useShipOrder } from '@/src/core/api/hooks/admin';
-import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
-import { useWarehouses } from '@/src/core/api/hooks/logistics/useWarehouses';
-import { useWalletBalance } from '@/src/core/api/hooks/finance/useWallet';
-import type { CourierRate } from '@/src/types/domain/order';
+import { cn } from '@/src/lib/utils';
 
 export function ShipmentsClient() {
     const [page, setPage] = useState(1);
@@ -41,13 +33,6 @@ export function ShipmentsClient() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
-
-    const [isShipModalOpen, setIsShipModalOpen] = useState(false);
-    const [selectedOrderId, setSelectedOrderId] = useState('');
-    const [courierRates, setCourierRates] = useState<CourierRate[]>([]);
-    const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
-    const [quoteExpiresAt, setQuoteExpiresAt] = useState<Date | null>(null);
-    const [quoteTimeLeftSec, setQuoteTimeLeftSec] = useState(0);
 
     const { addToast } = useToast();
 
@@ -64,183 +49,18 @@ export function ShipmentsClient() {
     });
 
     const { data: stats } = useShipmentStats();
-    const { data: walletBalance } = useWalletBalance();
-    const { data: warehouses = [] } = useWarehouses();
-
-    const { data: eligibleOrdersResponse, isLoading: isLoadingEligibleOrders } = useOrdersList({
-        page: 1,
-        limit: 50,
-        status: 'unshipped',
-    });
-
-    const eligibleOrders: any[] = eligibleOrdersResponse?.data || [];
-    const selectedOrder = useMemo(
-        () => eligibleOrders.find((order) => order._id === selectedOrderId),
-        [eligibleOrders, selectedOrderId]
-    );
-
-    const getCourierRatesMutation = useGetCourierRates();
-    const shipOrderMutation = useShipOrder();
 
     useEffect(() => {
         setPage(1);
     }, [debouncedSearch, statusFilter]);
 
-    useEffect(() => {
-        if (!isShipModalOpen) return;
-        if (!selectedOrderId && eligibleOrders.length > 0) {
-            setSelectedOrderId(eligibleOrders[0]._id);
-        }
-    }, [isShipModalOpen, selectedOrderId, eligibleOrders]);
-
-    useEffect(() => {
-        if (!isShipModalOpen || !quoteExpiresAt) return;
-
-        const updateTimer = () => {
-            const next = Math.max(0, Math.floor((quoteExpiresAt.getTime() - Date.now()) / 1000));
-            setQuoteTimeLeftSec(next);
-        };
-
-        updateTimer();
-        const timer = setInterval(updateTimer, 1000);
-        return () => clearInterval(timer);
-    }, [isShipModalOpen, quoteExpiresAt]);
-
     const shipmentsData = shipmentsResponse?.shipments || [];
     const pagination = shipmentsResponse?.pagination || { total: 0, pages: 1 };
-
-    const selectedRate = useMemo(
-        () => courierRates.find((rate) => (rate.optionId || rate.courierId) === selectedCourier),
-        [courierRates, selectedCourier]
-    );
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
         await refetchShipments();
         setIsRefreshing(false);
-    };
-
-    const openShipModal = () => {
-        setIsShipModalOpen(true);
-        setCourierRates([]);
-        setSelectedCourier(null);
-        setQuoteExpiresAt(null);
-        setQuoteTimeLeftSec(0);
-    };
-
-    const resolveOrderOriginPincode = (order: any): string | null => {
-        const orderWarehouseId = typeof order?.warehouseId === 'object'
-            ? (order?.warehouseId?._id || order?.warehouseId?.id)
-            : order?.warehouseId;
-
-        const orderWarehousePostal = typeof order?.warehouseId === 'object'
-            ? order?.warehouseId?.address?.postalCode
-            : undefined;
-
-        if (orderWarehousePostal) return orderWarehousePostal;
-
-        const matchedWarehouse = warehouses.find((warehouse) => warehouse._id === orderWarehouseId);
-        return matchedWarehouse?.address?.postalCode || null;
-    };
-
-    const fetchCourierRatesForOrder = useCallback(async (order: any) => {
-        const totalWeight = order.products.reduce((sum: number, product: any) => {
-            const productWeight = product.weight || 0.5;
-            return sum + (productWeight * product.quantity);
-        }, 0);
-
-        const fromPincode = resolveOrderOriginPincode(order);
-        if (!fromPincode) {
-            addToast('Order has no valid warehouse origin. Please assign a warehouse first.', 'error');
-            setCourierRates([]);
-            setSelectedCourier(null);
-            return;
-        }
-
-        const result = await getCourierRatesMutation.mutateAsync({
-            fromPincode,
-            toPincode: order.customerInfo.address.postalCode,
-            weight: totalWeight > 0 ? totalWeight : 0.5,
-            paymentMode: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
-            orderValue: Number(order.totals?.total || 0),
-            length: 20,
-            width: 15,
-            height: 10,
-        });
-
-        const rates = result.data || [];
-        const recommendation =
-            rates.find((rate) => rate.isRecommended)?.optionId ||
-            rates[0]?.optionId ||
-            rates[0]?.courierId ||
-            null;
-
-        const expiresAtRaw = rates[0]?.expiresAt;
-        const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
-        const nextTimeLeft = expiresAt
-            ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000))
-            : 0;
-
-        setCourierRates(rates);
-        setSelectedCourier(recommendation);
-        setQuoteExpiresAt(expiresAt);
-        setQuoteTimeLeftSec(nextTimeLeft);
-    }, [getCourierRatesMutation, warehouses, addToast]);
-
-    useEffect(() => {
-        if (!isShipModalOpen || !selectedOrder) return;
-        fetchCourierRatesForOrder(selectedOrder).catch(() => {
-            addToast('Unable to fetch courier rates right now', 'error');
-        });
-    }, [isShipModalOpen, selectedOrder, fetchCourierRatesForOrder, addToast]);
-
-    const handleBookShipment = async () => {
-        if (!selectedOrder || !selectedCourier) {
-            addToast('Please select an order and courier', 'error');
-            return;
-        }
-
-        if (quoteExpiresAt && quoteExpiresAt.getTime() <= Date.now()) {
-            addToast('Quote session expired. Refreshing rates...', 'error');
-            await fetchCourierRatesForOrder(selectedOrder);
-            return;
-        }
-
-        try {
-            const pickedRate = courierRates.find((rate) => (rate.optionId || rate.courierId) === selectedCourier);
-            await shipOrderMutation.mutateAsync({
-                orderId: selectedOrder._id,
-                courierId: pickedRate?.courierId || selectedCourier,
-                serviceType: pickedRate?.serviceType || 'standard',
-                sessionId: pickedRate?.sessionId,
-                optionId: pickedRate?.optionId,
-            });
-
-            addToast(`Shipment created for order ${selectedOrder.orderNumber}`, 'success');
-            setIsShipModalOpen(false);
-            setSelectedOrderId('');
-            setCourierRates([]);
-            setSelectedCourier(null);
-            setQuoteExpiresAt(null);
-            setQuoteTimeLeftSec(0);
-            refetchShipments();
-        } catch (bookingError: any) {
-            const message = bookingError?.message || 'Failed to create shipment';
-            const code = bookingError?.code || bookingError?.response?.data?.error?.code;
-
-            if (code === 'BIZ_INSUFFICIENT_BALANCE' || /insufficient/i.test(message)) {
-                addToast('Insufficient wallet balance. Please recharge wallet and retry.', 'error');
-                return;
-            }
-
-            if (/expired/i.test(message)) {
-                addToast('Quote session expired. Refreshing rates...', 'error');
-                await fetchCourierRatesForOrder(selectedOrder);
-                return;
-            }
-
-            addToast(message, 'error');
-        }
     };
 
     const columns = [
@@ -324,144 +144,6 @@ export function ShipmentsClient() {
         <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
             <ShipmentDetailsPanel shipment={selectedShipment} onClose={() => setSelectedShipment(null)} />
 
-            <Modal isOpen={isShipModalOpen} onClose={() => setIsShipModalOpen(false)} title="Create Shipment" size="lg">
-                <div className="space-y-5">
-                    <div className="space-y-2">
-                        <label htmlFor="eligibleOrder" className="text-sm font-medium text-[var(--text-primary)]">Eligible Unshipped Order</label>
-                        <select
-                            id="eligibleOrder"
-                            value={selectedOrderId}
-                            onChange={(event) => setSelectedOrderId(event.target.value)}
-                            disabled={isLoadingEligibleOrders || !eligibleOrders.length}
-                            className="w-full px-3 py-2 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-secondary)]"
-                        >
-                            <option value="">
-                                {isLoadingEligibleOrders ? 'Loading eligible orders...' : 'Select order'}
-                            </option>
-                            {eligibleOrders.map((order) => (
-                                <option key={order._id} value={order._id}>
-                                    {order.orderNumber} - {order.customerInfo?.name} - {formatCurrency(order.totals?.total || 0)}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-3 text-sm">
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-2 text-[var(--text-secondary)]">
-                                <Wallet className="w-4 h-4" />
-                                Wallet Balance
-                            </span>
-                            <span className="font-semibold text-[var(--text-primary)]">{formatCurrency(walletBalance?.balance || 0)}</span>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                            <span className="text-[var(--text-secondary)]">Estimated Shipping Charge</span>
-                            <span className="font-semibold text-[var(--text-primary)]">
-                                {formatCurrency(selectedRate?.rate || 0)}
-                            </span>
-                        </div>
-                        {(walletBalance?.balance || 0) < (selectedRate?.rate || 0) && (
-                            <div className="mt-2 text-xs text-[var(--error)]">
-                                Insufficient balance for booking.
-                                <button
-                                    type="button"
-                                    className="ml-2 underline"
-                                    onClick={() => window.location.assign('/seller/wallet')}
-                                >
-                                    Recharge wallet
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-semibold text-[var(--text-primary)]">Courier Quotes</p>
-                            <div className="flex items-center gap-2">
-                                {quoteExpiresAt && (
-                                    <span className="text-xs text-[var(--text-muted)]">
-                                        Expires in {Math.floor(quoteTimeLeftSec / 60)}:{String(quoteTimeLeftSec % 60).padStart(2, '0')}
-                                    </span>
-                                )}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!selectedOrder || getCourierRatesMutation.isPending}
-                                    onClick={() => selectedOrder && fetchCourierRatesForOrder(selectedOrder)}
-                                >
-                                    <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', getCourierRatesMutation.isPending && 'animate-spin')} />
-                                    Refresh
-                                </Button>
-                            </div>
-                        </div>
-
-                        {getCourierRatesMutation.isPending ? (
-                            <div className="flex items-center justify-center py-8 text-sm text-[var(--text-secondary)]">
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Loading courier quotes...
-                            </div>
-                        ) : courierRates.length === 0 ? (
-                            <div className="py-8 text-center text-sm text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] rounded-lg">
-                                Select an order to load serviceable courier quotes.
-                            </div>
-                        ) : (
-                            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                                {courierRates.map((rate) => {
-                                    const key = rate.optionId || rate.courierId;
-                                    return (
-                                        <button
-                                            key={key}
-                                            type="button"
-                                            onClick={() => setSelectedCourier(key)}
-                                            className={cn(
-                                                'w-full rounded-lg border p-3 text-left transition-all',
-                                                selectedCourier === key
-                                                    ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]/20'
-                                                    : 'border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]'
-                                            )}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="font-semibold text-[var(--text-primary)]">{rate.courierName}</p>
-                                                    <p className="text-xs text-[var(--text-muted)]">
-                                                        ETA: {rate.estimatedDeliveryDays} day(s)
-                                                        {rate.isRecommended ? ' • Recommended' : ''}
-                                                    </p>
-                                                </div>
-                                                <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(rate.rate)}</p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
-                        <Button variant="ghost" onClick={() => setIsShipModalOpen(false)}>Cancel</Button>
-                        <Button
-                            onClick={handleBookShipment}
-                            disabled={
-                                !selectedOrder ||
-                                !selectedCourier ||
-                                shipOrderMutation.isPending ||
-                                (quoteExpiresAt ? quoteExpiresAt.getTime() <= Date.now() : false)
-                            }
-                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
-                        >
-                            {shipOrderMutation.isPending ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Booking...
-                                </>
-                            ) : (
-                                'Create Shipment'
-                            )}
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
-
             <PageHeader
                 title="Shipments"
                 breadcrumbs={[
@@ -471,14 +153,6 @@ export function ShipmentsClient() {
                 actions={
                     <div className="flex items-center gap-3">
                         <DateRangePicker />
-                        <Button
-                            onClick={openShipModal}
-                            size="sm"
-                            className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
-                        >
-                            <Truck className="w-4 h-4 mr-2" />
-                            Create Shipment
-                        </Button>
                         <Button
                             onClick={handleRefresh}
                             variant="ghost"

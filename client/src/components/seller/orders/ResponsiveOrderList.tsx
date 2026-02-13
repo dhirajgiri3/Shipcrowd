@@ -28,18 +28,23 @@ import { trackEvent, EVENTS } from '@/src/lib/analytics';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { formatCurrency, formatDateTime } from '@/src/lib/utils/common';
+import { isSellerOrderShippable } from '@/src/lib/utils/order-shipping-eligibility';
 
 interface ResponsiveOrderListProps {
   orders: Order[];
   isLoading?: boolean;
   onOrderClick?: (order: Order) => void;
+  onShipClick?: (order: Order) => void;
   className?: string;
 }
 
 /**
  * Desktop table column configuration
  */
-const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
+const getDesktopColumns = (
+  onOrderClick?: (order: Order) => void,
+  onShipClick?: (order: Order) => void
+) => [
   {
     header: 'Order ID',
     accessorKey: 'orderNumber',
@@ -145,13 +150,27 @@ const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
     header: 'Actions',
     accessorKey: 'actions',
     cell: (row: Order) => (
-      <ViewActionButton
-        label="View"
-        onClick={(e) => {
-          e.stopPropagation();
-          onOrderClick?.(row);
-        }}
-      />
+      <div className="flex items-center gap-2">
+        <ViewActionButton
+          label="View"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOrderClick?.(row);
+          }}
+        />
+        {onShipClick && isSellerOrderShippable(row) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShipClick(row);
+            }}
+            className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--primary-blue)] text-[var(--primary-blue)] hover:bg-[var(--primary-blue)] hover:text-white transition-colors"
+          >
+            Ship
+          </button>
+        )}
+      </div>
     )
   }
 ];
@@ -160,6 +179,7 @@ export function ResponsiveOrderList({
   orders,
   isLoading = false,
   onOrderClick,
+  onShipClick,
   className
 }: ResponsiveOrderListProps) {
   const isMobile = useIsMobile();
@@ -209,21 +229,9 @@ export function ResponsiveOrderList({
     );
   }
 
-  // Empty state
+  // Empty state: return null so parent can show contextual empty state (e.g. with Clear filters)
   if (sortedOrders.length === 0) {
-    return (
-      <div className={cn('py-24 text-center', className)}>
-        <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
-          <Package className="w-10 h-10 text-[var(--text-muted)]" />
-        </div>
-        <h3 className="text-lg font-bold text-[var(--text-primary)]">
-          No orders found
-        </h3>
-        <p className="text-[var(--text-muted)] text-sm mt-2">
-          Your orders will appear here once created
-        </p>
-      </div>
-    );
+    return null;
   }
 
   // Mobile: Card-based list
@@ -238,6 +246,7 @@ export function ResponsiveOrderList({
               order={cardData}
               onTrack={handleTrack}
               onCall={handleCall}
+              onShip={onShipClick && isSellerOrderShippable(order) ? () => onShipClick(order) : undefined}
               onClick={handleCardClick}
             />
           );
@@ -250,7 +259,7 @@ export function ResponsiveOrderList({
   return (
     <div className={className}>
       <DataTable
-        columns={getDesktopColumns(onOrderClick)}
+        columns={getDesktopColumns(onOrderClick, onShipClick)}
         data={sortedOrders}
         onRowClick={onOrderClick}
         isLoading={isLoading}

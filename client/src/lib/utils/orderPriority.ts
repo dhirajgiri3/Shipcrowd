@@ -15,6 +15,38 @@ import { OrderStatus } from '@/src/components/seller/orders/MobileOrderCard';
 
 export type OrderPriority = 'critical' | 'high' | 'medium' | 'low';
 
+const ORDER_STATUS_ALIASES: Record<string, OrderStatus> = {
+  ready: 'ready_to_ship',
+  new: 'pending',
+  unshipped: 'pending',
+  ndr: 'pickup_failed',
+  rto: 'rto_initiated',
+};
+
+const SUPPORTED_MOBILE_STATUSES = new Set<OrderStatus>([
+  'pending',
+  'ready_to_ship',
+  'shipped',
+  'created',
+  'pickup_pending',
+  'pickup_failed',
+  'in_transit',
+  'out_for_delivery',
+  'delivered',
+  'rto_initiated',
+  'rto_delivered',
+  'cancelled',
+]);
+
+const normalizeOrderStatus = (status: string): OrderStatus => {
+  const normalized = String(status || '').toLowerCase();
+  const aliasMapped = ORDER_STATUS_ALIASES[normalized] || normalized;
+  if (SUPPORTED_MOBILE_STATUSES.has(aliasMapped as OrderStatus)) {
+    return aliasMapped as OrderStatus;
+  }
+  return 'created';
+};
+
 /**
  * Status to priority mapping
  */
@@ -123,7 +155,7 @@ export function orderToCardData(order: Order) {
   return {
     id: order._id,
     awbNumber: order.shippingDetails?.trackingNumber || order.orderNumber,
-    status: order.currentStatus as OrderStatus,
+    status: normalizeOrderStatus(order.currentStatus),
     customerName: order.customerInfo.name,
     customerPhone: order.customerInfo.phone,
     destination: `${order.customerInfo.address.city}, ${order.customerInfo.address.state}`,

@@ -200,6 +200,12 @@ export interface GetOrdersResponse {
     last_7_days: number;
     zone_b: number;
   };
+  globalStats?: {
+    totalOrders: number;
+    totalRevenue: number;
+    pendingShipments: number;
+    pendingPayments: number;
+  };
   timestamp: string;
 }
 

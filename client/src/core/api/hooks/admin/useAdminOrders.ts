@@ -54,7 +54,7 @@ export const useGetCourierRates = () => {
  * Ship a single order
  * Works for both admin and seller
  */
-export const useShipOrder = () => {
+export const useShipOrder = (options?: { suppressDefaultErrorHandling?: boolean }) => {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -69,7 +69,9 @@ export const useShipOrder = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
     },
     onError: (error) => {
-      handleApiError(error, 'Failed to create shipment');
+      if (!options?.suppressDefaultErrorHandling) {
+        handleApiError(error, 'Failed to create shipment');
+      }
     },
   });
 };

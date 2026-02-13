@@ -165,7 +165,10 @@ export default function OrdersClient() {
             return sum + (productWeight * product.quantity);
         }, 0);
 
-        const warehouse = warehouses.find((w: any) => w._id === order.warehouseId || w.id === order.warehouseId);
+        const orderWarehouseId = typeof order.warehouseId === 'object'
+            ? (order.warehouseId?._id || order.warehouseId?.id)
+            : order.warehouseId;
+        const warehouse = warehouses.find((w: any) => w._id === orderWarehouseId || w.id === orderWarehouseId);
         const fromPincode = warehouse?.address?.postalCode || order.customerInfo.address.postalCode;
 
         const result = await getCourierRatesMutation.mutateAsync({
@@ -480,7 +483,11 @@ export default function OrdersClient() {
                                 </div>
                                 <div>
                                     <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider mb-1">Shipping From</p>
-                                    <p className="font-medium text-[var(--text-primary)]">{selectedOrderForShip.warehouseId || 'Default'}</p>
+                                    <p className="font-medium text-[var(--text-primary)]">
+                                        {typeof selectedOrderForShip.warehouseId === 'object'
+                                            ? (selectedOrderForShip.warehouseId?.name || selectedOrderForShip.warehouseId?._id || selectedOrderForShip.warehouseId?.id || 'Default')
+                                            : (selectedOrderForShip.warehouseId || 'Default')}
+                                    </p>
                                 </div>
                             </div>
                         </div>

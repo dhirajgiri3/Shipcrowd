@@ -66,6 +66,14 @@ export const EVENTS = {
   BULK_ACTION_COMPLETED: 'bulk.action.completed',
   BULK_ACTION_FAILED: 'bulk.action.failed',
 
+  // Seller Shipping Events
+  SHIPPING_MODAL_OPENED: 'shipping.modal.opened',
+  SHIPPING_QUOTE_FETCHED: 'shipping.quote.fetched',
+  SHIPPING_QUOTE_REFRESHED: 'shipping.quote.refreshed',
+  SHIPPING_CONFIRMED: 'shipping.confirmed',
+  SHIPPING_SUCCESS: 'shipping.success',
+  SHIPPING_FAILED: 'shipping.failed',
+
   // Error Events
   API_ERROR: 'api.error',
   DATA_STALE_WARNING_SHOWN: 'data.stale_warning.shown',

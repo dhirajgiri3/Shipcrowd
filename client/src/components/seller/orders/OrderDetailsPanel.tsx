@@ -12,14 +12,18 @@ import { Order } from '@/src/types/domain/order';
 interface OrderDetailsPanelProps {
     order: Order | null;
     onClose: () => void;
+    onShipOrder?: (order: Order) => void;
 }
 
 export const OrderDetailsPanel = React.memo(OrderDetailsPanelComponent);
 
-function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) {
+function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetailsPanelProps) {
     const router = useRouter();
 
     if (!order) return null;
+
+    const customerAddress = order.customerInfo.address;
+    const formattedAddress = `${customerAddress.line1}${customerAddress.line2 ? `, ${customerAddress.line2}` : ''}\n${customerAddress.city}, ${customerAddress.state} ${customerAddress.postalCode}`;
 
     return (
         <AnimatePresence>
@@ -31,7 +35,7 @@ function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) 
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-hidden"
+                        className="fixed inset-0 h-[100dvh] bg-black/40 backdrop-blur-sm z-50 overflow-hidden"
                     />
 
                     {/* Panel */}
@@ -40,7 +44,7 @@ function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) 
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed inset-y-0 right-0 w-full sm:w-[500px] bg-[var(--bg-primary)] shadow-2xl z-50 border-l border-[var(--border-subtle)] flex flex-col"
+                        className="fixed top-0 right-0 h-[100dvh] w-full sm:w-[500px] bg-[var(--bg-primary)] shadow-2xl z-50 border-l border-[var(--border-subtle)] flex flex-col"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
@@ -52,9 +56,20 @@ function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) 
                                     Placed on {new Date(order.createdAt).toLocaleDateString()}
                                 </p>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-[var(--bg-secondary)]">
-                                <X className="w-5 h-5 text-[var(--text-secondary)]" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                {onShipOrder && (
+                                    <Button
+                                        size="sm"
+                                        onClick={() => onShipOrder(order)}
+                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
+                                    >
+                                        Ship Order
+                                    </Button>
+                                )}
+                                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-[var(--bg-secondary)]">
+                                    <X className="w-5 h-5 text-[var(--text-secondary)]" />
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Content Scrollable */}
@@ -91,10 +106,7 @@ function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) 
                                     </div>
                                     <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)] mt-2 bg-[var(--bg-secondary)]/50 p-2 rounded-lg">
                                         <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                                        <span>
-                                            123, Green Park Extension, Next to City Mall,
-                                            <br />New Delhi, Delhi - 110016
-                                        </span>
+                                        <span className="whitespace-pre-line">{formattedAddress}</span>
                                     </div>
                                 </div>
                             </div>
