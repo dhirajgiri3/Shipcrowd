@@ -22,9 +22,12 @@ import { MobileOrderCard, MobileOrderCardData } from './MobileOrderCard';
 import { orderToCardData, sortOrdersByPriority } from '@/src/lib/utils/orderPriority';
 import { useIsMobile } from '@/src/hooks/ux';
 import { DataTable } from '@/src/components/ui/data/DataTable';
-import { Package, Phone, Eye, Calendar, User, ShoppingBag, CreditCard, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { Package, Phone, Calendar, User, ShoppingBag, CreditCard, TrendingUp } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { formatCurrency, formatDateTime } from '@/src/lib/utils/common';
 
 interface ResponsiveOrderListProps {
   orders: Order[];
@@ -54,16 +57,10 @@ const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
     cell: (row: Order) => (
       <div className="flex flex-col text-xs">
         <span className="text-[var(--text-primary)] font-medium">
-          {new Date(row.createdAt).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric'
-          })}
+          {formatDateTime(row.createdAt).split(',')[0]}
         </span>
         <span className="text-[var(--text-muted)]">
-          {new Date(row.createdAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
+          {formatDateTime(row.createdAt).split(',')[1]}
         </span>
       </div>
     )
@@ -117,30 +114,20 @@ const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
     accessorKey: 'paymentStatus',
     cell: (row: Order) => (
       <div className="flex flex-col gap-1">
-        <span
-          className={cn(
-            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide w-fit',
-            row.paymentStatus === 'paid'
-              ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-800'
-              : row.paymentStatus === 'pending'
-              ? 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-800'
-              : 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-800'
+        <div className="flex flex-col gap-1">
+          <StatusBadge
+            status={row.paymentStatus}
+            size="sm"
+            className="w-fit"
+          />
+          {row.paymentMethod && (
+            <StatusBadge
+              status={row.paymentMethod}
+              size="sm"
+              className="w-fit opacity-90"
+            />
           )}
-        >
-          {row.paymentStatus}
-        </span>
-        {row.paymentMethod && (
-          <span
-            className={cn(
-              'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md w-fit',
-              row.paymentMethod === 'cod'
-                ? 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400'
-                : 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400'
-            )}
-          >
-            {row.paymentMethod}
-          </span>
-        )}
+        </div>
       </div>
     )
   },
@@ -148,20 +135,7 @@ const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
     header: 'Status',
     accessorKey: 'currentStatus',
     cell: (row: Order) => (
-      <span
-        className={cn(
-          'inline-flex px-2.5 py-1 rounded-md text-xs font-semibold capitalize',
-          row.currentStatus === 'delivered'
-            ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400'
-            : row.currentStatus === 'in_transit'
-            ? 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400'
-            : row.currentStatus === 'pickup_pending'
-            ? 'bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400'
-            : 'bg-gray-100 dark:bg-gray-950/30 text-gray-700 dark:text-gray-400'
-        )}
-      >
-        {row.currentStatus.replace(/_/g, ' ')}
-      </span>
+      <StatusBadge domain="order" status={row.currentStatus} />
     )
   },
   {
@@ -169,7 +143,7 @@ const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
     accessorKey: 'totals.total',
     cell: (row: Order) => (
       <div className="text-right font-bold text-[var(--text-primary)]">
-        ₹{row.totals?.total.toLocaleString('en-IN') || 0}
+        {formatCurrency(row.totals?.total || 0)}
       </div>
     )
   },
@@ -177,16 +151,13 @@ const getDesktopColumns = (onOrderClick?: (order: Order) => void) => [
     header: 'Actions',
     accessorKey: 'actions',
     cell: (row: Order) => (
-      <button
+      <ViewActionButton
+        label="View"
         onClick={(e) => {
           e.stopPropagation();
           onOrderClick?.(row);
         }}
-        className="text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] font-medium text-sm flex items-center gap-1 transition-colors"
-      >
-        View
-        <ArrowUpRight className="w-4 h-4" />
-      </button>
+      />
     )
   }
 ];

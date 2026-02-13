@@ -19,8 +19,10 @@ import {
     PolarAngleAxis,
     PolarRadiusAxis,
 } from 'recharts';
+import { useMemo } from 'react';
 
 const PALETTE = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EF4444'];
+const normalizeCourierId = (value?: string) => String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
 
 export function CourierComparison() {
     const { timeRange, setTimeRange, apiFilters } = useAnalyticsParams();
@@ -35,17 +37,28 @@ export function CourierComparison() {
         );
     }
 
-    const couriers = comparison.couriers.map((courier, index) => ({
-        ...courier,
-        color: PALETTE[index % PALETTE.length],
-        metrics: {
-            deliverySuccessRate: courier.successRate,
-            avgDeliveryTime: courier.avgDeliveryTime,
-            rtoRate: courier.rtoRate,
-            ndrRate: courier.ndrRate,
-            avgCostPerKg: courier.avgCost,
-        },
-    }));
+    const couriers = useMemo(() => {
+        const deduped = Array.from(
+            new Map(
+                comparison.couriers.map((courier) => [
+                    normalizeCourierId(courier.courierId || courier.courierName),
+                    courier,
+                ])
+            ).values()
+        );
+
+        return deduped.map((courier, index) => ({
+            ...courier,
+            color: PALETTE[index % PALETTE.length],
+            metrics: {
+                deliverySuccessRate: courier.successRate,
+                avgDeliveryTime: courier.avgDeliveryTime,
+                rtoRate: courier.rtoRate,
+                ndrRate: courier.ndrRate,
+                avgCostPerKg: courier.avgCost,
+            },
+        }));
+    }, [comparison.couriers]);
 
     const radarData = [
         { metric: 'Delivery', fullMark: 100 },

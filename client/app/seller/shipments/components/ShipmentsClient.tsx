@@ -89,7 +89,7 @@ export function ShipmentsClient() {
     const columns = [
         {
             header: 'Shipment Details',
-            accessorKey: 'awb',
+            accessorKey: 'trackingNumber',
             cell: (row: any) => (
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
@@ -97,7 +97,7 @@ export function ShipmentsClient() {
                     </div>
                     <div>
                         <div className="font-bold text-[var(--text-primary)] text-sm font-mono">
-                            AWB: {row.awb}
+                            AWB: {row.trackingNumber || 'N/A'}
                         </div>
                         <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
                             {row.carrier?.toUpperCase() || 'N/A'}
@@ -152,6 +152,7 @@ export function ShipmentsClient() {
             cell: (row: any) => (
                 <div className="flex items-center gap-2">
                     <ViewActionButton
+                        label="View"
                         onClick={(e) => {
                             e.stopPropagation();
                             setSelectedShipment(row);

@@ -357,11 +357,7 @@ export default class SellerAnalyticsService {
         const codRow = byPaymentMethod.find((row: any) => row._id === 'cod');
         const prepaidRow = byPaymentMethod.find((row: any) => row._id === 'prepaid');
 
-        const normalizedByCourier = byCourier.map((row: any) => ({
-            ...row,
-            courierId: normalizeCarrierKey(row.courierId).replace(/\s+/g, '_'),
-            courierName: toCarrierLabel(row.courierName),
-        }));
+        const normalizedByCourier = mergeCostCourierRows(byCourier as any[]);
 
         const minCourierAvg = normalizedByCourier.length > 0 ? Math.min(...normalizedByCourier.map((row: any) => row.avgCostPerShipment)) : 0;
         const expensiveCourier = normalizedByCourier[0];
@@ -541,24 +537,63 @@ export default class SellerAnalyticsService {
         ]);
 
         const performanceMap = new Map(
-            shipmentPerformance.map((item) => [normalizeCarrierKey(item.carrier), item])
+            shipmentPerformance.map((item) => [canonicalizeCarrierKey(item.carrier), item])
         );
 
-        const couriers = shipmentsByCourier.map((item: any) => {
+        const courierAggregate = new Map<string, {
+            totalShipments: number;
+            delivered: number;
+            rto: number;
+            ndr: number;
+            damaged: number;
+            lost: number;
+            totalCost: number;
+            totalDeliveryHours: number;
+            deliveredWithTime: number;
+            onTimeDelivered: number;
+        }>();
+
+        shipmentsByCourier.forEach((item: any) => {
+            const key = canonicalizeCarrierKey(item._id);
+            const current = courierAggregate.get(key) || {
+                totalShipments: 0,
+                delivered: 0,
+                rto: 0,
+                ndr: 0,
+                damaged: 0,
+                lost: 0,
+                totalCost: 0,
+                totalDeliveryHours: 0,
+                deliveredWithTime: 0,
+                onTimeDelivered: 0,
+            };
+            current.totalShipments += Number(item.totalShipments || 0);
+            current.delivered += Number(item.delivered || 0);
+            current.rto += Number(item.rto || 0);
+            current.ndr += Number(item.ndr || 0);
+            current.damaged += Number(item.damaged || 0);
+            current.lost += Number(item.lost || 0);
+            current.totalCost += Number(item.totalCost || 0);
+            current.totalDeliveryHours += Number(item.totalDeliveryHours || 0);
+            current.deliveredWithTime += Number(item.deliveredWithTime || 0);
+            current.onTimeDelivered += Number(item.onTimeDelivered || 0);
+            courierAggregate.set(key, current);
+        });
+
+        const dedupedCouriers = Array.from(courierAggregate.entries()).map(([key, item]) => {
             const totalShipments = item.totalShipments || 0;
             const deliveryRate = totalShipments > 0 ? (item.delivered / totalShipments) * 100 : 0;
             const rtoRate = totalShipments > 0 ? (item.rto / totalShipments) * 100 : 0;
             const ndrRate = totalShipments > 0 ? (item.ndr / totalShipments) * 100 : 0;
             const avgDeliveryTime = item.deliveredWithTime > 0
                 ? item.totalDeliveryHours / item.deliveredWithTime
-                : (performanceMap.get(normalizeCarrierKey(item._id))?.avgDeliveryDays || 0) * 24;
+                : (performanceMap.get(key)?.avgDeliveryDays || 0) * 24;
             const onTimeDelivery = item.delivered > 0 ? (item.onTimeDelivered / item.delivered) * 100 : 0;
             const avgCost = totalShipments > 0 ? item.totalCost / totalShipments : 0;
-            const courierId = normalizeCarrierKey(item._id).replace(/\s+/g, '_');
 
             return {
-                courierId,
-                courierName: toCarrierLabel(item._id),
+                courierId: toCarrierId(key),
+                courierName: toCarrierLabel(key),
                 totalShipments,
                 successRate: round(deliveryRate, 1),
                 avgDeliveryTime: round(avgDeliveryTime, 1),
@@ -571,11 +606,7 @@ export default class SellerAnalyticsService {
                 damagedShipments: item.damaged || 0,
                 lostShipments: item.lost || 0,
             };
-        });
-
-        const dedupedCouriers = Array.from(
-            new Map(couriers.map((courier) => [courier.courierId, courier])).values()
-        );
+        }).sort((a, b) => b.totalShipments - a.totalShipments);
 
         const byScore = dedupedCouriers
             .map((courier) => {
@@ -913,12 +944,24 @@ export default class SellerAnalyticsService {
                     : 'warning',
                 trend: 'stable',
             },
-            byCourier: courierData.map((item: any) => {
+            byCourier: Array.from(
+                courierData.reduce((map: Map<string, { total: number; picked: number; onTimePickup: number; delivered: number; onTimeDelivery: number }>, item: any) => {
+                    const key = canonicalizeCarrierKey(item._id);
+                    const current = map.get(key) || { total: 0, picked: 0, onTimePickup: 0, delivered: 0, onTimeDelivery: 0 };
+                    current.total += Number(item.total || 0);
+                    current.picked += Number(item.picked || 0);
+                    current.onTimePickup += Number(item.onTimePickup || 0);
+                    current.delivered += Number(item.delivered || 0);
+                    current.onTimeDelivery += Number(item.onTimeDelivery || 0);
+                    map.set(key, current);
+                    return map;
+                }, new Map<string, { total: number; picked: number; onTimePickup: number; delivered: number; onTimeDelivery: number }>())
+            ).map(([key, item]) => {
                 const pickup = item.picked > 0 ? (item.onTimePickup / item.picked) * 100 : 0;
                 const delivery = item.delivered > 0 ? (item.onTimeDelivery / item.delivered) * 100 : 0;
                 return {
-                    courierId: normalizeCarrierKey(item._id).replace(/\s+/g, '_'),
-                    courierName: toCarrierLabel(item._id),
+                    courierId: toCarrierId(key),
+                    courierName: toCarrierLabel(key),
                     compliance: round((pickup + delivery) / 2, 1),
                     pickupSLA: round(pickup, 1),
                     deliverySLA: round(delivery, 1),

@@ -820,6 +820,26 @@ export const SHIPMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
     color: 'info',
     description: 'Shipment manifest created',
   },
+  pending_pickup: {
+    label: 'Pending Pickup',
+    color: 'pending',
+    description: 'Awaiting courier pickup',
+  },
+  awaiting_carrier_sync: {
+    label: 'Awaiting Sync',
+    color: 'warning',
+    description: 'Waiting for carrier system sync',
+  },
+  picked_up: {
+    label: 'Picked Up',
+    color: 'info',
+    description: 'Shipment picked up by courier',
+  },
+  pickup_complete: {
+    label: 'Pickup Complete',
+    color: 'info',
+    description: 'Pickup completed successfully',
+  },
   'in-transit': {
     label: 'In Transit',
     color: 'primary',
@@ -829,6 +849,11 @@ export const SHIPMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
     label: 'In Transit',
     color: 'primary',
     description: 'Shipment is on the way',
+  },
+  out_for_delivery: {
+    label: 'Out for Delivery',
+    color: 'primary',
+    description: 'Out for delivery to customer',
   },
   shipped: {
     label: 'Shipped',
@@ -844,6 +869,21 @@ export const SHIPMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
     label: 'RTO',
     color: 'error',
     description: 'Return to Origin initiated',
+  },
+  rto_initiated: {
+    label: 'RTO Initiated',
+    color: 'error',
+    description: 'Return to Origin process started',
+  },
+  rto_in_transit: {
+    label: 'RTO In Transit',
+    color: 'error',
+    description: 'Returning to origin',
+  },
+  rto_delivered: {
+    label: 'RTO Delivered',
+    color: 'neutral',
+    description: 'Returned to origin successfully',
   },
   ndr: {
     label: 'NDR',
@@ -864,6 +904,16 @@ export const SHIPMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
     label: 'Damaged',
     color: 'error',
     description: 'Shipment damaged',
+  },
+  on_hold: {
+    label: 'On Hold',
+    color: 'warning',
+    description: 'Shipment on hold',
+  },
+  exception: {
+    label: 'Exception',
+    color: 'error',
+    description: 'Delivery exception occurred',
   },
 };
 

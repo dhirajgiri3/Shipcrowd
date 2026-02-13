@@ -17,6 +17,7 @@
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import AnalyticsService, { DateRange } from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 export interface ShipmentStats {
     total: number;
@@ -43,8 +44,14 @@ export interface DeliveryTimeBreakdown {
 }
 
 export default class ShipmentAnalyticsService {
-    private static toCarrierLabel(raw: unknown): string {
+    private static canonicalizeCarrier(raw: unknown): string {
         const normalized = String(raw || 'unknown').trim().toLowerCase();
+        const canonical = CourierProviderRegistry.toCanonical(normalized);
+        return canonical || normalized;
+    }
+
+    private static toCarrierLabel(raw: unknown): string {
+        const normalized = this.canonicalizeCarrier(raw);
         if (!normalized || normalized === 'unknown') return 'Unknown';
         return normalized
             .split(/\s+|_/g)
@@ -165,6 +172,7 @@ export default class ShipmentAnalyticsService {
                         carrier: '$_id',
                         shipments: 1,
                         delivered: 1,
+                        deliverySampleSize: '$deliveredCount',
                         avgDeliveryDays: {
                             $cond: [
                                 { $gt: ['$deliveredCount', 0] },
@@ -183,10 +191,36 @@ export default class ShipmentAnalyticsService {
                 }
             ]);
 
-            return results.map((row: any) => ({
-                ...row,
-                carrier: this.toCarrierLabel(row.carrier),
-            }));
+            const merged = new Map<string, { shipments: number; delivered: number; deliverySampleSize: number; weightedDeliveryDays: number }>();
+            results.forEach((row: any) => {
+                const key = this.canonicalizeCarrier(row.carrier);
+                const current = merged.get(key) || { shipments: 0, delivered: 0, deliverySampleSize: 0, weightedDeliveryDays: 0 };
+                const sampleSize = Number(row.deliverySampleSize || 0);
+                current.shipments += Number(row.shipments || 0);
+                current.delivered += Number(row.delivered || 0);
+                current.deliverySampleSize += sampleSize;
+                current.weightedDeliveryDays += Number(row.avgDeliveryDays || 0) * sampleSize;
+                merged.set(key, current);
+            });
+
+            return Array.from(merged.entries())
+                .map(([carrierKey, value]) => {
+                    const avgDeliveryDays = value.deliverySampleSize > 0
+                        ? value.weightedDeliveryDays / value.deliverySampleSize
+                        : 0;
+                    const deliveryRate = value.shipments > 0
+                        ? (value.delivered / value.shipments) * 100
+                        : 0;
+
+                    return {
+                        carrier: this.toCarrierLabel(carrierKey),
+                        shipments: value.shipments,
+                        delivered: value.delivered,
+                        avgDeliveryDays: Math.round(avgDeliveryDays * 10) / 10,
+                        deliveryRate: Math.round(deliveryRate * 10) / 10,
+                    };
+                })
+                .sort((a, b) => b.shipments - a.shipments);
         } catch (error) {
             logger.error('Error getting courier performance:', error);
             throw error;
