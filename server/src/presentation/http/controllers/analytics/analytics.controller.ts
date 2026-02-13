@@ -173,8 +173,11 @@ export const getSellerDashboard = async (
         const totalCosts = actualProfitData[0]?.totalCosts || 0;
 
         // ✅ PHASE 1.4: Extended trend for delta calculation
-        const selectedRangeDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
-        const extendedStartDate = new Date(startDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+        const selectedRangeDays = Math.max(
+            1,
+            Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000))
+        );
+        const extendedStartDate = new Date(startDate.getTime() - selectedRangeDays * 24 * 60 * 60 * 1000);
 
         const weeklyTrend = await Order.aggregate([
             {
@@ -278,40 +281,64 @@ export const getSellerDashboard = async (
         }
 
         // ✅ PHASE 1.4: Update streak history
-        const company = await Company.findById(companyObjectId);
-        if (company) {
-            if (!company.streakHistory) {
-                company.streakHistory = {
-                    current: streak,
-                    longest: streak,
-                    longestAchievedAt: new Date(),
-                    milestones: []
+        // Use raw collection access to avoid mongoose-field-encryption decrypt failures
+        // from unrelated encrypted fields (billingInfo/integrations).
+        let longestStreak = streak;
+        let streakMilestones: Array<{ days: number; achievedAt: Date; badge: string }> = [];
+
+        try {
+            const companyDoc = await Company.collection.findOne(
+                { _id: companyObjectId },
+                { projection: { streakHistory: 1 } }
+            ) as {
+                streakHistory?: {
+                    current?: number;
+                    longest?: number;
+                    longestAchievedAt?: Date;
+                    milestones?: Array<{ days: number; achievedAt: Date; badge: string }>;
                 };
-            } else {
-                company.streakHistory.current = streak;
-                if (streak > (company.streakHistory.longest || 0)) {
-                    company.streakHistory.longest = streak;
-                    company.streakHistory.longestAchievedAt = new Date();
-                }
-            }
-            const milestones = [
+            } | null;
+
+            const nowDate = new Date();
+            const currentLongest = companyDoc?.streakHistory?.longest || 0;
+            const nextLongest = Math.max(currentLongest, streak);
+            const nextLongestAchievedAt =
+                streak > currentLongest
+                    ? nowDate
+                    : (companyDoc?.streakHistory?.longestAchievedAt || nowDate);
+
+            const existingMilestones = (companyDoc?.streakHistory?.milestones || []).filter(Boolean);
+            const milestoneSet = new Set(existingMilestones.map(m => m.days));
+            const milestoneDefinitions = [
                 { days: 7, badge: 'Week Warrior' },
                 { days: 30, badge: 'Monthly Master' },
                 { days: 100, badge: 'Century Champion' },
-                { days: 365, badge: 'Year Legend' }
+                { days: 365, badge: 'Year Legend' },
             ];
-            for (const milestone of milestones) {
-                const alreadyAchieved = company.streakHistory.milestones?.some((m: { days: number }) => m.days === milestone.days);
-                if (streak >= milestone.days && !alreadyAchieved) {
-                    if (!company.streakHistory.milestones) company.streakHistory.milestones = [];
-                    company.streakHistory.milestones.push({
-                        days: milestone.days,
-                        achievedAt: new Date(),
-                        badge: milestone.badge
-                    });
+
+            const earnedMilestones = milestoneDefinitions
+                .filter(m => streak >= m.days && !milestoneSet.has(m.days))
+                .map(m => ({ days: m.days, achievedAt: nowDate, badge: m.badge }));
+
+            streakMilestones = [...existingMilestones, ...earnedMilestones];
+            longestStreak = nextLongest;
+
+            await Company.collection.updateOne(
+                { _id: companyObjectId },
+                {
+                    $set: {
+                        'streakHistory.current': streak,
+                        'streakHistory.longest': nextLongest,
+                        'streakHistory.longestAchievedAt': nextLongestAchievedAt,
+                        'streakHistory.milestones': streakMilestones,
+                    },
                 }
-            }
-            await company.save();
+            );
+        } catch (streakError) {
+            logger.warn('Failed to update company streak history; continuing dashboard response', {
+                companyId: auth.companyId,
+                error: streakError instanceof Error ? streakError.message : String(streakError),
+            });
         }
 
         const responseData = {
@@ -335,8 +362,8 @@ export const getSellerDashboard = async (
             recentShipments,
             weeklyTrend: weeklyTrend.filter(d => d._id >= startDate.toISOString().split('T')[0]),
             activeDays: streak,
-            longestStreak: company?.streakHistory?.longest || streak,
-            milestones: company?.streakHistory?.milestones || [],
+            longestStreak,
+            milestones: streakMilestones,
             deltas: {
                 revenue: parseFloat(revenueDelta.toFixed(2)),
                 profit: parseFloat(profitDelta.toFixed(2)),
@@ -1217,16 +1244,24 @@ export const getRTOAnalytics = async (
     try {
         const auth = guardChecks(req, { requireCompany: true });
         requireCompanyContext(auth);
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+        if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime()))) {
+            throw new ValidationError('Invalid startDate or endDate format');
+        }
+
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
         // Cache key
-        const cacheKey = `analytics:rto:${auth.companyId}`;
+        const cacheKey = `analytics:rto:${auth.companyId}:${startDate?.toISOString() || 'default'}:${endDate?.toISOString() || 'default'}`;
         const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'RTO analytics retrieved from cache');
             return;
         }
 
-        const analytics = await RTOService.getRTOAnalytics(auth.companyId);
+        const analytics = await RTOService.getRTOAnalytics(auth.companyId, dateRange);
 
         // Cache for 5 minutes
         await cacheService.set(cacheKey, analytics, 300);
@@ -1251,16 +1286,24 @@ export const getProfitabilityAnalytics = async (
     try {
         const auth = guardChecks(req, { requireCompany: true });
         requireCompanyContext(auth);
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+        if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime()))) {
+            throw new ValidationError('Invalid startDate or endDate format');
+        }
+
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
         // Cache key
-        const cacheKey = `analytics:profitability:${auth.companyId}`;
+        const cacheKey = `analytics:profitability:${auth.companyId}:${startDate?.toISOString() || 'default'}:${endDate?.toISOString() || 'default'}`;
         const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Profitability analytics retrieved from cache');
             return;
         }
 
-        const analytics = await RevenueAnalyticsService.getProfitabilityAnalytics(auth.companyId);
+        const analytics = await RevenueAnalyticsService.getProfitabilityAnalytics(auth.companyId, dateRange);
 
         // Cache for 5 minutes
         await cacheService.set(cacheKey, analytics, 300);
@@ -1327,16 +1370,24 @@ export const getGeographicInsights = async (
     try {
         const auth = guardChecks(req, { requireCompany: true });
         requireCompanyContext(auth);
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+        if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime()))) {
+            throw new ValidationError('Invalid startDate or endDate format');
+        }
+
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
         // Cache key
-        const cacheKey = `analytics:geography:${auth.companyId}`;
+        const cacheKey = `analytics:geography:${auth.companyId}:${startDate?.toISOString() || 'default'}:${endDate?.toISOString() || 'default'}`;
         const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Geographic insights retrieved from cache');
             return;
         }
 
-        const analytics = await GeographicAnalyticsService.getGeographicInsights(auth.companyId);
+        const analytics = await GeographicAnalyticsService.getGeographicInsights(auth.companyId, dateRange);
 
         // Cache for 5 minutes
         await cacheService.set(cacheKey, analytics, 300);

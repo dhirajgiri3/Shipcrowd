@@ -12,6 +12,7 @@
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
+import { DateRange } from './analytics.service';
 
 export interface CityMetric {
     city: string;
@@ -68,66 +69,68 @@ export default class GeographicAnalyticsService {
      * Get geographic insights - top cities and regional distribution
      * Phase 4: Powers GeographicInsights component
      */
-    static async getGeographicInsights(companyId: string): Promise<{
+    static async getGeographicInsights(companyId: string, dateRange?: DateRange): Promise<{
         topCities: CityMetric[];
         regions: RegionMetric[];
         totalOrders: number;
     }> {
         try {
             const now = new Date();
-            const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            const currentStart = dateRange?.start || new Date(now.getFullYear(), now.getMonth(), 1);
+            const currentEnd = dateRange?.end || now;
+            const periodMs = Math.max(24 * 60 * 60 * 1000, currentEnd.getTime() - currentStart.getTime());
+            const previousEnd = new Date(currentStart.getTime() - 1);
+            const previousStart = new Date(previousEnd.getTime() - periodMs);
 
-            // Aggregate orders by city (current month)
-            // Order model uses customerInfo.address structure
-            const cityAggregation = await Order.aggregate([
-                {
-                    $match: {
-                        companyId: new mongoose.Types.ObjectId(companyId),
-                        createdAt: { $gte: currentMonthStart },
-                        isDeleted: false
+            const matchCurrent = {
+                companyId: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: currentStart, $lte: currentEnd },
+                isDeleted: false,
+            };
+            const matchPrevious = {
+                companyId: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: previousStart, $lte: previousEnd },
+                isDeleted: false,
+            };
+
+            const [cityAggregation, previousCityAggregation, totalOrders, regionAggregation] = await Promise.all([
+                Order.aggregate([
+                    { $match: matchCurrent },
+                    {
+                        $group: {
+                            _id: {
+                                city: '$customerInfo.address.city',
+                                state: '$customerInfo.address.state'
+                            },
+                            orders: { $sum: 1 }
+                        }
+                    },
+                    { $sort: { orders: -1 } },
+                    { $limit: 10 } // Top 10 cities for leaderboard
+                ]),
+                Order.aggregate([
+                    { $match: matchPrevious },
+                    {
+                        $group: {
+                            _id: {
+                                city: '$customerInfo.address.city',
+                                state: '$customerInfo.address.state'
+                            },
+                            orders: { $sum: 1 }
+                        }
                     }
-                },
-                {
-                    $group: {
-                        _id: {
-                            city: '$customerInfo.address.city',
-                            state: '$customerInfo.address.state'
-                        },
-                        orders: { $sum: 1 }
+                ]),
+                Order.countDocuments(matchCurrent),
+                Order.aggregate([
+                    { $match: matchCurrent },
+                    {
+                        $group: {
+                            _id: '$customerInfo.address.state',
+                            orders: { $sum: 1 }
+                        }
                     }
-                },
-                {
-                    $sort: { orders: -1 }
-                },
-                {
-                    $limit: 10 // Top 10 cities
-                }
+                ]),
             ]);
-
-            // Previous month city data for trend comparison
-            const previousCityAggregation = await Order.aggregate([
-                {
-                    $match: {
-                        companyId: new mongoose.Types.ObjectId(companyId),
-                        createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd },
-                        isDeleted: false
-                    }
-                },
-                {
-                    $group: {
-                        _id: {
-                            city: '$customerInfo.address.city',
-                            state: '$customerInfo.address.state'
-                        },
-                        orders: { $sum: 1 }
-                    }
-                }
-            ]);
-
-            // Calculate total orders for percentage
-            const totalOrders = cityAggregation.reduce((sum, item) => sum + item.orders, 0);
 
             // Build previous month lookup map
             const previousCityMap = new Map(
@@ -168,9 +171,16 @@ export default class GeographicAnalyticsService {
             });
 
             // Aggregate by region
-            const regionCounts = new Map<RegionMetric['region'], number>();
-            cityAggregation.forEach(item => {
-                const state = item._id.state || 'Unknown';
+            const regionCounts = new Map<RegionMetric['region'], number>([
+                ['North', 0],
+                ['South', 0],
+                ['East', 0],
+                ['West', 0],
+                ['Northeast', 0],
+                ['Central', 0],
+            ]);
+            regionAggregation.forEach(item => {
+                const state = item._id || 'Unknown';
                 const region = STATE_TO_REGION[state] || 'Central';
                 regionCounts.set(region, (regionCounts.get(region) || 0) + item.orders);
             });

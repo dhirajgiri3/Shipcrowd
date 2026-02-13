@@ -51,6 +51,11 @@ interface ShipmentInfo {
     };
 }
 
+interface AnalyticsDateRange {
+    start: Date;
+    end: Date;
+}
+
 export default class RTOService {
     private static whatsapp = new WhatsAppService();
 
@@ -1179,7 +1184,7 @@ export default class RTOService {
      * Get comprehensive RTO analytics for dashboard
      * Phase 4: Powers RTOAnalytics component with real data
      */
-    static async getRTOAnalytics(companyId: string): Promise<{
+    static async getRTOAnalytics(companyId: string, dateRange?: AnalyticsDateRange): Promise<{
         summary: {
             currentRate: number;
             previousRate: number;
@@ -1195,33 +1200,35 @@ export default class RTOService {
         recommendations: Array<{ type: string; message: string; impact?: string }>;
     }> {
         const now = new Date();
-        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        const currentStart = dateRange?.start || new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentEnd = dateRange?.end || now;
+        const periodMs = Math.max(24 * 60 * 60 * 1000, currentEnd.getTime() - currentStart.getTime());
+        const previousEnd = new Date(currentStart.getTime() - 1);
+        const previousStart = new Date(previousEnd.getTime() - periodMs);
 
         // Current + previous month stats using proper models
         const [currentRTOs, currentShipments, previousRTOs, previousShipments] = await Promise.all([
             RTOEvent.countDocuments({
                 company: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: currentMonthStart }
+                triggeredAt: { $gte: currentStart, $lte: currentEnd }
             }),
             Shipment.countDocuments({
                 companyId: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: currentMonthStart }
+                createdAt: { $gte: currentStart, $lte: currentEnd }
             }),
             RTOEvent.countDocuments({
                 company: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd }
+                triggeredAt: { $gte: previousStart, $lte: previousEnd }
             }),
             Shipment.countDocuments({
                 companyId: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd }
+                createdAt: { $gte: previousStart, $lte: previousEnd }
             })
         ]);
 
         const currentRate = currentShipments > 0 ? (currentRTOs / currentShipments) * 100 : 0;
         const previousRate = previousShipments > 0 ? (previousRTOs / previousShipments) * 100 : 0;
-        const change = previousRate > 0 ? currentRate - previousRate : 0;
+        const change = previousRate > 0 ? currentRate - previousRate : (currentRate > 0 ? currentRate : 0);
         const industryAverage = this.INDUSTRY_RTO_AVG;
 
         // ✅ DYNAMIC: Calculate actual average RTO charge from recent history (last 30 days)
@@ -1231,7 +1238,7 @@ export default class RTOService {
                 $match: {
                     company: new mongoose.Types.ObjectId(companyId),
                     rtoCharges: { $gt: 0 },
-                    createdAt: { $gte: previousMonthStart } // Look at last ~2 months for better sample
+                    triggeredAt: { $gte: previousStart } // Include previous comparable range for better sample
                 }
             },
             {
@@ -1271,17 +1278,30 @@ export default class RTOService {
         }
 
         // Courier breakdown using Shipment model aggregation
-        const courierBreakdown = await Shipment.aggregate([
+        const courierBreakdown = await RTOEvent.aggregate([
             {
                 $match: {
-                    companyId: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: currentMonthStart },
-                    currentStatus: { $regex: 'rto', $options: 'i' }
+                    company: new mongoose.Types.ObjectId(companyId),
+                    triggeredAt: { $gte: currentStart, $lte: currentEnd },
                 }
             },
             {
+                $lookup: {
+                    from: 'shipments',
+                    localField: 'shipment',
+                    foreignField: '_id',
+                    as: 'shipmentDetails',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$shipmentDetails',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
                 $group: {
-                    _id: '$carrier', // Use 'carrier' field from Shipment model
+                    _id: '$shipmentDetails.carrier',
                     rtoCount: { $sum: 1 }
                 }
             }
@@ -1291,7 +1311,7 @@ export default class RTOService {
             {
                 $match: {
                     companyId: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: currentMonthStart }
+                    createdAt: { $gte: currentStart, $lte: currentEnd }
                 }
             },
             {
@@ -1319,7 +1339,7 @@ export default class RTOService {
             {
                 $match: {
                     company: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: currentMonthStart }
+                    triggeredAt: { $gte: currentStart, $lte: currentEnd }
                 }
             },
             {

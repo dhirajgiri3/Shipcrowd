@@ -185,6 +185,7 @@ interface PerformanceBarProps {
   // Data freshness
   lastUpdated: string; // ISO 8601
   freshness?: 'real_time' | 'cached_60s' | 'stale_5m' | 'stale_15m';
+  periodLabel?: string;
 
 
   // Click handlers (optional - defaults to analytics tracking)
@@ -209,6 +210,7 @@ export function PerformanceBar({
   lowBalanceThreshold = 1000,
   lastUpdated,
   freshness = 'cached_60s',
+  periodLabel = 'Today',
 
   onRevenueClick,
   onProfitClick,
@@ -280,7 +282,7 @@ export function PerformanceBar({
                   {revenue.delta > 0 ? '+' : ''}
                   {revenue.delta.toFixed(1)}%
                 </span>
-                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs last week</div>
+                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs previous period</div>
               </div>
             </div>
           </button>
@@ -315,7 +317,7 @@ export function PerformanceBar({
                   {profit.delta > 0 ? '+' : ''}
                   {profit.delta.toFixed(1)}%
                 </span>
-                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs last week</div>
+                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs previous period</div>
               </div>
             </div>
           </button>
@@ -347,7 +349,7 @@ export function PerformanceBar({
                   {orders.delta > 0 ? '+' : ''}
                   {orders.delta.toFixed(1)}%
                 </span>
-                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs last week</div>
+                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs previous period</div>
               </div>
             </div>
           </button>
@@ -404,7 +406,7 @@ export function PerformanceBar({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wide">
-            Today's Performance
+            {periodLabel} Performance
           </h3>
 
         </div>

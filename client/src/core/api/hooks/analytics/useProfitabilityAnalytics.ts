@@ -37,16 +37,22 @@ export interface ProfitabilityData {
     };
 }
 
-export function useProfitabilityAnalytics(options?: { enabled?: boolean }) {
+interface ProfitabilityFilters {
+    startDate?: string;
+    endDate?: string;
+}
+
+export function useProfitabilityAnalytics(filters?: ProfitabilityFilters, options?: { enabled?: boolean }) {
     const { isInitialized, user } = useAuth();
     const hasCompanyContext = isInitialized && !!user?.companyId;
     const enabled = hasCompanyContext && (options?.enabled !== false);
 
     return useQuery({
-        queryKey: ["profitability-analytics"],
+        queryKey: ["profitability-analytics", filters],
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: ProfitabilityData }>(
-                '/analytics/profitability'
+                '/analytics/profitability',
+                { params: filters }
             );
             return data.data;
         },

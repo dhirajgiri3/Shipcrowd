@@ -259,8 +259,22 @@ export function DashboardClient() {
     const [isManualRefresh, setIsManualRefresh] = useState(false);
 
     // ✅ Get date range from centralized context
-    const { getAPIParams } = useDashboardDate();
+    const { getAPIParams, preset } = useDashboardDate();
     const dateParams = getAPIParams();
+    const selectedStartDate = new Date(dateParams.startDate);
+    const selectedEndDate = new Date(dateParams.endDate);
+    const selectedDays = Math.max(
+        1,
+        Math.ceil((selectedEndDate.getTime() - selectedStartDate.getTime() + 1) / (24 * 60 * 60 * 1000))
+    );
+    const selectedPeriodLabel =
+        preset === 'today'
+            ? 'Today'
+            : preset === 'last7days'
+                ? 'Last 7 Days'
+                : preset === 'last30days'
+                    ? 'Last 30 Days'
+                    : 'Custom Range';
 
     // Loading state management with flash prevention
     const { isLoading, showLoader, startLoading, stopLoading } = useLoader({
@@ -287,7 +301,7 @@ export function DashboardClient() {
     const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useWalletBalance();
 
     // Order Trends (30-day chart data)
-    const { data: orderTrendsData, isLoading: orderTrendsLoading, refetch: refetchTrends } = useOrderTrends(30);
+    const { data: orderTrendsData, isLoading: orderTrendsLoading, refetch: refetchTrends } = useOrderTrends(selectedDays);
 
     // COD Stats (for CODStatusCard)
     const { data: codStatsData, isLoading: codStatsLoading, refetch: refetchCOD } = useCODStats();
@@ -300,13 +314,22 @@ export function DashboardClient() {
     const { data: cashFlowData, isLoading: cashFlowLoading, refetch: refetchCashFlow } = useCashFlowForecast();
 
     // Phase 4: RTO Analytics API
-    const { data: rtoAnalyticsData, isLoading: rtoAnalyticsLoading, refetch: refetchRTO } = useRTOAnalytics();
+    const { data: rtoAnalyticsData, isLoading: rtoAnalyticsLoading, refetch: refetchRTO } = useRTOAnalytics({
+        startDate: dateParams.startDate,
+        endDate: dateParams.endDate,
+    });
 
     // Phase 4: Profitability Analytics API
-    const { data: profitabilityData, isLoading: profitabilityLoading, refetch: refetchProfit } = useProfitabilityAnalytics();
+    const { data: profitabilityData, isLoading: profitabilityLoading, refetch: refetchProfit } = useProfitabilityAnalytics({
+        startDate: dateParams.startDate,
+        endDate: dateParams.endDate,
+    });
 
     // Phase 4: Geographic Insights API
-    const { data: geographicData, isLoading: geographicLoading, refetch: refetchGeo } = useGeographicInsights();
+    const { data: geographicData, isLoading: geographicLoading, refetch: refetchGeo } = useGeographicInsights({
+        startDate: dateParams.startDate,
+        endDate: dateParams.endDate,
+    });
 
     // Phase 5: Smart Insights API (100% Real Data)
     const { data: smartInsightsData, isLoading: smartInsightsLoading, refetch: refetchInsights } = useSmartInsights();
@@ -446,7 +469,6 @@ export function DashboardClient() {
             refetchWallet(),
             refetchTrends(),
             refetchCOD(),
-            refetchCOD(),
             // refetchOrders(), // Removed as we use dedicated hook now
             refetchTimeline(),
             refetchCashFlow(),
@@ -483,7 +505,7 @@ export function DashboardClient() {
                                 {getGreeting()}, {user?.name?.split(' ')[0] || 'Seller'}
                             </h1>
                             <p className="text-sm text-[var(--text-secondary)]">
-                                Here&apos;s what&apos;s happening with your shipments today.
+                                Here&apos;s what&apos;s happening with your shipments for {selectedPeriodLabel.toLowerCase()}.
                             </p>
                         </motion.div>
 
@@ -607,6 +629,7 @@ export function DashboardClient() {
                             longestStreak={dashboardMetrics?.longestStreak || 0}
                             milestones={dashboardMetrics?.milestones || []}
                             lastUpdated={new Date().toISOString()}
+                            periodLabel={selectedPeriodLabel}
                             onRevenueClick={() => router.push('/seller/analytics/revenue')}
                             onProfitClick={() => router.push('/seller/analytics/profit')}
                             onOrdersClick={() => router.push('/seller/orders')}
@@ -635,8 +658,17 @@ export function DashboardClient() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-6"
                     >
-                        <RTODashboardCards />
-                        <RTOAnalytics onViewDetails={() => router.push('/seller/rto')} />
+                        <RTODashboardCards
+                            startDate={dateParams.startDate}
+                            endDate={dateParams.endDate}
+                            periodLabel={selectedPeriodLabel}
+                        />
+                        <RTOAnalytics
+                            onViewDetails={() => router.push('/seller/rto')}
+                            startDate={dateParams.startDate}
+                            endDate={dateParams.endDate}
+                            periodLabel={selectedPeriodLabel}
+                        />
                     </motion.section>
                 )}
 
@@ -648,6 +680,9 @@ export function DashboardClient() {
                     >
                         <ProfitabilityCard
                             onViewDetails={() => router.push('/seller/analytics/profitability')}
+                            startDate={dateParams.startDate}
+                            endDate={dateParams.endDate}
+                            periodLabel={selectedPeriodLabel}
                         />
                     </motion.section>
                 )}
@@ -689,6 +724,8 @@ export function DashboardClient() {
                     >
                         <OrderTrendChart
                             data={orderTrendChartData}
+                            periodLabel={selectedPeriodLabel}
+                            timeframeDays={selectedDays}
                             onDataPointClick={(dataPoint) => {
                                 // Navigate to orders filtered by date
                                 router.push(`/seller/orders?date=${dataPoint.date}`);

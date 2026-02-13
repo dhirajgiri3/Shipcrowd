@@ -50,16 +50,22 @@ export interface RTOAnalyticsData {
     recommendations: RTORecommendation[];
 }
 
-export function useRTOAnalytics(options?: { enabled?: boolean }) {
+interface RTOAnalyticsFilters {
+    startDate?: string;
+    endDate?: string;
+}
+
+export function useRTOAnalytics(filters?: RTOAnalyticsFilters, options?: { enabled?: boolean }) {
     const { isInitialized, user } = useAuth();
     const hasCompanyContext = isInitialized && !!user?.companyId;
     const enabled = hasCompanyContext && (options?.enabled !== false);
 
     return useQuery({
-        queryKey: ["rto-analytics"],
+        queryKey: ["rto-analytics", filters],
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: RTOAnalyticsData }>(
-                '/analytics/rto'
+                '/analytics/rto',
+                { params: filters }
             );
             return data.data;
         },

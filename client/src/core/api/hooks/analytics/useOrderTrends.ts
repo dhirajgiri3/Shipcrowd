@@ -24,11 +24,13 @@ export interface OrderAnalyticsResponse {
  * Fetch order trends for specified number of days
  */
 export function useOrderTrends(days: number = 30) {
+    const safeDays = Math.max(1, Math.floor(days || 30));
+
     return useQuery({
-        queryKey: ['analytics', 'orders', { days }],
+        queryKey: ['analytics', 'orders', { days: safeDays }],
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: OrderAnalyticsResponse }>(`/analytics/orders`, {
-                params: { days }
+                params: { days: safeDays }
             });
             return data.data;
         },

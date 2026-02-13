@@ -306,7 +306,7 @@ function AnimatedPulseMap({ regions }: PulseMapProps) {
     regions.find(r => r.region === regionName);
 
   const getIntensity = (orders: number) => {
-    const maxOrders = Math.max(...regions.map(r => r.orders));
+    const maxOrders = Math.max(1, ...regions.map(r => r.orders));
     return 0.4 + (orders / maxOrders) * 0.6;
   };
 
@@ -423,12 +423,12 @@ function AnimatedPulseMap({ regions }: PulseMapProps) {
         />
 
         {/* Region labels with subtle animation */}
-        <motion.text x="150" y="80" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'North' ? 1 : 0.6 }}>N</motion.text>
-        <motion.text x="240" y="110" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'Northeast' ? 1 : 0.6 }}>NE</motion.text>
-        <motion.text x="150" y="160" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'Central' ? 1 : 0.6 }}>C</motion.text>
-        <motion.text x="80" y="185" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'West' ? 1 : 0.6 }}>W</motion.text>
-        <motion.text x="215" y="195" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'East' ? 1 : 0.6 }}>E</motion.text>
-        <motion.text x="150" y="290" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'South' ? 1 : 0.6 }}>S</motion.text>
+        <motion.text initial={{ opacity: 0.6 }} x="150" y="80" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'North' ? 1 : 0.6 }}>N</motion.text>
+        <motion.text initial={{ opacity: 0.6 }} x="240" y="110" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'Northeast' ? 1 : 0.6 }}>NE</motion.text>
+        <motion.text initial={{ opacity: 0.6 }} x="150" y="160" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'Central' ? 1 : 0.6 }}>C</motion.text>
+        <motion.text initial={{ opacity: 0.6 }} x="80" y="185" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'West' ? 1 : 0.6 }}>W</motion.text>
+        <motion.text initial={{ opacity: 0.6 }} x="215" y="195" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'East' ? 1 : 0.6 }}>E</motion.text>
+        <motion.text initial={{ opacity: 0.6 }} x="150" y="290" textAnchor="middle" className="text-xs fill-[var(--text-primary)] font-bold pointer-events-none" animate={{ opacity: hoveredRegion === 'South' ? 1 : 0.6 }}>S</motion.text>
       </svg>
     </div>
   );

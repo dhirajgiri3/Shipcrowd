@@ -92,7 +92,13 @@ export function DashboardDateProvider({ children }: { children: ReactNode }) {
         const urlEnd = parseDateFromURL(searchParams.get('endDate'));
 
         if (urlStart && urlEnd) {
-            return { startDate: urlStart, endDate: urlEnd };
+            // Normalize URL date-only values to full-day boundaries.
+            // Prevents custom ranges from collapsing to midnight on reload.
+            const start = new Date(urlStart);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(urlEnd);
+            end.setHours(23, 59, 59, 999);
+            return { startDate: start, endDate: end };
         }
 
         // Otherwise use preset

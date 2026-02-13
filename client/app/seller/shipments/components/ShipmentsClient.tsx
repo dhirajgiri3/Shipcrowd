@@ -130,13 +130,13 @@ export function ShipmentsClient() {
             header: '',
             accessorKey: 'select',
             width: 'w-10',
-            cell: (row: Shipment) => (
+            cell: (row: any) => (
                 <div className="flex items-center justify-center -ml-2" onClick={(e) => e.stopPropagation()}>
                     <input
                         type="checkbox"
                         className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                        checked={selectedShipmentIds.has((row as any)._id || (row as any).id)}
-                        onChange={(e) => handleSelectRow((row as any)._id || (row as any).id, e.target.checked)}
+                        checked={selectedShipmentIds.has(row._id || row.id)}
+                        onChange={(e) => handleSelectRow(row._id || row.id, e.target.checked)}
                     />
                 </div>
             )
@@ -144,15 +144,15 @@ export function ShipmentsClient() {
         {
             header: 'Shipment Details',
             accessorKey: 'awb',
-            cell: (row: Shipment) => (
+            cell: (row: any) => (
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                         <Package className="w-4 h-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
-                        <div className="font-bold text-[var(--text-primary)] text-sm">{row.awb}</div>
+                        <div className="font-bold text-[var(--text-primary)] text-sm">{row.trackingNumber || row.awb}</div>
                         <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 font-medium">
-                            Order #{row.orderNumber}
+                            Order #{row.orderId?.orderNumber || row.orderNumber}
                         </div>
                     </div>
                 </div>
@@ -161,65 +161,77 @@ export function ShipmentsClient() {
         {
             header: 'Customer',
             accessorKey: 'customer',
-            cell: (row: Shipment) => (
-                <div>
-                    <div className="font-semibold text-[var(--text-primary)] text-sm">{row.customer.name}</div>
-                    <div className="text-xs text-[var(--text-muted)]">{row.customer.phone}</div>
-                </div>
-            )
+            cell: (row: any) => {
+                const name = row.deliveryDetails?.recipientName || row.orderId?.customerInfo?.name || 'N/A';
+                const phone = row.deliveryDetails?.recipientPhone || row.orderId?.customerInfo?.phone || 'N/A';
+                return (
+                    <div>
+                        <div className="font-semibold text-[var(--text-primary)] text-sm">{name}</div>
+                        <div className="text-xs text-[var(--text-muted)]">{phone}</div>
+                    </div>
+                );
+            }
         },
         {
             header: 'Route',
             accessorKey: 'origin',
-            cell: (row: Shipment) => (
-                <div className="flex items-center gap-2 text-sm">
-                    <span className="text-[var(--text-secondary)] font-medium">{row.origin.city}</span>
-                    <span className="text-[var(--text-muted)]">→</span>
-                    <span className="text-[var(--text-primary)] font-bold">{row.destination.city}</span>
-                </div>
-            )
+            cell: (row: any) => {
+                const originCity = row.pickupDetails?.warehouseId?.address?.city || row.origin?.city || 'N/A';
+                const destCity = row.deliveryDetails?.address?.city || row.destination?.city || 'N/A';
+                return (
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="text-[var(--text-secondary)] font-medium">{originCity}</span>
+                        <span className="text-[var(--text-muted)]">→</span>
+                        <span className="text-[var(--text-primary)] font-bold">{destCity}</span>
+                    </div>
+                );
+            }
         },
         {
             header: 'Courier',
             accessorKey: 'courier',
-            cell: (row: Shipment) => (
+            cell: (row: any) => (
                 <div className="flex items-center gap-2">
                     <img
-                        src={getCourierLogo(row.courier)}
+                        src={getCourierLogo(row.carrier || row.courier)}
                         className="w-5 h-5 object-contain opacity-80"
-                        alt={row.courier}
+                        alt={row.carrier || row.courier}
                         onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${row.courier}&background=random&color=fff&size=20`;
+                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${row.carrier || row.courier}&background=random&color=fff&size=20`;
                         }}
                     />
-                    <span className="text-sm font-medium text-[var(--text-secondary)]">{row.courier}</span>
+                    <span className="text-sm font-medium text-[var(--text-secondary)]">{row.carrier || row.courier}</span>
                 </div>
             )
         },
         {
             header: 'Status',
             accessorKey: 'status',
-            cell: (row: Shipment) => <StatusBadge domain="shipment" status={row.status} />
+            cell: (row: any) => <StatusBadge domain="shipment" status={row.currentStatus || row.status} />
         },
         {
             header: 'Amount',
             accessorKey: 'codAmount',
-            cell: (row: Shipment) => (
-                <div>
-                    <div className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(row.codAmount)}</div>
-                    <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
-                        row.paymentMode === 'prepaid' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
-                    )}>
-                        {row.paymentMode}
-                    </span>
-                </div>
-            )
+            cell: (row: any) => {
+                const amount = row.paymentDetails?.codAmount || row.codAmount || 0;
+                const paymentMode = row.paymentDetails?.type || row.paymentMode || 'prepaid';
+                return (
+                    <div>
+                        <div className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(amount)}</div>
+                        <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
+                            paymentMode === 'prepaid' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
+                        )}>
+                            {paymentMode}
+                        </span>
+                    </div>
+                );
+            }
         },
         {
             header: 'Actions',
             accessorKey: 'id',
-            cell: (row: Shipment) => (
+            cell: (row: any) => (
                 <div className="flex items-center gap-2">
                     <ViewActionButton
                         onClick={() => setSelectedShipment(row)}
@@ -231,7 +243,7 @@ export function ShipmentsClient() {
                         variant="ghost"
                         size="sm"
                         className="hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
-                        onClick={() => handleViewPOD((row as any)._id || (row as any).id)}
+                        onClick={() => handleViewPOD(row._id || row.id)}
                         title="View POD"
                     >
                         <ClipboardCheck className="w-4 h-4" />

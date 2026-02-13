@@ -27,6 +27,9 @@ import { useRTOAnalytics, type RTOAnalyticsData } from '@/src/core/api/hooks/ana
 
 interface RTOAnalyticsProps {
     onViewDetails?: () => void;
+    startDate?: string;
+    endDate?: string;
+    periodLabel?: string;
 }
 
 const getReasonIcon = (reason: string) => {
@@ -43,10 +46,13 @@ const getReasonIcon = (reason: string) => {
 };
 
 const RTOAnalytics = memo(function RTOAnalytics({
-    onViewDetails
+    onViewDetails,
+    startDate,
+    endDate,
+    periodLabel = 'Selected Period',
 }: RTOAnalyticsProps) {
     // API Hooks
-    const { data: rtoData, isLoading, error } = useRTOAnalytics();
+    const { data: rtoData, isLoading, error } = useRTOAnalytics({ startDate, endDate });
 
     if (isLoading) {
         return (
@@ -189,7 +195,7 @@ const RTOAnalytics = memo(function RTOAnalytics({
                             {formatCurrency(rtoData.summary.estimatedLoss)}
                         </p>
                         <p className="text-xs text-[var(--error)]/70">
-                            this month
+                            {periodLabel.toLowerCase()}
                         </p>
                     </motion.div>
                 </div>

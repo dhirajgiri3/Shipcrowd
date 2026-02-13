@@ -39,6 +39,8 @@ export interface OrderTrendChartProps {
   data: OrderTrendDataPoint[];
   onDataPointClick?: (dataPoint: OrderTrendDataPoint) => void;
   className?: string;
+  periodLabel?: string;
+  timeframeDays?: number;
 }
 
 // --- HELPER FUNCTIONS ---
@@ -81,8 +83,9 @@ function calculateAreaPath(
   const minOrders = Math.min(...data.map(d => d.orders));
   const range = maxOrders - minOrders || 1;
 
+  const xDenominator = Math.max(1, data.length - 1);
   const points = data.map((point, index) => {
-    const x = padding.left + (index / (data.length - 1)) * chartWidth;
+    const x = padding.left + (index / xDenominator) * chartWidth;
     const y = padding.top + chartHeight - ((point.orders - minOrders) / range) * chartHeight;
     return { x, y };
   });
@@ -107,7 +110,9 @@ function calculateTrendMetadata(data: OrderTrendDataPoint[]) {
   const firstHalfAvg = firstHalf.reduce((sum, d) => sum + d.orders, 0) / firstHalf.length;
   const secondHalfAvg = secondHalf.reduce((sum, d) => sum + d.orders, 0) / secondHalf.length;
 
-  const changePercent = ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100;
+  const changePercent = firstHalfAvg > 0
+    ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100
+    : (secondHalfAvg > 0 ? 100 : 0);
 
   const trend = changePercent > 5 ? 'up' : changePercent < -5 ? 'down' : 'neutral';
 
@@ -116,7 +121,13 @@ function calculateTrendMetadata(data: OrderTrendDataPoint[]) {
 
 // --- MAIN COMPONENT ---
 
-export function OrderTrendChart({ data, onDataPointClick, className = '' }: OrderTrendChartProps) {
+export function OrderTrendChart({
+  data,
+  onDataPointClick,
+  className = '',
+  periodLabel = 'Last 30 Days',
+  timeframeDays = 30,
+}: OrderTrendChartProps) {
   // Collapsible state with localStorage persistence
   const [isCollapsed, setIsCollapsed] = useState(true); // Default collapsed
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -158,8 +169,9 @@ export function OrderTrendChart({ data, onDataPointClick, className = '' }: Orde
   const minOrders = Math.min(...data.map(d => d.orders));
   const range = maxOrders - minOrders || 1;
 
+  const xDenominator = Math.max(1, data.length - 1);
   const dataPoints = data.map((point, index) => ({
-    x: padding.left + (index / (data.length - 1)) * chartWidth,
+    x: padding.left + (index / xDenominator) * chartWidth,
     y: padding.top + chartHeight - ((point.orders - minOrders) / range) * chartHeight,
     data: point
   }));
@@ -168,7 +180,7 @@ export function OrderTrendChart({ data, onDataPointClick, className = '' }: Orde
   const handleDataPointClick = (point: OrderTrendDataPoint, index: number) => {
     track(EVENTS.TREND_CLICKED, {
       metric: 'order_volume',
-      range: '30d',
+      range: `${timeframeDays}d`,
       data_point_index: index,
       data_point_value: point.orders,
       is_weekend: point.isWeekend,
@@ -196,7 +208,7 @@ export function OrderTrendChart({ data, onDataPointClick, className = '' }: Orde
       >
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg md:text-xl font-bold text-[var(--text-primary)]">30-Day Order Trends</h3>
+            <h3 className="text-lg md:text-xl font-bold text-[var(--text-primary)]">{periodLabel} Order Trends</h3>
             <div className="px-2 py-0.5 rounded-md bg-[var(--bg-tertiary)] text-[10px] font-medium text-[var(--text-muted)] uppercase">
               Strategic
             </div>

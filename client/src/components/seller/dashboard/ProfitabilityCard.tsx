@@ -26,6 +26,9 @@ import { useProfitabilityAnalytics, type ProfitabilityData } from '@/src/core/ap
 
 interface ProfitabilityCardProps {
     onViewDetails?: () => void;
+    startDate?: string;
+    endDate?: string;
+    periodLabel?: string;
 }
 
 const CostBreakdownItem = memo(function CostBreakdownItem({
@@ -62,12 +65,15 @@ const CostBreakdownItem = memo(function CostBreakdownItem({
 });
 
 const ProfitabilityCard = memo(function ProfitabilityCard({
-    onViewDetails
+    onViewDetails,
+    startDate,
+    endDate,
+    periodLabel = 'Selected Period',
 }: ProfitabilityCardProps) {
     const [showBreakdown, setShowBreakdown] = useState(false);
 
     // API Hooks
-    const { data: profitData, isLoading, error } = useProfitabilityAnalytics();
+    const { data: profitData, isLoading, error } = useProfitabilityAnalytics({ startDate, endDate });
 
     if (isLoading) {
         return (
@@ -195,7 +201,7 @@ const ProfitabilityCard = memo(function ProfitabilityCard({
                                     Average Per Order
                                 </p>
                                 <p className="text-xs text-[var(--text-secondary)]">
-                                    Based on your orders
+                                    Based on {periodLabel.toLowerCase()} orders
                                 </p>
                             </div>
                         </div>

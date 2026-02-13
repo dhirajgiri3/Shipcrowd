@@ -30,16 +30,22 @@ export interface GeographicInsightsData {
     totalOrders: number;
 }
 
-export function useGeographicInsights(options?: { enabled?: boolean }) {
+interface GeographicFilters {
+    startDate?: string;
+    endDate?: string;
+}
+
+export function useGeographicInsights(filters?: GeographicFilters, options?: { enabled?: boolean }) {
     const { isInitialized, user } = useAuth();
     const hasCompanyContext = isInitialized && !!user?.companyId;
     const enabled = hasCompanyContext && (options?.enabled !== false);
 
     return useQuery({
-        queryKey: ["geographic-insights"],
+        queryKey: ["geographic-insights", filters],
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: GeographicInsightsData }>(
-                '/analytics/geography'
+                '/analytics/geography',
+                { params: filters }
             );
             return data.data;
         },

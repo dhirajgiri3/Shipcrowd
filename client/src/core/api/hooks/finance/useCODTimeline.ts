@@ -23,6 +23,7 @@ export interface CODTimelineStage {
 
 export interface CODTimelineResponse {
     stages: CODTimelineStage[];
+    lastSettlementAmount?: number;
     nextSettlementIn: string;
     totalPending: number;
 }
@@ -108,7 +109,7 @@ export function transformCODTimelineToComponent(data: CODTimelineResponse): CODS
             count: settled.count,
             lastSettlement: settled.date ? {
                 date: settled.date || new Date().toISOString(),
-                amount: settled.amount
+                amount: data.lastSettlementAmount ?? settled.amount
             } : undefined
         }
     };

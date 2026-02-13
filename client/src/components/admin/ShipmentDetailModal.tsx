@@ -64,9 +64,9 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                                 <Copy className="h-3 w-3 text-[var(--text-muted)] hover:text-[var(--text-primary)]" />
                             </button>
                         </div>
-                        <p className="text-sm text-[var(--text-muted)]">Order: {shipment.orderNumber}</p>
+                        <p className="text-sm text-[var(--text-muted)]">Order: {(shipment as any).orderId?.orderNumber || shipment.orderNumber}</p>
                     </div>
-                    <StatusBadge status={shipment.status} />
+                    <StatusBadge status={shipment.status || (shipment as any).currentStatus} />
                 </div>
 
                 {/* Customer Info */}
@@ -77,12 +77,12 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
                             <p className="text-xs text-[var(--text-muted)]">Name</p>
-                            <p className="font-medium text-[var(--text-primary)]">{shipment.customer.name}</p>
+                            <p className="font-medium text-[var(--text-primary)]">{(shipment as any).deliveryDetails?.recipientName || (shipment as any).orderId?.customerInfo?.name || shipment.customer?.name || 'N/A'}</p>
                         </div>
                         <div className="p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
                             <p className="text-xs text-[var(--text-muted)]">Phone</p>
                             <p className="font-medium flex items-center gap-2 text-[var(--text-primary)]">
-                                {shipment.customer.phone}
+                                {(shipment as any).deliveryDetails?.recipientPhone || (shipment as any).orderId?.customerInfo?.phone || shipment.customer?.phone || 'N/A'}
                                 <Phone className="h-3 w-3 text-[var(--text-muted)]" />
                             </p>
                         </div>
@@ -97,8 +97,8 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                     <div className="flex items-center gap-4">
                         <div className="flex-1 p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
                             <p className="text-xs text-[var(--text-muted)]">Origin</p>
-                            <p className="font-medium text-[var(--text-primary)]">{shipment.origin.city}</p>
-                            <p className="text-xs text-[var(--text-muted)]">{shipment.origin.state}</p>
+                            <p className="font-medium text-[var(--text-primary)]">{(shipment as any).pickupDetails?.warehouseId?.address?.city || shipment.origin?.city || 'N/A'}</p>
+                            <p className="text-xs text-[var(--text-muted)]">{(shipment as any).pickupDetails?.warehouseId?.address?.state || shipment.origin?.state || ''}</p>
                         </div>
                         <div className="flex items-center text-[var(--border-strong)]">
                             <div className="w-8 h-0.5 bg-current opacity-30" />
@@ -107,8 +107,8 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                         </div>
                         <div className="flex-1 p-3 bg-[var(--primary-blue-soft)]/50 rounded-xl border border-[var(--primary-blue)]/10">
                             <p className="text-xs text-[var(--primary-blue)]">Destination</p>
-                            <p className="font-medium text-[var(--text-primary)]">{shipment.destination.city}</p>
-                            <p className="text-xs text-[var(--text-secondary)]">{shipment.destination.state}</p>
+                            <p className="font-medium text-[var(--text-primary)]">{(shipment as any).deliveryDetails?.address?.city || shipment.destination?.city || 'N/A'}</p>
+                            <p className="text-xs text-[var(--text-secondary)]">{(shipment as any).deliveryDetails?.address?.state || shipment.destination?.state || ''}</p>
                         </div>
                     </div>
                 </div>
@@ -118,17 +118,17 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
                     <div className="p-3 bg-[var(--bg-secondary)] rounded-xl text-center border border-[var(--border-subtle)]">
                         <Truck className="h-4 w-4 mx-auto text-[var(--text-muted)] mb-1" />
                         <p className="text-xs text-[var(--text-muted)]">Courier</p>
-                        <p className="font-medium text-sm text-[var(--text-primary)]">{shipment.courier}</p>
+                        <p className="font-medium text-sm text-[var(--text-primary)]">{shipment.courier || (shipment as any).carrier}</p>
                     </div>
                     <div className="p-3 bg-[var(--bg-secondary)] rounded-xl text-center border border-[var(--border-subtle)]">
                         <Package className="h-4 w-4 mx-auto text-[var(--text-muted)] mb-1" />
                         <p className="text-xs text-[var(--text-muted)]">Weight</p>
-                        <p className="font-medium text-sm text-[var(--text-primary)]">{shipment.weight} kg</p>
+                        <p className="font-medium text-sm text-[var(--text-primary)]">{shipment.weight || (shipment as any).packageDetails?.weight} kg</p>
                     </div>
                     <div className="p-3 bg-[var(--bg-secondary)] rounded-xl text-center border border-[var(--border-subtle)]">
                         <IndianRupee className="h-4 w-4 mx-auto text-[var(--text-muted)] mb-1" />
                         <p className="text-xs text-[var(--text-muted)]">Amount</p>
-                        <p className="font-medium text-sm text-[var(--text-primary)]">{formatCurrency(shipment.codAmount)}</p>
+                        <p className="font-medium text-sm text-[var(--text-primary)]">{formatCurrency(shipment.codAmount || (shipment as any).paymentDetails?.codAmount || 0)}</p>
                     </div>
                     <div className="p-3 bg-[var(--bg-secondary)] rounded-xl text-center border border-[var(--border-subtle)]">
                         <Calendar className="h-4 w-4 mx-auto text-[var(--text-muted)] mb-1" />

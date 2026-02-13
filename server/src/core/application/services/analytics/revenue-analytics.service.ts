@@ -216,7 +216,7 @@ export default class RevenueAnalyticsService {
      * Calculates ACTUAL profit from Order data, not estimated margins:
      * Profit = Revenue - (Shipping + COD fees + Platform fees + Taxes + RTO costs)
      */
-    static async getProfitabilityAnalytics(companyId: string): Promise<{
+    static async getProfitabilityAnalytics(companyId: string, dateRange?: DateRange): Promise<{
         summary: {
             totalRevenue: number;
             totalCosts: number;
@@ -245,16 +245,18 @@ export default class RevenueAnalyticsService {
     }> {
         try {
             const now = new Date();
-            const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            const currentStart = dateRange?.start || new Date(now.getFullYear(), now.getMonth(), 1);
+            const currentEnd = dateRange?.end || now;
+            const periodMs = Math.max(24 * 60 * 60 * 1000, currentEnd.getTime() - currentStart.getTime());
+            const previousEnd = new Date(currentStart.getTime() - 1);
+            const previousStart = new Date(previousEnd.getTime() - periodMs);
 
             // Current month profitability using Order model
             const [currentStats] = await Order.aggregate([
                 {
                     $match: {
                         companyId: new mongoose.Types.ObjectId(companyId),
-                        createdAt: { $gte: currentMonthStart },
+                        createdAt: { $gte: currentStart, $lte: currentEnd },
                         isDeleted: false
                     }
                 },
@@ -308,7 +310,7 @@ export default class RevenueAnalyticsService {
                 {
                     $match: {
                         companyId: new mongoose.Types.ObjectId(companyId),
-                        createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd },
+                        createdAt: { $gte: previousStart, $lte: previousEnd },
                         isDeleted: false
                     }
                 },

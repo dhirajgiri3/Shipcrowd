@@ -16,6 +16,7 @@
 
 import { NDREvent, PreventionEvent } from '../../../../infrastructure/database/mongoose/models';
 import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
 
 interface DateRange {
@@ -238,7 +239,7 @@ export default class NDRAnalyticsService {
         dispositionBreakdown: Record<string, number>;
         avgQcTurnaroundHours?: number;
     }> {
-        const matchFilter: any = { company: companyId };
+        const matchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
 
         if (dateRange) {
             matchFilter.triggeredAt = {
@@ -719,4 +720,3 @@ export default class NDRAnalyticsService {
         };
     }
 }
-

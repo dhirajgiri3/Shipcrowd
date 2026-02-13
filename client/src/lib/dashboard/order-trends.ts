@@ -10,6 +10,10 @@ interface OrderTrendAPIResponse {
         orders: number;
         revenue: number;
     }>;
+    period?: {
+        startDate?: string | Date;
+        endDate?: string | Date;
+    };
 }
 
 interface ChartDataPoint {
@@ -67,12 +71,34 @@ export function transformOrderTrendsToChart(apiData: OrderTrendAPIResponse): Cha
         return []; // Return empty array instead of null
     }
 
-    return apiData.ordersByDate.map((item) => ({
-        date: item._id,
-        orders: item.orders || 0, // Fallback to 0
-        revenue: item.revenue || 0, // Fallback to 0
-        dayOfWeek: new Date(item._id).getDay(),
-        isWeekend: [0, 6].includes(new Date(item._id).getDay()),
-        isFestival: isIndianFestival(item._id)
-    }));
+    if (apiData.ordersByDate.length === 0) return [];
+
+    const sorted = [...apiData.ordersByDate].sort((a, b) => a._id.localeCompare(b._id));
+    const byDate = new Map(sorted.map((item) => [item._id, item]));
+    const start = apiData.period?.startDate
+        ? new Date(apiData.period.startDate)
+        : new Date(sorted[0]._id);
+    const end = apiData.period?.endDate
+        ? new Date(apiData.period.endDate)
+        : new Date(sorted[sorted.length - 1]._id);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    const points: ChartDataPoint[] = [];
+    for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        const date = cursor.toISOString().split('T')[0];
+        const item = byDate.get(date);
+        const dayOfWeek = new Date(date).getDay();
+
+        points.push({
+            date,
+            orders: item?.orders || 0,
+            revenue: item?.revenue || 0,
+            dayOfWeek,
+            isWeekend: [0, 6].includes(dayOfWeek),
+            isFestival: isIndianFestival(date),
+        });
+    }
+
+    return points;
 }

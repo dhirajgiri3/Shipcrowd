@@ -20,9 +20,19 @@ const cardVariants = {
     }),
 };
 
-export function RTODashboardCards() {
+interface RTODashboardCardsProps {
+    startDate?: string;
+    endDate?: string;
+    periodLabel?: string;
+}
+
+export function RTODashboardCards({
+    startDate,
+    endDate,
+    periodLabel = 'Selected Period',
+}: RTODashboardCardsProps) {
     const router = useRouter();
-    const { data: stats, isLoading, error } = useRTOStats();
+    const { data: stats, isLoading, error } = useRTOStats({ startDate, endDate });
 
     if (error) return null;
 
@@ -54,7 +64,7 @@ export function RTODashboardCards() {
         },
         {
             key: 'total',
-            label: 'This Month',
+            label: periodLabel,
             value: String(total),
             subtext: 'Total RTO cases',
             icon: RotateCcw,
@@ -64,7 +74,7 @@ export function RTODashboardCards() {
         },
         {
             key: 'charges',
-            label: 'Monthly Cost',
+            label: `${periodLabel} Cost`,
             value: `₹${totalCharges.toLocaleString('en-IN')}`,
             subtext: 'RTO charges (period)',
             icon: IndianRupee,

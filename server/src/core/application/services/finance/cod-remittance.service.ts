@@ -1120,6 +1120,7 @@ export class CODRemittanceService {
             count: number;
             date: string | null;
         }>;
+        lastSettlementAmount: number;
         nextSettlementIn: string;
         totalPending: number;
     }> {
@@ -1183,9 +1184,21 @@ export class CODRemittanceService {
             count: scheduledResult[0]?.count || 0
         };
 
-        // Get next scheduled payout date (estimate: tomorrow if approved batches exist)
+        // Get next scheduled payout date from actual approved batch schedule when available
+        const nextScheduledPayout = await CODRemittance.findOne({
+            companyId: new mongoose.Types.ObjectId(companyId),
+            status: 'approved',
+            'schedule.scheduledDate': { $exists: true, $ne: null },
+            isDeleted: false,
+        })
+            .sort({ 'schedule.scheduledDate': 1 })
+            .select('schedule.scheduledDate')
+            .lean();
+
         const nextPayoutDate = scheduled.amount > 0
-            ? new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            ? (nextScheduledPayout?.schedule?.scheduledDate
+                ? new Date(nextScheduledPayout.schedule.scheduledDate).toISOString().split('T')[0]
+                : new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0])
             : null;
 
         // Stage 4: Settled (Paid in last 30 days)
@@ -1214,7 +1227,7 @@ export class CODRemittanceService {
             isDeleted: false
         })
             .sort({ 'payout.completedAt': -1 })
-            .select('payout.completedAt')
+            .select('payout.completedAt financial.netPayable')
             .lean();
 
         const settled = {
@@ -1242,6 +1255,7 @@ export class CODRemittanceService {
                 { stage: 'scheduled', amount: scheduled.amount, count: scheduled.count, date: nextPayoutDate },
                 { stage: 'settled', amount: settled.amount, count: settled.count, date: settled.date }
             ],
+            lastSettlementAmount: lastSettlement?.financial?.netPayable || 0,
             nextSettlementIn,
             totalPending: collected.amount + inProcess.amount + scheduled.amount
         };
