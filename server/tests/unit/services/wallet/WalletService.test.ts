@@ -3,13 +3,27 @@
  */
 
 import WalletService from '@/core/application/services/wallet/wallet.service';
-import { Company } from '../../../../src/infrastructure/database/mongoose/models';
-import { WalletTransaction } from '../../../../src/infrastructure/database/mongoose/models';
+import { Company, WalletTransaction } from '../../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
 
 // Mock the models
-jest.mock('../../../../src/infrastructure/database/mongoose/models/organization/core/company.model');
-jest.mock('../../../../src/infrastructure/database/mongoose/models/finance/wallets/wallet-transaction.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models', () => ({
+    Company: {
+        findById: jest.fn(),
+        findOneAndUpdate: jest.fn(),
+        findByIdAndUpdate: jest.fn(),
+        exists: jest.fn(),
+        updateOne: jest.fn(),
+    },
+    WalletTransaction: {
+        create: jest.fn(),
+        findOne: jest.fn(),
+        findById: jest.fn(),
+        findByIdAndUpdate: jest.fn(),
+        aggregate: jest.fn(),
+        getTransactionHistory: jest.fn(),
+    },
+}));
 jest.mock('@/shared/logger/winston.logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
@@ -29,6 +43,23 @@ describe('WalletService', () => {
         jest.clearAllMocks();
         (mongoose.startSession as jest.Mock) = jest.fn().mockResolvedValue(mockSession);
     });
+
+    const mockFindOneAndUpdateChain = (result: any) => {
+        (Company.findOneAndUpdate as jest.Mock).mockReturnValue({
+            select: jest.fn().mockReturnValue({
+                session: jest.fn().mockResolvedValue(result),
+            }),
+        });
+    };
+
+    const mockFindByIdSessionChain = (result: any) => {
+        (Company.findById as jest.Mock).mockReturnValue({
+            select: jest.fn().mockReturnValue({
+                session: jest.fn().mockResolvedValue(result),
+            }),
+            session: jest.fn().mockResolvedValue(result),
+        });
+    };
 
     describe('getBalance', () => {
         it('should return wallet balance for existing company', async () => {
@@ -121,18 +152,14 @@ describe('WalletService', () => {
                 __v: 0,
             };
 
-            // Mock Company.findById().session() chain
-            (Company.findById as jest.Mock).mockReturnValue({
-                session: jest.fn().mockResolvedValue(mockCompany),
-            });
+            mockFindByIdSessionChain(mockCompany);
 
             // Mock WalletTransaction.create with session
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 1500 },
             ]);
 
-            // Mock Company.findOneAndUpdate with proper return
-            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+            mockFindOneAndUpdateChain({
                 wallet: { balance: 1500 },
                 __v: 1,
             });
@@ -163,10 +190,8 @@ describe('WalletService', () => {
                 __v: 0,
             };
 
-            // Mock Company.findById().session() to return company with low balance
-            (Company.findById as jest.Mock).mockReturnValue({
-                session: jest.fn().mockResolvedValue(mockCompany),
-            });
+            mockFindByIdSessionChain(mockCompany);
+            mockFindOneAndUpdateChain(null);
 
             const result = await WalletService.debit(
                 mockCompanyId,
@@ -190,18 +215,14 @@ describe('WalletService', () => {
             };
             const rtoEventId = new mongoose.Types.ObjectId().toString();
 
-            // Mock Company.findById().session() chain
-            (Company.findById as jest.Mock).mockReturnValue({
-                session: jest.fn().mockResolvedValue(mockCompany),
-            });
+            mockFindByIdSessionChain(mockCompany);
 
             // Mock WalletTransaction.create
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 950 },
             ]);
 
-            // Mock Company.findOneAndUpdate
-            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+            mockFindOneAndUpdateChain({
                 wallet: { balance: 950 },
                 __v: 1,
             });
@@ -228,18 +249,14 @@ describe('WalletService', () => {
             };
             const shipmentId = new mongoose.Types.ObjectId().toString();
 
-            // Mock Company.findById().session() chain
-            (Company.findById as jest.Mock).mockReturnValue({
-                session: jest.fn().mockResolvedValue(mockCompany),
-            });
+            mockFindByIdSessionChain(mockCompany);
 
             // Mock WalletTransaction.create
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 400 },
             ]);
 
-            // Mock Company.findOneAndUpdate
-            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+            mockFindOneAndUpdateChain({
                 wallet: { balance: 400 },
                 __v: 1,
             });
@@ -265,18 +282,14 @@ describe('WalletService', () => {
             };
             const shipmentId = new mongoose.Types.ObjectId().toString();
 
-            // Mock Company.findById().session() chain
-            (Company.findById as jest.Mock).mockReturnValue({
-                session: jest.fn().mockResolvedValue(mockCompany),
-            });
+            mockFindByIdSessionChain(mockCompany);
 
             // Mock WalletTransaction.create
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 1500 },
             ]);
 
-            // Mock Company.findOneAndUpdate
-            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+            mockFindOneAndUpdateChain({
                 wallet: { balance: 1500 },
                 __v: 1,
             });

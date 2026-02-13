@@ -107,6 +107,7 @@ import { AppError, NotFoundError, ConflictError, ExternalServiceError, Validatio
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import redisLockService from '../infra/redis-lock.service';
 import razorpayPaymentService from '../payment/razorpay-payment.service';
+import { isWalletAutoRechargeFeatureEnabled } from './wallet-feature-flags';
 
 interface TransactionResult {
     success: boolean;
@@ -727,18 +728,22 @@ export default class WalletService {
         success: boolean;
         settings: any;
     }> {
+        const featureEnabled = await isWalletAutoRechargeFeatureEnabled({ companyId });
+        if (settings.enabled && !featureEnabled) {
+            throw new AppError(
+                'Auto-recharge is currently unavailable',
+                'FEATURE_DISABLED',
+                403
+            );
+        }
+
+        const company = await Company.findById(companyId).select('wallet.autoRecharge');
+        if (!company) throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
+
         // 1. VALIDATION RULES
 
         // Rule 1: Payment method required when enabling
         if (settings.enabled && !settings.paymentMethodId) {
-            // Check if existing loaded company has payment method? 
-            // Better to enforce passing it or checking DB. 
-            // For simplicity and safety, we check if one is provided OR already exists.
-            // But the UI usually sends the curent selected one.
-            // Let's first fetch the company to see current state if not provided
-            const company = await Company.findById(companyId).select('wallet.autoRecharge');
-            if (!company) throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
-
             const hasExistingPaymentMethod = !!company.wallet?.autoRecharge?.paymentMethodId;
 
             if (!settings.paymentMethodId && !hasExistingPaymentMethod) {
@@ -770,10 +775,6 @@ export default class WalletService {
         }
 
         // Rule 4: Logical validation (threshold must be < amount)
-        // Need to fetch current values if only one is updated
-        const company = await Company.findById(companyId).select('wallet.autoRecharge');
-        if (!company) throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
-
         const currentSettings = company.wallet?.autoRecharge || { threshold: 1000, amount: 5000 };
 
         const finalThreshold = settings.threshold !== undefined ? settings.threshold : currentSettings.threshold;
@@ -849,7 +850,11 @@ export default class WalletService {
         // 5. RETURN UPDATED SETTINGS
         return {
             success: true,
-            settings: updatedCompany.wallet?.autoRecharge || null,
+            settings: {
+                ...(updatedCompany.wallet?.autoRecharge || {}),
+                enabled: featureEnabled ? Boolean(updatedCompany.wallet?.autoRecharge?.enabled) : false,
+                featureEnabled,
+            },
         };
     }
 
@@ -865,13 +870,21 @@ export default class WalletService {
             throw new NotFoundError('Company not found');
         }
 
-        return company.wallet?.autoRecharge || {
+        const featureEnabled = await isWalletAutoRechargeFeatureEnabled({ companyId });
+
+        const settings = company.wallet?.autoRecharge || {
             enabled: false,
             threshold: 1000,
             amount: 5000,
             paymentMethodId: null,
             dailyLimit: 100000,
             monthlyLimit: 500000,
+        };
+
+        return {
+            ...settings,
+            enabled: featureEnabled ? Boolean(settings.enabled) : false,
+            featureEnabled,
         };
     }
 

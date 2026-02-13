@@ -177,6 +177,7 @@ export function WalletPageClient() {
     const balance = balanceData?.balance || 0;
     const transactions = (transactionsData?.transactions || []).map(mapWalletTransactionToUi);
     const weeklyChange = 0; // TODO: Calculate from backend analytics
+    const isAutoRechargeEnabled = !!autoRechargeSettings?.enabled;
 
     // Empty State for Transactions
     const hasTransactions = transactions.length > 0;
@@ -202,7 +203,7 @@ export function WalletPageClient() {
                         averageWeeklySpend={8450}
                         onAddMoney={() => setIsAddMoneyOpen(true)}
                         onEnableAutoRecharge={() => setIsAutoRechargeOpen(true)}
-                        isAutoRechargeEnabled={autoRechargeSettings?.enabled}
+                        isAutoRechargeEnabled={isAutoRechargeEnabled}
                     />
                 </motion.div>
 

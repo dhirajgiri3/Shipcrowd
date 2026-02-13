@@ -9,7 +9,7 @@ import logger from '../../shared/logger/winston.logger';
 
 // Schedule configuration from environment or default to every 5 minutes
 const CRON_SCHEDULE = process.env.AUTO_RECHARGE_CRON_SCHEDULE || '*/5 * * * *';
-const AUTO_RECHARGE_ENABLED = process.env.AUTO_RECHARGE_ENABLED !== 'false'; // Enabled by default
+const AUTO_RECHARGE_ENABLED = process.env.AUTO_RECHARGE_ENABLED === 'true'; // Disabled by default
 
 /**
  * Start the auto-recharge cron scheduler

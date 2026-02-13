@@ -15,6 +15,7 @@ import {
 
 export interface AutoRechargeSettings {
   enabled: boolean;
+  featureEnabled?: boolean;
   threshold: number;
   amount: number;
   paymentMethodId?: string;

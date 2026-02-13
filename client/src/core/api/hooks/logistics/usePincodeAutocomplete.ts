@@ -51,7 +51,7 @@ export function usePincodeAutocomplete(pincode: string) {
                 // Backend response structure: { success, data: { data: { pincode, city, state } } }
                 // Axios wraps it: response.data = backend response
                 // So actual data is at: response.data.data.data
-                const info = response.data?.data?.data;
+                const info = response.data?.data;
 
                 // Check if API returned valid data
                 if (info && info.city && info.state) {

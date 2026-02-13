@@ -26,6 +26,7 @@ export function AutoRechargeSettings({
     currentSettings,
     isLoading = false
 }: AutoRechargeSettingsProps) {
+    const featureEnabled = currentSettings?.featureEnabled !== false;
     const [enabled, setEnabled] = useState(false);
     const [threshold, setThreshold] = useState(1000);
     const [amount, setAmount] = useState(5000);
@@ -41,12 +42,12 @@ export function AutoRechargeSettings({
     // Initialize state from currentSettings
     useEffect(() => {
         if (currentSettings) {
-            setEnabled(currentSettings.enabled);
+            setEnabled(featureEnabled ? currentSettings.enabled : false);
             setThreshold(currentSettings.threshold);
             setAmount(currentSettings.amount);
             setPaymentMethodId(currentSettings.paymentMethodId || '');
         }
-    }, [currentSettings, isOpen]);
+    }, [currentSettings, isOpen, featureEnabled]);
 
     const handleSubmit = async () => {
         setError(null);
@@ -121,6 +122,12 @@ export function AutoRechargeSettings({
 
                 {/* Body */}
                 <div className="p-6 space-y-6">
+                    {!featureEnabled && (
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm">
+                            Auto-recharge is temporarily unavailable.
+                        </div>
+                    )}
+
                     {/* Enable Toggle */}
                     <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)]/50 border border-[var(--border-default)]">
                         <div className="space-y-1">
@@ -137,6 +144,7 @@ export function AutoRechargeSettings({
                                 type="checkbox"
                                 checked={enabled}
                                 onChange={(e) => setEnabled(e.target.checked)}
+                                disabled={!featureEnabled}
                                 className="w-6 h-6 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                             {/* Or if Switch component is available:
@@ -246,6 +254,7 @@ export function AutoRechargeSettings({
                     <Button
                         onClick={handleSubmit}
                         isLoading={isLoading}
+                        disabled={isLoading}
                         className={cn(
                             enabled ? "bg-yellow-500 hover:bg-yellow-600 text-white" : ""
                         )}

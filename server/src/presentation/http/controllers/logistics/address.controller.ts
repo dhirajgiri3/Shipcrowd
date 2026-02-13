@@ -163,7 +163,7 @@ export const getPincodeInfo = async (
 
         // details is an array, return the first match
         const detailsArray = Array.isArray(details) ? details : [details];
-        
+
         if (detailsArray.length === 0) {
             res.status(404).json({
                 success: false,
@@ -184,7 +184,7 @@ export const getPincodeInfo = async (
             })) : undefined
         };
 
-        sendSuccess(res, { data: info }, 'Pincode information retrieved successfully');
+        sendSuccess(res, info, 'Pincode information retrieved successfully');
     } catch (error) {
         next(error);
     }

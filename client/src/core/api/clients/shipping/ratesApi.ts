@@ -5,6 +5,7 @@
 
 import { apiClient } from '@/src/core/api/http';
 import { orderApi } from '@/src/core/api/clients/orders/orderApi';
+import { applyScoring, computeEstimatedDeliveryDate, DEFAULT_SCORING_WEIGHTS } from './smartScoringEngine';
 
 // Types
 export interface RateCalculationPayload {
@@ -24,12 +25,12 @@ export interface RateCalculationPayload {
 export interface RateBreakdown {
     base: number;
     weightCharge: number;
-    zoneCharge: number;
+    subtotal: number;
     codCharge?: number;
     fuelSurcharge?: number;
-    docketCharge?: number; // B2B specific
-    handlingCharge?: number; // B2B specific
+    rtoCharge?: number;
     tax: number;
+    total: number;
 }
 
 export interface PricingResolution {
@@ -103,13 +104,15 @@ export interface CourierRateOption {
     serviceType: string;
     baseRate: number;
     weightCharge: number;
-    zoneCharge: number;
     codCharge: number;
+    fuelCharge: number;
+    rtoCharge: number;
     gstAmount: number;
     totalAmount: number;
     estimatedDeliveryDays: number;
     estimatedDeliveryDate: string;
     zone: string;
+    chargeableWeight: number;
     pickupSuccessRate: number;
     deliverySuccessRate: number;
     rtoRate: number;
@@ -126,6 +129,10 @@ export interface CourierRateOption {
     serviceable: boolean;
     failureReason?: string;
     pricingResolution?: PricingResolution;
+    confidence?: 'high' | 'medium' | 'low';
+    pricingSource?: 'live' | 'table' | 'hybrid';
+    optionId?: string;
+    sessionId?: string;
 }
 
 export interface SmartRateResponse {
@@ -198,17 +205,33 @@ class RatesApiService {
      * Check serviceability for a pincode
      */
     async checkServiceability(pincode: string): Promise<ServiceabilityResponse> {
-        const response = await apiClient.get<{ data: { city: string; state: string; pincode: string } }>(
-            `/serviceability/pincode/${pincode}/info`
-        );
-        return {
-            serviceable: true,
-            city: response.data.data?.city,
-            state: response.data.data?.state,
-            prepaid: true,
-            cod: true,
-            couriers: [],
-        };
+        try {
+            const response = await apiClient.get<{ data: { city: string; state: string; pincode: string } }>(
+                `/serviceability/pincode/${pincode}/info`
+            );
+
+            const data = response.data.data;
+
+            // If we got valid data, pincode is serviceable
+            const serviceable = Boolean(data?.city && data?.state);
+
+            return {
+                serviceable,
+                city: data?.city,
+                state: data?.state,
+                prepaid: serviceable, // All valid pincodes support prepaid
+                cod: serviceable, // Assume COD available if serviceable
+                couriers: [], // No courier-specific data from this endpoint
+            };
+        } catch (error) {
+            // If API fails, pincode is likely invalid or not serviceable
+            return {
+                serviceable: false,
+                prepaid: false,
+                cod: false,
+                couriers: [],
+            };
+        }
     }
 
     /**
@@ -226,47 +249,58 @@ class RatesApiService {
             height: payload.dimensions?.height,
         });
 
-        const rates: CourierRateOption[] = quoteResponse.data.map((rate) => ({
+        // Apply real AI scoring using the scoring engine
+        const scoringWeights = payload.scoringWeights || DEFAULT_SCORING_WEIGHTS;
+        const scoredRates = applyScoring(quoteResponse.data, scoringWeights);
+
+        // Map to CourierRateOption with all fields populated
+        const rates: CourierRateOption[] = scoredRates.map((rate) => ({
             courierId: rate.courierId,
             courierName: rate.courierName,
             serviceType: rate.serviceType,
             baseRate: rate.sellBreakdown?.baseCharge || 0,
             weightCharge: rate.sellBreakdown?.weightCharge || 0,
-            zoneCharge: 0,
             codCharge: rate.sellBreakdown?.codCharge || 0,
+            fuelCharge: rate.sellBreakdown?.fuelCharge || 0,
+            rtoCharge: rate.sellBreakdown?.rtoCharge || 0,
             gstAmount: rate.sellBreakdown?.gst || 0,
             totalAmount: rate.rate,
             estimatedDeliveryDays: rate.estimatedDeliveryDays || 0,
-            estimatedDeliveryDate: '',
+            estimatedDeliveryDate: computeEstimatedDeliveryDate(rate.estimatedDeliveryDays || 0),
             zone: rate.zone || '',
-            pickupSuccessRate: 0,
-            deliverySuccessRate: 0,
-            rtoRate: 0,
-            onTimeDeliveryRate: 0,
-            rating: 0,
-            scores: {
-                priceScore: 0,
-                speedScore: 0,
-                reliabilityScore: 0,
-                performanceScore: 0,
-                overallScore: 0,
-            },
+            chargeableWeight: rate.chargeableWeight || payload.weight,
+            pickupSuccessRate: rate.performanceMetrics.pickupSuccessRate,
+            deliverySuccessRate: rate.performanceMetrics.deliverySuccessRate,
+            rtoRate: rate.performanceMetrics.rtoRate,
+            onTimeDeliveryRate: rate.performanceMetrics.onTimeDeliveryRate,
+            rating: rate.performanceMetrics.rating,
+            scores: rate.scores,
             tags: (rate.tags || []) as CourierRateOption['tags'],
             serviceable: true,
+            pricingResolution: rate.pricingSource ? {
+                matchedRefId: rate.optionId || '',
+                matchType: rate.pricingSource === 'live' ? 'EXACT' as const
+                    : rate.pricingSource === 'table' ? 'CARRIER_DEFAULT' as const
+                    : 'GENERIC' as const,
+                matchedCarrier: rate.provider || rate.courierId,
+                matchedServiceType: rate.serviceType,
+            } : undefined,
+            confidence: rate.confidence,
+            pricingSource: rate.pricingSource,
+            optionId: rate.optionId,
+            sessionId: rate.sessionId,
         }));
 
+        // Find the recommended option (already sorted by overallScore)
+        const recommendedOption = rates.find(r => r.tags.includes('RECOMMENDED')) || rates[0];
+
         return {
-            recommendation: quoteResponse.data.find((rate) => rate.isRecommended)?.courierName || rates[0]?.courierName || '',
+            recommendation: recommendedOption?.courierName || '',
             totalOptions: rates.length,
             rates,
             metadata: {
                 calculatedAt: new Date().toISOString(),
-                scoringWeights: payload.scoringWeights || {
-                    price: 40,
-                    speed: 30,
-                    reliability: 15,
-                    performance: 15,
-                },
+                scoringWeights,
             },
         };
     }

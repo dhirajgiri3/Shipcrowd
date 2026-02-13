@@ -30,7 +30,7 @@ import {
     getScoreColor
 } from '@/src/core/api/hooks/logistics/useSmartRateCalculator';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { SmartRateInput, CourierRateOption } from '@/src/core/api/clients/shipping/ratesApi';
+import { SmartRateInput, CourierRateOption, ratesApi } from '@/src/core/api/clients/shipping/ratesApi';
 
 export function RatesClient() {
     const { addToast } = useToast();
@@ -59,6 +59,7 @@ export function RatesClient() {
 
     const [results, setResults] = useState<CourierRateOption[] | null>(null);
     const [recommendation, setRecommendation] = useState<string | null>(null);
+    const [expandedBreakdown, setExpandedBreakdown] = useState<string | null>(null);
 
     const handleCalculate = async () => {
         // Validation
@@ -73,6 +74,26 @@ export function RatesClient() {
         if (formData.weight <= 0) {
             addToast('Weight must be greater than 0', 'error');
             return;
+        }
+
+        // Serviceability check
+        try {
+            const [originCheck, destCheck] = await Promise.all([
+                ratesApi.checkServiceability(formData.originPincode),
+                ratesApi.checkServiceability(formData.destinationPincode),
+            ]);
+
+            if (!originCheck.serviceable) {
+                addToast(`Origin pincode ${formData.originPincode} is not serviceable`, 'error');
+                return;
+            }
+            if (!destCheck.serviceable) {
+                addToast(`Destination pincode ${formData.destinationPincode} is not serviceable`, 'error');
+                return;
+            }
+        } catch (error) {
+            // Non-blocking: proceed with rate calculation even if serviceability check fails
+            console.warn('Serviceability check failed, proceeding with rate calculation:', error);
         }
 
         try {
@@ -187,6 +208,70 @@ export function RatesClient() {
                                 onChange={(e) => setFormData({ ...formData, orderValue: parseInt(e.target.value) || 0 })}
                             />
                         </div>
+                    </div>
+
+                    {/* Dimensions (Optional) */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-[var(--text-primary)]">
+                            Package Dimensions (Optional)
+                        </label>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs text-[var(--text-secondary)]">Length (cm)</label>
+                                <Input
+                                    type="number"
+                                    placeholder="L"
+                                    min="1"
+                                    value={formData.dimensions?.length || ''}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        dimensions: {
+                                            ...formData.dimensions!,
+                                            length: parseFloat(e.target.value) || 10
+                                        }
+                                    })}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-[var(--text-secondary)]">Width (cm)</label>
+                                <Input
+                                    type="number"
+                                    placeholder="W"
+                                    min="1"
+                                    value={formData.dimensions?.width || ''}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        dimensions: {
+                                            ...formData.dimensions!,
+                                            width: parseFloat(e.target.value) || 10
+                                        }
+                                    })}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-[var(--text-secondary)]">Height (cm)</label>
+                                <Input
+                                    type="number"
+                                    placeholder="H"
+                                    min="1"
+                                    value={formData.dimensions?.height || ''}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        dimensions: {
+                                            ...formData.dimensions!,
+                                            height: parseFloat(e.target.value) || 10
+                                        }
+                                    })}
+                                />
+                            </div>
+                        </div>
+                        {formData.dimensions && (
+                            <div className="text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] p-2 rounded">
+                                <span>Volumetric Weight: {((formData.dimensions.length * formData.dimensions.width * formData.dimensions.height) / 5000).toFixed(3)} kg</span>
+                                <span className="mx-2">•</span>
+                                <span>Chargeable Weight: {Math.max(formData.weight, (formData.dimensions.length * formData.dimensions.width * formData.dimensions.height) / 5000).toFixed(3)} kg</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Advanced Settings */}
@@ -365,6 +450,17 @@ export function RatesClient() {
                                                     </p>
                                                 </div>
                                             </div>
+                                            {rate.zone && (
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="h-4 w-4 text-[var(--text-secondary)]" />
+                                                    <div>
+                                                        <p className="text-[var(--text-secondary)]">Zone</p>
+                                                        <p className="font-medium text-[var(--text-primary)]">
+                                                            {rate.zone.replace('zone', 'Zone ').toUpperCase()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
                                             {rate.rating > 0 && (
                                                 <div className="flex items-center gap-2">
                                                     <Star className="h-4 w-4 text-amber-500" />
@@ -420,6 +516,68 @@ export function RatesClient() {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Pricing Breakdown */}
+                                        <div className="border-t border-[var(--border-subtle)] pt-3">
+                                            <button
+                                                onClick={() => setExpandedBreakdown(
+                                                    expandedBreakdown === rate.courierId ? null : rate.courierId
+                                                )}
+                                                className="flex items-center gap-2 text-xs font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue)]/80"
+                                            >
+                                                View Pricing Breakdown
+                                                {expandedBreakdown === rate.courierId ? (
+                                                    <ChevronUp className="h-3 w-3" />
+                                                ) : (
+                                                    <ChevronDown className="h-3 w-3" />
+                                                )}
+                                            </button>
+
+                                            {expandedBreakdown === rate.courierId && (
+                                                <div className="mt-3 space-y-1.5 text-xs">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[var(--text-secondary)]">Base Rate</span>
+                                                        <span className="font-medium">₹{rate.baseRate.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[var(--text-secondary)]">Weight Charge</span>
+                                                        <span className="font-medium">₹{rate.weightCharge.toFixed(2)}</span>
+                                                    </div>
+                                                    {rate.codCharge > 0 && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-[var(--text-secondary)]">COD Charge</span>
+                                                            <span className="font-medium">₹{rate.codCharge.toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+                                                    {rate.fuelCharge > 0 && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-[var(--text-secondary)]">Fuel Surcharge</span>
+                                                            <span className="font-medium">₹{rate.fuelCharge.toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+                                                    {rate.rtoCharge > 0 && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-[var(--text-secondary)]">RTO Charge</span>
+                                                            <span className="font-medium">₹{rate.rtoCharge.toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[var(--text-secondary)]">GST</span>
+                                                        <span className="font-medium">₹{rate.gstAmount.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between pt-1.5 border-t border-[var(--border-subtle)] font-semibold">
+                                                        <span>Total Amount</span>
+                                                        <span>₹{rate.totalAmount.toFixed(2)}</span>
+                                                    </div>
+                                                    {rate.chargeableWeight > 0 && (
+                                                        <div className="flex justify-between text-[10px] text-[var(--text-muted)] pt-1">
+                                                            <span>Chargeable Weight</span>
+                                                            <span>{rate.chargeableWeight.toFixed(3)} kg</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

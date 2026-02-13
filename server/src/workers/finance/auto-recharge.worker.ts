@@ -4,6 +4,7 @@ import logger from '../../shared/logger/winston.logger';
 import pMap from 'p-map';
 import autoRechargeMetrics from '../../core/application/services/metrics/auto-recharge-metrics.service';
 import { ICompany } from '../../infrastructure/database/mongoose/models/organization/core/company.model';
+import { isWalletAutoRechargeFeatureEnabled } from '../../core/application/services/wallet/wallet-feature-flags';
 
 /**
  * Auto-Recharge Worker
@@ -13,6 +14,14 @@ import { ICompany } from '../../infrastructure/database/mongoose/models/organiza
 export const autoRechargeWorker = async () => {
     const startTime = Date.now();
     let processed = 0, succeeded = 0, failed = 0;
+
+    const featureEnabled = await isWalletAutoRechargeFeatureEnabled({
+        environment: (process.env.NODE_ENV as any) || 'development',
+    });
+    if (!featureEnabled) {
+        logger.info('Auto-Recharge Worker: Skipped because wallet_auto_recharge feature is disabled');
+        return;
+    }
 
     logger.info('Starting Auto-Recharge Worker...');
 
