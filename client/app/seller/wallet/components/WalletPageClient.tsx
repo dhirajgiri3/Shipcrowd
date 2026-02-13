@@ -28,6 +28,7 @@ import type { Transaction as WalletUiTransaction } from '@/src/components/seller
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useInitWalletRecharge, useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
 import { useAutoRechargeSettings, useUpdateAutoRecharge } from '@/src/core/api/hooks/finance/useAutoRecharge';
+import type { AutoRechargeSettings as WalletAutoRechargeSettings } from '@/src/core/api/clients/finance/walletApi';
 import type { WalletTransaction } from '@/src/types/api/finance';
 
 export function WalletPageClient() {
@@ -42,6 +43,8 @@ export function WalletPageClient() {
     const initRecharge = useInitWalletRecharge();
     const rechargeWallet = useRechargeWallet();
     const updateAutoRecharge = useUpdateAutoRecharge();
+    const getErrorMessage = (error: unknown, fallback: string) =>
+        error instanceof Error ? error.message : fallback;
 
     const mapWalletTransactionToUi = (tx: WalletTransaction): WalletUiTransaction => {
         const categoryByReason: Record<string, WalletUiTransaction['category']> = {
@@ -73,7 +76,7 @@ export function WalletPageClient() {
         };
     };
 
-    const handleRechargeSubmit = async (amount: number, _method: PaymentMethod) => {
+    const handleRechargeSubmit = async (amount: number, method: PaymentMethod) => {
         try {
             if (!isRazorpayLoaded) {
                 addToast('Payment gateway failed to load. Please refresh and try again.', 'error');
@@ -87,7 +90,7 @@ export function WalletPageClient() {
                 amount: Math.round(init.amount * 100),
                 currency: init.currency || 'INR',
                 name: 'Shipcrowd Logistics',
-                description: 'Wallet Recharge',
+                description: `Wallet Recharge via ${method.toUpperCase()}`,
                 image: 'https://shipcrowd.com/logo.png',
                 order_id: init.orderId,
                 handler: async (response) => {
@@ -119,7 +122,7 @@ export function WalletPageClient() {
         }
     };
 
-    const handleSaveAutoRecharge = async (settings: any) => {
+    const handleSaveAutoRecharge = async (settings: Partial<WalletAutoRechargeSettings>) => {
         try {
             await updateAutoRecharge.mutateAsync(settings);
             setIsAutoRechargeOpen(false);
@@ -129,9 +132,9 @@ export function WalletPageClient() {
                     : 'Auto-recharge settings updated',
                 'success'
             );
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Auto-recharge update failed:', error);
-            addToast(error.message || 'Failed to save settings', 'error');
+            addToast(getErrorMessage(error, 'Failed to save settings'), 'error');
         }
     };
 
@@ -161,7 +164,7 @@ export function WalletPageClient() {
                         Unable to Load Wallet
                     </h3>
                     <p className="text-sm text-[var(--text-secondary)]">
-                        We couldn't fetch your wallet information. Please refresh the page or try again later.
+                        We couldn&apos;t fetch your wallet information. Please refresh the page or try again later.
                     </p>
                     <Button
                         onClick={() => window.location.reload()}

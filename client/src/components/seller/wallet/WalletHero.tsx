@@ -72,7 +72,6 @@ export function WalletHero({
 
   // Trend direction
   const isPositiveTrend = weeklyChange > 0;
-  const isNegativeTrend = weeklyChange < 0;
 
   const handleAddMoney = () => {
     trackEvent(EVENTS.TREND_CLICKED, {

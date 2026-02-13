@@ -75,7 +75,7 @@ export function AddressValidation({
                 try {
                     // Manual fetch using apiClient since hook doesn't expose fetcher
                     const response = await apiClient.get(`/serviceability/pincode/${address.pincode}/info`);
-                    const info = response.data.data;
+                    const info = response.data?.data?.data || response.data?.data;
 
                     if (info) {
                         setPincodeInfo(info);

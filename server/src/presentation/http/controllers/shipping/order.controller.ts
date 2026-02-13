@@ -242,8 +242,16 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
         }
         if (validation.data.products) {
             order.products = validation.data.products;
-            const totals = OrderService.calculateTotals(validation.data.products);
+            const totals = await OrderService.calculateTotals(validation.data.products);
             order.totals = { ...order.totals, ...totals };
+        }
+        if (validation.data.warehouseId !== undefined) {
+            order.warehouseId = validation.data.warehouseId
+                ? new mongoose.Types.ObjectId(validation.data.warehouseId)
+                : undefined;
+        }
+        if (validation.data.externalOrderNumber !== undefined) {
+            order.externalOrderNumber = validation.data.externalOrderNumber;
         }
         if (validation.data.paymentStatus) order.paymentStatus = validation.data.paymentStatus;
         if (validation.data.paymentMethod) order.paymentMethod = validation.data.paymentMethod;

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import { Warehouse } from '../../../../infrastructure/database/mongoose/models';
+import { Company } from '../../../../infrastructure/database/mongoose/models';
 import { getCarrierService, CarrierSelectionResult } from './carrier.service';
 import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
@@ -199,25 +200,78 @@ export class ShipmentService {
         return !!existingShipment;
     }
 
-    /**
-     * Get warehouse origin pincode
-     * @param warehouseId Warehouse ID
-     * @param companyId Company ID for validation
-     * @returns Pincode or default
-     */
-    static async getWarehouseOriginPincode(
-        warehouseId: mongoose.Types.ObjectId | undefined,
-        companyId: mongoose.Types.ObjectId
-    ): Promise<string> {
-        if (!warehouseId) return '110001';
+    private static async resolveWarehouseForShipment(args: {
+        companyId: mongoose.Types.ObjectId;
+        explicitWarehouseId?: string;
+        orderWarehouseId?: mongoose.Types.ObjectId;
+        session?: mongoose.ClientSession;
+    }) {
+        const { companyId, explicitWarehouseId, orderWarehouseId, session } = args;
 
-        const warehouse = await Warehouse.findOne({
-            _id: warehouseId,
-            companyId,
-            isDeleted: false,
-        }).lean();
+        const findActiveWarehouseById = async (warehouseId: mongoose.Types.ObjectId) => {
+            return Warehouse.findOne({
+                _id: warehouseId,
+                companyId,
+                isDeleted: false,
+                isActive: true,
+            }).session(session || null).lean();
+        };
 
-        return warehouse?.address?.postalCode || '110001';
+        if (explicitWarehouseId) {
+            if (!mongoose.Types.ObjectId.isValid(explicitWarehouseId)) {
+                throw new AppError(
+                    'Invalid warehouse selection',
+                    ErrorCode.VAL_INVALID_INPUT,
+                    400,
+                    true,
+                    { field: 'warehouseId' }
+                );
+            }
+
+            const explicitWarehouse = await findActiveWarehouseById(
+                new mongoose.Types.ObjectId(explicitWarehouseId)
+            );
+            if (!explicitWarehouse) {
+                throw new AppError(
+                    'Selected warehouse is unavailable for this company',
+                    ErrorCode.VAL_INVALID_INPUT,
+                    400,
+                    true,
+                    { field: 'warehouseId' }
+                );
+            }
+            return explicitWarehouse;
+        }
+
+        if (orderWarehouseId) {
+            const orderWarehouse = await findActiveWarehouseById(orderWarehouseId);
+            if (orderWarehouse) {
+                return orderWarehouse;
+            }
+        }
+
+        const company = await Company.findById(companyId)
+            .select('settings.defaultWarehouseId')
+            .session(session || null)
+            .lean();
+
+        const defaultWarehouseId = company?.settings?.defaultWarehouseId;
+        if (defaultWarehouseId) {
+            const defaultWarehouse = await findActiveWarehouseById(
+                new mongoose.Types.ObjectId(defaultWarehouseId)
+            );
+            if (defaultWarehouse) {
+                return defaultWarehouse;
+            }
+        }
+
+        throw new AppError(
+            'No active warehouse configured. Configure a default warehouse or provide a valid warehouseId.',
+            ErrorCode.VAL_INVALID_INPUT,
+            400,
+            true,
+            { field: 'warehouseId' }
+        );
     }
 
     /**
@@ -460,7 +514,7 @@ export class ShipmentService {
                 const existingShipment = await Shipment.findOne({
                     'metadata.idempotencyKey': idempotencyKey,
                     companyId
-                });
+                }).session(session);
 
                 if (existingShipment) {
                     logger.info(`Idempotency hit for key: ${idempotencyKey}`, { shipmentId: existingShipment._id });
@@ -480,11 +534,14 @@ export class ShipmentService {
             }
 
             // Determine warehouse and origin pincode
-            const warehouseId = payload.warehouseId
-                ? new mongoose.Types.ObjectId(payload.warehouseId)
-                : order.warehouseId;
-
-            const originPincode = await this.getWarehouseOriginPincode(warehouseId, companyId);
+            const resolvedWarehouse = await ShipmentService.resolveWarehouseForShipment({
+                companyId,
+                explicitWarehouseId: payload.warehouseId,
+                orderWarehouseId: order.warehouseId,
+                session,
+            });
+            const warehouseId = resolvedWarehouse._id as mongoose.Types.ObjectId;
+            const originPincode = String(resolvedWarehouse.address?.postalCode || '').trim();
 
             // Calculate weight (use SKU Weight Profile suggestions when product weight missing - Week 3)
             const { totalWeight, usedSuggestion } = await ShipmentService.calculateTotalWeightWithSuggestions(
@@ -561,7 +618,7 @@ export class ShipmentService {
                     destinationPincode: order.customerInfo.address.postalCode,
                     serviceType,
                     paymentMode: order.paymentMethod,
-                    orderValue: order.orderTotal,
+                    orderValue: Number(order.totals?.total || 0),
                     carrierOverride: payload.carrierOverride,
                     dimensions: { length: 20, width: 15, height: 10 },
                     strict: enforcedStrict
@@ -659,7 +716,8 @@ export class ShipmentService {
                 (shipment._id as mongoose.Types.ObjectId).toString(),
                 shippingCost,
                 trackingNumber,
-                idempotencyKey // Pass idempotency key
+                idempotencyKey,
+                session
             );
 
             if (!walletResult.success) {
@@ -702,7 +760,7 @@ export class ShipmentService {
 
                     // Build proper CourierShipmentData structure for Carrier API
                     // This matches the interface in courier.adapter.ts
-                    const warehouse = warehouseId ? await Warehouse.findById(warehouseId).lean() : null;
+                    const warehouse = resolvedWarehouse;
 
                     const courierShipmentData = {
                         // Origin (warehouse/pickup location)
@@ -845,7 +903,7 @@ export class ShipmentService {
                         'shippingDetails.estimatedDelivery': estimatedDelivery,
                         'shippingDetails.shippingCost': selectedOption.rate,
                         'totals.shipping': selectedOption.rate,
-                        'total.total': order.totals.subtotal + selectedOption.rate + order.totals.tax - order.totals.discount
+                        'totals.total': order.totals.subtotal + selectedOption.rate + order.totals.tax - order.totals.discount
                     },
                     $push: { statusHistory: shippedStatusEntry },
                     $inc: { __v: 1 }

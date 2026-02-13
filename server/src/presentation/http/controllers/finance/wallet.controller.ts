@@ -5,7 +5,7 @@ import CODRemittanceService from '../../../../core/application/services/finance/
 import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, AppError } from '../../../../shared/errors/app.error';
+import { ValidationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import {

@@ -6,7 +6,7 @@ interface PincodeData {
     pincode: string;
     city: string;
     state: string;
-    district: string;
+    district?: string;
 }
 
 interface PincodeResponse {
@@ -45,13 +45,11 @@ export function usePincodeAutocomplete(pincode: string) {
             }
 
             try {
-                // Try real API first (using same endpoint as onboarding)
+                // Route is mounted on /serviceability and /logistics/address aliases
                 const response = await apiClient.get(`/serviceability/pincode/${debouncedPincode}/info`);
 
-                // Backend response structure: { success, data: { data: { pincode, city, state } } }
-                // Axios wraps it: response.data = backend response
-                // So actual data is at: response.data.data.data
-                const info = response.data?.data;
+                // Tolerate both legacy and normalized response shapes during migration.
+                const info = response.data?.data?.data || response.data?.data;
 
                 // Check if API returned valid data
                 if (info && info.city && info.state) {

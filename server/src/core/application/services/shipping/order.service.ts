@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Company, Order, Warehouse } from '../../../../infrastructure/database/mongoose/models';
 import { generateOrderNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { ORDER_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus';
@@ -8,6 +8,7 @@ import { AuthenticationError, ValidationError, DatabaseError, AppError } from '.
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import QuoteEngineService from '../pricing/quote-engine.service';
 import { CachedService } from '../../base/cached.service';
+import AddressValidationService from '../logistics/address-validation.service';
 
 /**
  * OrderService - Business logic for order management
@@ -16,6 +17,9 @@ import { CachedService } from '../../base/cached.service';
  */
 export class OrderService extends CachedService {
     protected serviceName = 'order';
+    private static readonly STATUS_ALIASES: Record<string, string[]> = {
+        unshipped: ['pending', 'ready_to_ship', 'new', 'ready'],
+    };
 
     // Singleton pattern helper
     private static instance: OrderService;
@@ -129,6 +133,126 @@ export class OrderService extends CachedService {
         return null;
     }
 
+    private static resolveStatusFilter(status?: string) {
+        if (!status || status === 'all') {
+            return {};
+        }
+
+        const alias = this.STATUS_ALIASES[String(status).toLowerCase()];
+        if (alias) {
+            return { currentStatus: { $in: alias } };
+        }
+
+        return { currentStatus: status };
+    }
+
+    private static deriveShipmentWeight(
+        products: Array<{ quantity: number; weight?: number }>
+    ): number {
+        const weight = products.reduce((sum, item) => {
+            const unitWeight = item.weight && item.weight > 0 ? item.weight : 0.5;
+            return sum + unitWeight * item.quantity;
+        }, 0);
+
+        return Math.max(0.001, Number(weight.toFixed(3)));
+    }
+
+    private static deriveShipmentDimensions(
+        products: Array<{
+            dimensions?: { length?: number; width?: number; height?: number };
+        }>
+    ): { length: number; width: number; height: number } {
+        const firstWithDimensions = products.find((item) => {
+            const dims = item.dimensions;
+            return (
+                !!dims &&
+                Number(dims.length) > 0 &&
+                Number(dims.width) > 0 &&
+                Number(dims.height) > 0
+            );
+        });
+
+        if (!firstWithDimensions?.dimensions) {
+            return { length: 20, width: 15, height: 10 };
+        }
+
+        return {
+            length: Number(firstWithDimensions.dimensions.length),
+            width: Number(firstWithDimensions.dimensions.width),
+            height: Number(firstWithDimensions.dimensions.height),
+        };
+    }
+
+    private static async resolveWarehouseForOrder(args: {
+        companyId: mongoose.Types.ObjectId;
+        requestedWarehouseId?: string;
+        session?: mongoose.ClientSession;
+    }) {
+        const { companyId, requestedWarehouseId, session } = args;
+
+        const toObjectId = (value: string) => {
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                throw new AppError(
+                    'Invalid warehouse selection',
+                    ErrorCode.VAL_INVALID_INPUT,
+                    400,
+                    true,
+                    { field: 'warehouseId' }
+                );
+            }
+            return new mongoose.Types.ObjectId(value);
+        };
+
+        if (requestedWarehouseId) {
+            const requestedId = toObjectId(requestedWarehouseId);
+            const requestedWarehouse = await Warehouse.findOne({
+                _id: requestedId,
+                companyId,
+                isDeleted: false,
+                isActive: true,
+            }).session(session || null).lean();
+
+            if (!requestedWarehouse) {
+                throw new AppError(
+                    'Selected warehouse is unavailable for this company',
+                    ErrorCode.VAL_INVALID_INPUT,
+                    400,
+                    true,
+                    { field: 'warehouseId' }
+                );
+            }
+
+            return requestedWarehouse;
+        }
+
+        const company = await Company.findById(companyId)
+            .select('settings.defaultWarehouseId')
+            .session(session || null)
+            .lean();
+
+        const defaultWarehouseId = company?.settings?.defaultWarehouseId;
+        if (defaultWarehouseId) {
+            const defaultWarehouse = await Warehouse.findOne({
+                _id: defaultWarehouseId,
+                companyId,
+                isDeleted: false,
+                isActive: true,
+            }).session(session || null).lean();
+
+            if (defaultWarehouse) {
+                return defaultWarehouse;
+            }
+        }
+
+        throw new AppError(
+            'No active default warehouse configured. Please configure a default warehouse or choose one explicitly.',
+            ErrorCode.VAL_INVALID_INPUT,
+            400,
+            true,
+            { field: 'warehouseId' }
+        );
+    }
+
     /**
      * List Orders with Stats (Faceted Search)
      * 
@@ -239,9 +363,7 @@ export class OrderService extends CachedService {
 
         // 3. Status Filter (Only applies to the 'orders' facet, NOT the 'stats' facet)
         // We want stats to show counts for ALL statuses given the current search/date filters
-        const statusMatch = queryParams.status && queryParams.status !== 'all'
-            ? { currentStatus: queryParams.status }
-            : {};
+        const statusMatch = OrderService.resolveStatusFilter(queryParams.status as string | undefined);
 
 // 4. Aggregation Pipeline
         const pipeline: any[] = [
@@ -413,9 +535,7 @@ const total = result.total[0]?.count || 0;
                 const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
 
                 // Apply filters (simplified for example)
-                if (queryParams.status && queryParams.status !== 'all') {
-                    filter.currentStatus = queryParams.status;
-                }
+                Object.assign(filter, OrderService.resolveStatusFilter(queryParams.status as string | undefined));
 
                 const [orders, total] = await Promise.all([
                     Order.find(filter)
@@ -443,9 +563,17 @@ const total = result.total[0]?.count || 0;
         userId: string;
         payload: {
             customerInfo: any;
-            products: Array<{ name: string; sku?: string; quantity: number; price: number; weight?: number }>;
+            products: Array<{
+                name: string;
+                sku?: string;
+                quantity: number;
+                price: number;
+                weight?: number;
+                dimensions?: { length?: number; width?: number; height?: number };
+            }>;
             paymentMethod?: string;
             warehouseId?: string;
+            externalOrderNumber?: string;
             notes?: string;
             tags?: string[];
             salesRepId?: string;
@@ -465,7 +593,71 @@ const total = result.total[0]?.count || 0;
                 throw new AppError('Failed to generate unique order number', ErrorCode.SYS_INTERNAL_ERROR, 500);
             }
 
-            const totals = await OrderService.calculateTotals(payload.products); // Using static call properly
+            const resolvedWarehouse = await OrderService.resolveWarehouseForOrder({
+                companyId,
+                requestedWarehouseId: payload.warehouseId,
+                session,
+            });
+
+            const destinationPincode = String(payload.customerInfo?.address?.postalCode || '').trim();
+            const destinationValidation = await AddressValidationService.validatePincode(destinationPincode);
+            if (!destinationValidation.valid) {
+                throw new AppError(
+                    'Destination pincode is invalid or does not exist',
+                    ErrorCode.VAL_PINCODE_INVALID,
+                    400,
+                    true,
+                    { field: 'customerInfo.address.postalCode' }
+                );
+            }
+
+            const originPincode = String(resolvedWarehouse.address?.postalCode || '').trim();
+            const originValidation = await AddressValidationService.validatePincode(originPincode);
+            if (!originValidation.valid) {
+                throw new AppError(
+                    'Origin warehouse pincode is invalid or does not exist',
+                    ErrorCode.VAL_PINCODE_INVALID,
+                    400,
+                    true,
+                    { field: 'warehouseId' }
+                );
+            }
+
+            const totals = await OrderService.calculateTotals(payload.products);
+            const preflightWeight = OrderService.deriveShipmentWeight(payload.products);
+            const preflightDimensions = OrderService.deriveShipmentDimensions(payload.products);
+            const paymentMode = payload.paymentMethod === 'cod' ? 'cod' : 'prepaid';
+
+            try {
+                const preflightQuote = await QuoteEngineService.generateQuotes({
+                    companyId: companyId.toString(),
+                    sellerId: args.userId,
+                    fromPincode: originPincode,
+                    toPincode: destinationPincode,
+                    weight: preflightWeight,
+                    dimensions: preflightDimensions,
+                    paymentMode,
+                    orderValue: Number(totals.total || 0),
+                    shipmentType: 'forward',
+                });
+
+                if (!preflightQuote.options?.length) {
+                    throw new AppError(
+                        'No courier options available for this route',
+                        ErrorCode.VAL_PINCODE_NOT_SERVICEABLE,
+                        400
+                    );
+                }
+            } catch (error) {
+                if (error instanceof AppError && error.code === ErrorCode.VAL_PINCODE_NOT_SERVICEABLE) {
+                    throw error;
+                }
+                throw new AppError(
+                    'Route is not serviceable for shipment booking',
+                    ErrorCode.VAL_PINCODE_NOT_SERVICEABLE,
+                    400
+                );
+            }
 
             const order = new Order({
                 orderNumber,
@@ -475,11 +667,12 @@ const total = result.total[0]?.count || 0;
                 paymentMethod: payload.paymentMethod || 'prepaid',
                 paymentStatus: payload.paymentMethod === 'cod' ? 'pending' : 'paid',
                 source: 'manual',
-                warehouseId: payload.warehouseId ? new mongoose.Types.ObjectId(payload.warehouseId) : undefined,
+                externalOrderNumber: payload.externalOrderNumber,
+                warehouseId: resolvedWarehouse._id,
                 currentStatus: 'pending',
                 totals,
                 notes: payload.notes,
-                tags: payload.tags,
+                tags: payload.tags?.map((tag) => String(tag).trim()).filter(Boolean),
                 riskInfo: payload.riskInfo,
                 validationInfo: payload.validationInfo,
                 shippingDetails: { shippingCost: 0 },

@@ -3,7 +3,6 @@ import WalletService from '../../core/application/services/wallet/wallet.service
 import logger from '../../shared/logger/winston.logger';
 import pMap from 'p-map';
 import autoRechargeMetrics from '../../core/application/services/metrics/auto-recharge-metrics.service';
-import { ICompany } from '../../infrastructure/database/mongoose/models/organization/core/company.model';
 import { isWalletAutoRechargeFeatureEnabled } from '../../core/application/services/wallet/wallet-feature-flags';
 
 /**

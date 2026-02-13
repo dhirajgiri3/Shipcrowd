@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
@@ -27,11 +27,20 @@ export function AutoRechargeSettings({
     isLoading = false
 }: AutoRechargeSettingsProps) {
     const featureEnabled = currentSettings?.featureEnabled !== false;
-    const [enabled, setEnabled] = useState(false);
-    const [threshold, setThreshold] = useState(1000);
-    const [amount, setAmount] = useState(5000);
-    const [paymentMethodId, setPaymentMethodId] = useState<string>('');
+    const [draftSettings, setDraftSettings] = useState<Partial<IAutoRechargeSettings>>({});
     const [error, setError] = useState<string | null>(null);
+
+    const baseSettings = {
+        enabled: featureEnabled ? currentSettings?.enabled ?? false : false,
+        threshold: currentSettings?.threshold ?? 1000,
+        amount: currentSettings?.amount ?? 5000,
+        paymentMethodId: currentSettings?.paymentMethodId ?? '',
+    };
+
+    const enabled = draftSettings.enabled ?? baseSettings.enabled;
+    const threshold = draftSettings.threshold ?? baseSettings.threshold;
+    const amount = draftSettings.amount ?? baseSettings.amount;
+    const paymentMethodId = draftSettings.paymentMethodId ?? baseSettings.paymentMethodId;
 
     const handleManagePaymentMethods = () => {
         if (typeof window !== 'undefined') {
@@ -39,15 +48,11 @@ export function AutoRechargeSettings({
         }
     };
 
-    // Initialize state from currentSettings
-    useEffect(() => {
-        if (currentSettings) {
-            setEnabled(featureEnabled ? currentSettings.enabled : false);
-            setThreshold(currentSettings.threshold);
-            setAmount(currentSettings.amount);
-            setPaymentMethodId(currentSettings.paymentMethodId || '');
-        }
-    }, [currentSettings, isOpen, featureEnabled]);
+    const handleClose = () => {
+        setDraftSettings({});
+        setError(null);
+        onClose();
+    };
 
     const handleSubmit = async () => {
         setError(null);
@@ -80,10 +85,10 @@ export function AutoRechargeSettings({
                 enabled: true,
                 threshold,
                 amount,
-                paymentMethodId: paymentMethodId || undefined // Only send if set
+                paymentMethodId: paymentMethodId || undefined
             });
-        } catch (err: any) {
-            setError(err.message || 'Failed to save settings');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to save settings');
         }
     };
 
@@ -113,7 +118,7 @@ export function AutoRechargeSettings({
                         </div>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="p-2 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-tertiary)] transition-colors"
                     >
                         <X className="w-5 h-5" />
@@ -139,14 +144,14 @@ export function AutoRechargeSettings({
                             </p>
                         </div>
                         {/* Fallback for Switch if not available, or use standard checkbox logic */}
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                checked={enabled}
-                                onChange={(e) => setEnabled(e.target.checked)}
-                                disabled={!featureEnabled}
-                                className="w-6 h-6 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={enabled}
+                                        onChange={(e) => setDraftSettings((prev) => ({ ...prev, enabled: e.target.checked }))}
+                                        disabled={!featureEnabled}
+                                        className="w-6 h-6 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
                             {/* Or if Switch component is available:
                             <Switch checked={enabled} onCheckedChange={setEnabled} />
                            */}
@@ -172,7 +177,7 @@ export function AutoRechargeSettings({
                                             <input
                                                 type="number"
                                                 value={threshold}
-                                                onChange={(e) => setThreshold(Number(e.target.value))}
+                                                onChange={(e) => setDraftSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))}
                                                 className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)]/20 focus:border-[var(--primary-blue)] transition-all outline-none"
                                                 min="100"
                                                 step="100"
@@ -189,7 +194,7 @@ export function AutoRechargeSettings({
                                             <input
                                                 type="number"
                                                 value={amount}
-                                                onChange={(e) => setAmount(Number(e.target.value))}
+                                                onChange={(e) => setDraftSettings((prev) => ({ ...prev, amount: Number(e.target.value) }))}
                                                 className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)]/20 focus:border-[var(--primary-blue)] transition-all outline-none"
                                                 min="100"
                                                 step="500"
@@ -248,7 +253,7 @@ export function AutoRechargeSettings({
 
                 {/* Footer */}
                 <div className="p-6 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/30 flex justify-end gap-3">
-                    <Button variant="ghost" onClick={onClose} disabled={isLoading}>
+                    <Button variant="ghost" onClick={handleClose} disabled={isLoading}>
                         Cancel
                     </Button>
                     <Button

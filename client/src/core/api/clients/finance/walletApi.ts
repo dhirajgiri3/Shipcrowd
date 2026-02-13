@@ -6,7 +6,9 @@
 import { apiClient } from '@/src/core/api/http';
 import {
   WalletBalance,
+  WalletPaginationMeta,
   WalletTransactionResponse,
+  WalletTransaction,
   WalletStats,
   TransactionFilters,
   RechargeWalletPayload,
@@ -31,6 +33,11 @@ export interface AutoRechargeSettings {
   };
 }
 
+type WalletApiEnvelope<T> = {
+  data: T;
+  pagination?: WalletPaginationMeta;
+};
+
 export class WalletApiService {
   /**
    * Get wallet balance
@@ -47,11 +54,18 @@ export class WalletApiService {
    */
   async getTransactions(filters?: TransactionFilters): Promise<WalletTransactionResponse> {
     const response = await apiClient.get('/finance/wallet/transactions', { params: filters });
-    // Transform backend "data" array to "transactions" key to match interface
+    const payload = response.data as WalletApiEnvelope<WalletTransaction[]>;
+
     return {
-      transactions: response.data.data,
-      // @ts-ignore - pagination exists in API response but not typed in axios response wrapper yet
-      pagination: response.data.pagination
+      transactions: payload.data,
+      pagination: payload.pagination || {
+        page: 1,
+        limit: payload.data.length,
+        total: payload.data.length,
+        pages: 1,
+        hasNext: false,
+        hasPrev: false,
+      }
     };
   }
 
@@ -86,7 +100,7 @@ export class WalletApiService {
    * Get spending insights
    * GET /api/v1/finance/wallet/insights
    */
-  async getSpendingInsights(): Promise<any> {
+  async getSpendingInsights(): Promise<Record<string, unknown>> {
     const response = await apiClient.get('/finance/wallet/insights');
     return response.data.data;
   }
@@ -95,7 +109,7 @@ export class WalletApiService {
    * Get wallet trends
    * GET /api/v1/finance/wallet/trends
    */
-  async getWalletTrends(): Promise<any> {
+  async getWalletTrends(): Promise<Record<string, unknown>> {
     const response = await apiClient.get('/finance/wallet/trends');
     return response.data.data;
   }
@@ -104,7 +118,7 @@ export class WalletApiService {
    * Get available balance (Calculated metric)
    * GET /api/v1/finance/wallet/available-balance
    */
-  async getAvailableBalance(): Promise<any> {
+  async getAvailableBalance(): Promise<Record<string, unknown>> {
     const response = await apiClient.get('/finance/wallet/available-balance');
     return response.data.data;
   }
@@ -113,7 +127,7 @@ export class WalletApiService {
    * Get cash flow forecast
    * GET /api/v1/finance/wallet/cash-flow-forecast
    */
-  async getCashFlowForecast(): Promise<any> {
+  async getCashFlowForecast(): Promise<Record<string, unknown>> {
     const response = await apiClient.get('/finance/wallet/cash-flow-forecast');
     return response.data.data;
   }

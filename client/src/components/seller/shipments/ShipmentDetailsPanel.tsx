@@ -176,9 +176,9 @@ function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPan
                         <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)] bg-[var(--bg-secondary)]/50 p-3 rounded-lg">
                             <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
                             <span>
-                                {(shipment as any).deliveryDetails?.address?.addressLine1 || 'Address not available'}
+                                {(shipment as any).deliveryDetails?.address?.line1 || 'Address not available'}
                                 {(shipment as any).deliveryDetails?.address?.city && (
-                                    <><br />{(shipment as any).deliveryDetails.address.city}, {(shipment as any).deliveryDetails.address.state} - {(shipment as any).deliveryDetails.address.pincode}</>
+                                    <><br />{(shipment as any).deliveryDetails.address.city}, {(shipment as any).deliveryDetails.address.state} - {(shipment as any).deliveryDetails.address.postalCode}</>
                                 )}
                             </span>
                         </div>

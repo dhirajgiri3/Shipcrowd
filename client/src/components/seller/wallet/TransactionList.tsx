@@ -27,7 +27,6 @@ import {
     Wallet,
     CreditCard,
     FileDown,
-    Filter,
     Calendar
 } from 'lucide-react';
 import { format, isThisWeek, isToday } from 'date-fns';

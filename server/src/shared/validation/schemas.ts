@@ -5,6 +5,10 @@
 
 import { z } from 'zod';
 
+const objectIdSchema = z
+    .string()
+    .regex(/^[a-fA-F0-9]{24}$/, 'Invalid ObjectId format');
+
 // ============================================================================
 // Address Schemas
 // ============================================================================
@@ -93,7 +97,8 @@ export const createOrderSchema = z.object({
     customerInfo: customerInfoSchema,
     products: z.array(productSchema).min(1, 'At least one product is required'),
     paymentMethod: paymentMethodSchema.optional(),
-    warehouseId: z.string().optional(),
+    warehouseId: objectIdSchema.optional(),
+    externalOrderNumber: z.string().max(120, 'External order number cannot exceed 120 characters').optional(),
     notes: z.string().max(1000, 'Notes cannot exceed 1000 characters').optional(),
     tags: z.array(z.string()).optional(),
 });
@@ -106,6 +111,8 @@ export const updateOrderSchema = z.object({
     currentStatus: orderStatusSchema.optional(),
     paymentStatus: paymentStatusSchema.optional(),
     paymentMethod: paymentMethodSchema.optional(),
+    warehouseId: objectIdSchema.optional(),
+    externalOrderNumber: z.string().max(120, 'External order number cannot exceed 120 characters').optional(),
     notes: z.string().max(1000).optional(),
     tags: z.array(z.string()).optional(),
 });

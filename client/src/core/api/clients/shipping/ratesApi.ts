@@ -176,9 +176,11 @@ class RatesApiService {
                 base: rate.sellBreakdown?.baseCharge || 0,
                 weightCharge: rate.sellBreakdown?.weightCharge || 0,
                 zoneCharge: 0,
+                subtotal: (rate.sellBreakdown?.baseCharge || 0) + (rate.sellBreakdown?.weightCharge || 0),
                 codCharge: rate.sellBreakdown?.codCharge,
                 fuelSurcharge: rate.sellBreakdown?.fuelCharge,
                 tax: rate.sellBreakdown?.gst || 0,
+                total: rate.rate,
             },
             eta: {
                 minDays: rate.estimatedDeliveryDays || 0,
@@ -281,7 +283,7 @@ class RatesApiService {
                 matchedRefId: rate.optionId || '',
                 matchType: rate.pricingSource === 'live' ? 'EXACT' as const
                     : rate.pricingSource === 'table' ? 'CARRIER_DEFAULT' as const
-                    : 'GENERIC' as const,
+                        : 'GENERIC' as const,
                 matchedCarrier: rate.provider || rate.courierId,
                 matchedServiceType: rate.serviceType,
             } : undefined,

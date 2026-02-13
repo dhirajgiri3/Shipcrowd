@@ -202,7 +202,8 @@ export default class WalletService {
         description: string,
         reference?: TransactionReference,
         createdBy: string = 'system',
-        idempotencyKey?: string // Added idempotency key
+        idempotencyKey?: string, // Added idempotency key
+        externalSession?: mongoose.ClientSession
     ): Promise<TransactionResult> {
         // Input validation - prevent negative amounts
         if (amount <= 0) {
@@ -215,7 +216,18 @@ export default class WalletService {
 
         // TOCTOU FIX: Balance check moved inside transaction (executeTransaction)
         // This prevents race condition where balance is checked outside session
-        return this.executeTransaction(companyId, 'debit', amount, reason, description, reference, createdBy, 0, undefined, idempotencyKey);
+        return this.executeTransaction(
+            companyId,
+            'debit',
+            amount,
+            reason,
+            description,
+            reference,
+            createdBy,
+            0,
+            externalSession,
+            idempotencyKey
+        );
     }
 
     /**
@@ -509,12 +521,13 @@ export default class WalletService {
         shipmentId: string,
         amount: number,
         awb: string,
-        idempotencyKey?: string // Added idempotency key support
+        idempotencyKey?: string, // Added idempotency key support
+        session?: mongoose.ClientSession
     ): Promise<TransactionResult> {
         return this.debit(companyId, amount, 'shipping_cost', `Shipping cost for AWB: ${awb}`, {
             type: 'shipment',
             id: shipmentId,
-        }, 'system', idempotencyKey);
+        }, 'system', idempotencyKey, session);
     }
 
     /**
@@ -746,7 +759,7 @@ export default class WalletService {
         if (settings.enabled && !settings.paymentMethodId) {
             const hasExistingPaymentMethod = !!company.wallet?.autoRecharge?.paymentMethodId;
 
-            if (!settings.paymentMethodId && !hasExistingPaymentMethod) {
+            if (!hasExistingPaymentMethod) {
                 throw new ValidationError(
                     'Payment method is required to enable auto-recharge. Please add a payment method first.',
                     { code: ErrorCode.VAL_INVALID_INPUT }

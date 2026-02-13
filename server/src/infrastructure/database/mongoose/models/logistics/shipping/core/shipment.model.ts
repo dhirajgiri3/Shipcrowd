@@ -285,6 +285,9 @@ export interface IShipment extends Document {
 
   // Wallet Transaction Reference
   walletTransactionId?: mongoose.Types.ObjectId;
+  metadata?: {
+    idempotencyKey?: string;
+  };
 
   isDeleted: boolean;
   isDemoData?: boolean;
@@ -749,6 +752,12 @@ const ShipmentSchema = new Schema<IShipment>(
       ref: 'WalletTransaction',
       index: true,
     },
+    metadata: {
+      idempotencyKey: {
+        type: String,
+        trim: true,
+      },
+    },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -797,6 +806,16 @@ ShipmentSchema.index({ 'pricingDetails.selectedQuote.quoteSessionId': 1 }); // Q
 ShipmentSchema.index({ 'paymentDetails.collectionStatus': 1, companyId: 1 }); // Track pending collections
 ShipmentSchema.index({ 'paymentDetails.reconciled': 1, 'paymentDetails.type': 1 }); // Unreconciled COD shipments
 ShipmentSchema.index({ 'paymentDetails.fraud.riskLevel': 1, createdAt: -1 }); // High risk shipment monitoring
+ShipmentSchema.index(
+  { companyId: 1, 'metadata.idempotencyKey': 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      'metadata.idempotencyKey': { $exists: true, $type: 'string' },
+      isDeleted: false,
+    },
+  }
+);
 
 
 // Pre-save hook to ensure the first status is added to history
