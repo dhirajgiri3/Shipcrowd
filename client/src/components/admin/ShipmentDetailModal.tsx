@@ -23,14 +23,15 @@ export function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetai
     const { addToast } = useToast();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    if (!shipment) return null;
+    const shipmentId = shipment ? ((shipment as any)._id || shipment.id) : '';
 
-    const shipmentId = (shipment as any)._id || shipment.id;
     const { data: pod, isLoading: isPodLoading } = useShipmentPOD(shipmentId, {
         queryKey: ['shipment-pod', shipmentId],
         enabled: isOpen && !!shipmentId,
     });
     const { mutate: uploadPod, isPending: isUploading } = useUploadShipmentPOD();
+
+    if (!shipment) return null;
 
     const handleCopy = (text: string, label: string) => {
         navigator.clipboard.writeText(text);

@@ -112,7 +112,7 @@ export function SmartInsightsPanel({ insights, onApply }: SmartInsightsPanelProp
                                     onClick={() => onApply(insight.id)}
                                     className="w-full px-3 py-2 text-xs font-medium rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)] transition-colors"
                                 >
-                                    Apply Recommendation
+                                    {insight.action?.label || 'Apply Recommendation'}
                                 </button>
                             )}
                         </motion.div>

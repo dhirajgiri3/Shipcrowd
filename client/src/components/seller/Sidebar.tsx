@@ -29,6 +29,10 @@ import {
     Activity,
     AlertTriangle,
     Zap,
+    BarChart3,
+    Trophy,
+    Timer,
+    FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
@@ -87,6 +91,17 @@ const navSections: NavSection[] = [
             { label: 'Early COD', href: '/seller/cod/early-program', icon: Zap },
         ],
     },
+    {
+        id: 'analytics',
+        title: 'Analytics',
+        defaultOpen: false,
+        items: [
+            { label: 'Cost Analysis', href: '/seller/analytics/costs', icon: BarChart3 },
+            { label: 'Courier Comparison', href: '/seller/analytics/comparison', icon: Trophy },
+            { label: 'SLA Dashboard', href: '/seller/analytics/sla', icon: Timer },
+            { label: 'Custom Reports', href: '/seller/analytics/reports', icon: FileBarChart },
+        ],
+    },
 ];
 
 const accountItems: NavItem[] = [
@@ -115,11 +130,11 @@ function SidebarComponent() {
                 try {
                     return JSON.parse(saved);
                 } catch {
-                    return { shipping: true, operations: false, financial: false };
+                    return { shipping: true, operations: false, financial: false, analytics: false };
                 }
             }
         }
-        return { shipping: true, operations: false, financial: false };
+        return { shipping: true, operations: false, financial: false, analytics: false };
     });
 
     // Persist to localStorage

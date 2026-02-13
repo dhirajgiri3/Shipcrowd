@@ -329,7 +329,7 @@ export class RTOController {
 
             const stats = await NDRAnalyticsService.getRTOStats(companyId, dateRange);
 
-            sendSuccess(res, { data: stats });
+            sendSuccess(res, stats);
         } catch (error) {
             next(error);
         }

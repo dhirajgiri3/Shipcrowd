@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useDebouncedValue } from '@/src/hooks/data';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
@@ -132,11 +133,9 @@ export function ShipmentsClient() {
             width: 'w-10',
             cell: (row: any) => (
                 <div className="flex items-center justify-center -ml-2" onClick={(e) => e.stopPropagation()}>
-                    <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                    <Checkbox
                         checked={selectedShipmentIds.has(row._id || row.id)}
-                        onChange={(e) => handleSelectRow(row._id || row.id, e.target.checked)}
+                        onCheckedChange={(checked) => handleSelectRow(row._id || row.id, checked)}
                     />
                 </div>
             )
@@ -418,11 +417,15 @@ export function ShipmentsClient() {
 
                 <div className='relative'>
                     <div className='absolute top-3 left-6 z-10' onClick={(e) => e.stopPropagation()}>
-                        <input
-                            type="checkbox"
-                            className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                            checked={filteredData.length > 0 && selectedShipmentIds.size === filteredData.length}
-                            onChange={(e) => handleSelectAll(e.target.checked)}
+                        <Checkbox
+                            checked={
+                                filteredData.length > 0 && selectedShipmentIds.size === filteredData.length
+                                    ? true
+                                    : selectedShipmentIds.size > 0
+                                        ? 'indeterminate'
+                                        : false
+                            }
+                            onCheckedChange={(checked) => handleSelectAll(checked === true)}
                         />
                     </div>
                     <DataTable

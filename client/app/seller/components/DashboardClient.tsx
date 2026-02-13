@@ -108,7 +108,7 @@ import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, t
 import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics'; // Phase 4: RTO Analytics
 import { useProfitabilityAnalytics } from '@/src/core/api/hooks/analytics/useProfitabilityAnalytics'; // Phase 4: Profitability Analytics
 import { useGeographicInsights } from '@/src/core/api/hooks/analytics/useGeographicInsights'; // Phase 4: Geographic Insights
-import { useSmartInsights } from '@/src/core/api/hooks/analytics/useSmartInsights'; // Phase 5: Smart Insights (100% Real Data)
+import { useSmartInsights, type SmartInsight } from '@/src/core/api/hooks/analytics/useSmartInsights'; // Phase 5: Smart Insights (100% Real Data)
 import { QuickActionsFAB } from '@/src/components/seller/dashboard/QuickActionsFAB';
 
 // Dashboard Utilities
@@ -453,6 +453,31 @@ export function DashboardClient() {
     // Smart insights data - Use REAL API (Phase 5: 100% Real Data)
     const smartInsights = smartInsightsData || [];
 
+    const handleSmartInsightApply = (insightId: string) => {
+        const insight = smartInsights.find((item: SmartInsight) => item.id === insightId);
+        if (!insight) return;
+
+        // Keep action behavior deterministic and useful even when backend auto-apply endpoint is not defined.
+        if (insight.type === 'rto_prevention') {
+            router.push('/seller/rto');
+            return;
+        }
+        if (insight.type === 'cost_saving') {
+            router.push('/seller/analytics/costs');
+            return;
+        }
+        if (insight.type === 'growth_opportunity') {
+            router.push('/seller/analytics');
+            return;
+        }
+        if (insight.type === 'speed' || insight.type === 'efficiency') {
+            router.push('/seller/analytics/sla');
+            return;
+        }
+
+        router.push('/seller/analytics');
+    };
+
     // Order Trend Chart Data - Transform API data (always returns array)
     const orderTrendChartData = orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : [];
 
@@ -695,7 +720,7 @@ export function DashboardClient() {
                     >
                         <SmartInsightsPanel
                             insights={smartInsights}
-                            onApply={(id) => console.log('Applied insight:', id)}
+                            onApply={handleSmartInsightApply}
                         />
                     </motion.section>
                 )}

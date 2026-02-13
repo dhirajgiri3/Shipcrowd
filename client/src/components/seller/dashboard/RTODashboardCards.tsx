@@ -38,7 +38,10 @@ export function RTODashboardCards({
 
     const pendingQC = stats?.byStatus?.qc_pending ?? 0;
     const inTransit = stats?.byStatus?.in_transit ?? 0;
-    const total = stats?.total ?? 0;
+    const totalByStatus = stats?.byStatus
+        ? Object.values(stats.byStatus).reduce((sum, count) => sum + (count || 0), 0)
+        : 0;
+    const total = (stats?.total ?? 0) > 0 ? (stats?.total ?? 0) : totalByStatus;
     const totalCharges = stats?.totalCharges ?? 0;
 
     const cards = [

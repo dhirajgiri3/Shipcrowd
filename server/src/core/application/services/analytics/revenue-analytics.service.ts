@@ -263,15 +263,35 @@ export default class RevenueAnalyticsService {
                 {
                     $project: {
                         revenue: '$totals.total',
-                        shippingCost: { $ifNull: ['$shippingCost', 0] },
-                        codCharge: { $ifNull: ['$codCharge', 0] },
+                        shippingCost: {
+                            $ifNull: [
+                                '$shippingDetails.shippingCost',
+                                { $ifNull: ['$totals.shipping', 0] },
+                            ],
+                        },
+                        codCharge: {
+                            $ifNull: [
+                                '$shippingDetails.codCharges',
+                                { $ifNull: ['$codCharge', 0] },
+                            ],
+                        },
                         platformFee: { $ifNull: ['$platformFee', 0] },
                         gst: { $ifNull: ['$totals.tax', 0] },
                         // RTO cost (only for RTO orders - double shipping)
                         rtoCost: {
                             $cond: [
-                                { $eq: ['$currentStatus', 'rto'] },
-                                { $multiply: [{ $ifNull: ['$shippingCost', 0] }, 2] },
+                                { $regexMatch: { input: '$currentStatus', regex: /rto/i } },
+                                {
+                                    $multiply: [
+                                        {
+                                            $ifNull: [
+                                                '$shippingDetails.shippingCost',
+                                                { $ifNull: ['$totals.shipping', 0] },
+                                            ],
+                                        },
+                                        2,
+                                    ],
+                                },
                                 0
                             ]
                         }
@@ -317,14 +337,34 @@ export default class RevenueAnalyticsService {
                 {
                     $project: {
                         revenue: '$totals.total',
-                        shippingCost: { $ifNull: ['$shippingCost', 0] },
-                        codCharge: { $ifNull: ['$codCharge', 0] },
+                        shippingCost: {
+                            $ifNull: [
+                                '$shippingDetails.shippingCost',
+                                { $ifNull: ['$totals.shipping', 0] },
+                            ],
+                        },
+                        codCharge: {
+                            $ifNull: [
+                                '$shippingDetails.codCharges',
+                                { $ifNull: ['$codCharge', 0] },
+                            ],
+                        },
                         platformFee: { $ifNull: ['$platformFee', 0] },
                         gst: { $ifNull: ['$totals.tax', 0] },
                         rtoCost: {
                             $cond: [
-                                { $eq: ['$currentStatus', 'rto'] },
-                                { $multiply: [{ $ifNull: ['$shippingCost', 0] }, 2] },
+                                { $regexMatch: { input: '$currentStatus', regex: /rto/i } },
+                                {
+                                    $multiply: [
+                                        {
+                                            $ifNull: [
+                                                '$shippingDetails.shippingCost',
+                                                { $ifNull: ['$totals.shipping', 0] },
+                                            ],
+                                        },
+                                        2,
+                                    ],
+                                },
                                 0
                             ]
                         }
