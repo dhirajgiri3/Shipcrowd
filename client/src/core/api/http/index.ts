@@ -90,9 +90,6 @@ const createApiClient = (): AxiosInstance => {
         baseURL,
         timeout: 30000,
         withCredentials: true, // Send cookies with every request
-        headers: {
-            'Content-Type': 'application/json',
-        },
     });
 
     /**
@@ -100,6 +97,13 @@ const createApiClient = (): AxiosInstance => {
      */
     client.interceptors.request.use(
         async (config: InternalAxiosRequestConfig) => {
+            // Set JSON content type only for body-carrying requests
+            if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
+                if (!config.headers['Content-Type']) {
+                    config.headers['Content-Type'] = 'application/json';
+                }
+            }
+
             // Add CSRF token for state-changing requests
             if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
                 // Check if CSRF token is already set (from function call)

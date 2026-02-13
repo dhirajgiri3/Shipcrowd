@@ -229,7 +229,7 @@ export const useCancelManifest = () => {
 export const useDownloadManifestPdf = () => {
     return useMutation<Blob, Error, string>({
         mutationFn: async (manifestId) => {
-            const response = await apiClient.get(`/manifests/${manifestId}/pdf`, {
+            const response = await apiClient.get(`/shipments/manifests/${manifestId}/download`, {
                 responseType: 'blob',
             });
             return response.data;

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import ManifestService from '../../../../core/application/services/shipping/manifest.service';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { ValidationError } from '../../../../shared/errors/app.error';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import Manifest from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest.model';
@@ -26,7 +26,7 @@ class ManifestController {
      * Create manifest
      * POST /shipments/manifest
      */
-    async createManifest(req: Request, res: Response, next: NextFunction) {
+    createManifest = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const auth = guardChecks(req);
             requireCompanyContext(auth);
@@ -201,17 +201,26 @@ class ManifestController {
      * Download manifest PDF
      * GET /shipments/manifests/:id/download
      */
-    async downloadManifest(req: Request, res: Response, next: NextFunction) {
+    downloadManifest = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
+            logger.info(`Downloading manifest PDF for ${id}`);
 
-            const manifest = await ManifestService.getManifest(id);
+            const manifest = await Manifest.findById(id)
+                .select('manifestNumber carrier metadata')
+                .lean();
+            if (!manifest) {
+                throw new NotFoundError('Manifest not found');
+            }
+            logger.info(`Manifest found: ${manifest.manifestNumber}, Carrier: ${manifest.carrier}`);
 
             // Check if we have a carrier manifest URL available
-            const carrierUrl = manifest.metadata?.carrierManifestUrl || (manifest.metadata as any)?.manifestUrl;
+            const carrierUrl = (manifest as any)?.metadata?.carrierManifestUrl || (manifest as any)?.metadata?.manifestUrl;
+            logger.info(`Carrier URL: ${carrierUrl || 'None'}`);
 
             if (carrierUrl && (carrierUrl.startsWith('http') || carrierUrl.startsWith('https'))) {
                 try {
+                    logger.info(`Fetching from carrier URL...`);
                     const carrierFile = await axios.get<ArrayBuffer>(carrierUrl, {
                         responseType: 'arraybuffer',
                         timeout: 15000,
@@ -237,7 +246,9 @@ class ManifestController {
             }
 
             // Fallback to internal PDF generation
+            logger.info(`Generating internal PDF...`);
             const pdfBuffer = await ManifestService.generatePDF(id);
+            logger.info(`Internal PDF generated, size: ${pdfBuffer.length}`);
 
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader(
@@ -249,6 +260,7 @@ class ManifestController {
 
             logger.info(`Manifest PDF downloaded (Internal): ${manifest.manifestNumber}`);
         } catch (error) {
+            logger.error(`Error in downloadManifest:`, error);
             next(error);
         }
     }
