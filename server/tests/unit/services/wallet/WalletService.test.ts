@@ -2,6 +2,8 @@
  * WalletService Unit Tests
  */
 
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
 import WalletService from '@/core/application/services/wallet/wallet.service';
 import { Company, WalletTransaction } from '../../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
@@ -29,9 +31,12 @@ jest.mock('@/shared/logger/winston.logger', () => ({
     warn: jest.fn(),
     error: jest.fn(),
 }));
+jest.mock('razorpay', () => jest.fn());
 
 describe('WalletService', () => {
     const mockCompanyId = new mongoose.Types.ObjectId().toString();
+    const originalKeyId = process.env.RAZORPAY_KEY_ID;
+    const originalKeySecret = process.env.RAZORPAY_KEY_SECRET;
     const mockSession = {
         startTransaction: jest.fn(),
         commitTransaction: jest.fn(),
@@ -42,6 +47,22 @@ describe('WalletService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (mongoose.startSession as jest.Mock) = jest.fn().mockResolvedValue(mockSession);
+        process.env.RAZORPAY_KEY_ID = 'rzp_test_key';
+        process.env.RAZORPAY_KEY_SECRET = 'secret_test_key';
+    });
+
+    afterAll(() => {
+        if (originalKeyId === undefined) {
+            delete process.env.RAZORPAY_KEY_ID;
+        } else {
+            process.env.RAZORPAY_KEY_ID = originalKeyId;
+        }
+
+        if (originalKeySecret === undefined) {
+            delete process.env.RAZORPAY_KEY_SECRET;
+        } else {
+            process.env.RAZORPAY_KEY_SECRET = originalKeySecret;
+        }
     });
 
     const mockFindOneAndUpdateChain = (result: any) => {
@@ -303,6 +324,100 @@ describe('WalletService', () => {
 
             expect(result.success).toBe(true);
             expect(result.newBalance).toBe(1500);
+        });
+    });
+
+    describe('handleRecharge validation', () => {
+        it('should fail when Razorpay credentials are missing', async () => {
+            delete process.env.RAZORPAY_KEY_ID;
+            delete process.env.RAZORPAY_KEY_SECRET;
+
+            const result = await WalletService.handleRecharge(
+                mockCompanyId,
+                5000,
+                'pay_test_1',
+                'order_test_1',
+                'sig_test_1',
+                'user_1'
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Razorpay configuration missing');
+            expect(Razorpay as unknown as jest.Mock).not.toHaveBeenCalled();
+        });
+
+        it('should reject payment when purpose/type conflicts with wallet recharge', async () => {
+            const paymentId = 'pay_test_2';
+            const orderId = 'order_test_2';
+            const signature = crypto
+                .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET as string)
+                .update(`${orderId}|${paymentId}`)
+                .digest('hex');
+
+            const fetchMock = jest.fn().mockResolvedValue({
+                id: paymentId,
+                order_id: orderId,
+                amount: 500000,
+                status: 'captured',
+                currency: 'INR',
+                notes: {
+                    companyId: mockCompanyId,
+                    purpose: 'auto-recharge',
+                },
+            });
+
+            (Razorpay as unknown as jest.Mock).mockImplementation(() => ({
+                payments: { fetch: fetchMock },
+            }));
+
+            const result = await WalletService.handleRecharge(
+                mockCompanyId,
+                5000,
+                paymentId,
+                orderId,
+                signature,
+                'user_1'
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Payment purpose mismatch');
+        });
+
+        it('should reject payment when currency is not INR', async () => {
+            const paymentId = 'pay_test_3';
+            const orderId = 'order_test_3';
+            const signature = crypto
+                .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET as string)
+                .update(`${orderId}|${paymentId}`)
+                .digest('hex');
+
+            const fetchMock = jest.fn().mockResolvedValue({
+                id: paymentId,
+                order_id: orderId,
+                amount: 500000,
+                status: 'captured',
+                currency: 'USD',
+                notes: {
+                    companyId: mockCompanyId,
+                    purpose: 'wallet_recharge',
+                },
+            });
+
+            (Razorpay as unknown as jest.Mock).mockImplementation(() => ({
+                payments: { fetch: fetchMock },
+            }));
+
+            const result = await WalletService.handleRecharge(
+                mockCompanyId,
+                5000,
+                paymentId,
+                orderId,
+                signature,
+                'user_1'
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Unsupported payment currency: USD');
         });
     });
 });

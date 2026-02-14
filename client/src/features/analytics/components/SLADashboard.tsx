@@ -1,11 +1,15 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, StatusBadge } from '@/src/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, StatusBadge, Button } from '@/src/components/ui';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { CardSkeleton, ChartSkeleton } from '@/src/components/ui/data/Skeleton';
 import { DateRangeFilter } from './DateRangeFilter';
 import { useAnalyticsParams } from '@/src/hooks';
 import { useSLAPerformance } from '@/src/core/api/hooks/analytics/useAnalytics';
-import { ArrowDownRight, ArrowUpRight, Clock, Truck, ShieldAlert, IndianRupee, type LucideIcon } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Clock, Truck, ShieldAlert, IndianRupee, RefreshCw, type LucideIcon } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { useMemo } from 'react';
+import { cn } from '@/src/lib/utils';
 
 interface UIMetric {
     type: 'pickup' | 'delivery' | 'ndr' | 'cod';
@@ -26,19 +30,11 @@ const toMetricStatus = (status: string): UIMetric['status'] => {
 
 export function SLADashboard() {
     const { timeRange, setTimeRange, apiFilters } = useAnalyticsParams();
-    const { data: slaData, isLoading } = useSLAPerformance(apiFilters);
+    const { data: slaData, isLoading, refetch, isFetching } = useSLAPerformance(apiFilters);
 
-    if (isLoading || !slaData) {
-        return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                    <Card key={i} className="h-40 animate-pulse bg-[var(--bg-secondary)]" />
-                ))}
-            </div>
-        );
-    }
-
-    const metrics: UIMetric[] = [
+    const metrics = useMemo<UIMetric[]>(() => {
+        if (!slaData) return [];
+        return [
         {
             type: 'pickup',
             label: slaData.pickupSLA.name,
@@ -80,6 +76,7 @@ export function SLADashboard() {
             history: slaData.timeSeries.map((point) => ({ date: point.date, value: point.compliance })),
         },
     ];
+    }, [slaData]);
 
     const metricVisuals: Record<UIMetric['type'], { icon: LucideIcon; color: string }> = {
         pickup: { icon: Truck, color: '#3B82F6' },
@@ -145,15 +142,57 @@ export function SLADashboard() {
         );
     };
 
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">SLA Performance</h2>
-                    <p className="text-sm text-[var(--text-muted)]">Track operational compliance against targets</p>
+    if (isLoading || !slaData) {
+        return (
+            <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+                <PageHeader
+                    title="SLA Dashboard"
+                    description="Monitor your operational performance and SLA compliance in real-time."
+                    breadcrumbs={[
+                        { label: 'Analytics', href: '/seller/analytics' },
+                        { label: 'SLA Dashboard', active: true },
+                    ]}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <CardSkeleton />
+                    <CardSkeleton />
+                    <CardSkeleton />
+                    <CardSkeleton />
                 </div>
-                <DateRangeFilter value={timeRange} onChange={setTimeRange} />
+                <ChartSkeleton height={300} />
             </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            <PageHeader
+                title="SLA Dashboard"
+                description="Monitor your operational performance and SLA compliance in real-time."
+                breadcrumbs={[
+                    { label: 'Analytics', href: '/seller/analytics' },
+                    { label: 'SLA Dashboard', active: true },
+                ]}
+                backUrl="/seller/analytics"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <DateRangeFilter value={timeRange} onChange={setTimeRange} />
+                        <Button
+                            onClick={() => refetch()}
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                'h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm',
+                                isFetching && 'animate-spin'
+                            )}
+                            title="Refresh"
+                            aria-label="Refresh SLA data"
+                        >
+                            <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                        </Button>
+                    </div>
+                }
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {metrics.map((metric) => (
@@ -188,3 +227,4 @@ export function SLADashboard() {
         </div>
     );
 }
+

@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
@@ -49,7 +49,10 @@ export function RechargeClient() {
     const [selectedMethod, setSelectedMethod] = useState('upi');
     const [promoCode, setPromoCode] = useState('');
     const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
-    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
+    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(
+        () => typeof window !== 'undefined' && !!window.Razorpay
+    );
+    const [gatewayLoadError, setGatewayLoadError] = useState<string | null>(null);
 
     // API Hooks
     const { data: balanceData } = useWalletBalance();
@@ -63,6 +66,13 @@ export function RechargeClient() {
     const rechargeAmount = Number(amount) || 0;
     const promoCredit = appliedPromo?.bonusCredit || 0;
     const totalWalletCredit = rechargeAmount + promoCredit;
+
+    useEffect(() => {
+        if (!isRazorpayLoaded && typeof window !== 'undefined' && window.Razorpay) {
+            setIsRazorpayLoaded(true);
+            setGatewayLoadError(null);
+        }
+    }, [isRazorpayLoaded]);
 
     const handleQuickAmount = (value: number) => {
         if (appliedPromo && value !== rechargeAmount) {
@@ -119,7 +129,7 @@ export function RechargeClient() {
         }
 
         if (!isRazorpayLoaded) {
-            addToast('Payment gateway failed to load. Please refresh.', 'error');
+            addToast(gatewayLoadError || 'Payment gateway is still loading. Please wait and try again.', 'error');
             return;
         }
 
@@ -136,7 +146,7 @@ export function RechargeClient() {
             // Initialize Razorpay Options
             const options: RazorpayOptions = {
                 key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
-                amount: init.amount * 100, // Amount in paise
+                amount: Math.round(init.amount * 100), // Amount in paise
                 currency: init.currency || "INR",
                 name: "Shipcrowd Logistics",
                 description: "Wallet Recharge",
@@ -183,7 +193,14 @@ export function RechargeClient() {
             <Script
                 id="razorpay-checkout-js"
                 src="https://checkout.razorpay.com/v1/checkout.js"
-                onLoad={() => setIsRazorpayLoaded(true)}
+                onLoad={() => {
+                    setIsRazorpayLoaded(true);
+                    setGatewayLoadError(null);
+                }}
+                onError={() => {
+                    setIsRazorpayLoaded(false);
+                    setGatewayLoadError('Payment gateway failed to load. Please refresh and try again.');
+                }}
             />
 
             {/* Header */}

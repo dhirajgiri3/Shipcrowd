@@ -47,7 +47,7 @@ export function PageHeader({
     return (
         <div className={cn("flex flex-col gap-6", className)}>
             {/* Navigation & Breadcrumbs */}
-            <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] animate-fade-in">
                 {showBack && (
                     <>
                         <Button
@@ -86,7 +86,7 @@ export function PageHeader({
             </div>
 
             {/* Title & Actions */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 animate-in fade-in slide-in-from-left-2 duration-500 delay-100">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 animate-fade-in">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
                         {title}

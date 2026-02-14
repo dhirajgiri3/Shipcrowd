@@ -1030,6 +1030,15 @@ export default class WalletService {
         signature: string,
         createdBy: string
     ): Promise<TransactionResult> {
+        const keyId = process.env.RAZORPAY_KEY_ID || '';
+        const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+        if (!keyId || !keySecret) {
+            return {
+                success: false,
+                error: 'Razorpay configuration missing',
+            };
+        }
+
         // ✅ CRITICAL: Verify payment with Razorpay before crediting
         let verifiedAmount = 0;
         let promoCreditAmount = 0;
@@ -1037,8 +1046,8 @@ export default class WalletService {
         try {
             const Razorpay = (await import('razorpay')).default;
             const razorpay = new Razorpay({
-                key_id: process.env.RAZORPAY_KEY_ID || '',
-                key_secret: process.env.RAZORPAY_KEY_SECRET || '',
+                key_id: keyId,
+                key_secret: keySecret,
             });
 
             // Fetch payment details from Razorpay
@@ -1054,14 +1063,6 @@ export default class WalletService {
                 return {
                     success: false,
                     error: 'Payment order mismatch',
-                };
-            }
-
-            const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
-            if (!keySecret) {
-                return {
-                    success: false,
-                    error: 'Razorpay configuration missing',
                 };
             }
 
@@ -1094,7 +1095,8 @@ export default class WalletService {
                 };
             }
 
-            const paymentCompanyId = (payment.notes as Record<string, string> | undefined)?.companyId;
+            const paymentNotes = (payment.notes as Record<string, string> | undefined) || {};
+            const paymentCompanyId = paymentNotes.companyId;
             if (paymentCompanyId && paymentCompanyId !== companyId) {
                 logger.error('Payment verification failed: company mismatch', {
                     paymentId,
@@ -1107,7 +1109,31 @@ export default class WalletService {
                 };
             }
 
-            const paymentNotes = (payment.notes as Record<string, string> | undefined) || {};
+            const paymentPurpose = paymentNotes.purpose || paymentNotes.type;
+            if (paymentPurpose && paymentPurpose !== 'wallet_recharge') {
+                logger.error('Payment verification failed: invalid payment purpose', {
+                    paymentId,
+                    companyId,
+                    paymentPurpose,
+                });
+                return {
+                    success: false,
+                    error: 'Payment purpose mismatch',
+                };
+            }
+
+            if (payment.currency !== 'INR') {
+                logger.error('Payment verification failed: unsupported currency', {
+                    paymentId,
+                    companyId,
+                    currency: payment.currency,
+                });
+                return {
+                    success: false,
+                    error: `Unsupported payment currency: ${payment.currency}`,
+                };
+            }
+
             promoCode = paymentNotes.promoCode || undefined;
             promoCreditAmount = Number(paymentNotes.promoCreditAmount || 0);
             if (!Number.isFinite(promoCreditAmount) || promoCreditAmount < 0) {

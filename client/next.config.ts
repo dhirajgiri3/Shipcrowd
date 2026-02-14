@@ -54,12 +54,13 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires inline scripts
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com", // Next.js requires inline scripts
+              "script-src-elem 'self' 'unsafe-inline' https://checkout.razorpay.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://*.razorpay.com",
               `connect-src 'self' ${process.env.NODE_ENV === 'development' ? 'http://localhost:5005 ws://localhost:5005' : ''} https://api.razorpay.com https://lumberjack.razorpay.com`,
-              "frame-src 'self' https://api.razorpay.com",
+              "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
               "media-src 'self' https://res.cloudinary.com",
               "object-src 'none'",
               "base-uri 'self'",

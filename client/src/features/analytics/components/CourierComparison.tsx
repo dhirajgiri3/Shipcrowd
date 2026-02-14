@@ -1,6 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, StatusBadge } from '@/src/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, StatusBadge, Button } from '@/src/components/ui';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { ChartSkeleton } from '@/src/components/ui/data/Skeleton';
 import { DateRangeFilter } from './DateRangeFilter';
 import { useAnalyticsParams } from '@/src/hooks';
 import { useCourierComparison } from '@/src/core/api/hooks/analytics/useAnalytics';
@@ -20,24 +22,18 @@ import {
     PolarRadiusAxis,
 } from 'recharts';
 import { useMemo } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { cn } from '@/src/lib/utils';
 
 const PALETTE = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EF4444'];
 const normalizeCourierId = (value?: string) => String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
 
 export function CourierComparison() {
     const { timeRange, setTimeRange, apiFilters } = useAnalyticsParams();
-    const { data: comparison, isLoading } = useCourierComparison(apiFilters);
-
-    if (isLoading || !comparison) {
-        return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="h-[400px] animate-pulse bg-[var(--bg-secondary)]" />
-                <Card className="h-[400px] animate-pulse bg-[var(--bg-secondary)]" />
-            </div>
-        );
-    }
+    const { data: comparison, isLoading, refetch, isFetching } = useCourierComparison(apiFilters);
 
     const couriers = useMemo(() => {
+        if (!comparison?.couriers?.length) return [];
         const deduped = Array.from(
             new Map(
                 comparison.couriers.map((courier) => [
@@ -58,9 +54,9 @@ export function CourierComparison() {
                 avgCostPerKg: courier.avgCost,
             },
         }));
-    }, [comparison.couriers]);
+    }, [comparison?.couriers]);
 
-    const radarData = [
+    const radarData = useMemo(() => [
         { metric: 'Delivery', fullMark: 100 },
         { metric: 'RTO Control', fullMark: 100 },
         { metric: 'NDR Control', fullMark: 100 },
@@ -81,17 +77,57 @@ export function CourierComparison() {
                             : Math.max(0, 100 - courier.avgCost);
         });
         return row;
-    });
+    }), [couriers]);
+
+    if (isLoading || !comparison) {
+        return (
+            <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+                <PageHeader
+                    title="Courier Comparison"
+                    description="Compare courier partners on delivery speed, RTO rates, and costs."
+                    breadcrumbs={[
+                        { label: 'Analytics', href: '/seller/analytics' },
+                        { label: 'Courier Comparison', active: true },
+                    ]}
+                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <ChartSkeleton height={400} />
+                    <ChartSkeleton height={400} />
+                </div>
+                <ChartSkeleton height={300} />
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">Courier Comparison</h2>
-                    <p className="text-sm text-[var(--text-muted)]">Benchmark courier partners against each other</p>
-                </div>
-                <DateRangeFilter value={timeRange} onChange={setTimeRange} />
-            </div>
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            <PageHeader
+                title="Courier Comparison"
+                description="Compare courier partners on delivery speed, RTO rates, and costs."
+                breadcrumbs={[
+                    { label: 'Analytics', href: '/seller/analytics' },
+                    { label: 'Courier Comparison', active: true },
+                ]}
+                backUrl="/seller/analytics"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <DateRangeFilter value={timeRange} onChange={setTimeRange} />
+                        <Button
+                            onClick={() => refetch()}
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                'h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm',
+                                isFetching && 'animate-spin'
+                            )}
+                            title="Refresh"
+                            aria-label="Refresh courier comparison"
+                        >
+                            <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                        </Button>
+                    </div>
+                }
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
@@ -192,3 +228,4 @@ export function CourierComparison() {
         </div>
     );
 }
+

@@ -25,7 +25,6 @@ import {
     MapPin,
     RotateCcw,
     AlertTriangle,
-    Zap,
     BarChart3,
     Trophy,
     Timer,
@@ -40,7 +39,6 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 import { useSellerActions } from '@/src/core/api/hooks/seller/useSellerActions';
-import { Badge } from '@/src/components/ui/core/Badge';
 
 export interface SellerNavItem {
     label: string;
@@ -92,7 +90,6 @@ export const sellerNavSections: SellerNavSection[] = [
             { label: 'Bank Accounts', href: '/seller/bank-accounts', icon: Landmark },
             { label: 'COD Overview', href: '/seller/cod', icon: Banknote },
             { label: 'Discrepancies', href: '/seller/cod/discrepancies', icon: AlertTriangle },
-            { label: 'Early COD', href: '/seller/cod/early-program', icon: Zap },
         ],
     },
     {
@@ -347,22 +344,6 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
 
             <div className="p-4 mt-auto">
                 <div className="h-px bg-[var(--border-subtle)] mb-4" />
-
-                <div className="mb-3">
-                    <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-tertiary)] p-3 shadow-sm group cursor-pointer hover:border-[var(--primary-blue)]/30 transition-all duration-300">
-                        <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-[var(--primary-blue)]/5 blur-2xl group-hover:bg-[var(--primary-blue)]/10 transition-colors duration-500" />
-
-                        <div className="relative flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <p className="text-xs font-bold text-[var(--text-primary)] tracking-wide">Shipcrowd Pro</p>
-                                <p className="text-[10px] font-medium text-[var(--text-muted)]">Premium Active</p>
-                            </div>
-                            <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px] px-1.5 py-0">
-                                PRO
-                            </Badge>
-                        </div>
-                    </div>
-                </div>
 
                 <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-all duration-200 cursor-pointer">
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-primary)] font-bold text-xs">

@@ -38,6 +38,7 @@ export function WalletPageClient() {
     const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
     const [addMoneyInitialAmount, setAddMoneyInitialAmount] = useState<number | undefined>();
     const [isAutoRechargeOpen, setIsAutoRechargeOpen] = useState(false);
+    const [gatewayLoadError, setGatewayLoadError] = useState<string | null>(null);
     const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(
         () => typeof window !== 'undefined' && !!window.Razorpay
     );
@@ -48,6 +49,7 @@ export function WalletPageClient() {
     useEffect(() => {
         if (!isRazorpayLoaded && typeof window !== 'undefined' && window.Razorpay) {
             setIsRazorpayLoaded(true);
+            setGatewayLoadError(null);
         }
     }, [isRazorpayLoaded]);
 
@@ -98,8 +100,12 @@ export function WalletPageClient() {
         const razorpayReady = isRazorpayLoaded || (typeof window !== 'undefined' && !!window.Razorpay);
         if (razorpayReady && !isRazorpayLoaded) {
             setIsRazorpayLoaded(true);
+            setGatewayLoadError(null);
         }
         if (!razorpayReady) {
+            if (gatewayLoadError) {
+                throw new Error(gatewayLoadError);
+            }
             throw new Error('Payment gateway is still loading. Please wait a moment and try again.');
         }
 
@@ -111,8 +117,7 @@ export function WalletPageClient() {
             throw new Error('Failed to process recharge. Please try again.');
         }
         if (!(init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
-            addToast('Razorpay key is not configured. Please contact support.', 'error');
-            return;
+            throw new Error('Razorpay key is not configured. Please contact support.');
         }
 
         const options: RazorpayOptions = {
@@ -174,7 +179,14 @@ export function WalletPageClient() {
             id="razorpay-checkout-js"
             src="https://checkout.razorpay.com/v1/checkout.js"
             strategy="afterInteractive"
-            onLoad={() => setIsRazorpayLoaded(true)}
+            onLoad={() => {
+                setIsRazorpayLoaded(true);
+                setGatewayLoadError(null);
+            }}
+            onError={() => {
+                setIsRazorpayLoaded(false);
+                setGatewayLoadError('Payment gateway failed to load. Please refresh and try again.');
+            }}
         />
     );
 
@@ -361,6 +373,8 @@ export function WalletPageClient() {
                     setAddMoneyInitialAmount(undefined);
                 }}
                 onSubmit={handleRechargeSubmit}
+                isGatewayReady={isRazorpayLoaded}
+                gatewayError={gatewayLoadError}
                 initialAmount={addMoneyInitialAmount}
             />
 

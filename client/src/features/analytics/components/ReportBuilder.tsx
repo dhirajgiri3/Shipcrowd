@@ -1,6 +1,8 @@
 'use client';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Loader } from '@/src/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { ChartSkeleton } from '@/src/components/ui/data/Skeleton';
 import { ChartTypeSelector } from './ChartTypeSelector';
 import { DateRangeFilter } from './DateRangeFilter';
 import { MetricSelector, AVAILABLE_METRICS } from './MetricSelector';
@@ -102,11 +104,7 @@ export function ReportBuilder() {
         }
 
         if (generateReport.isPending) {
-            return (
-                <div className="h-[400px] flex items-center justify-center bg-[var(--bg-secondary)] rounded-xl">
-                    <Loader variant="spinner" size="lg" />
-                </div>
-            );
+            return <ChartSkeleton height={400} />;
         }
 
         const commonProps = {
@@ -187,7 +185,18 @@ export function ReportBuilder() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            <PageHeader
+                title="Custom Reports"
+                description="Build and export custom analytics reports based on your specific needs."
+                breadcrumbs={[
+                    { label: 'Analytics', href: '/seller/analytics' },
+                    { label: 'Custom Reports', active: true },
+                ]}
+                backUrl="/seller/analytics"
+                actions={<DateRangeFilter value={timeRange} onChange={setTimeRange} />}
+            />
+
             <Card>
                 <CardHeader>
                     <CardTitle>Report Configuration</CardTitle>
@@ -206,10 +215,6 @@ export function ReportBuilder() {
                             <div>
                                 <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Visualization</label>
                                 <ChartTypeSelector value={chartType} onChange={setChartType} />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Date Range</label>
-                                <DateRangeFilter value={timeRange} onChange={setTimeRange} />
                             </div>
                         </div>
                         <div>

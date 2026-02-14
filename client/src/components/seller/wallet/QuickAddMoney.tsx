@@ -46,6 +46,8 @@ interface QuickAddMoneyProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (amount: number, method: PaymentMethod) => Promise<void>;
+    isGatewayReady?: boolean;
+    gatewayError?: string | null;
     /** Pre-select amount when modal opens (e.g. from quick-add preset) */
     initialAmount?: number;
     className?: string;
@@ -106,7 +108,15 @@ const PAYMENT_METHODS = [
     },
 ];
 
-export function QuickAddMoney({ isOpen, onClose, onSubmit, initialAmount, className = '' }: QuickAddMoneyProps) {
+export function QuickAddMoney({
+    isOpen,
+    onClose,
+    onSubmit,
+    isGatewayReady = true,
+    gatewayError = null,
+    initialAmount,
+    className = ''
+}: QuickAddMoneyProps) {
     const [selectedAmount, setSelectedAmount] = useState<number>(initialAmount ?? 5000);
     const [customAmount, setCustomAmount] = useState('');
 
@@ -125,6 +135,16 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, initialAmount, classN
 
     const handleSubmit = async () => {
         setError('');
+
+        if (gatewayError) {
+            setError(gatewayError);
+            return;
+        }
+
+        if (!isGatewayReady) {
+            setError('Payment gateway is still loading. Please wait a moment and try again.');
+            return;
+        }
 
         // Validation
         if (!finalAmount || finalAmount < 100) {
@@ -219,6 +239,25 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, initialAmount, classN
 
                         {/* Content - Scrollable */}
                         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+                            {/* Error Message - Top for visibility */}
+                            <AnimatePresence>
+                                {error && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="flex items-start gap-3 p-4 bg-[var(--error-bg)] border border-[var(--error)]/30 rounded-xl"
+                                    >
+                                        <AlertCircle className="w-5 h-5 text-[var(--error)] flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-semibold text-[var(--error)]">
+                                                {error}
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
                             {/* SECTION 1: Select Amount */}
                             <div>
                                 <label className="block text-base font-bold text-[var(--text-primary)] mb-4">
@@ -354,25 +393,6 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, initialAmount, classN
                                 </div>
                             </div>
 
-                            {/* Error Message */}
-                            <AnimatePresence>
-                                {error && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        className="flex items-start gap-3 p-4 bg-[var(--error-bg)] border border-[var(--error)]/30 rounded-xl"
-                                    >
-                                        <AlertCircle className="w-5 h-5 text-[var(--error)] flex-shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-semibold text-[var(--error)]">
-                                                {error}
-                                            </p>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
                             {/* Trust Badges */}
                             <div className="flex items-center justify-center gap-6 py-4 bg-[var(--bg-secondary)] rounded-2xl">
                                 <div className="flex items-center gap-2">
@@ -396,7 +416,7 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, initialAmount, classN
                             <Button
                                 onClick={handleSubmit}
                                 isLoading={isLoading}
-                                disabled={!finalAmount || finalAmount < 100 || isLoading}
+                                disabled={!finalAmount || finalAmount < 100 || isLoading || !isGatewayReady || !!gatewayError}
                                 className={cn(
                                     'w-full h-14 font-bold text-lg rounded-2xl shadow-lg transition-all',
                                     'active:scale-[0.98]'
@@ -404,6 +424,10 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, initialAmount, classN
                             >
                                 {isLoading ? (
                                     'Processing payment...'
+                                ) : gatewayError ? (
+                                    'Payment gateway unavailable'
+                                ) : !isGatewayReady ? (
+                                    'Loading payment gateway...'
                                 ) : finalAmount && finalAmount >= 100 ? (
                                     `Proceed to Pay ₹${finalAmount.toLocaleString('en-IN')}`
                                 ) : (
