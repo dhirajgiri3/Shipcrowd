@@ -117,6 +117,7 @@ export const listRemittances = async (
         requireCompanyContext(auth);
 
         const status = req.query.status as string | undefined;
+        const search = req.query.search as string | undefined;
         const startDate = req.query.startDate
             ? new Date(req.query.startDate as string)
             : undefined;
@@ -126,10 +127,22 @@ export const listRemittances = async (
 
         const result = await CODRemittanceService.listRemittances(auth.companyId, {
             status,
+            search,
             startDate,
             endDate,
             page,
             limit,
+        });
+        logger.info('COD remittance list query', {
+            companyId: auth.companyId,
+            status,
+            search,
+            startDate,
+            endDate,
+            page,
+            limit,
+            count: result.remittances.length,
+            total: result.pagination.total,
         });
 
         const pagination = {
@@ -314,9 +327,11 @@ export const requestPayout = async (
     try {
         const auth = guardChecks(req);
         requireCompanyContext(auth);
-        const { amount } = req.body;
+        const amount = typeof req.body?.amount === 'number'
+            ? req.body.amount
+            : Number(req.body?.amount);
 
-        if (!amount || amount <= 0) {
+        if (!Number.isFinite(amount) || amount <= 0) {
             throw new ValidationError('Valid amount is required');
         }
 
@@ -340,7 +355,10 @@ export const schedulePayout = async (
     try {
         const auth = guardChecks(req);
         requireCompanyContext(auth);
-        const schedule = req.body; // Validation normally via schema
+        const schedule = req.body;
+        if (!schedule || typeof schedule !== 'object') {
+            throw new ValidationError('Valid schedule payload is required');
+        }
 
         const result = await CODRemittanceService.schedulePayout(auth.companyId, schedule);
         sendSuccess(res, result, 'Payout schedule updated successfully');
@@ -372,18 +390,28 @@ export const uploadMIS = async (
             throw new ValidationError('Invalid provider. Allowed: velocity, generic');
         }
 
-        let mappingOverride: any = undefined;
+        let mappingOverride:
+            | {
+                awbColumns?: string[];
+                amountColumns?: string[];
+                dateColumns?: string[];
+                utrColumns?: string[];
+            }
+            | undefined;
         if (req.body.mapping) {
             try {
-                const raw = typeof req.body.mapping === 'string' ? JSON.parse(req.body.mapping) : req.body.mapping;
+                const raw = typeof req.body.mapping === 'string'
+                    ? JSON.parse(req.body.mapping)
+                    : req.body.mapping;
 
                 if (raw && typeof raw === 'object') {
-                    const normalizeArray = (value: any) => (Array.isArray(value) ? value.map(String) : undefined);
+                    const normalizeArray = (value: unknown): string[] | undefined =>
+                        Array.isArray(value) ? value.map(String) : undefined;
                     mappingOverride = {
-                        awbColumns: normalizeArray(raw.awbColumns),
-                        amountColumns: normalizeArray(raw.amountColumns),
-                        dateColumns: normalizeArray(raw.dateColumns),
-                        utrColumns: normalizeArray(raw.utrColumns)
+                        awbColumns: normalizeArray((raw as Record<string, unknown>).awbColumns),
+                        amountColumns: normalizeArray((raw as Record<string, unknown>).amountColumns),
+                        dateColumns: normalizeArray((raw as Record<string, unknown>).dateColumns),
+                        utrColumns: normalizeArray((raw as Record<string, unknown>).utrColumns)
                     };
                 }
             } catch (error) {

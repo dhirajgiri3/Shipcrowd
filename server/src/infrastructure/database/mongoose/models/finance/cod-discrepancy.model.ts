@@ -234,7 +234,7 @@ const CODDiscrepancySchema = new Schema<ICODDiscrepancy>(
 CODDiscrepancySchema.index({ companyId: 1, status: 1 }); // Dashboard view
 CODDiscrepancySchema.index({ companyId: 1, type: 1 }); // Analytics by type
 CODDiscrepancySchema.index({ companyId: 1, createdAt: -1 }); // Recent disputes
-CODDiscrepancySchema.index({ autoResolveAt: 1 }, { expireAfterSeconds: 0 }); // Allow TTL if we want auto-cleanup (or just query it)
+CODDiscrepancySchema.index({ autoResolveAt: 1 }); // Query support for auto-resolve jobs
 
 const CODDiscrepancy = mongoose.model<ICODDiscrepancy>('CODDiscrepancy', CODDiscrepancySchema);
 export default CODDiscrepancy;

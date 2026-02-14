@@ -78,7 +78,14 @@ export class DelhiveryWebhookHandler extends BaseWebhookHandler {
                 instructions: statusObj.Instructions || statusObj.Remarks,
                 scanTime: statusObj.StatusDateTime,
                 nslCode: shipment.NSLCode,
-                refId: shipment.ReferenceNo
+                refId: shipment.ReferenceNo,
+                codAmount:
+                    shipment.CODAmount ||
+                    shipment.CodAmount ||
+                    statusObj.CODAmount ||
+                    body.cod_amount ||
+                    body.codAmount,
+                paymentMode: shipment.PaymentMode || statusObj.PaymentMode || body.payment_mode,
             }
         };
     }

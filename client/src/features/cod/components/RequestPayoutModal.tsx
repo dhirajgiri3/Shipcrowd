@@ -31,7 +31,8 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
 
     const availableBalance = stats?.available?.amount || 0;
     const numAmount = parseFloat(amount) || 0;
-    const isValidAmount = numAmount > 0 && numAmount <= availableBalance;
+    const isFullAmount = Math.abs(numAmount - availableBalance) < 0.01;
+    const isValidAmount = numAmount > 0 && numAmount <= availableBalance && isFullAmount;
 
     const handleRequest = async () => {
         if (!isValidAmount) return;
@@ -116,7 +117,7 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                                     <p className="mt-2 text-sm text-[var(--error)]">
                                         {numAmount > availableBalance
                                             ? 'Amount exceeds available balance'
-                                            : 'Please enter a valid amount'}
+                                            : 'Partial payouts are not supported yet. Enter full available balance.'}
                                     </p>
                                 )}
                             </div>
@@ -128,24 +129,27 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                                 </p>
                                 <div className="grid grid-cols-3 gap-2">
                                     <button
-                                        onClick={() => setAmount((availableBalance * 0.25).toString())}
+                                        onClick={() => setAmount(availableBalance.toString())}
                                         className="px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
                                     >
-                                        25%
-                                    </button>
-                                    <button
-                                        onClick={() => setAmount((availableBalance * 0.5).toString())}
-                                        className="px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
-                                    >
-                                        50%
+                                        Max
                                     </button>
                                     <button
                                         onClick={() => setAmount(availableBalance.toString())}
                                         className="px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
                                     >
-                                        100%
+                                        Available
+                                    </button>
+                                    <button
+                                        onClick={() => setAmount(availableBalance.toString())}
+                                        className="px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
+                                    >
+                                        Full
                                     </button>
                                 </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-2">
+                                    Current payout flow processes the full available COD balance as a single batch.
+                                </p>
                             </div>
 
                             {/* Info */}

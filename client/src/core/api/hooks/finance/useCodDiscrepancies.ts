@@ -27,6 +27,8 @@ export interface DiscrepancyFilters {
     status?: string;
     type?: string;
     search?: string;
+    startDate?: string;
+    endDate?: string;
 }
 
 export interface DiscrepancyListResponse {
@@ -57,6 +59,8 @@ export function useCodDiscrepancies(
                 status: filters.status || undefined,
                 type: filters.type || undefined,
                 search: filters.search || undefined,
+                startDate: filters.startDate || undefined,
+                endDate: filters.endDate || undefined,
             }),
         enabled,
         ...CACHE_TIMES.MEDIUM,

@@ -18,16 +18,18 @@ import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import type { DateRange } from '@/src/lib/data';
 import {
     AlertCircle,
     RefreshCw,
     FileText,
-    Search,
     AlertTriangle,
     CheckCircle2,
     Clock,
     IndianRupee,
 } from 'lucide-react';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import type { CODDiscrepancy } from '@/src/core/api/clients/finance/codDiscrepancyApi';
 
 const DISCREPANCY_TABS = [
@@ -50,6 +52,7 @@ export default function CODDiscrepancyPage() {
     const debouncedSearch = useDebouncedValue(search, 300);
     const [resolveTarget, setResolveTarget] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [dateRange, setDateRange] = useState<{ startDate?: string; endDate?: string }>({});
 
     const stats = useCodDiscrepancyStats();
 
@@ -63,6 +66,8 @@ export default function CODDiscrepancyPage() {
         limit,
         status: statusFilter || undefined,
         search: debouncedSearch || undefined,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
     });
 
     const resolveMutation = useResolveCodDiscrepancy();
@@ -110,6 +115,16 @@ export default function CODDiscrepancyPage() {
     );
 
     const handleQuickResolve = useCallback((id: string) => setResolveTarget(id), []);
+    const handleDateRangeChange = useCallback((range: DateRange) => {
+        const start = new Date(range.from);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(range.to);
+        end.setHours(23, 59, 59, 999);
+        setDateRange({
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+        });
+    }, []);
 
     const handleConfirmResolve = useCallback(() => {
         if (!resolveTarget) return;
@@ -245,7 +260,7 @@ export default function CODDiscrepancyPage() {
                 description="Review and resolve COD payment mismatches"
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker />
+                        <DateRangePicker onRangeChange={handleDateRangeChange} />
                         <Button
                             onClick={handleRefresh}
                             variant="ghost"
@@ -311,34 +326,18 @@ export default function CODDiscrepancyPage() {
 
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
-                        {DISCREPANCY_TABS.map((tab) => (
-                            <button
-                                key={tab.key || 'all'}
-                                onClick={() => handleStatusChange(tab.key)}
-                                className={cn(
-                                    'px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
-                                    statusFilter === tab.key
-                                        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
-                                )}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                    <PillTabs
+                        tabs={DISCREPANCY_TABS}
+                        activeTab={statusFilter}
+                        onTabChange={handleStatusChange}
+                    />
 
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <input
-                                type="text"
-                                placeholder="Search by ID or AWB..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
-                            />
-                        </div>
+                        <SearchInput
+                            placeholder="Search by ID or AWB..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
                     </div>
                 </div>
 

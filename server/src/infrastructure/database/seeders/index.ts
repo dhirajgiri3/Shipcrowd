@@ -41,7 +41,9 @@ const COLLECTIONS_TO_CLEAR = [
     'wallet_transactions',  // Fixed: was 'wallettransactions'
     'picklists',
     'weight_disputes',  // Fixed: was 'weightdisputes'
-    'cod_remittances',  // Fixed: was 'codremittances'
+    'cod_remittances',  // Legacy snake_case collection name (if present)
+    'codremittances',   // Active mongoose default collection for CODRemittance model
+    'coddiscrepancies', // Active collection for COD discrepancy model
     // New collections from Phase 2 seeders
     'team_invitations',  // Fixed: was 'teaminvitations'
     'team_permissions',  // Fixed: was 'teampermissions'

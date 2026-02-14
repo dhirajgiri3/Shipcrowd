@@ -293,6 +293,10 @@ export abstract class BaseWebhookHandler implements IWebhookHandler {
             await this.triggerNDRDetection(payload);
         }
 
+        if (mapping.internalStatus === 'delivered' && shipment?.paymentDetails?.type === 'cod') {
+            await this.triggerCODReconciliation(shipment, payload);
+        }
+
         logger.debug('Business rules triggered', {
             courier: payload.courier,
             awb: payload.awb,
@@ -334,6 +338,51 @@ export abstract class BaseWebhookHandler implements IWebhookHandler {
                 courier: payload.courier,
                 awb: payload.awb,
                 error
+            });
+        }
+    }
+
+    /**
+     * Trigger COD reconciliation for delivered COD shipments.
+     * Falls back to expected amount when courier payload does not include collection amount.
+     */
+    protected async triggerCODReconciliation(shipment: any, payload: WebhookPayload): Promise<void> {
+        try {
+            const metadata: Record<string, any> = payload.metadata || {};
+            const courierCollectedCandidates = [
+                metadata.codAmount,
+                metadata.cod_amount,
+                metadata.collectedAmount,
+                metadata.collectionAmount,
+            ];
+
+            let collectedAmount = courierCollectedCandidates
+                .map((value) => Number(value))
+                .find((value) => Number.isFinite(value) && value >= 0);
+
+            if (collectedAmount === undefined) {
+                collectedAmount = Number(
+                    shipment?.paymentDetails?.totalCollection ??
+                        shipment?.paymentDetails?.codAmount ??
+                        0
+                );
+            }
+
+            const { CODReconciliationService } = await import('../../finance/cod-reconciliation.service');
+            await CODReconciliationService.reconcileDeliveredShipment(
+                (shipment._id as mongoose.Types.ObjectId).toString(),
+                {
+                    collectedAmount,
+                    collectionMethod: metadata.paymentMode || metadata.collectionMethod,
+                    deliveredAt: payload.timestamp || new Date(),
+                    source: 'webhook',
+                }
+            );
+        } catch (error) {
+            logger.error('Failed to trigger COD reconciliation from webhook', {
+                courier: payload.courier,
+                awb: payload.awb,
+                error,
             });
         }
     }

@@ -2,7 +2,7 @@
  * COD Payout Settings Page
  * 
  * Comprehensive settings for automatic COD remittance:
- * - Payout frequency (daily, weekly, bi-weekly, monthly)
+ * - Payout frequency (weekly, bi-weekly, monthly)
  * - Day of week/month selection
  * - Minimum payout threshold
  * - Bank account display
@@ -17,9 +17,10 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/src/lib/utils';
+import { useSchedulePayout } from '@/src/core/api/hooks/finance';
 import { useBankAccounts } from '@/src/core/api/hooks/seller/useBankAccounts';
 
-type PayoutFrequency = 'daily' | 'weekly' | 'bi-weekly' | 'monthly';
+type PayoutFrequency = 'weekly' | 'bi-weekly' | 'monthly';
 
 interface PayoutSchedule {
     frequency: PayoutFrequency;
@@ -40,16 +41,6 @@ const DAYS_OF_WEEK = [
 ];
 
 const FREQUENCY_OPTIONS = [
-    {
-        value: 'daily' as PayoutFrequency,
-        label: 'Daily',
-        description: 'Receive payouts every business day',
-        icon: (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        )
-    },
     {
         value: 'weekly' as PayoutFrequency,
         label: 'Weekly',
@@ -86,6 +77,7 @@ export default function CODSettingsPage() {
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const schedulePayoutMutation = useSchedulePayout();
 
     const [schedule, setSchedule] = useState<PayoutSchedule>({
         frequency: 'weekly',
@@ -104,9 +96,6 @@ export default function CODSettingsPage() {
         const next = new Date(now);
 
         switch (schedule.frequency) {
-            case 'daily':
-                next.setDate(now.getDate() + 1);
-                break;
             case 'weekly':
                 const daysUntilNext = (schedule.dayOfWeek! - now.getDay() + 7) % 7 || 7;
                 next.setDate(now.getDate() + daysUntilNext);
@@ -129,8 +118,11 @@ export default function CODSettingsPage() {
         setSaveSuccess(false);
 
         try {
-            // TODO: Call API to save schedule
-            // await schedulePayoutMutation.mutateAsync(schedule);
+            await schedulePayoutMutation.mutateAsync({
+                frequency: schedule.frequency,
+                dayOfWeek: schedule.frequency === 'monthly' ? undefined : schedule.dayOfWeek,
+                dayOfMonth: schedule.frequency === 'monthly' ? schedule.dayOfMonth : undefined,
+            });
 
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
@@ -340,8 +332,7 @@ export default function CODSettingsPage() {
                                         })}
                                     </p>
                                     <p className="text-sm text-blue-100">
-                                        {schedule.frequency === 'daily' ? 'Every business day' :
-                                            schedule.frequency === 'weekly' ? `Every ${DAYS_OF_WEEK[schedule.dayOfWeek!].label}` :
+                                        {schedule.frequency === 'weekly' ? `Every ${DAYS_OF_WEEK[schedule.dayOfWeek!].label}` :
                                                 schedule.frequency === 'bi-weekly' ? `Every 2 weeks on ${DAYS_OF_WEEK[schedule.dayOfWeek!].label}` :
                                                     `On the ${schedule.dayOfMonth}${schedule.dayOfMonth === 1 ? 'st' : schedule.dayOfMonth === 2 ? 'nd' : schedule.dayOfMonth === 3 ? 'rd' : 'th'} of each month`}
                                     </p>

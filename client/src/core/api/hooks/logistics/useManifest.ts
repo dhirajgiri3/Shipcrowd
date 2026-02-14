@@ -299,8 +299,9 @@ export function useHandoverManifest(
 /**
  * Download manifest PDF
  * Returns a blob URL for the PDF
+ * @param options.suppressDefaultErrorHandling - When true, caller handles errors (e.g. inline toast); avoids duplicate toasts
  */
-export function useDownloadManifestPDF() {
+export function useDownloadManifestPDF(options?: { suppressDefaultErrorHandling?: boolean }) {
     return useMutation<string, ApiError, string>({
         mutationFn: async (id) => {
             const response = await apiClient.get(
@@ -314,7 +315,11 @@ export function useDownloadManifestPDF() {
 
             return url;
         },
-        onError: (error) => handleApiError(error),
+        onError: (error) => {
+            if (!options?.suppressDefaultErrorHandling) {
+                handleApiError(error);
+            }
+        },
         retry: RETRY_CONFIG.DEFAULT,
     });
 }

@@ -33,6 +33,7 @@ export interface PerformanceMetrics {
     rtoRate: number;              // 0-100 (derived from RTO charge ratio)
     onTimeDeliveryRate: number;   // 0-100 (derived from pricing source)
     rating: number;               // 0-5 (derived from tags and confidence)
+    dataSource: 'default' | 'route' | 'courier';
 }
 
 export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
@@ -165,6 +166,7 @@ function derivePerformanceMetrics(rate: CourierRate): PerformanceMetrics {
         rtoRate,
         onTimeDeliveryRate,
         rating,
+        dataSource: 'default' as const,
     };
 }
 

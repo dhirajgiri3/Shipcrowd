@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import {
-    Search,
     Download,
     RefreshCw,
     IndianRupee,
@@ -14,20 +12,21 @@ import {
     TrendingUp,
     Calendar,
     Banknote,
-    Eye,
 } from 'lucide-react';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { EmptyState, NoSearchResults } from '@/src/components/ui/feedback/EmptyState';
 import { CardSkeleton, TableSkeleton } from '@/src/components/ui/data/Skeleton';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn, formatCurrency } from '@/src/lib/utils';
+import type { DateRange } from '@/src/lib/data';
 import {
     useCODRemittances,
     useCODStats,
@@ -72,6 +71,7 @@ export function CodClient() {
     const debouncedSearch = useDebouncedValue(search, 300);
     const [page, setPage] = useState(1);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [dateRange, setDateRange] = useState<{ startDate?: string; endDate?: string }>({});
     const limit = 20;
 
     // Sync from URL params (for deep linking)
@@ -101,6 +101,8 @@ export function CodClient() {
         limit,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         search: debouncedSearch || undefined,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
     });
 
     const { data: stats, isLoading: isLoadingStats } = useCODStats();
@@ -116,7 +118,7 @@ export function CodClient() {
         activeTab === 'pending' ? futureDate : undefined,
         {
             enabled: activeTab === 'pending',
-        } as any
+        }
     );
 
     const remittances = remittancesResponse?.remittances || [];
@@ -128,6 +130,17 @@ export function CodClient() {
         setIsRefreshing(true);
         await refetchRemittances();
         setIsRefreshing(false);
+    };
+
+    const handleDateRangeChange = (range: DateRange) => {
+        const start = new Date(range.from);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(range.to);
+        end.setHours(23, 59, 59, 999);
+        setDateRange({
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+        });
     };
 
     const handleTabChange = (tabKey: RemittanceTabKey) => {
@@ -144,13 +157,60 @@ export function CodClient() {
     };
 
     const handleExportReport = () => {
-        // TODO: Implement export functionality
-        addToast('Export functionality coming soon', 'info');
+        const rows = activeTab === 'pending'
+            ? eligibleShipments.map((shipment) => ({
+                date: shipment.deliveredAt,
+                id: shipment.awb,
+                orderId: shipment.orderId,
+                codAmount: shipment.codAmount,
+                deductions: shipment.shippingCost,
+                netAmount: shipment.codAmount - shipment.shippingCost,
+                status: 'pending',
+            }))
+            : remittances.map((remittance) => ({
+                date: remittance.createdAt,
+                id: remittance.remittanceId,
+                orderId: remittance.payout?.utr || '',
+                codAmount: remittance.batch.totalCODCollected,
+                deductions: remittance.deductions.total,
+                netAmount: remittance.finalPayable,
+                status: remittance.status,
+            }));
+
+        if (rows.length === 0) {
+            addToast('No rows available to export for current filters', 'info');
+            return;
+        }
+
+        const header = ['Date', 'ID', 'Order/UTR', 'COD Amount', 'Deductions', 'Net Amount', 'Status'];
+        const escapeCSV = (value: string | number) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        const csv = [
+            header.join(','),
+            ...rows.map((row) => ([
+                row.date,
+                row.id,
+                row.orderId,
+                row.codAmount,
+                row.deductions,
+                row.netAmount,
+                row.status,
+            ].map(escapeCSV).join(','))),
+        ].join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = `cod-report-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        addToast('Report exported successfully', 'success');
     };
 
     const handleRequestPayout = () => {
-        // TODO: Implement request payout modal
-        addToast('Request payout functionality coming soon', 'info');
+        router.push('/seller/cod/remittance');
     };
 
     // Loading state
@@ -185,7 +245,7 @@ export function CodClient() {
                 ]}
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker />
+                        <DateRangePicker onRangeChange={handleDateRangeChange} />
                         <Button
                             onClick={handleRefresh}
                             variant="ghost"
@@ -265,35 +325,17 @@ export function CodClient() {
             {/* Tabs & Search */}
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    {/* Pill-style Tabs */}
-                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
-                        {REMITTANCE_TABS.map((tab) => (
-                            <button
-                                key={tab.key}
-                                onClick={() => handleTabChange(tab.key)}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-                                    activeTab === tab.key
-                                        ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-                                )}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                    <PillTabs
+                        tabs={REMITTANCE_TABS}
+                        activeTab={activeTab}
+                        onTabChange={handleTabChange}
+                    />
 
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                        <input
-                            type="text"
-                            placeholder="Search by batch ID or UTR..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
-                        />
-                    </div>
+                    <SearchInput
+                        placeholder="Search by batch ID or UTR..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
                 </div>
 
                 {/* Remittance History Table */}

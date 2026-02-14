@@ -18,7 +18,6 @@ import {
     AlertCircle,
     MapPin,
     Package,
-    Search,
     MoreVertical,
     Filter,
     ArrowUpRight,
@@ -41,6 +40,7 @@ import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
 
 export function NDRClient() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -277,16 +277,11 @@ export function NDRClient() {
 
                     {/* Search */}
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <input
-                                type="text"
-                                placeholder="Search by AWB, Order ID, or Customer..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
-                            />
-                        </div>
+                        <SearchInput
+                            placeholder="Search by AWB, Order ID, or Customer..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </div>
 

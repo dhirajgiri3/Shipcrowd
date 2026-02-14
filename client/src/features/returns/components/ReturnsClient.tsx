@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import {
     Filter, RefreshCw, RotateCcw, Package,
-    CheckCircle2, AlertCircle, Clock, Search, Download
+    CheckCircle2, AlertCircle, Clock, Download
 } from 'lucide-react';
 
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
@@ -16,22 +16,26 @@ import { EmptyState, NoSearchResults } from '@/src/components/ui/feedback/EmptyS
 import { useReturns, useReturnMetrics } from '@/src/core/api/hooks';
 import { useDebouncedValue } from '@/src/hooks/data';
 import { formatCurrency, cn } from '@/src/lib/utils';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import type { ReturnRequest, ReturnStatus } from '@/src/types/api/returns/returns.types';
 
-const STATUS_TABS: { id: ReturnStatus | 'all'; label: string }[] = [
-    { id: 'all', label: 'All Returns' },
-    { id: 'requested', label: 'Requested' },
-    { id: 'pickup_scheduled', label: 'Pickup Scheduled' },
-    { id: 'in_transit', label: 'In Transit' },
-    { id: 'qc_pending', label: 'QC Pending' },
-    { id: 'refunding', label: 'Refunding' },
-    { id: 'completed', label: 'Completed' },
-    { id: 'rejected', label: 'Rejected/Cancelled' },
-];
+const STATUS_TABS = [
+    { key: 'all', label: 'All Returns' },
+    { key: 'requested', label: 'Requested' },
+    { key: 'pickup_scheduled', label: 'Pickup Scheduled' },
+    { key: 'in_transit', label: 'In Transit' },
+    { key: 'qc_pending', label: 'QC Pending' },
+    { key: 'refunding', label: 'Refunding' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'rejected', label: 'Rejected/Cancelled' },
+] as const;
+
+type ReturnTabKey = (typeof STATUS_TABS)[number]['key'];
 
 export function ReturnsClient() {
     // State
-    const [activeTab, setActiveTab] = useState<ReturnStatus | 'all'>('all');
+    const [activeTab, setActiveTab] = useState<ReturnTabKey>('all');
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 500);
     const [selectedReturn, setSelectedReturn] = useState<ReturnRequest | null>(null);
@@ -117,39 +121,23 @@ export function ReturnsClient() {
             {/* Main Content Area */}
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    {/* Tabs */}
-                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
-                        {STATUS_TABS.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => {
-                                    setActiveTab(tab.id as ReturnStatus | 'all');
-                                    setPagination(p => ({ ...p, page: 1 }));
-                                }}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap",
-                                    activeTab === tab.id
-                                        ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
-                                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-                                )}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                    <PillTabs
+                        tabs={STATUS_TABS}
+                        activeTab={activeTab}
+                        onTabChange={(key) => {
+                            setActiveTab(key);
+                            setPagination(p => ({ ...p, page: 1 }));
+                        }}
+                    />
 
                     {/* Filters & Search */}
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <input
-                                type="text"
-                                placeholder="Search by Return ID, Order # or Customer..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-80 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
-                            />
-                        </div>
+                        <SearchInput
+                            placeholder="Search by Return ID, Order # or Customer..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            widthClass="w-80"
+                        />
                     </div>
                 </div>
 

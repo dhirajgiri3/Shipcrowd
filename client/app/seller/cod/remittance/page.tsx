@@ -91,7 +91,7 @@ export default function CODRemittancePage() {
                             COD Settlement Timeline
                         </p>
                         <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                            COD amounts are remitted within 3-5 business days after delivery confirmation. Track your pending and completed remittances below.
+                            COD amounts are remitted within 3-5 business days after delivery confirmation. Track pending, paid, and settled remittances below.
                         </p>
                     </div>
                 </motion.div>

@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Script from 'next/script';
 import { Plus, Wallet as WalletIcon, Zap } from 'lucide-react';
@@ -28,7 +28,7 @@ import {
 import type { PaymentMethod } from '@/src/components/seller/wallet';
 import type { Transaction as WalletUiTransaction } from '@/src/components/seller/wallet';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { useInitWalletRecharge, useWalletBalance, useWalletTransactions, useRechargeWallet, useWalletStats } from '@/src/core/api/hooks/finance/useWallet';
+import { useInitWalletRecharge, useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
 import { useAutoRechargeSettings, useUpdateAutoRecharge } from '@/src/core/api/hooks/finance/useAutoRecharge';
 import { useProfile } from '@/src/core/api/hooks/settings/useProfile';
 import type { AutoRechargeSettings as WalletAutoRechargeSettings } from '@/src/core/api/clients/finance/walletApi';
@@ -37,12 +37,21 @@ import type { WalletTransaction } from '@/src/types/api/finance';
 export function WalletPageClient() {
     const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
     const [isAutoRechargeOpen, setIsAutoRechargeOpen] = useState(false);
-    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
+    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(
+        () => typeof window !== 'undefined' && !!window.Razorpay
+    );
     const { addToast } = useToast();
+
+    // Handle case where Razorpay script was loaded in a previous mount
+    // (Next.js Script with afterInteractive only fires onLoad once)
+    useEffect(() => {
+        if (!isRazorpayLoaded && typeof window !== 'undefined' && window.Razorpay) {
+            setIsRazorpayLoaded(true);
+        }
+    }, [isRazorpayLoaded]);
 
     const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useWalletBalance();
     const { data: transactionsData, isLoading: transactionsLoading } = useWalletTransactions({ limit: 20 });
-    const { data: walletStats } = useWalletStats();
     const { data: autoRechargeSettings } = useAutoRechargeSettings();
     const { data: profile } = useProfile();
     const initRecharge = useInitWalletRecharge();
@@ -52,14 +61,6 @@ export function WalletPageClient() {
     const updateAutoRecharge = useUpdateAutoRecharge();
     const getErrorMessage = (error: unknown, fallback: string) =>
         error instanceof Error ? error.message : fallback;
-
-    // Calculate weekly change from wallet stats if available
-    const weeklyChange = useMemo(() => {
-        if (!walletStats) return 0;
-        // TODO: Implement weekly change calculation from wallet stats
-        // This would require comparing current week vs previous week spending
-        return 0;
-    }, [walletStats]);
 
     const mapWalletTransactionToUi = (tx: WalletTransaction): WalletUiTransaction => {
         const categoryByReason: Record<string, WalletUiTransaction['category']> = {
@@ -92,8 +93,13 @@ export function WalletPageClient() {
     };
 
     const handleRechargeSubmit = async (amount: number, method: PaymentMethod) => {
-        if (!isRazorpayLoaded) {
-            throw new Error('Payment gateway failed to load. Please refresh and try again.');
+        // Check both the state flag and the actual window object
+        const razorpayReady = isRazorpayLoaded || (typeof window !== 'undefined' && !!window.Razorpay);
+        if (razorpayReady && !isRazorpayLoaded) {
+            setIsRazorpayLoaded(true);
+        }
+        if (!razorpayReady) {
+            throw new Error('Payment gateway is still loading. Please wait a moment and try again.');
         }
 
         let init;
@@ -161,10 +167,21 @@ export function WalletPageClient() {
         }
     };
 
+    // Razorpay script — rendered in all states so it starts loading immediately
+    const razorpayScript = (
+        <Script
+            id="razorpay-checkout-js"
+            src="https://checkout.razorpay.com/v1/checkout.js"
+            strategy="afterInteractive"
+            onLoad={() => setIsRazorpayLoaded(true)}
+        />
+    );
+
     // Loading State
     if (balanceLoading) {
         return (
             <div className="min-h-screen space-y-8 pb-20">
+                {razorpayScript}
                 <PageHeader
                     title="Wallet"
                     breadcrumbs={[
@@ -182,6 +199,7 @@ export function WalletPageClient() {
     if (balanceError) {
         return (
             <div className="min-h-screen space-y-8 pb-20">
+                {razorpayScript}
                 <PageHeader
                     title="Wallet"
                     breadcrumbs={[
@@ -217,24 +235,12 @@ export function WalletPageClient() {
     const isAutoRechargeEnabled = !!autoRechargeSettings?.enabled;
     const lowBalanceThreshold = balanceData?.lowBalanceThreshold ?? 1000;
 
-    // Calculate average weekly spend from wallet stats if available
-    const averageWeeklySpend = useMemo(() => {
-        if (!walletStats) return undefined;
-        // If stats has weekly data, use it; otherwise undefined to hide
-        // TODO: Add weekly spend calculation when stats endpoint provides this data
-        return undefined;
-    }, [walletStats]);
-
     // Empty State for Transactions
     const hasTransactions = transactions.length > 0;
 
     return (
         <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
-            <Script
-                id="razorpay-checkout-js"
-                src="https://checkout.razorpay.com/v1/checkout.js"
-                onLoad={() => setIsRazorpayLoaded(true)}
-            />
+            {razorpayScript}
 
             {/* Page Header */}
             <PageHeader
@@ -277,38 +283,13 @@ export function WalletPageClient() {
                 >
                     <WalletHero
                         balance={balance}
-                        weeklyChange={weeklyChange}
+                        weeklyChange={0}
                         lowBalanceThreshold={lowBalanceThreshold}
-                        averageWeeklySpend={averageWeeklySpend}
                         onAddMoney={() => setIsAddMoneyOpen(true)}
                         onEnableAutoRecharge={() => setIsAutoRechargeOpen(true)}
                         isAutoRechargeEnabled={isAutoRechargeEnabled}
                     />
                 </motion.div>
-
-                {/* Spending Insights - Future Enhancement */}
-                {/* Will be enabled when backend analytics are ready */}
-                {/* <motion.div 
-                    initial={{ opacity: 0, y: 20 }} 
-                    animate={{ opacity: 1, y: 0 }} 
-                    transition={{ delay: 0.1 }}
-                >
-                    <SpendingInsights
-                        thisWeekSpend={8450}
-                        lastWeekSpend={7200}
-                        categories={[
-                            { name: 'Shipping Costs', amount: 6200, percentage: 73, icon: Truck, color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' },
-                            { name: 'Packaging', amount: 1450, percentage: 17, icon: Package, color: 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400' },
-                            { name: 'Transaction Fees', amount: 800, percentage: 10, icon: CreditCard, color: 'bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400' }
-                        ]}
-                        avgOrderCost={385}
-                        recommendations={[
-                            'Switch to Blue Dart for Mumbai deliveries to save ₹45/order',
-                            'Bulk order packaging materials to save 15% on material costs',
-                            'Enable auto-recharge at ₹10,000 to avoid payment failures'
-                        ]}
-                    />
-                </motion.div> */}
 
                 {/* Transactions Section */}
                 <motion.div

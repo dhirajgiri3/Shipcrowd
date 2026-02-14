@@ -134,6 +134,28 @@ export function CODRemittanceTable() {
                     >
                         Paid
                     </Button>
+                    <Button
+                        onClick={() => handleStatusFilter('settled')}
+                        variant={filters.status === 'settled' ? "primary" : "outline"}
+                        size="sm"
+                        className={filters.status === 'settled'
+                            ? "bg-[var(--primary-blue)] text-white"
+                            : "bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)]"
+                        }
+                    >
+                        Settled
+                    </Button>
+                    <Button
+                        onClick={() => handleStatusFilter('failed')}
+                        variant={filters.status === 'failed' ? "primary" : "outline"}
+                        size="sm"
+                        className={filters.status === 'failed'
+                            ? "bg-[var(--primary-blue)] text-white"
+                            : "bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)]"
+                        }
+                    >
+                        Failed
+                    </Button>
                 </div>
             </CardHeader>
 
@@ -174,7 +196,7 @@ export function CODRemittanceTable() {
                     <tbody className="divide-y divide-[var(--border-subtle)]">
                         {remittances.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="px-6 py-12 text-center">
+                                <td colSpan={9} className="px-6 py-12 text-center">
                                     <Package className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-3" />
                                     <p className="text-sm text-[var(--text-muted)]">No remittances found</p>
                                 </td>
@@ -183,8 +205,7 @@ export function CODRemittanceTable() {
                             remittances.map((remittance) => (
                                 <tr
                                     key={remittance._id}
-                                    className="hover:bg-[var(--bg-tertiary)]/30 cursor-pointer transition-colors"
-                                    onClick={() => { }}
+                                    className="hover:bg-[var(--bg-tertiary)]/30 transition-colors"
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-medium text-[var(--text-primary)]">

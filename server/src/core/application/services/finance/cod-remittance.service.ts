@@ -12,6 +12,31 @@ import { EarlyCODService } from './early-cod.service';
  * Handles batch creation, Razorpay payout integration, and remittance lifecycle
  */
 export class CODRemittanceService {
+    private static readonly PAYOUT_AMOUNT_EPSILON = 0.01;
+
+    private static calculateNextPayoutDate(
+        frequency: 'weekly' | 'bi-weekly' | 'monthly',
+        dayOfWeek?: number,
+        dayOfMonth?: number
+    ): Date {
+        const now = new Date();
+        const next = new Date(now);
+
+        if (frequency === 'monthly') {
+            const targetDay = typeof dayOfMonth === 'number' ? dayOfMonth : 1;
+            next.setMonth(now.getMonth() + 1);
+            next.setDate(targetDay);
+            next.setHours(0, 0, 0, 0);
+            return next;
+        }
+
+        const targetDay = typeof dayOfWeek === 'number' ? dayOfWeek : 1;
+        const daysUntil = (targetDay - now.getDay() + 7) % 7 || 7;
+        next.setDate(now.getDate() + daysUntil + (frequency === 'bi-weekly' ? 7 : 0));
+        next.setHours(0, 0, 0, 0);
+        return next;
+    }
+
     /**
      * Create Early COD Remittance Batch
      * Triggered manually or via cron for enrolled companies
@@ -687,6 +712,7 @@ export class CODRemittanceService {
         companyId: string,
         options: {
             status?: string;
+            search?: string;
             startDate?: Date;
             endDate?: Date;
             page: number;
@@ -701,7 +727,7 @@ export class CODRemittanceService {
             totalPages: number;
         };
     }> {
-        const { status, startDate, endDate, page, limit } = options;
+        const { status, search, startDate, endDate, page, limit } = options;
 
         const filter: Record<string, any> = {
             companyId: new mongoose.Types.ObjectId(companyId),
@@ -710,6 +736,17 @@ export class CODRemittanceService {
 
         if (status) {
             filter.status = status;
+        }
+
+        if (search) {
+            const safeSearch = search.trim();
+            if (safeSearch.length > 0) {
+                filter.$or = [
+                    { remittanceId: { $regex: safeSearch, $options: 'i' } },
+                    { 'settlementDetails.utrNumber': { $regex: safeSearch, $options: 'i' } },
+                    { 'payout.razorpayPayoutId': { $regex: safeSearch, $options: 'i' } },
+                ];
+            }
         }
 
         if (startDate || endDate) {
@@ -1111,9 +1148,45 @@ export class CODRemittanceService {
         companyId: string,
         amount: number,
         userId: string
-    ): Promise<any> {
-        // Create a special batch
-        return this.createRemittanceBatch(companyId, 'on_demand', new Date(), userId);
+    ): Promise<{
+        remittanceId: string;
+        financial: {
+            totalCODCollected: number;
+            netPayable: number;
+            deductionsSummary: Record<string, number>;
+        };
+        shipmentCount: number;
+        requestedAmount: number;
+        availableAmount: number;
+        processedAmount: number;
+        isPartialRequest: boolean;
+    }> {
+        if (!amount || amount <= 0) {
+            throw new ValidationError('Payout amount must be greater than zero', ErrorCode.BIZ_RULE_VIOLATION);
+        }
+
+        const eligible = await this.getEligibleShipments(companyId, new Date());
+        const availableAmount = eligible.summary.netPayable;
+
+        if (availableAmount <= 0) {
+            throw new ValidationError('No COD amount available for payout', ErrorCode.BIZ_INVALID_STATE);
+        }
+
+        if (amount - availableAmount > this.PAYOUT_AMOUNT_EPSILON) {
+            throw new ValidationError(
+                `Requested amount exceeds available payout balance (${availableAmount.toFixed(2)})`,
+                ErrorCode.BIZ_RULE_VIOLATION
+            );
+        }
+
+        const remittance = await this.createRemittanceBatch(companyId, 'on_demand', new Date(), userId);
+        return {
+            ...remittance,
+            requestedAmount: amount,
+            availableAmount,
+            processedAmount: remittance.financial.netPayable,
+            isPartialRequest: Math.abs(amount - availableAmount) > this.PAYOUT_AMOUNT_EPSILON,
+        };
     }
 
     /**
@@ -1274,14 +1347,44 @@ export class CODRemittanceService {
      */
     static async schedulePayout(
         companyId: string,
-        schedule: any
-    ): Promise<any> {
-        // Mock implementation - in prod, save to Company model
+        schedule: {
+            frequency?: 'weekly' | 'bi-weekly' | 'monthly';
+            dayOfWeek?: number;
+            dayOfMonth?: number;
+        }
+    ): Promise<{
+        scheduleId: string;
+        frequency: 'weekly' | 'bi-weekly' | 'monthly';
+        dayOfWeek?: number;
+        dayOfMonth?: number;
+        nextPayoutDate: Date;
+    }> {
+        const frequency = schedule.frequency;
+        if (!frequency || !['weekly', 'bi-weekly', 'monthly'].includes(frequency)) {
+            throw new ValidationError('Invalid payout frequency', ErrorCode.BIZ_RULE_VIOLATION);
+        }
+
+        if (frequency === 'monthly') {
+            if (typeof schedule.dayOfMonth !== 'number' || schedule.dayOfMonth < 1 || schedule.dayOfMonth > 31) {
+                throw new ValidationError('dayOfMonth must be between 1 and 31 for monthly frequency', ErrorCode.BIZ_RULE_VIOLATION);
+            }
+        } else if (typeof schedule.dayOfWeek !== 'number' || schedule.dayOfWeek < 0 || schedule.dayOfWeek > 6) {
+            throw new ValidationError('dayOfWeek must be between 0 and 6 for weekly frequencies', ErrorCode.BIZ_RULE_VIOLATION);
+        }
+
+        const normalized = {
+            frequency,
+            dayOfWeek: frequency === 'monthly' ? undefined : schedule.dayOfWeek,
+            dayOfMonth: frequency === 'monthly' ? schedule.dayOfMonth : undefined,
+        };
+
+        const nextPayoutDate = this.calculateNextPayoutDate(normalized.frequency, normalized.dayOfWeek, normalized.dayOfMonth);
+
         logger.info('Updated payout schedule', { companyId, schedule });
         return {
             scheduleId: 'SCH-' + Date.now(),
-            ...schedule,
-            nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            ...normalized,
+            nextPayoutDate,
         };
     }
 
@@ -1307,14 +1410,14 @@ export class CODRemittanceService {
                     $match: {
                         companyId: new mongoose.Types.ObjectId(companyId),
                         status: 'approved', // Ready for payout
-                        scheduledDate: { $lte: cutoffDate },
+                        'schedule.scheduledDate': { $lte: cutoffDate },
                         isDeleted: false,
                     },
                 },
                 {
                     $group: {
                         _id: null,
-                        totalAmount: { $sum: '$netPayable' },
+                        totalAmount: { $sum: '$financial.netPayable' },
                     },
                 },
             ]);

@@ -41,6 +41,8 @@ type QuoteOptionsApiResponse = {
       eta?: { maxDays?: number };
       sellBreakdown?: CourierRate['sellBreakdown'];
       costBreakdown?: CourierRate['costBreakdown'];
+      performanceMetrics?: CourierRate['performanceMetrics'];
+      recommendationReason?: string;
     }>;
   };
 };

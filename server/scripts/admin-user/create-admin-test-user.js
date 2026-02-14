@@ -61,7 +61,9 @@ async function createAdminTestUser() {
             await db.collection('rto_events').deleteMany({ company: existingUser.companyId });
             await db.collection('weight_disputes').deleteMany({ companyId: existingUser.companyId });
             await db.collection('disputes').deleteMany({ companyId: existingUser.companyId });
+            await db.collection('codremittances').deleteMany({ companyId: existingUser.companyId });
             await db.collection('cod_remittances').deleteMany({ companyId: existingUser.companyId });
+            await db.collection('coddiscrepancies').deleteMany({ companyId: existingUser.companyId });
             await db.collection('inventories').deleteMany({ companyId: existingUser.companyId });
             await db.collection('warehouses').deleteMany({ companyId: existingUser.companyId });
             await db.collection('kycs').deleteMany({ userId: existingUser._id });

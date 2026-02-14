@@ -1,10 +1,7 @@
 /**
  * COD Remittance API Types
- * 
- * Centralized type definitions for COD remittance API responses.
- * Matches backend schemas from:
- * - /server/src/infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model.ts
- * - /server/src/presentation/http/controllers/finance/cod-remittance.controller.ts
+ *
+ * UI-facing types plus backend DTOs used by COD mappers.
  */
 
 // ==================== COD Remittance Types ====================
@@ -21,12 +18,12 @@ export type RemittanceStatus =
 export type PayoutStatus =
     | 'pending'
     | 'processing'
-    | 'processed'
-    | 'reversed'
-    | 'failed';
+    | 'completed'
+    | 'failed'
+    | 'cancelled';
 
 export interface BatchInfo {
-    batchNumber: string;
+    batchNumber: number;
     shipmentsCount: number;
     totalCODCollected: number;
     totalShippingCost: number;
@@ -92,7 +89,7 @@ export interface PayoutInfo {
     utr?: string;
     status: PayoutStatus;
     initiatedAt?: string;
-    processedAt?: string;
+    processedAt?: string; // mapped to completedAt when available
     failureReason?: string;
 }
 
@@ -125,7 +122,7 @@ export interface CODRemittance {
     timeline: Timeline;
     approvedBy?: string;
     approvalNotes?: string;
-    createdBy: string;
+    createdBy?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -221,4 +218,141 @@ export interface SchedulePayoutPayload {
     frequency: 'weekly' | 'bi-weekly' | 'monthly';
     dayOfWeek?: number; // 0-6
     dayOfMonth?: number; // 1-31
+}
+
+// ==================== Backend DTOs (for mappers/hooks) ====================
+
+export interface APIEnvelope<T> {
+    success: boolean;
+    data: T;
+    message?: string;
+    timestamp?: string;
+}
+
+export interface APIPaginatedEnvelope<T> extends APIEnvelope<T[]> {
+    pagination: PaginationMeta;
+}
+
+export interface BackendRemittanceTimelineEntry {
+    status: string;
+    timestamp: string;
+    actor?: string;
+    action?: string;
+    notes?: string;
+}
+
+export interface BackendRemittance {
+    _id: string;
+    companyId: string;
+    remittanceId: string;
+    batch: {
+        batchNumber: number;
+        createdDate: string;
+        cutoffDate: string;
+        shippingPeriod: {
+            start: string;
+            end: string;
+        };
+    };
+    schedule?: {
+        type?: 'scheduled' | 'on_demand' | 'manual';
+        scheduledDate?: string;
+        requestedBy?: string;
+    };
+    shipments: Array<{
+        shipmentId?:
+            | string
+            | {
+                  _id?: string;
+                  awb?: string;
+                  trackingNumber?: string;
+                  orderId?: {
+                      _id?: string;
+                      orderNumber?: string;
+                      productDetails?: {
+                          name: string;
+                          quantity: number;
+                      };
+                      customerDetails?: {
+                          name?: string;
+                          phone?: string;
+                      };
+                  };
+                  actualDelivery?: string;
+                  currentStatus?: string;
+                  courierPartner?: string;
+                  weight?: {
+                      actual: number;
+                      volumetric: number;
+                      charged: number;
+                  };
+              };
+        awb: string;
+        codAmount: number;
+        deliveredAt: string;
+        status: 'delivered' | 'rto' | 'disputed';
+        deductions: ShipmentDeductions;
+        netAmount: number;
+    }>;
+    financial: {
+        totalCODCollected: number;
+        totalShipments: number;
+        successfulDeliveries: number;
+        rtoCount: number;
+        disputedCount: number;
+        deductionsSummary: {
+            totalShippingCharges: number;
+            totalWeightDisputes: number;
+            totalRTOCharges: number;
+            totalInsuranceCharges: number;
+            totalPlatformFees: number;
+            totalOtherFees: number;
+            grandTotal: number;
+        };
+        netPayable: number;
+    };
+    payout?: {
+        status: PayoutStatus;
+        method?: string;
+        razorpayPayoutId?: string;
+        initiatedAt?: string;
+        processedAt?: string;
+        completedAt?: string;
+        failureReason?: string;
+        accountDetails?: {
+            accountNumber: string;
+            ifscCode: string;
+            accountHolderName: string;
+            bankName?: string;
+        };
+    };
+    settlementDetails?: {
+        utrNumber?: string;
+    };
+    status: RemittanceStatus;
+    timeline?: BackendRemittanceTimelineEntry[];
+    approvedBy?: string;
+    approvalNotes?: string;
+    createdAt: string;
+    updatedAt: string;
+    cancelledAt?: string;
+}
+
+export interface BackendEligibleShipmentsResponse {
+    shipments: Array<{
+        shipmentId: string;
+        awb: string;
+        codAmount: number;
+        deliveredAt: string;
+        deductions?: {
+            shippingCharge?: number;
+        };
+        shippingCost?: number;
+    }>;
+    summary: {
+        totalShipments: number;
+        totalCOD: number;
+        totalDeductions: number;
+        netPayable: number;
+    };
 }

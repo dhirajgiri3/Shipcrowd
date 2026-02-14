@@ -175,26 +175,28 @@ export class VelocityWebhookService implements WebhookEventHandler {
             // We use 'cod_amount' or fallback to shipment's expected amount if just confirmation
             const collectedAmount = payload.shipment_data.cod_amount !== undefined
               ? Number(payload.shipment_data.cod_amount)
-              : undefined;
+              : Number(
+                  shipment.paymentDetails.totalCollection ??
+                  shipment.paymentDetails.codAmount ??
+                  0
+                );
 
-            if (collectedAmount !== undefined) {
-              await CODReconciliationService.reconcileDeliveredShipment(
-                String(shipment._id),
-                {
-                  collectedAmount,
-                  collectionMethod: payload.shipment_data.payment_mode || 'cash',
-                  deliveredAt: new Date(payload.shipment_data.delivery_date || Date.now()),
-                  source: 'webhook',
-                  // Map POD details if available
-                  pod: payload.shipment_data.pod_details ? {
-                    photo: payload.shipment_data.pod_details.image_url,
-                    signature: payload.shipment_data.pod_details.signature_url,
-                    customerName: payload.shipment_data.pod_details.receiver_name
-                  } : undefined
-                }
-              );
-              logger.info('Real-time COD reconciliation triggered', { awb });
-            }
+            await CODReconciliationService.reconcileDeliveredShipment(
+              String(shipment._id),
+              {
+                collectedAmount,
+                collectionMethod: payload.shipment_data.payment_mode || 'cash',
+                deliveredAt: new Date(payload.shipment_data.delivery_date || Date.now()),
+                source: 'webhook',
+                // Map POD details if available
+                pod: payload.shipment_data.pod_details ? {
+                  photo: payload.shipment_data.pod_details.image_url,
+                  signature: payload.shipment_data.pod_details.signature_url,
+                  customerName: payload.shipment_data.pod_details.receiver_name
+                } : undefined
+              }
+            );
+            logger.info('Real-time COD reconciliation triggered', { awb, hasCourierCODAmount: payload.shipment_data.cod_amount !== undefined });
           } catch (reconError) {
             logger.error('Failed to trigger real-time reconciliation', {
               awb,

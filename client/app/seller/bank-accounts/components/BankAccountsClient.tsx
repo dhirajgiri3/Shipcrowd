@@ -114,8 +114,7 @@ export function BankAccountsClient() {
         setIfscLookupLoading(true);
         try {
             const response = await kycApi.verifyIFSC(ifsc);
-            // Handle envelope: { data: bankDetails } or { data: { data: bankDetails } }
-            const bankDetails = response?.data?.data ?? response?.data;
+            const bankDetails = response?.data as { bankName?: string; bank_name?: string; bank?: string } | undefined;
             const bankName =
                 (typeof bankDetails === 'object' && bankDetails !== null
                     ? bankDetails.bankName || bankDetails.bank_name || bankDetails.bank

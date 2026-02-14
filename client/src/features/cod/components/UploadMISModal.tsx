@@ -8,14 +8,13 @@ import {
     FileSpreadsheet,
     X,
     Check,
-    AlertCircle,
     Loader2,
     Download
 } from "lucide-react";
 import { Button } from '@/src/components/ui/core/Button';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from "@/src/lib/utils";
-import axios from 'axios';
+import { apiClient } from '@/src/core/api/http';
 
 interface UploadMISModalProps {
     isOpen: boolean;
@@ -65,8 +64,7 @@ export function UploadMISModal({ isOpen, onClose }: UploadMISModalProps) {
         formData.append('provider', provider);
 
         try {
-            // TODO: Replace with proper API client call
-            await axios.post('/api/v1/finance/cod-remittance/upload-mis', formData, {
+            await apiClient.post('/finance/cod-remittance/upload-mis', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -144,7 +142,7 @@ export function UploadMISModal({ isOpen, onClose }: UploadMISModalProps) {
                                     </label>
                                     <select
                                         value={provider}
-                                        onChange={(e) => setProvider(e.target.value as any)}
+                                        onChange={(e) => setProvider(e.target.value as 'velocity' | 'generic')}
                                         className="w-full px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                                     >
                                         <option value="velocity">Velocity / Courier</option>

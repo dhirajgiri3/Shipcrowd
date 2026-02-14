@@ -343,15 +343,15 @@ export const PAYOUT_STATUS_CONFIG: Record<PayoutStatus, StatusConfig> = {
     color: 'pending',
     description: 'Payout being processed',
   },
-  processed: {
-    label: 'Processed',
+  completed: {
+    label: 'Completed',
     color: 'success',
-    description: 'Payout processed successfully',
+    description: 'Payout completed successfully',
   },
-  reversed: {
-    label: 'Reversed',
-    color: 'error',
-    description: 'Payout reversed',
+  cancelled: {
+    label: 'Cancelled',
+    color: 'neutral',
+    description: 'Payout cancelled',
   },
   failed: {
     label: 'Failed',

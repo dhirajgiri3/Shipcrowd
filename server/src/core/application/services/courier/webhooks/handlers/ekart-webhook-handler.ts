@@ -115,7 +115,9 @@ export class EkartWebhookHandler extends BaseWebhookHandler {
                 pickupTime: body.pickupTime,
                 edd: body.edd,
                 ndrStatus: body.ndrStatus,
-                ndrActions: body.ndrActions
+                ndrActions: body.ndrActions,
+                codAmount: body.cod_amount || body.codAmount || body.collected_amount || body.collectedAmount,
+                paymentMode: body.payment_mode || body.paymentMode,
             }
         };
     }

@@ -30,7 +30,6 @@ import {
     FileText,
     Clock,
     CheckCircle2,
-    Search,
     Calendar,
     Truck,
     RefreshCw,
@@ -38,16 +37,18 @@ import {
     ChevronDown,
     Package,
 } from 'lucide-react';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest, ManifestListResponse } from '@/src/types/api/orders';
 
 // ==================== Filter Options ====================
 
-const STATUS_TABS: { value: ManifestStatus | ''; label: string }[] = [
-    { value: '', label: 'All' },
-    { value: 'open', label: 'Open' },
-    { value: 'closed', label: 'Closed' },
-    { value: 'handed_over', label: 'Handed Over' },
-];
+const STATUS_TABS = [
+    { key: '', label: 'All' },
+    { key: 'open', label: 'Open' },
+    { key: 'closed', label: 'Closed' },
+    { key: 'handed_over', label: 'Handed Over' },
+] as const;
 
 const COURIER_OPTIONS: { value: CourierPartner | ''; label: string }[] = [
     { value: '', label: 'All Couriers' },
@@ -87,7 +88,7 @@ export default function ManifestsPage() {
     const manifestsData = data as ManifestListResponse | undefined;
 
     const { data: stats, isLoading: isStatsLoading } = useShipmentManifestStats();
-    const { mutateAsync: downloadPdf } = useDownloadManifestPDF();
+    const { mutateAsync: downloadPdf } = useDownloadManifestPDF({ suppressDefaultErrorHandling: true });
 
     // Handlers
     const handleManifestClick = (manifest: Manifest) => {
@@ -226,36 +227,19 @@ export default function ManifestsPage() {
             <div className="space-y-4">
                 {/* Tabs + Search + Filter row */}
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    {/* Status tabs */}
-                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
-                        {STATUS_TABS.map((tab) => (
-                            <button
-                                key={tab.value || 'all'}
-                                onClick={() => setStatusTab(tab.value)}
-                                className={cn(
-                                    'px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
-                                    statusTab === tab.value
-                                        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
-                                )}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                    <PillTabs
+                        tabs={STATUS_TABS}
+                        activeTab={statusTab}
+                        onTabChange={setStatusTab}
+                    />
 
                     {/* Search + Courier filter */}
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                            <input
-                                type="text"
-                                placeholder="Search by manifest ID..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
-                            />
-                        </div>
+                        <SearchInput
+                            placeholder="Search by manifest ID..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
                         <div className="relative group">
                             <button
                                 type="button"

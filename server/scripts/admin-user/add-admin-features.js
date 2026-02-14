@@ -102,7 +102,7 @@ async function addAdvancedFeatures() {
         console.log('💵 Creating COD remittances...');
         const codRemittances = generateCODRemittances(companyId, shipments);
         if (codRemittances.length > 0) {
-            await db.collection('cod_remittances').insertMany(codRemittances);
+            await db.collection('codremittances').insertMany(codRemittances);
             console.log(`  ✓ Created ${codRemittances.length} COD remittances\n`);
         } else {
             console.log('  ℹ No COD deliveries found\n');

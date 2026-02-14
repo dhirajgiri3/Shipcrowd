@@ -9,6 +9,12 @@ import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import {
+    mapEligibleEnvelope,
+    mapRemittanceEnvelope,
+    mapRemittanceListEnvelope,
+    mapStatsEnvelope,
+} from '@/src/core/api/clients/finance/codMappers';
 import type {
     CODRemittance,
     CODRemittanceResponse,
@@ -18,9 +24,12 @@ import type {
     CreateBatchPayload,
     ApproveRemittancePayload,
     RequestPayoutPayload,
+    SchedulePayoutPayload,
 } from '@/src/types/api/finance';
 
-export function useCODRemittances(filters?: RemittanceFilters, options?: UseQueryOptions<CODRemittanceResponse, ApiError>): UseQueryResult<CODRemittanceResponse, ApiError> {
+type CODQueryOptions<T> = Omit<UseQueryOptions<T, ApiError>, 'queryKey' | 'queryFn'>;
+
+export function useCODRemittances(filters?: RemittanceFilters, options?: CODQueryOptions<CODRemittanceResponse>): UseQueryResult<CODRemittanceResponse, ApiError> {
     const { isInitialized, user } = useAuth();
     const hasCompanyContext = isInitialized && !!user?.companyId;
     const { enabled: optionsEnabled, ...restOptions } = options ?? {};
@@ -28,8 +37,8 @@ export function useCODRemittances(filters?: RemittanceFilters, options?: UseQuer
     return useQuery<CODRemittanceResponse, ApiError>({
         queryKey: queryKeys.cod.remittances(filters),
         queryFn: async () => {
-            const response = await apiClient.get<CODRemittanceResponse>('/finance/cod-remittance', { params: filters });
-            return response.data;
+            const response = await apiClient.get('/finance/cod-remittance', { params: filters });
+            return mapRemittanceListEnvelope(response.data);
         },
         enabled: hasCompanyContext && (optionsEnabled !== false),
         ...CACHE_TIMES.MEDIUM,
@@ -38,12 +47,12 @@ export function useCODRemittances(filters?: RemittanceFilters, options?: UseQuer
     });
 }
 
-export function useCODRemittance(id: string, options?: UseQueryOptions<CODRemittance, ApiError>): UseQueryResult<CODRemittance, ApiError> {
+export function useCODRemittance(id: string, options?: CODQueryOptions<CODRemittance>): UseQueryResult<CODRemittance, ApiError> {
     return useQuery<CODRemittance, ApiError>({
         queryKey: queryKeys.cod.remittance(id),
         queryFn: async () => {
-            const response = await apiClient.get<{ remittance: CODRemittance }>(`/finance/cod-remittance/${id}`);
-            return response.data.remittance;
+            const response = await apiClient.get(`/finance/cod-remittance/${id}`);
+            return mapRemittanceEnvelope(response.data);
         },
         enabled: !!id,
         ...CACHE_TIMES.SHORT,
@@ -52,7 +61,7 @@ export function useCODRemittance(id: string, options?: UseQueryOptions<CODRemitt
     });
 }
 
-export function useCODStats(options?: UseQueryOptions<CODStats, ApiError>): UseQueryResult<CODStats, ApiError> {
+export function useCODStats(options?: CODQueryOptions<CODStats>): UseQueryResult<CODStats, ApiError> {
     const { isInitialized, user } = useAuth();
     const hasCompanyContext = isInitialized && !!user?.companyId;
     const { enabled: optionsEnabled, ...restOptions } = options ?? {};
@@ -60,8 +69,8 @@ export function useCODStats(options?: UseQueryOptions<CODStats, ApiError>): UseQ
     return useQuery<CODStats, ApiError>({
         queryKey: queryKeys.cod.analytics(),
         queryFn: async () => {
-            const response = await apiClient.get<CODStats>('/finance/cod-remittance/dashboard');
-            return response.data;
+            const response = await apiClient.get('/finance/cod-remittance/dashboard');
+            return mapStatsEnvelope(response.data);
         },
         enabled: hasCompanyContext && (optionsEnabled !== false),
         ...CACHE_TIMES.SHORT,
@@ -70,12 +79,12 @@ export function useCODStats(options?: UseQueryOptions<CODStats, ApiError>): UseQ
     });
 }
 
-export function useEligibleCODShipments(cutoffDate?: string, options?: UseQueryOptions<EligibleShipmentsResponse, ApiError>): UseQueryResult<EligibleShipmentsResponse, ApiError> {
+export function useEligibleCODShipments(cutoffDate?: string, options?: CODQueryOptions<EligibleShipmentsResponse>): UseQueryResult<EligibleShipmentsResponse, ApiError> {
     return useQuery<EligibleShipmentsResponse, ApiError>({
         queryKey: queryKeys.cod.eligible(cutoffDate),
         queryFn: async () => {
-            const response = await apiClient.get<EligibleShipmentsResponse>('/finance/cod-remittance/eligible-shipments', { params: { cutoffDate } });
-            return response.data;
+            const response = await apiClient.get('/finance/cod-remittance/eligible-shipments', { params: { cutoffDate } });
+            return mapEligibleEnvelope(response.data);
         },
         enabled: !!cutoffDate,
         ...CACHE_TIMES.SHORT,
@@ -166,6 +175,23 @@ export function useRequestPayout(options?: UseMutationOptions<any, ApiError, Req
             showSuccessToast('Payout request submitted successfully');
         },
         onError: (error) => handleApiError(error, 'Request Payout Failed'),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+export function useSchedulePayout(options?: UseMutationOptions<any, ApiError, SchedulePayoutPayload>): UseMutationResult<any, ApiError, SchedulePayoutPayload> {
+    const queryClient = useQueryClient();
+    return useMutation<any, ApiError, SchedulePayoutPayload>({
+        mutationFn: async (payload: SchedulePayoutPayload) => {
+            const response = await apiClient.post('/finance/cod-remittance/schedule-payout', payload);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.cod.all() });
+            showSuccessToast('Payout schedule updated successfully');
+        },
+        onError: (error) => handleApiError(error, 'Schedule Payout Failed'),
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });

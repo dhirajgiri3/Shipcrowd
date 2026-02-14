@@ -35,6 +35,8 @@ export type { LabelProps } from './core/Label';
 export { Switch } from './core/Switch';
 
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './core/Tabs';
+export { PillTabs } from './core/PillTabs';
+export type { PillTab, PillTabsProps } from './core/PillTabs';
 
 export { Avatar } from './core/Avatar';
 export type { AvatarProps } from './core/Avatar';
@@ -63,6 +65,8 @@ export type { EmptyStateProps, EmptyStateVariant, EmptyStateAction } from './fee
 // DATA COMPONENTS (Display & loading)
 // ============================================
 export { DataTable } from './data/DataTable';
+export { Pagination } from './data/Pagination';
+export type { PaginationProps } from './data/Pagination';
 export { StatusBadge, StatusBadges } from './data/StatusBadge';
 export type { StatusBadgeProps, StatusBadgesProps, StatusDomain } from './data/StatusBadge';
 export {
@@ -85,6 +89,7 @@ export { DateRangePicker } from './form/DateRangePicker';
 export { FormInput } from './form/FormInput';
 export { FormField } from './form/FormField';
 export { PasswordStrengthIndicator } from './form/PasswordStrengthIndicator';
+export { SearchInput } from './form/SearchInput';
 
 // ============================================
 // LAYOUT COMPONENTS (Page structure)
