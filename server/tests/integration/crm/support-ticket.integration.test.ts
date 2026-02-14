@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import SupportTicket from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
 import '@/infrastructure/database/mongoose/models/iam/users/user.model'; // Register User model
-import '@/infrastructure/database/mongoose/models/crm/sales/sales-rep.model'; // Register SalesRep model
+import '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model'; // Register SalesRepresentative model
 import SupportTicketService from '@/core/application/services/crm/support/SupportTicketService';
 import { isSLABreached, getRemainingTime } from '@/core/application/services/crm/support/sla.utils';
 

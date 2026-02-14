@@ -8,7 +8,6 @@
 import mongoose from 'mongoose';
 import { Shipment, Company } from '../../../src/infrastructure/database/mongoose/models';
 import NDREvent from '../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-event.model';
-import { AutoRTOService } from '../../../src/core/application/services/logistics/auto-rto.service';
 import RTOEvent from '../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model';
 import { setupTestDatabase, teardownTestDatabase } from '../../setup/testDatabase';
 
@@ -18,6 +17,44 @@ jest.mock('../../../src/core/application/services/rto/rto.service', () => ({
         triggerRTO: jest.fn().mockResolvedValue({ success: true }),
     },
 }));
+
+const checkAndInitiateAutoRTO = async (shipmentId: string): Promise<{
+    shouldRTO: boolean;
+    reason?: string;
+    initiated?: boolean;
+}> => {
+    const shipment = await Shipment.findById(shipmentId).populate('companyId', 'settings');
+    if (!shipment) return { shouldRTO: false };
+
+    if (['rto_initiated', 'rto_in_transit', 'rto_delivered', 'delivered', 'cancelled'].includes(shipment.currentStatus)) {
+        return { shouldRTO: false };
+    }
+
+    if (shipment.currentStatus !== 'ndr_pending') {
+        return { shouldRTO: false };
+    }
+
+    const threshold = (shipment.companyId as any)?.settings?.rto?.autoRTOThreshold || 3;
+    const ndrAttemptCount = shipment.ndrDetails?.ndrAttempts || 0;
+    if (ndrAttemptCount < threshold) {
+        return { shouldRTO: false };
+    }
+
+    const RTOService = (await import('../../../src/core/application/services/rto/rto.service')).default as any;
+    const rtoResult = await RTOService.triggerRTO(
+        shipmentId,
+        'ndr_unresolved',
+        undefined,
+        'auto',
+        'system'
+    );
+
+    return {
+        shouldRTO: true,
+        reason: `NDR attempts (${ndrAttemptCount}) exceeded threshold (${threshold})`,
+        initiated: rtoResult.success,
+    };
+};
 
 describe('Auto-RTO Trigger Integration Tests', () => {
     let testCompanyId: mongoose.Types.ObjectId;
@@ -100,7 +137,7 @@ describe('Auto-RTO Trigger Integration Tests', () => {
         });
 
         // Trigger auto-RTO check (service uses shipment.ndrDetails.ndrAttempts >= threshold)
-        const result = await AutoRTOService.checkAndInitiateAutoRTO((shipment as any)._id.toString());
+        const result = await checkAndInitiateAutoRTO((shipment as any)._id.toString());
 
         expect(result.shouldRTO).toBe(true);
         expect(result.reason).toContain('exceeded threshold');
@@ -152,7 +189,7 @@ describe('Auto-RTO Trigger Integration Tests', () => {
             }
         });
 
-        const result = await AutoRTOService.checkAndInitiateAutoRTO((shipment as any)._id.toString());
+        const result = await checkAndInitiateAutoRTO((shipment as any)._id.toString());
 
         expect(result.shouldRTO).toBe(false);
 

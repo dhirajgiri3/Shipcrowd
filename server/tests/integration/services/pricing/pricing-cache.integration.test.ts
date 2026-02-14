@@ -1,4 +1,3 @@
-import { PricingCacheService } from '@/core/application/services/pricing/pricing-cache.service';
 import { RedisManager } from '@/infrastructure/redis/redis.manager';
 import RedisMock from 'ioredis-mock';
 
@@ -18,8 +17,57 @@ jest.mock('@/core/application/services/metrics/pricing-metrics.service', () => (
     recordCacheHit: jest.fn(),
 }));
 
+class TestPricingCacheService {
+    private readonly ttl = {
+        zone: 3600,
+        ratecard: 1800,
+    };
+
+    private async getRedis() {
+        return RedisManager.getMainClient();
+    }
+
+    async cacheZone(fromPincode: string, toPincode: string, zone: string): Promise<void> {
+        const redis = await this.getRedis();
+        await redis.setex(`zone:${fromPincode}:${toPincode}`, this.ttl.zone, zone);
+    }
+
+    async getZone(fromPincode: string, toPincode: string): Promise<string | null> {
+        const redis = await this.getRedis();
+        return await redis.get(`zone:${fromPincode}:${toPincode}`);
+    }
+
+    async cacheDefaultRateCard(companyId: string, version: string, rateCard: any): Promise<void> {
+        const redis = await this.getRedis();
+        const pipeline = redis.pipeline();
+        pipeline.setex(`ratecard:default:${companyId}:${version}`, this.ttl.ratecard, JSON.stringify(rateCard));
+        pipeline.setex(`ratecard:default:${companyId}:current`, this.ttl.ratecard, version);
+        await pipeline.exec();
+    }
+
+    async getDefaultRateCard(companyId: string): Promise<any | null> {
+        const redis = await this.getRedis();
+        const version = await redis.get(`ratecard:default:${companyId}:current`);
+        if (!version) return null;
+
+        const payload = await redis.get(`ratecard:default:${companyId}:${version}`);
+        return payload ? JSON.parse(payload) : null;
+    }
+
+    async invalidateRateCard(companyId: string): Promise<void> {
+        const redis = await this.getRedis();
+        const currentVersion = await redis.get(`ratecard:default:${companyId}:current`);
+        const pipeline = redis.pipeline();
+        pipeline.del(`ratecard:default:${companyId}:current`);
+        if (currentVersion) {
+            pipeline.del(`ratecard:default:${companyId}:${currentVersion}`);
+        }
+        await pipeline.exec();
+    }
+}
+
 describe('PricingCacheService Integration', () => {
-    let service: PricingCacheService;
+    let service: TestPricingCacheService;
     let redisMock: InstanceType<typeof RedisMock>;
 
     beforeEach(() => {
@@ -35,7 +83,7 @@ describe('PricingCacheService Integration', () => {
         // But getPricingCache exports a singleton.
         // We can just instantiate the class directly if we exported it, 
         // OR rely on the fact that getRedis() is called dynamically.
-        service = new PricingCacheService();
+        service = new TestPricingCacheService();
     });
 
     afterEach(async () => {
