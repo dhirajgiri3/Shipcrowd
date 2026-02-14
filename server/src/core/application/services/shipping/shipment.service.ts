@@ -16,7 +16,7 @@ import WalletService from '../wallet/wallet.service';
 import WebhookDispatcherService from '../webhooks/webhook-dispatcher.service';
 import skuWeightProfileService from '../sku/sku-weight-profile.service';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
-import { CarrierNormalizationService } from './carrier-normalization.service';
+import CarrierNormalizationService from './carrier-normalization.service';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -129,10 +129,12 @@ import { CarrierNormalizationService } from './carrier-normalization.service';
  */
 export class ShipmentService {
     private static resolveCanonicalCarrier(carrier: string): string {
-        return (
-            CourierProviderRegistry.toCanonical(carrier) ||
-            String(carrier || '').trim().toLowerCase()
-        );
+        const canonical = CourierProviderRegistry.toCanonical(carrier);
+        if (canonical) return canonical;
+        const normalized = String(carrier || '').trim().toLowerCase();
+        // Service types (surface, express, etc.) are NOT courier providers - resolve to velocity
+        if (CarrierNormalizationService.isServiceType(normalized)) return 'velocity';
+        return normalized;
     }
 
     private static resolveProviderLookupKey(carrier: string): string {

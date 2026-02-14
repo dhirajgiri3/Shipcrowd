@@ -29,6 +29,7 @@ interface TicketFilters {
     category?: string;
     assignedTo?: string;
     relatedOrderId?: string;
+    search?: string;
     page?: number;
     limit?: number;
 }
@@ -82,11 +83,34 @@ class SupportTicketService {
             companyId: new Types.ObjectId(filters.companyId)
         };
 
-        if (filters.status) query.status = filters.status;
-        if (filters.priority) query.priority = filters.priority;
-        if (filters.category) query.category = filters.category;
+        // Support comma-separated values for status, priority, category
+        if (filters.status) {
+            query.status = filters.status.includes(',')
+                ? { $in: filters.status.split(',').map(s => s.trim()) }
+                : filters.status;
+        }
+        if (filters.priority) {
+            query.priority = filters.priority.includes(',')
+                ? { $in: filters.priority.split(',').map(s => s.trim()) }
+                : filters.priority;
+        }
+        if (filters.category) {
+            query.category = filters.category.includes(',')
+                ? { $in: filters.category.split(',').map(s => s.trim()) }
+                : filters.category;
+        }
         if (filters.assignedTo) query.assignedTo = new Types.ObjectId(filters.assignedTo);
         if (filters.relatedOrderId) query.relatedOrderId = filters.relatedOrderId;
+
+        // Text search across ticket ID, subject, and description
+        if (filters.search) {
+            const searchRegex = { $regex: filters.search, $options: 'i' };
+            query.$or = [
+                { ticketId: searchRegex },
+                { subject: searchRegex },
+                { description: searchRegex },
+            ];
+        }
 
         const [tickets, total] = await Promise.all([
             SupportTicket.find(query)
@@ -118,7 +142,7 @@ class SupportTicketService {
     /**
      * Get single ticket by ID
      */
-    public async getTicketById(ticketId: string, companyId: string): Promise<ISupportTicket> {
+    public async getTicketById(ticketId: string, companyId: string): Promise<ISupportTicket & { notes?: any[] }> {
         const query: FilterQuery<ISupportTicket> = { companyId: new Types.ObjectId(companyId) };
 
         // Support querying by either _id or ticketId (TKT-XXXXXX)
@@ -130,7 +154,8 @@ class SupportTicketService {
 
         const ticket = await SupportTicket.findOne(query)
             .populate('assignedTo', 'firstName lastName email')
-            .populate('userId', 'firstName lastName email');
+            .populate('userId', 'firstName lastName email')
+            .populate('history.actor', 'firstName lastName email');
 
         if (!ticket) {
             throw new NotFoundError('Support ticket not found');
@@ -143,7 +168,22 @@ class SupportTicketService {
             await ticket.save();
         }
 
-        return ticket;
+        // Transform to include notes array for frontend consumption
+        const ticketObj: any = ticket.toObject();
+        ticketObj.notes = ticketObj.history
+            .filter((h: any) => h.action === 'reply' || h.action === 'internal_note')
+            .map((h: any) => ({
+                id: h._id?.toString(),
+                userId: h.actor?._id?.toString() || h.actor?.toString(),
+                userName: h.actor?.firstName
+                    ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim()
+                    : undefined,
+                message: h.message,
+                type: h.action as 'internal_note' | 'reply',
+                createdAt: h.timestamp?.toISOString() || new Date().toISOString(),
+            }));
+
+        return ticketObj as ISupportTicket & { notes?: any[] };
     }
 
     /**
@@ -201,8 +241,20 @@ class SupportTicketService {
         message: string,
         actorId: string,
         action: 'internal_note' | 'reply' = 'internal_note'
-    ): Promise<ISupportTicket> {
-        const ticket = await this.getTicketById(ticketId, companyId);
+    ): Promise<ISupportTicket & { notes?: any[] }> {
+        const query: FilterQuery<ISupportTicket> = { companyId: new Types.ObjectId(companyId) };
+
+        // Support querying by either _id or ticketId (TKT-XXXXXX)
+        if (Types.ObjectId.isValid(ticketId)) {
+            query._id = new Types.ObjectId(ticketId);
+        } else {
+            query.ticketId = ticketId;
+        }
+
+        const ticket = await SupportTicket.findOne(query);
+        if (!ticket) {
+            throw new NotFoundError('Support ticket not found');
+        }
 
         ticket.history.push({
             action: action,
@@ -213,13 +265,31 @@ class SupportTicketService {
 
         if (action === 'reply') {
             ticket.lastReplyAt = new Date();
-            // If ticket was resolved, reopen it on reply? Or just track last reply?
-            // Usually if customer replies, we might want to ensure it's not closed.
-            // But let's stick to basic logic for now.
         }
 
         await ticket.save();
-        return ticket;
+
+        // Re-fetch with populated actors for response
+        const populated = await SupportTicket.findById(ticket._id)
+            .populate('assignedTo', 'firstName lastName email')
+            .populate('userId', 'firstName lastName email')
+            .populate('history.actor', 'firstName lastName email');
+
+        const result: any = populated!.toObject();
+        result.notes = result.history
+            .filter((h: any) => h.action === 'reply' || h.action === 'internal_note')
+            .map((h: any) => ({
+                id: h._id?.toString(),
+                userId: h.actor?._id?.toString() || h.actor?.toString(),
+                userName: h.actor?.firstName
+                    ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim()
+                    : undefined,
+                message: h.message,
+                type: h.action,
+                createdAt: h.timestamp?.toISOString(),
+            }));
+
+        return result as ISupportTicket & { notes?: any[] };
     }
 
     /**
@@ -230,46 +300,58 @@ class SupportTicketService {
             companyId: new Types.ObjectId(companyId)
         }).lean();
 
-        const metrics = {
-            total: tickets.length,
-            open: 0,
-            breached: 0,
-            breachRate: 0,
-            averageResolutionTime: 0,
-            byPriority: {
-                critical: { total: 0, breached: 0 },
-                high: { total: 0, breached: 0 },
-                medium: { total: 0, breached: 0 },
-                low: { total: 0, breached: 0 }
-            }
+        let openCount = 0;
+        let inProgressCount = 0;
+        let resolvedCount = 0;
+        let breachedCount = 0;
+        let totalResolutionTime = 0;
+
+        const byPriority = {
+            critical: { total: 0, breached: 0 },
+            high: { total: 0, breached: 0 },
+            medium: { total: 0, breached: 0 },
+            low: { total: 0, breached: 0 }
         };
 
-        let totalResolutionTime = 0;
-        let resolvedCount = 0;
-
         tickets.forEach(ticket => {
-            metrics.byPriority[ticket.priority as Priority].total++;
+            // Count by priority
+            byPriority[ticket.priority as Priority].total++;
 
-            if (ticket.status === 'open' || ticket.status === 'in_progress') {
-                metrics.open++;
-            }
+            // Count by status
+            if (ticket.status === 'open') openCount++;
+            if (ticket.status === 'in_progress') inProgressCount++;
+            if (ticket.status === 'resolved' || ticket.status === 'closed') resolvedCount++;
 
+            // Check SLA breach
             const breached = isSLABreached(ticket.priority as Priority, ticket.createdAt, ticket.status);
             if (breached) {
-                metrics.breached++;
-                metrics.byPriority[ticket.priority as Priority].breached++;
+                breachedCount++;
+                byPriority[ticket.priority as Priority].breached++;
             }
 
+            // Calculate resolution time
             if (ticket.resolvedAt && ticket.createdAt) {
                 totalResolutionTime += ticket.resolvedAt.getTime() - ticket.createdAt.getTime();
-                resolvedCount++;
             }
         });
 
-        metrics.breachRate = metrics.total > 0 ? Math.round((metrics.breached / metrics.total) * 100 * 100) / 100 : 0;
-        metrics.averageResolutionTime = resolvedCount > 0 ? Math.round((totalResolutionTime / resolvedCount) / (1000 * 60)) : 0; // in minutes
+        const slaBreachRate = tickets.length > 0
+            ? Math.round((breachedCount / tickets.length) * 100 * 100) / 100
+            : 0;
 
-        return metrics;
+        const avgResolutionTime = resolvedCount > 0
+            ? Math.round((totalResolutionTime / resolvedCount) / (1000 * 60))
+            : 0; // in minutes
+
+        return {
+            totalTickets: tickets.length,
+            openTickets: openCount,
+            inProgressTickets: inProgressCount,
+            resolvedTickets: resolvedCount,
+            avgResolutionTime,
+            slaBreachRate,
+            byPriority
+        };
     }
 }
 

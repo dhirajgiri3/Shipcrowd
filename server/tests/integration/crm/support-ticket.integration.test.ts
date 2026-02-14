@@ -222,7 +222,7 @@ describe('Support Ticket System - Integration Tests', () => {
         'internal_note'
       );
 
-      expect(updated?.history.some(h => h.action === 'internal_note')).toBe(true);
+      expect(updated?.history.some((h: any) => h.action === 'internal_note')).toBe(true);
     });
 
     test('should add reply to ticket', async () => {
@@ -234,7 +234,7 @@ describe('Support Ticket System - Integration Tests', () => {
         'reply'
       );
 
-      expect(updated?.history.some(h => h.action === 'reply')).toBe(true);
+      expect(updated?.history.some((h: any) => h.action === 'reply')).toBe(true);
       expect(updated?.lastReplyAt).toBeDefined();
     });
   });
@@ -299,8 +299,8 @@ describe('Support Ticket System - Integration Tests', () => {
 
       const metrics = await service.getSLAMetrics(testCompanyId.toString());
 
-      expect(metrics.total).toBeGreaterThanOrEqual(2);
-      expect(metrics.open).toBeGreaterThanOrEqual(2);
+      expect(metrics.totalTickets).toBeGreaterThanOrEqual(2);
+      expect(metrics.openTickets).toBeGreaterThanOrEqual(2);
       expect(metrics.byPriority.critical.total).toBeGreaterThanOrEqual(1);
       expect(metrics.byPriority.medium.total).toBeGreaterThanOrEqual(1);
     });

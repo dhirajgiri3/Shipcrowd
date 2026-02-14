@@ -16,7 +16,9 @@ import { ErrorCode } from '@/shared/errors/errorCodes';
 const createTicketSchema = z.object({
     subject: z.string().min(5),
     category: z.enum(['technical', 'billing', 'logistics', 'other']),
-    priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+    priority: z.enum(['low', 'medium', 'high', 'critical', 'urgent'])
+        .transform(val => val === 'urgent' ? 'critical' : val)
+        .default('medium'),
     description: z.string().min(10),
     attachments: z.array(z.string()).optional(),
     relatedOrderId: z.string().optional(),
@@ -78,7 +80,8 @@ export const getTickets = async (req: Request, res: Response, next: NextFunction
             priority: req.query.priority as string,
             category: req.query.category as string,
             assignedTo: req.query.assignedTo as string,
-            relatedOrderId: req.query.relatedOrderId as string
+            relatedOrderId: req.query.relatedOrderId as string,
+            search: req.query.search as string
         });
 
         const pagination = calculatePagination(result.total, page, limit);

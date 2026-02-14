@@ -20,7 +20,8 @@ import {
     Plus,
     ChevronLeft,
     ChevronRight,
-    Loader2
+    Loader2,
+    Paperclip
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from '@/src/lib/utils';
@@ -136,12 +137,6 @@ export function SupportClient() {
                                 )}>
                                     <stat.icon className="w-5 h-5" />
                                 </div>
-                                <span className={cn(
-                                    "text-xs font-bold px-2 py-1 rounded-full",
-                                    "bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
-                                )}>
-                                    +12%
-                                </span>
                             </div>
                             <h3 className="text-2xl font-bold text-[var(--text-primary)]">{isMetricsLoading ? '-' : stat.value}</h3>
                             <p className="text-[var(--text-muted)] text-sm">{stat.title}</p>
@@ -228,7 +223,9 @@ export function SupportClient() {
                             <div className="flex items-start justify-between">
                                 <div className="flex gap-4">
                                     <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center text-[var(--text-secondary)] font-bold group-hover:bg-[var(--primary-blue-soft)] group-hover:text-[var(--primary-blue)] transition-colors">
-                                        {(ticket.assignedTo || ticket.ticketId || '#').substring(0, 2).toUpperCase()}
+                                        {typeof ticket.userId === 'object' && ticket.userId?.firstName
+                                            ? `${ticket.userId.firstName[0]}${(ticket.userId.lastName?.[0] || '')}`.toUpperCase()
+                                            : (ticket.ticketId || '#').substring(0, 2).toUpperCase()}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
@@ -300,7 +297,11 @@ export function SupportClient() {
                                 <h2 className="text-xl font-bold text-[var(--text-primary)]">
                                     {isTicketLoading ? 'Loading...' : `Ticket #${selectedTicket?.ticketId}`}
                                 </h2>
-                                <p className="text-sm text-[var(--text-muted)]">customer@example.com</p>
+                                <p className="text-sm text-[var(--text-muted)]">
+                                    {selectedTicket?.userId && typeof selectedTicket.userId === 'object'
+                                        ? selectedTicket.userId.email
+                                        : 'No email available'}
+                                </p>
                             </div>
                             <Button variant="ghost" size="sm" onClick={() => setSelectedTicketId(null)}>
                                 Close
@@ -358,43 +359,63 @@ export function SupportClient() {
                                         </div>
 
                                         {/* Discussion / Notes */}
-                                        {selectedTicket.notes?.map((note: any) => (
-                                            <div key={note.id || note._id} className={cn(
-                                                "flex gap-4",
-                                                note.type === 'reply' ? "flex-row-reverse" : ""
-                                            )}>
-                                                <div className={cn(
-                                                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                                                    note.type === 'reply' ? "bg-[var(--primary-blue)] text-white" : "bg-[var(--bg-tertiary)]"
-                                                )}>
-                                                    {note.type === 'reply' ? 'ME' : 'ST'}
-                                                </div>
-                                                <div className={cn(
-                                                    "space-y-2 max-w-[80%]",
-                                                    note.type === 'reply' ? "items-end" : "items-start"
-                                                )}>
-                                                    <div className={cn(
-                                                        "flex items-center gap-2",
-                                                        note.type === 'reply' ? "flex-row-reverse" : ""
-                                                    )}>
-                                                        <span className="font-semibold text-[var(--text-primary)]">
-                                                            {note.userName || (note.type === 'reply' ? 'You' : 'Staff')}
-                                                        </span>
-                                                        <span className="text-xs text-[var(--text-muted)]">
-                                                            {format(new Date(note.createdAt), 'MMM d, h:mm a')}
-                                                        </span>
-                                                    </div>
-                                                    <div className={cn(
-                                                        "p-4 rounded-xl text-sm",
-                                                        note.type === 'reply'
-                                                            ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
-                                                            : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
-                                                    )}>
-                                                        <p>{note.message}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                        {(() => {
+                                            // Compute notes from either notes[] or history[]
+                                            const ticketNotes = selectedTicket?.notes ||
+                                                (selectedTicket?.history || [])
+                                                    .filter((h: any) => h.action === 'reply' || h.action === 'internal_note')
+                                                    .map((h: any) => ({
+                                                        id: h._id,
+                                                        userId: typeof h.actor === 'object' ? h.actor?._id : h.actor,
+                                                        userName: typeof h.actor === 'object'
+                                                            ? `${h.actor?.firstName || ''} ${h.actor?.lastName || ''}`.trim() || 'Staff'
+                                                            : 'Staff',
+                                                        message: h.message,
+                                                        type: h.action,
+                                                        createdAt: h.timestamp,
+                                                    }));
+                                            return (
+                                                <>
+                                                    {ticketNotes?.map((note: any) => (
+                                                        <div key={note.id || note._id} className={cn(
+                                                            "flex gap-4",
+                                                            note.type === 'reply' ? "flex-row-reverse" : ""
+                                                        )}>
+                                                            <div className={cn(
+                                                                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
+                                                                note.type === 'reply' ? "bg-[var(--primary-blue)] text-white" : "bg-[var(--bg-tertiary)]"
+                                                            )}>
+                                                                {note.type === 'reply' ? 'ME' : 'ST'}
+                                                            </div>
+                                                            <div className={cn(
+                                                                "space-y-2 max-w-[80%]",
+                                                                note.type === 'reply' ? "items-end" : "items-start"
+                                                            )}>
+                                                                <div className={cn(
+                                                                    "flex items-center gap-2",
+                                                                    note.type === 'reply' ? "flex-row-reverse" : ""
+                                                                )}>
+                                                                    <span className="font-semibold text-[var(--text-primary)]">
+                                                                        {note.userName || (note.type === 'reply' ? 'You' : 'Staff')}
+                                                                    </span>
+                                                                    <span className="text-xs text-[var(--text-muted)]">
+                                                                        {format(new Date(note.createdAt), 'MMM d, h:mm a')}
+                                                                    </span>
+                                                                </div>
+                                                                <div className={cn(
+                                                                    "p-4 rounded-xl text-sm",
+                                                                    note.type === 'reply'
+                                                                        ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
+                                                                        : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                                                                )}>
+                                                                    <p>{note.message}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </>
                             )}
@@ -412,7 +433,7 @@ export function SupportClient() {
                                     />
                                     <div className="absolute bottom-3 right-3 flex gap-2">
                                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                            <PaperclipIcon className="w-4 h-4 text-[var(--text-muted)]" />
+                                            <Paperclip className="w-4 h-4 text-[var(--text-muted)]" />
                                         </Button>
                                     </div>
                                 </div>
@@ -447,22 +468,3 @@ export function SupportClient() {
     );
 }
 
-// Simple Icon component for the textarea
-function PaperclipIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-        </svg>
-    )
-}

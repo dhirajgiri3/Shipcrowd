@@ -29,9 +29,7 @@ export const useSupportTickets = (filters: SupportTicketFilters = {}, options?: 
             if (filters.status && filters.status !== 'all') params.append('status', filters.status);
             if (filters.priority && filters.priority !== 'all') params.append('priority', filters.priority);
             if (filters.category && filters.category !== 'all') params.append('category', filters.category);
-            // Search implementation might depend on backend support, typical is 'q' or 'search'
-            // From controller analysis: supports status, priority, category, assignedTo, relatedOrderId
-            // Doesn't explicitly show 'search' query param in destructuring, but might be added or handled via filters
+            if (filters.search) params.append('search', filters.search);
 
             const { data } = await apiClient.get(`/support/tickets?${params.toString()}`);
             return data.data; // { tickets: [], pagination: {} }

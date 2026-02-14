@@ -3,30 +3,9 @@ import { apiClient, ApiError } from '../../http';
 import { queryKeys, FilterParams } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { SupportTicket, CreateTicketPayload } from '@/src/types/domain/support';
 
 // Types
-export interface SupportTicket {
-    _id: string;
-    ticketId: string;
-    subject: string;
-    category: 'technical' | 'billing' | 'logistics' | 'other';
-    priority: 'low' | 'medium' | 'high' | 'urgent';
-    status: 'open' | 'in_progress' | 'resolved' | 'closed';
-    description: string;
-    attachments: string[];
-    createdAt: string;
-    updatedAt: string;
-    lastReplyAt?: string;
-}
-
-export interface CreateTicketPayload {
-    subject: string;
-    category: string;
-    priority: string;
-    description: string;
-    attachments?: string[];
-}
-
 export interface TicketResponse {
     tickets: SupportTicket[];
     pagination?: {
@@ -91,6 +70,31 @@ export function useCreateSupportTicket(
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['support', 'tickets'] });
             showSuccessToast('Support ticket created successfully');
+        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+export function useAddSupportTicketNote(
+    ticketId: string,
+    options?: UseMutationOptions<SupportTicket, ApiError, { message: string; type: 'reply' }>
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation<SupportTicket, ApiError, { message: string; type: 'reply' }>({
+        mutationFn: async (payload) => {
+            const { data } = await apiClient.post<{ success: boolean; data: SupportTicket }>(
+                `/support/tickets/${ticketId}/notes`,
+                payload
+            );
+            return data.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support', 'ticket', ticketId] });
+            queryClient.invalidateQueries({ queryKey: ['support', 'tickets'] });
+            showSuccessToast('Reply sent successfully');
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

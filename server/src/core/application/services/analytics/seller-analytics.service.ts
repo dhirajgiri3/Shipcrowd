@@ -6,6 +6,7 @@ import NDRAnalyticsService from '../ndr/ndr-analytics.service';
 import { CODAnalyticsService } from '../finance/cod-analytics.service';
 import RTOService from '../rto/rto.service';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
+import CarrierNormalizationService from '../shipping/carrier-normalization.service';
 
 export interface SellerAnalyticsDateRange {
     start: Date;
@@ -45,7 +46,10 @@ const toCarrierId = (value: unknown) => normalizeCarrierKey(value).replace(/\s+/
 const canonicalizeCarrierKey = (value: unknown) => {
     const normalized = normalizeCarrierKey(value);
     const canonical = CourierProviderRegistry.toCanonical(normalized);
-    return canonical || normalized;
+    if (canonical) return canonical;
+    // Resolve service types (surface, express, etc.) to velocity - they are NOT courier providers
+    if (CarrierNormalizationService.isServiceType(normalized)) return 'velocity';
+    return normalized;
 };
 
 const toCarrierLabel = (value: unknown) => {
@@ -496,6 +500,9 @@ export default class SellerAnalyticsService {
         const dateRange = this.resolveDateRange(filters);
         const companyObjectId = new mongoose.Types.ObjectId(companyId);
 
+        const RTO_STATUSES = ['rto', 'rto_delivered', 'rto_initiated', 'rto_in_transit', 'returned', 'return_initiated'];
+        const NDR_STATUSES = ['ndr', 'undelivered', 'delivery_failed'];
+
         const [shipmentsByCourier, codHealth, shipmentPerformance] = await Promise.all([
             Shipment.aggregate([
                 {
@@ -506,14 +513,24 @@ export default class SellerAnalyticsService {
                     },
                 },
                 {
-                    $project: {
+                    $addFields: {
                         carrierKey: {
-                            $toLower: {
-                                $trim: {
-                                    input: { $ifNull: ['$carrier', 'unknown'] },
+                            $cond: {
+                                if: {
+                                    $in: [
+                                        { $toLower: { $trim: { $ifNull: ['$carrier', ''] } } },
+                                        ['surface', 'express', 'air', 'standard', 'economy', 'ground', 'road'],
+                                    ],
                                 },
+                                then: 'velocity',
+                                else: { $toLower: { $trim: { $ifNull: ['$carrier', 'unknown'] } } },
                             },
                         },
+                    },
+                },
+                {
+                    $project: {
+                        carrierKey: 1,
                         currentStatus: 1,
                         paymentDetails: 1,
                         actualDelivery: 1,
@@ -526,15 +543,28 @@ export default class SellerAnalyticsService {
                         _id: '$carrierKey',
                         totalShipments: { $sum: 1 },
                         delivered: { $sum: { $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0] } },
-                        rto: { $sum: { $cond: [{ $eq: ['$currentStatus', 'rto'] }, 1, 0] } },
-                        ndr: { $sum: { $cond: [{ $eq: ['$currentStatus', 'ndr'] }, 1, 0] } },
+                        rto: {
+                            $sum: {
+                                $cond: [{ $in: ['$currentStatus', RTO_STATUSES] }, 1, 0],
+                            },
+                        },
+                        ndr: {
+                            $sum: {
+                                $cond: [{ $in: ['$currentStatus', NDR_STATUSES] }, 1, 0],
+                            },
+                        },
                         damaged: { $sum: { $cond: [{ $eq: ['$currentStatus', 'damaged'] }, 1, 0] } },
                         lost: { $sum: { $cond: [{ $eq: ['$currentStatus', 'lost'] }, 1, 0] } },
                         totalCost: {
                             $sum: {
                                 $add: [
                                     { $ifNull: ['$paymentDetails.shippingCost', 0] },
-                                    { $ifNull: ['$paymentDetails.codCharges', 0] },
+                                    {
+                                        $ifNull: [
+                                            '$paymentDetails.codCharges',
+                                            { $ifNull: ['$pricingDetails.codCharge', 0] },
+                                        ],
+                                    },
                                 ],
                             },
                         },
@@ -545,6 +575,7 @@ export default class SellerAnalyticsService {
                                         $and: [
                                             { $eq: ['$currentStatus', 'delivered'] },
                                             { $ne: ['$actualDelivery', null] },
+                                            { $gt: ['$actualDelivery', '$createdAt'] },
                                         ],
                                     },
                                     { $divide: [{ $subtract: ['$actualDelivery', '$createdAt'] }, 1000 * 60 * 60] },
@@ -639,9 +670,10 @@ export default class SellerAnalyticsService {
             const deliveryRate = totalShipments > 0 ? (item.delivered / totalShipments) * 100 : 0;
             const rtoRate = totalShipments > 0 ? (item.rto / totalShipments) * 100 : 0;
             const ndrRate = totalShipments > 0 ? (item.ndr / totalShipments) * 100 : 0;
-            const avgDeliveryTime = item.deliveredWithTime > 0
+            const rawAvgHours = item.deliveredWithTime > 0
                 ? item.totalDeliveryHours / item.deliveredWithTime
                 : (performanceMap.get(key)?.avgDeliveryDays || 0) * 24;
+            const avgDeliveryTime = Math.max(0, rawAvgHours);
             const onTimeDelivery = item.delivered > 0 ? (item.onTimeDelivered / item.delivered) * 100 : 0;
             const avgCost = totalShipments > 0 ? item.totalCost / totalShipments : 0;
 

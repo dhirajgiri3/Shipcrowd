@@ -11,20 +11,27 @@ export interface SupportTicket {
     _id: string; // MongoDB ID from controller
     ticketId: string; // Display ID e.g. TKT-001
     companyId: string;
-    userId: string;
+    userId: string | { _id: string; firstName: string; lastName: string; email: string };
     subject: string;
     category: 'technical' | 'billing' | 'logistics' | 'other';
     priority: 'low' | 'medium' | 'high' | 'critical';
     status: 'open' | 'in_progress' | 'resolved' | 'closed';
     description: string;
     attachments?: string[];
-    assignedTo?: string;
+    assignedTo?: string | { _id: string; firstName: string; lastName: string; email: string };
     relatedOrderId?: string;
     relatedNDREventId?: string;
     slaBreached?: boolean;
+    remainingTime?: number | null;
     createdAt: string;
     updatedAt: string;
     notes?: TicketNote[];
+    history?: Array<{
+        action: string;
+        actor?: any;
+        message?: string;
+        timestamp: string;
+    }>;
 }
 
 export interface SupportTicketFilters {
