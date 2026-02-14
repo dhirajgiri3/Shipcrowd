@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticate } from '../../../middleware';
 import { requireAccess } from '../../../middleware/auth/unified-access';
+import { csrfProtection } from '../../../middleware/auth/csrf';
 import * as walletController from '../../../controllers/finance/wallet.controller';
 
 const router = express.Router();
@@ -24,10 +25,10 @@ router.get('/cash-flow-forecast', walletController.getCashFlowForecast);
 router.get('/transactions', walletController.getTransactionHistory);
 
 // Initialize recharge order
-router.post('/recharge/init', walletController.initRecharge);
+router.post('/recharge/init', csrfProtection, walletController.initRecharge);
 
 // Recharge wallet
-router.post('/recharge', walletController.rechargeWallet);
+router.post('/recharge', csrfProtection, walletController.rechargeWallet);
 
 // Get wallet statistics
 router.get('/stats', walletController.getWalletStats);
@@ -39,15 +40,16 @@ router.get('/insights', walletController.getSpendingInsights);
 router.get('/trends', walletController.getWalletTrends);
 
 // Update low balance threshold
-router.put('/threshold', walletController.updateLowBalanceThreshold);
+router.put('/threshold', csrfProtection, walletController.updateLowBalanceThreshold);
 
 // Auto-recharge settings
 router.get('/auto-recharge/settings', walletController.getAutoRechargeSettings);
-router.put('/auto-recharge/settings', walletController.updateAutoRechargeSettings);
+router.put('/auto-recharge/settings', csrfProtection, walletController.updateAutoRechargeSettings);
 
 // Refund transaction (admin action)
 router.post(
     '/refund/:transactionId',
+    csrfProtection,
     requireAccess({ roles: ['admin'] }),
     walletController.refundTransaction
 );

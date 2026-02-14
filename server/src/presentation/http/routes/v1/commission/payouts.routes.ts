@@ -17,7 +17,6 @@ router.post('/webhook', verifyRazorpayWebhook('commission'), PayoutController.ha
 router.use(authenticate);
 
 // All payout routes require KYC verification
-// All payout routes require KYC verification
 router.use(requireAccess({ kyc: true }));
 
 // Admin/manager only routes

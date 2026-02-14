@@ -139,14 +139,12 @@ export const csrfProtection = async (
         const csrfToken = req.headers['x-csrf-token'] as string;
         const sessionId = (req as any).session?.id || (req as any).user?._id;
 
-        // 🔍 DEBUG: Let's see what's actually in req.user
-        logger.info('CSRF Debug:', {
+        // Keep CSRF debug logs minimal to avoid leaking user payloads.
+        logger.debug('CSRF Debug', {
             hasSession: !!(req as any).session,
-            sessionId: (req as any).session?.id,
             hasUser: !!(req as any).user,
-            userId: (req as any).user?._id,
-            userFull: JSON.stringify((req as any).user),
-            finalSessionId: sessionId,
+            userId: (req as any).user?._id ? String((req as any).user._id).slice(0, 8) : undefined,
+            hasSessionId: !!sessionId,
         });
 
         // Session is required for CSRF validation

@@ -81,6 +81,7 @@ import earlyCodRoutes from './finance/early-cod.routes';
 import reconciliationRoutes from './finance/reconciliation.routes';
 import bankAccountRoutes from './identity/bank-account.routes';
 import promoCodeRoutes from './marketing/promo-code.routes';
+import commissionRoutes from './commission';
 
 // ============================================================================
 // 7. CRM & SUPPORT
@@ -210,6 +211,7 @@ router.use('/finance/reconciliation', reconciliationRoutes);
 router.use('/finance', reconciliationRoutes); // Alias: /finance/carrier-billing/import and /finance/pricing-variance-cases
 router.use('/seller/bank-accounts', bankAccountRoutes);
 router.use('/promos', promoCodeRoutes);
+router.use('/commission', commissionRoutes);
 
 // 7. CRM
 router.use('/crm/leads', leadRoutes);

@@ -29,22 +29,25 @@ export const handlePaymentWebhook = async (req: Request, res: Response): Promise
         const { companyId, purpose, type, idempotencyKey } = notes;
         const paymentPurpose = purpose || type;
 
-        // 1. Validate if this is an auto-recharge payment
-        if (paymentPurpose !== 'auto-recharge' || !companyId) {
-            logger.info('Razorpay webhook: Ignoring non-auto-recharge payment', { paymentId: payment.id });
+        if (paymentPurpose !== 'auto-recharge' && paymentPurpose !== 'wallet_recharge') {
+            logger.info('Razorpay webhook: Ignoring unsupported payment purpose', {
+                paymentId: payment.id,
+                paymentPurpose,
+            });
             res.status(200).json({ status: 'ignored' });
             return;
         }
 
-        logger.info('Razorpay webhook: Processing auto-recharge payment', {
+        logger.info('Razorpay webhook: Processing payment capture', {
             paymentId: payment.id,
+            paymentPurpose,
             companyId,
             amount: payment.amount,
             status: payment.status
         });
 
-        // 2. Acquire Lock to prevent race condition with synchronous response or other webhooks
-        const lockKey = `auto-recharge:webhook:${payment.id}`;
+        const lockScope = paymentPurpose === 'auto-recharge' ? 'auto-recharge' : 'wallet-recharge';
+        const lockKey = `${lockScope}:webhook:${payment.id}`;
         const hasLock = await redisLockService.acquireLock(lockKey, 30000); // 30s lock
 
         if (!hasLock) {
@@ -54,6 +57,42 @@ export const handlePaymentWebhook = async (req: Request, res: Response): Promise
         }
 
         try {
+            if (paymentPurpose === 'wallet_recharge') {
+                const rechargeResult = await walletService.processCapturedRechargeWebhook(payment.id);
+
+                if (rechargeResult.ignored) {
+                    logger.info('Razorpay webhook: Wallet recharge ignored after verification', {
+                        paymentId: payment.id,
+                        reason: rechargeResult.error,
+                    });
+                    res.status(200).json({ status: 'ignored' });
+                    return;
+                }
+
+                if (!rechargeResult.success) {
+                    logger.error('Razorpay webhook: Wallet recharge credit failed', {
+                        paymentId: payment.id,
+                        companyId: rechargeResult.companyId,
+                        error: rechargeResult.error,
+                    });
+                    throw new Error(rechargeResult.error || 'Wallet recharge credit failed');
+                }
+
+                logger.info('Razorpay webhook: Wallet recharge credited successfully', {
+                    paymentId: payment.id,
+                    companyId: rechargeResult.companyId,
+                    transactionId: rechargeResult.transactionId,
+                });
+                res.status(200).json({ success: true });
+                return;
+            }
+
+            if (!companyId) {
+                logger.info('Razorpay webhook: Missing companyId for auto-recharge payment', { paymentId: payment.id });
+                res.status(200).json({ status: 'ignored' });
+                return;
+            }
+
             // 3. Check idempotency / if already processed
             // Check if log exists and is already success
             const existingLog = await AutoRechargeLog.findOne({

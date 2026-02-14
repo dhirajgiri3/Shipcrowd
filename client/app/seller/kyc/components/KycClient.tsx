@@ -28,9 +28,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { kycApi } from "@/src/core/api";
-import type { DocumentVerificationState } from "@/src/core/api";
+import type { DocumentVerificationState, KYCData, KycSnapshot, VerifiedKycData } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
 import { getDefaultRedirectForUser } from '@/src/config/redirect';
+import { KycVerifiedHero } from '@/src/features/kyc/components';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/lib/utils';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
@@ -93,7 +94,12 @@ export function KycClient() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [existingKYC, setExistingKYC] = useState<any>(null); // TODO: replace with proper KYC types
+    const [existingKYC, setExistingKYC] = useState<KYCData | null>(null);
+    const [kycResponse, setKycResponse] = useState<{
+        kyc: KYCData;
+        snapshot?: KycSnapshot;
+        verifiedData?: VerifiedKycData;
+    } | null>(null);
     const submissionRef = useRef<AbortController | null>(null);
     const verificationQueueRef = useRef<Promise<unknown> | null>(null);
 
@@ -127,6 +133,11 @@ export function KycClient() {
                 const response = await kycApi.getKYC();
                 if (response.kyc) {
                     setExistingKYC(response.kyc);
+                    setKycResponse({
+                        kyc: response.kyc,
+                        snapshot: response.snapshot,
+                        verifiedData: response.verifiedData,
+                    });
                     const snapshot = response.snapshot;
                     const restored = response.verifiedData;
 
@@ -671,44 +682,26 @@ export function KycClient() {
         );
     }
 
-    // Already verified
+    // Already verified - render KycVerifiedHero with full response data
     if (existingKYC?.status === 'verified' || existingKYC?.state === 'verified') {
-        return (
-            <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
-                <PageHeader
-                    title="KYC Verification"
-                    breadcrumbs={[
-                        { label: 'Dashboard', href: '/seller/dashboard' },
-                        { label: 'KYC', active: true },
-                    ]}
-                    description="Your identity verification status"
-                    showBack={false}
+        if (kycResponse?.kyc) {
+            return (
+                <KycVerifiedHero
+                    kyc={kycResponse.kyc}
+                    snapshot={kycResponse.snapshot}
+                    verifiedData={kycResponse.verifiedData}
+                    user={user}
                 />
-                <div className="flex items-center justify-center min-h-[50vh]">
-                    <Card className="max-w-md w-full">
-                        <CardContent className="p-10 text-center flex flex-col items-center">
-                            <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                                className="w-20 h-20 bg-[var(--success-bg)] rounded-full flex items-center justify-center mb-6 border-2 border-[var(--success)]/20"
-                            >
-                                <CheckCircle2 className="w-10 h-10 text-[var(--success)]" />
-                            </motion.div>
-                            <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">KYC Verified</h2>
-                            <p className="text-[var(--text-secondary)] mb-8 leading-relaxed text-sm">
-                                Your account is fully verified. You can now access all features and start shipping.
-                            </p>
-                            <Button
-                                onClick={() => router.push(getDefaultRedirectForUser(user) || '/seller')}
-                                className="w-full"
-                            >
-                                Go to Dashboard
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+            );
+        }
+        // Fallback if kycResponse not yet populated (e.g. race condition)
+        return (
+            <KycVerifiedHero
+                kyc={existingKYC}
+                snapshot={undefined}
+                verifiedData={undefined}
+                user={user}
+            />
         );
     }
 

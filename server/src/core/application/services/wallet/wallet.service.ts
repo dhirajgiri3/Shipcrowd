@@ -538,10 +538,6 @@ export default class WalletService {
     }
 
     /**
-     * Handle wallet recharge with payment verification
-     * ✅ P0 FIX: Verify payment before crediting wallet
-     */
-    /**
      * Process auto-recharge for a company
      * Handles 9 critical edge cases including race conditions, payment failures, and limits
      */
@@ -551,7 +547,7 @@ export default class WalletService {
         paymentMethodId: string,
         attempt: number = 0,
         operationId?: string
-    ): Promise<{ success: boolean; error?: string; transactionId?: string }> {
+    ): Promise<{ success: boolean; pending?: boolean; error?: string; transactionId?: string }> {
         const MAX_TRANSIENT_RETRIES = 2;
         const lockKey = `auto-recharge:lock:${companyId}`;
         let lockAcquired = false;
@@ -639,11 +635,11 @@ export default class WalletService {
                             status: order.status
                         });
 
-                        // Release lock and return - Webhook will handle credit upon capture
-                        // For verification purposes, we might want to continue if it's a test
+                        // Return pending in real environments; webhook will credit on capture.
                         if (process.env.NODE_ENV !== 'test' && !process.env.MOCK_PAYMENTS) {
                             return {
-                                success: true,
+                                success: false,
+                                pending: true,
                                 transactionId: order.id,
                                 error: 'Payment initiated. Wallet will be credited upon completion.'
                             };
@@ -1018,6 +1014,95 @@ export default class WalletService {
         };
     }
 
+    private static async applyRechargeCredit(
+        companyId: string,
+        paymentId: string,
+        verifiedAmount: number,
+        promoCreditAmount: number,
+        promoCode: string | undefined,
+        createdBy: string
+    ): Promise<TransactionResult> {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const baseResult = await this.credit(
+                companyId,
+                verifiedAmount,
+                'recharge',
+                `Wallet recharge via payment ${paymentId}`,
+                {
+                    type: 'payment',
+                    externalId: paymentId,
+                },
+                createdBy,
+                session,
+                `wallet-recharge:${paymentId}`
+            );
+
+            if (!baseResult.success) {
+                throw new AppError(baseResult.error || 'Recharge failed', ErrorCode.BIZ_WALLET_TRANSACTION_FAILED);
+            }
+
+            if (promoCode && promoCreditAmount > 0) {
+                const promoIdempotencyKey = `wallet-recharge-promo:${paymentId}`;
+                const existingPromoTx = await WalletTransaction.findOne({
+                    company: companyId,
+                    'metadata.idempotencyKey': promoIdempotencyKey,
+                }).session(session);
+
+                if (!existingPromoTx) {
+                    const promoCreditResult = await this.credit(
+                        companyId,
+                        promoCreditAmount,
+                        'promotional_credit',
+                        `Promo bonus credit via code ${promoCode}`,
+                        {
+                            type: 'payment',
+                            externalId: paymentId,
+                        },
+                        createdBy,
+                        session,
+                        promoIdempotencyKey
+                    );
+
+                    if (!promoCreditResult.success) {
+                        throw new AppError(
+                            promoCreditResult.error || 'Promo credit failed',
+                            ErrorCode.BIZ_WALLET_TRANSACTION_FAILED
+                        );
+                    }
+
+                    await PromoCodeService.applyPromo(promoCode, session);
+                }
+            }
+
+            await session.commitTransaction();
+            const finalBalance = await this.getBalance(companyId);
+            return {
+                success: true,
+                transactionId: baseResult.transactionId,
+                newBalance: finalBalance.balance,
+                rechargeAmount: verifiedAmount,
+                promoCredit: promoCreditAmount,
+                totalWalletCredit: verifiedAmount + promoCreditAmount,
+                appliedPromoCode: promoCode,
+            };
+        } catch (error: any) {
+            await session.abortTransaction();
+            logger.error('Failed to complete wallet recharge credit', {
+                companyId,
+                paymentId,
+                error: error.message,
+            });
+            return {
+                success: false,
+                error: error.message || 'Recharge credit failed',
+            };
+        } finally {
+            await session.endSession();
+        }
+    }
+
     /**
      * Verify payment status with Razorpay
      * Resolves SECURITY HOLE where arbitrary payment IDs could be used
@@ -1187,85 +1272,107 @@ export default class WalletService {
             };
         }
 
-        // Credit recharge (+ optional promo credit) atomically
-        const session = await mongoose.startSession();
-        session.startTransaction();
+        return this.applyRechargeCredit(
+            companyId,
+            paymentId,
+            verifiedAmount,
+            promoCreditAmount,
+            promoCode,
+            createdBy
+        );
+    }
+
+    static async processCapturedRechargeWebhook(paymentId: string): Promise<TransactionResult & {
+        ignored?: boolean;
+        paymentPurpose?: string;
+        companyId?: string;
+    }> {
+        const keyId = process.env.RAZORPAY_KEY_ID || '';
+        const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+        if (!keyId || !keySecret) {
+            return {
+                success: false,
+                error: 'Razorpay configuration missing',
+            };
+        }
+
         try {
-            const baseResult = await this.credit(
-                companyId,
-                verifiedAmount,
-                'recharge',
-                `Wallet recharge via payment ${paymentId}`,
-                {
-                    type: 'payment',
-                    externalId: paymentId,
-                },
-                createdBy,
-                session,
-                `wallet-recharge:${paymentId}`
+            const Razorpay = (await import('razorpay')).default;
+            const razorpay = new Razorpay({
+                key_id: keyId,
+                key_secret: keySecret,
+            });
+
+            const payment = await razorpay.payments.fetch(paymentId);
+            const paymentNotes = (payment.notes as Record<string, string> | undefined) || {};
+            const paymentPurpose = paymentNotes.purpose || paymentNotes.type;
+            const paymentCompanyId = paymentNotes.companyId;
+
+            if (paymentPurpose !== 'wallet_recharge') {
+                return {
+                    success: false,
+                    ignored: true,
+                    paymentPurpose,
+                    error: 'Not a wallet recharge payment',
+                };
+            }
+
+            if (!paymentCompanyId) {
+                return {
+                    success: false,
+                    paymentPurpose,
+                    error: 'Payment company is missing',
+                };
+            }
+
+            if (payment.currency !== 'INR') {
+                return {
+                    success: false,
+                    paymentPurpose,
+                    companyId: paymentCompanyId,
+                    error: `Unsupported payment currency: ${payment.currency}`,
+                };
+            }
+
+            if (payment.status !== 'captured') {
+                return {
+                    success: false,
+                    paymentPurpose,
+                    companyId: paymentCompanyId,
+                    error: `Payment not captured. Status: ${payment.status}`,
+                };
+            }
+
+            const paidAmount = Number(payment.amount) / 100;
+            const promoCode = paymentNotes.promoCode || undefined;
+            let promoCreditAmount = Number(paymentNotes.promoCreditAmount || 0);
+            if (!Number.isFinite(promoCreditAmount) || promoCreditAmount < 0) {
+                promoCreditAmount = 0;
+            }
+
+            const result = await this.applyRechargeCredit(
+                paymentCompanyId,
+                paymentId,
+                paidAmount,
+                promoCreditAmount,
+                promoCode,
+                'system'
             );
 
-            if (!baseResult.success) {
-                throw new AppError(baseResult.error || 'Recharge failed', ErrorCode.BIZ_WALLET_TRANSACTION_FAILED);
-            }
-
-            if (promoCode && promoCreditAmount > 0) {
-                const promoIdempotencyKey = `wallet-recharge-promo:${paymentId}`;
-                const existingPromoTx = await WalletTransaction.findOne({
-                    company: companyId,
-                    'metadata.idempotencyKey': promoIdempotencyKey,
-                }).session(session);
-
-                if (!existingPromoTx) {
-                    const promoCreditResult = await this.credit(
-                        companyId,
-                        promoCreditAmount,
-                        'promotional_credit',
-                        `Promo bonus credit via code ${promoCode}`,
-                        {
-                            type: 'payment',
-                            externalId: paymentId,
-                        },
-                        createdBy,
-                        session,
-                        promoIdempotencyKey
-                    );
-
-                    if (!promoCreditResult.success) {
-                        throw new AppError(
-                            promoCreditResult.error || 'Promo credit failed',
-                            ErrorCode.BIZ_WALLET_TRANSACTION_FAILED
-                        );
-                    }
-
-                    await PromoCodeService.applyPromo(promoCode, session);
-                }
-            }
-
-            await session.commitTransaction();
-            const finalBalance = await this.getBalance(companyId);
             return {
-                success: true,
-                transactionId: baseResult.transactionId,
-                newBalance: finalBalance.balance,
-                rechargeAmount: verifiedAmount,
-                promoCredit: promoCreditAmount,
-                totalWalletCredit: verifiedAmount + promoCreditAmount,
-                appliedPromoCode: promoCode,
+                ...result,
+                paymentPurpose,
+                companyId: paymentCompanyId,
             };
         } catch (error: any) {
-            await session.abortTransaction();
-            logger.error('Failed to complete wallet recharge credit', {
-                companyId,
+            logger.error('Recharge webhook payment verification failed', {
                 paymentId,
                 error: error.message,
             });
             return {
                 success: false,
-                error: error.message || 'Recharge credit failed',
+                error: `Payment verification failed: ${error.message}`,
             };
-        } finally {
-            await session.endSession();
         }
     }
 

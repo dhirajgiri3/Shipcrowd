@@ -12,7 +12,7 @@ import { isWalletAutoRechargeFeatureEnabled } from '../../core/application/servi
  */
 export const autoRechargeWorker = async () => {
     const startTime = Date.now();
-    let processed = 0, succeeded = 0, failed = 0;
+    let processed = 0, succeeded = 0, failed = 0, pending = 0;
 
     const featureEnabled = await isWalletAutoRechargeFeatureEnabled({
         environment: (process.env.NODE_ENV as any) || 'development',
@@ -106,47 +106,56 @@ export const autoRechargeWorker = async () => {
                             autoRechargeMetrics.recordSuccess(company._id.toString(), autoRecharge.amount);
 
                             return { success: true };
-                        } else {
-                            logger.warn(`Auto - recharge FAILED for ${company.name}`, { companyId: company._id, error: result.error });
-
-                            // Record failure
-                            autoRechargeMetrics.recordFailure(company._id.toString(), result.error);
-
-                            // Calculate current retry count
-                            const currentRetryCount = company.wallet?.autoRecharge?.lastFailure?.retryCount || 0;
-
-                            // Implement exponential backoff: 1h -> 3h -> 6h -> 12h
-                            const backoffHours = [1, 3, 6, 12];
-                            const newRetryCount = currentRetryCount + 1;
-                            const backoffIndex = Math.min(currentRetryCount, backoffHours.length - 1);
-                            const retryDelay = backoffHours[backoffIndex] * 3600000; // Convert to ms
-                            const nextRetryAt = new Date(Date.now() + retryDelay);
-
-                            // Auto-disable after 4 consecutive failures
-                            const shouldDisable = newRetryCount >= 4;
-
-                            if (shouldDisable) {
-                                logger.warn(`Auto - recharge auto - disabled after ${newRetryCount} failures`, {
-                                    companyId: company._id,
-                                    companyName: company.name
-                                });
-                            }
-
-                            // Update failure metadata
-                            await Company.updateOne({ _id: company._id }, {
-                                $set: {
-                                    'wallet.autoRecharge.enabled': !shouldDisable, // Disable if max retries reached
-                                    'wallet.autoRecharge.lastFailure': {
-                                        timestamp: new Date(),
-                                        reason: result.error,
-                                        retryCount: newRetryCount,
-                                        nextRetryAt: shouldDisable ? undefined : nextRetryAt
-                                    }
-                                }
-                            });
-
-                            return { success: false, error: result.error };
                         }
+
+                        if (result.pending) {
+                            logger.info(`Auto - recharge PENDING for ${company.name}`, {
+                                companyId: company._id,
+                                reference: result.transactionId,
+                                message: result.error,
+                            });
+                            return { success: false, pending: true };
+                        }
+
+                        logger.warn(`Auto - recharge FAILED for ${company.name}`, { companyId: company._id, error: result.error });
+
+                        // Record failure
+                        autoRechargeMetrics.recordFailure(company._id.toString(), result.error);
+
+                        // Calculate current retry count
+                        const currentRetryCount = company.wallet?.autoRecharge?.lastFailure?.retryCount || 0;
+
+                        // Implement exponential backoff: 1h -> 3h -> 6h -> 12h
+                        const backoffHours = [1, 3, 6, 12];
+                        const newRetryCount = currentRetryCount + 1;
+                        const backoffIndex = Math.min(currentRetryCount, backoffHours.length - 1);
+                        const retryDelay = backoffHours[backoffIndex] * 3600000; // Convert to ms
+                        const nextRetryAt = new Date(Date.now() + retryDelay);
+
+                        // Auto-disable after 4 consecutive failures
+                        const shouldDisable = newRetryCount >= 4;
+
+                        if (shouldDisable) {
+                            logger.warn(`Auto - recharge auto - disabled after ${newRetryCount} failures`, {
+                                companyId: company._id,
+                                companyName: company.name
+                            });
+                        }
+
+                        // Update failure metadata
+                        await Company.updateOne({ _id: company._id }, {
+                            $set: {
+                                'wallet.autoRecharge.enabled': !shouldDisable, // Disable if max retries reached
+                                'wallet.autoRecharge.lastFailure': {
+                                    timestamp: new Date(),
+                                    reason: result.error,
+                                    retryCount: newRetryCount,
+                                    nextRetryAt: shouldDisable ? undefined : nextRetryAt
+                                }
+                            }
+                        });
+
+                        return { success: false, error: result.error };
                     } catch (err: any) {
                         logger.error(`Critical error processing company ${company._id} `, err);
                         return { success: false, error: err.message };
@@ -157,7 +166,8 @@ export const autoRechargeWorker = async () => {
 
             processed += companies.length;
             succeeded += results.filter(r => r.success).length;
-            failed += results.filter(r => !r.success).length;
+            pending += results.filter((r: any) => r.pending).length;
+            failed += results.filter((r: any) => !r.success && !r.pending).length;
 
             page++;
         }
@@ -166,6 +176,7 @@ export const autoRechargeWorker = async () => {
         logger.info('Auto-Recharge Worker Completed', {
             processed,
             succeeded,
+            pending,
             failed,
             duration: `${duration} ms`
         });

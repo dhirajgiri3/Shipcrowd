@@ -1,5 +1,21 @@
 import type { NextConfig } from "next";
 
+const resolveApiOrigin = (): string => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return '';
+
+  try {
+    return new URL(apiUrl).origin;
+  } catch {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Invalid NEXT_PUBLIC_API_URL: "${apiUrl}". Expected a full URL.`);
+    }
+    return '';
+  }
+};
+
+const apiOrigin = resolveApiOrigin();
+
 const nextConfig: NextConfig = {
   // Production optimizations
   reactStrictMode: true,
@@ -59,7 +75,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://*.razorpay.com",
-              `connect-src 'self' ${process.env.NODE_ENV === 'development' ? 'http://localhost:5005 ws://localhost:5005' : ''} https://api.razorpay.com https://lumberjack.razorpay.com`,
+              `connect-src 'self' ${process.env.NODE_ENV === 'development' ? 'http://localhost:5005 ws://localhost:5005' : ''} ${apiOrigin} https://api.razorpay.com https://lumberjack.razorpay.com`,
               "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
               "media-src 'self' https://res.cloudinary.com",
               "object-src 'none'",

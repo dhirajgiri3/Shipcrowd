@@ -40,6 +40,7 @@ import { autoRechargeWorker } from '@/workers/finance/auto-recharge.worker';
 import { Company } from '@/infrastructure/database/mongoose/models';
 import WalletService from '@/core/application/services/wallet/wallet.service';
 import { isWalletAutoRechargeFeatureEnabled } from '@/core/application/services/wallet/wallet-feature-flags';
+import autoRechargeMetrics from '@/core/application/services/metrics/auto-recharge-metrics.service';
 
 describe('autoRechargeWorker feature flag behavior', () => {
     beforeEach(() => {
@@ -84,5 +85,39 @@ describe('autoRechargeWorker feature flag behavior', () => {
 
         expect(Company.find).toHaveBeenCalled();
         expect(WalletService.processAutoRecharge).toHaveBeenCalledWith('company-1', 5000, 'pm_123');
+    });
+
+    it('does not count pending auto-recharge as failure', async () => {
+        (isWalletAutoRechargeFeatureEnabled as jest.Mock).mockResolvedValue(true);
+
+        const companies = [
+            {
+                _id: 'company-1',
+                name: 'Demo',
+                wallet: {
+                    autoRecharge: {
+                        amount: 5000,
+                        paymentMethodId: 'pm_123',
+                    },
+                },
+            },
+        ];
+
+        const chain: any = {
+            limit: jest.fn().mockReturnThis(),
+            skip: jest.fn().mockReturnThis(),
+            select: jest.fn().mockResolvedValueOnce(companies).mockResolvedValueOnce([]),
+        };
+        (Company.find as jest.Mock).mockReturnValue(chain);
+        (Company.updateOne as jest.Mock).mockResolvedValue({ acknowledged: true });
+        (WalletService.processAutoRecharge as jest.Mock).mockResolvedValue({
+            success: false,
+            pending: true,
+            transactionId: 'order_123',
+        });
+
+        await autoRechargeWorker();
+
+        expect(autoRechargeMetrics.recordFailure).not.toHaveBeenCalled();
     });
 });

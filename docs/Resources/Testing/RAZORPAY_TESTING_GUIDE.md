@@ -113,6 +113,28 @@ RAZORPAY_WEBHOOK_SECRET=whsec_xxxxxxxxxxxx
 
 **Razorpay test cards:** https://razorpay.com/docs/payments/payments/test-card-details/
 
+### 3.1.1 Production Safety Checklist (Wallet Recharge)
+
+Before enabling wallet recharge in production:
+
+1. Razorpay Payment webhook URL must be:
+   - `https://<your-api-host>/api/v1/webhooks/razorpay/payment`
+2. Razorpay Payout webhook URL must be:
+   - `https://<your-api-host>/api/v1/webhooks/razorpay/payout`
+3. Commission payout webhook URL must be:
+   - `https://<your-api-host>/api/v1/commission/payouts/webhook`
+4. Verify secrets:
+   - `RAZORPAY_WEBHOOK_SECRET` (or endpoint-specific secrets)
+5. Run preflight:
+   - `npm run test:razorpay:preflight`
+
+If payments were captured during a misconfigured webhook window, run reconciliation:
+
+- Dry run:
+  - `npm run ops:wallet-recharge:reconcile`
+- Apply fixes:
+  - `npx tsx scripts/verification/reconcile-wallet-recharges.ts --days=7 --apply`
+
 ---
 
 ### 3.2 Auto-Recharge
