@@ -25,7 +25,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
@@ -46,6 +46,8 @@ interface QuickAddMoneyProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (amount: number, method: PaymentMethod) => Promise<void>;
+    /** Pre-select amount when modal opens (e.g. from quick-add preset) */
+    initialAmount?: number;
     className?: string;
 }
 
@@ -104,9 +106,17 @@ const PAYMENT_METHODS = [
     },
 ];
 
-export function QuickAddMoney({ isOpen, onClose, onSubmit, className = '' }: QuickAddMoneyProps) {
-    const [selectedAmount, setSelectedAmount] = useState<number>(5000); // Default to most popular
+export function QuickAddMoney({ isOpen, onClose, onSubmit, initialAmount, className = '' }: QuickAddMoneyProps) {
+    const [selectedAmount, setSelectedAmount] = useState<number>(initialAmount ?? 5000);
     const [customAmount, setCustomAmount] = useState('');
+
+    // Reset/sync amount when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedAmount(initialAmount ?? 5000);
+            setCustomAmount('');
+        }
+    }, [isOpen, initialAmount]);
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('upi'); // Default to fastest
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');

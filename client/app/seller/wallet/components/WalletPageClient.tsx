@@ -36,6 +36,7 @@ import type { WalletTransaction } from '@/src/types/api/finance';
 
 export function WalletPageClient() {
     const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
+    const [addMoneyInitialAmount, setAddMoneyInitialAmount] = useState<number | undefined>();
     const [isAutoRechargeOpen, setIsAutoRechargeOpen] = useState(false);
     const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(
         () => typeof window !== 'undefined' && !!window.Razorpay
@@ -285,14 +286,25 @@ export function WalletPageClient() {
                         balance={balance}
                         weeklyChange={0}
                         lowBalanceThreshold={lowBalanceThreshold}
-                        onAddMoney={() => setIsAddMoneyOpen(true)}
+                        onAddMoney={() => {
+                            setAddMoneyInitialAmount(undefined);
+                            setIsAddMoneyOpen(true);
+                        }}
+                        onAddMoneyWithAmount={(amount) => {
+                            setAddMoneyInitialAmount(amount);
+                            setIsAddMoneyOpen(true);
+                        }}
                         onEnableAutoRecharge={() => setIsAutoRechargeOpen(true)}
+                        onViewTransactions={() => {
+                            document.getElementById('wallet-transactions')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
                         isAutoRechargeEnabled={isAutoRechargeEnabled}
                     />
                 </motion.div>
 
                 {/* Transactions Section */}
                 <motion.div
+                    id="wallet-transactions"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
@@ -314,7 +326,10 @@ export function WalletPageClient() {
                                 Your transaction history will appear here once you start using your wallet for shipments and recharges.
                             </p>
                             <Button
-                                onClick={() => setIsAddMoneyOpen(true)}
+                                onClick={() => {
+                                    setAddMoneyInitialAmount(undefined);
+                                    setIsAddMoneyOpen(true);
+                                }}
                                 className="inline-flex items-center gap-2"
                             >
                                 <Plus className="w-4 h-4" />
@@ -341,8 +356,12 @@ export function WalletPageClient() {
             {/* Add Money Modal */}
             <QuickAddMoney
                 isOpen={isAddMoneyOpen}
-                onClose={() => setIsAddMoneyOpen(false)}
+                onClose={() => {
+                    setIsAddMoneyOpen(false);
+                    setAddMoneyInitialAmount(undefined);
+                }}
                 onSubmit={handleRechargeSubmit}
+                initialAmount={addMoneyInitialAmount}
             />
 
             {/* Auto-Recharge Settings Modal */}

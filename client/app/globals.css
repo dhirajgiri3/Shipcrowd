@@ -117,6 +117,17 @@
    --info: hsl(217, 91%, 60%);
    --info-bg: hsl(217, 100%, 97%);
 
+   /* Wallet Hero Gradient - baby pink → sky blue → primary */
+   --wallet-hero-from: hsl(340, 70%, 96%);
+   --wallet-hero-via: hsl(205, 85%, 96%);
+   --wallet-hero-to: hsl(240, 80%, 96%);
+   --wallet-hero-border: hsl(240, 50%, 90%);
+   --wallet-hero-card: hsl(0, 0%, 100%);
+   --wallet-hero-card-border: hsl(220, 15%, 92%);
+   --wallet-hero-card-inner: hsl(220, 25%, 97%);
+   --wallet-hero-card-hover: hsl(220, 25%, 98%);
+   --wallet-hero-orb-pink: hsl(340, 82%, 88%);
+
    /* Spacing & Radius */
    --radius-sm: 0.25rem;
    --radius-md: 0.5rem;
@@ -224,6 +235,18 @@
    --info: hsl(217, 91%, 65%);
    --info-bg: hsla(217, 91%, 60%, 0.1);
    --info-border: hsla(217, 91%, 60%, 0.2);
+
+   /* Wallet Hero Gradient - dark theme (rose → indigo → blue) */
+   --wallet-hero-from: hsl(330, 45%, 14%);
+   --wallet-hero-via: hsl(250, 45%, 12%);
+   --wallet-hero-to: hsl(230, 50%, 10%);
+   --wallet-hero-border: hsl(250, 30%, 20%);
+   /* Elevated card surface - lighter than gradient for contrast */
+   --wallet-hero-card: hsl(250, 35%, 18%);
+   --wallet-hero-card-border: hsl(250, 40%, 26%);
+   --wallet-hero-card-inner: hsl(250, 30%, 14%);
+   --wallet-hero-card-hover: hsl(250, 35%, 22%);
+   --wallet-hero-orb-pink: hsla(330, 50%, 35%, 0.25);
 
    /* NO SHADOWS - Flat Design */
    --shadow-xs: none;
