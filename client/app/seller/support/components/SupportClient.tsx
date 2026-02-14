@@ -216,7 +216,7 @@ export function SupportClient() {
                                             description: '',
                                             awbNumber: '',
                                         });
-                                        addToast('Ticket created successfully', 'success');
+                                        // Success toast shown by useCreateSupportTicket onSuccess
                                     } catch (error) {
                                         console.error(error);
                                     } finally {

@@ -90,7 +90,7 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
   const {
     mutateAsync: fetchCourierRates,
     isPending: isFetchingCourierRates,
-  } = useGetCourierRates();
+  } = useGetCourierRates({ suppressDefaultErrorHandling: true });
   const {
     mutateAsync: shipOrder,
     isPending: isShipBooking,

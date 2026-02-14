@@ -114,7 +114,7 @@ export default function OrdersClient() {
         refetch
     } = useAdminOrders(queryParams);
 
-    const getCourierRatesMutation = useGetCourierRates();
+    const getCourierRatesMutation = useGetCourierRates({ suppressDefaultErrorHandling: true });
     const shipOrderMutation = useShipOrder();
     const deleteOrderMutation = useAdminDeleteOrder();
     const exportOrderMutation = useOrderExport();

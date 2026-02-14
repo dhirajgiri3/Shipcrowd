@@ -27,8 +27,9 @@ export const useAdminOrders = (params?: OrderListParams) => {
 /**
  * Get courier rates for shipping
  * Works for both admin and seller
+ * @param options.suppressDefaultErrorHandling - When true, caller handles errors (e.g. inline toast); avoids duplicate toasts
  */
-export const useGetCourierRates = () => {
+export const useGetCourierRates = (options?: { suppressDefaultErrorHandling?: boolean }) => {
   return useMutation<
     { success: boolean; data: CourierRate[] },
     ApiError,
@@ -45,7 +46,9 @@ export const useGetCourierRates = () => {
   >({
     mutationFn: async (params) => await orderApi.getCourierRates(params),
     onError: (error) => {
-      handleApiError(error, 'Failed to fetch courier rates');
+      if (!options?.suppressDefaultErrorHandling) {
+        handleApiError(error, 'Failed to fetch courier rates');
+      }
     },
   });
 };
