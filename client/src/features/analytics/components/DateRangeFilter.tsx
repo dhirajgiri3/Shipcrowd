@@ -45,7 +45,7 @@ export function DateRangeFilter({
                         size="sm"
                         onClick={() => onChange(preset.value)}
                         className={cn(
-                            "text-xs h-8 px-3 rounded-md",
+                            "text-xs py-2 px-2.5 rounded-full",
                             value === preset.value
                                 ? "shadow-sm"
                                 : "hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
