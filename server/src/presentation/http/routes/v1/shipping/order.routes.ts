@@ -18,7 +18,7 @@ import { ErrorCode } from '../../../../../shared/errors/errorCodes';
 
 const router = express.Router();
 
-// Configure multer for CSV file uploads
+// Configure multer for CSV and Excel file uploads
 const storage = multer.memoryStorage();
 const upload = multer({
     storage,
@@ -26,12 +26,17 @@ const upload = multer({
         fileSize: 5 * 1024 * 1024, // 5MB limit
     },
     fileFilter: (_req, file, cb) => {
-        // Accept only CSV files
-        if (file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel') {
+        // Accept CSV and Excel files
+        const allowedMimes = [
+            'text/csv',
+            'application/vnd.ms-excel',                                          // .xls or .csv (browser-dependent)
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        ];
+        if (allowedMimes.includes(file.mimetype)) {
             cb(null, true);
         } else {
             cb(null, false);
-            return cb(new Error('Only CSV files are allowed'));
+            return cb(new Error('Only CSV and Excel (.xlsx) files are allowed'));
         }
     },
 });
@@ -220,7 +225,7 @@ router.delete(
 
 /**
  * @route POST /api/v1/orders/bulk
- * @desc Bulk import orders from CSV
+ * @desc Bulk import orders from CSV/Excel (sync, up to 1000 rows)
  * @access Private (Production, Complete Profile)
  */
 router.post(
@@ -231,6 +236,33 @@ router.post(
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
     upload.single('file'),
     asyncHandler(orderController.bulkImportOrders)
+);
+
+/**
+ * @route POST /api/v1/orders/bulk/async
+ * @desc Bulk import orders from CSV/Excel asynchronously (for large files)
+ * @access Private (Production, Complete Profile)
+ */
+router.post(
+    '/bulk/async',
+    authenticate,
+    csrfProtection,
+    requireCompleteCompany,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    upload.single('file'),
+    asyncHandler(orderController.bulkImportOrdersAsync)
+);
+
+/**
+ * @route GET /api/v1/orders/bulk/jobs/:jobId
+ * @desc Get bulk import job status
+ * @access Private (Production)
+ */
+router.get(
+    '/bulk/jobs/:jobId',
+    authenticate,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.getBulkImportJobStatus)
 );
 
 /**

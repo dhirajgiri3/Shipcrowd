@@ -27,6 +27,7 @@ import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { SuspendUserModal } from './SuspendUserModal';
 import { UnsuspendUserModal } from './UnsuspendUserModal';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
+import { formatPaginationRange } from '@/src/lib/utils';
 
 interface SellerTableProps {
     data: SellerHealth[];
@@ -304,7 +305,7 @@ export function SellerTable({
                 {/* Pagination Controls */}
                 {pagination && (
                     <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/50 flex justify-between items-center text-xs text-[var(--text-tertiary)]">
-                        <span>Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} sellers</span>
+                        <span>{formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'sellers')}</span>
                         <div className="flex gap-2 items-center">
                             <button
                                 className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
@@ -313,7 +314,7 @@ export function SellerTable({
                             >
                                 Previous
                             </button>
-                            <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {pagination.totalPages}</span>
+                            <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {Math.max(1, pagination.totalPages)}</span>
                             <button
                                 className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
                                 disabled={pagination.page >= pagination.totalPages}

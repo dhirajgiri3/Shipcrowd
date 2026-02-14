@@ -147,15 +147,15 @@ export const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
       const label = config.label;
 
       const sizeClasses = {
-        sm: 'px-2 py-1 text-xs',
-        md: 'px-3 py-1.5 text-sm',
-        lg: 'px-4 py-2 text-base',
+        sm: 'px-2 py-0.5 text-[11px] font-medium',
+        md: 'px-2.5 py-1 text-xs font-medium',
+        lg: 'px-3 py-1.5 text-sm font-medium',
       };
 
       const badgeContent = (
         <div
           className={cn(
-            'inline-flex items-center gap-2 rounded-full font-medium transition-colors',
+            'inline-flex items-center gap-1.5 rounded-md font-medium transition-colors',
             colorClass,
             sizeClasses[size],
             interactive && 'cursor-pointer hover:opacity-80',

@@ -58,6 +58,14 @@ const PRECHECK_DEBOUNCE_MS = 700;
 const MAX_PRECHECK_WEIGHT_KG = 200;
 const MAX_PRECHECK_ORDER_VALUE = 1_000_000;
 
+/** Normalize API state (e.g. "GUJARAT") to match INDIAN_STATES dropdown (e.g. "Gujarat") */
+const normalizeStateForDropdown = (apiState: string): string => {
+  if (!apiState?.trim()) return '';
+  const upper = apiState.trim().toUpperCase();
+  const matched = INDIAN_STATES.find((s) => s.toUpperCase() === upper);
+  return matched ?? apiState.trim();
+};
+
 const mapServerFieldToLocal = (field: string): string => {
   const map: Record<string, string> = {
     'customerInfo.name': 'customerName',
@@ -154,7 +162,7 @@ export function CreateOrderClient() {
       setFormData((prev) => ({
         ...prev,
         city: pincodeInfo.city || prev.city,
-        state: pincodeInfo.state || prev.state,
+        state: normalizeStateForDropdown(pincodeInfo.state || '') || prev.state,
       }));
     }
   }, [isPincodeSuccess, pincodeInfo]);

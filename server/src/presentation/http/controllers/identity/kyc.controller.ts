@@ -28,6 +28,7 @@ import {
   resolveVerificationState,
 } from '../../../../shared/utils/kyc-utils';
 import { queueKYCApprovedEmail, queueKYCRejectedEmail } from '../../../../core/application/services/communication/email-queue.service';
+import { syncRazorpayFundAccount } from '../../../../core/application/services/finance/sync-razorpay-fund-account.service';
 
 
 /**
@@ -1234,21 +1235,28 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
     const user = await validateUserAndCompany(req, res);
     if (!user) return;
 
-    const { accountNumber, ifsc, accountHolderName } = req.body;
+    const { accountNumber, ifsc: rawIfsc, accountHolderName: rawHolderName } = req.body;
 
-    if (!accountNumber || !ifsc) {
+    if (!accountNumber || !rawIfsc) {
       throw new ValidationError('Account number and IFSC code are required');
     }
 
-    // Validate account number format (basic validation)
-    if (!/^\d{9,18}$/.test(accountNumber)) {
+    // Normalize and validate account number (digits only, 9-18)
+    const accountNumberClean = String(accountNumber).trim();
+    if (!/^\d{9,18}$/.test(accountNumberClean)) {
       throw new ValidationError('Invalid account number format. Account number should be 9-18 digits.');
     }
 
-    // Validate IFSC code format
+    // Normalize IFSC to uppercase and validate
+    const ifsc = String(rawIfsc).trim().toUpperCase();
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
       throw new ValidationError('Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.');
     }
+
+    // Sanitize account holder name (optional but validated if provided)
+    const accountHolderName = rawHolderName
+      ? String(rawHolderName).trim().slice(0, 100).replace(/[<>'"&]/g, '')
+      : undefined;
 
     const attemptId = new mongoose.Types.ObjectId().toString();
 
@@ -1273,7 +1281,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       }
 
       // Call DeepVue API to verify bank account
-      const verificationResult = await deepvueService.verifyBankAccount(accountNumber, ifsc, accountHolderName);
+      const verificationResult = await deepvueService.verifyBankAccount(accountNumberClean, ifsc, accountHolderName);
 
       // Find or create KYC record
       let kyc = await findOrCreateKyc(user._id, user.companyId);
@@ -1305,7 +1313,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       const amountDeposited = verificationResult.data?.amountDeposited || verificationResult.data?.amount_deposited || 0;
 
       const now = new Date();
-      const inputHash = createKycInputHash('bankAccount', { accountNumber, ifsc });
+      const inputHash = createKycInputHash('bankAccount', { accountNumber: accountNumberClean, ifsc });
       const existingState = resolveVerificationState(kyc.documents?.bankAccount).state;
       const existingHash = kyc.documents?.bankAccount?.verification?.inputHash;
       const sameInput = Boolean(existingHash && existingHash === inputHash);
@@ -1328,7 +1336,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
         }
 
         if (isValid) {
-          kyc.documents.bankAccount.accountNumber = accountNumber;
+          kyc.documents.bankAccount.accountNumber = accountNumberClean;
           kyc.documents.bankAccount.ifscCode = ifsc;
           kyc.documents.bankAccount.accountHolderName = holderName;
           kyc.documents.bankAccount.bankName = bankNameValue;
@@ -1411,12 +1419,46 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
         {
           message: 'Bank account verified via DeepVue API',
           success: isValid,
-          accountNumber: `****${accountNumber.slice(-4)}`,
+          accountNumber: `****${accountNumberClean.slice(-4)}`,
           ifsc,
           bankName: bankNameValue
         },
         req
       );
+
+      // Sync verified bank to Company.billingInfo for payouts and Bank Accounts page
+      if (isValid && user.companyId) {
+        try {
+          const company = await Company.findById(user.companyId);
+          if (company) {
+            company.billingInfo = {
+              ...company.billingInfo,
+              bankName: bankNameValue,
+              accountNumber: accountNumberClean,
+              ifscCode: ifsc,
+              accountHolderName: holderName,
+              bankVerifiedAt: now,
+            };
+            // Sync Razorpay fund account for COD payouts (idempotent, non-blocking)
+            await syncRazorpayFundAccount(company, {
+              accountNumber: accountNumberClean,
+              ifscCode: ifsc,
+              accountHolderName: holderName,
+            });
+            await company.save();
+            logger.info('Synced verified bank to Company.billingInfo', {
+              companyId: user.companyId,
+              accountNumber: `****${accountNumberClean.slice(-4)}`,
+            });
+          }
+        } catch (syncErr: any) {
+          logger.error('Failed to sync bank to Company.billingInfo', {
+            companyId: user.companyId,
+            error: syncErr?.message,
+          });
+          // Non-blocking: KYC is saved; Company sync can be retried manually
+        }
+      }
 
       // Prepare an enhanced response with more details
       const enhancedResponse = {
@@ -1429,7 +1471,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
           attemptId,
         },
         data: {
-          accountNumber: `****${accountNumber.slice(-4)}`, // Mask account number for security
+          accountNumber: `****${accountNumberClean.slice(-4)}`, // Mask account number for security
           ifsc,
           accountHolderName: holderName,
           accountHolderNameClean: holderNameClean,
@@ -1441,7 +1483,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
         },
       };
 
-      sendSuccess(res, enhancedResponse, 'GSTIN verification completed');
+      sendSuccess(res, enhancedResponse, 'Bank account verification completed');
     } catch (error) {
       logger.error('Error in DeepVue bank account verification:', error);
       await recordVerificationAttempt({
@@ -1885,19 +1927,20 @@ export const verifyIfscCode = async (req: Request, res: Response, next: NextFunc
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    const { ifsc } = req.body;
+    const { ifsc: rawIfsc } = req.body;
 
-    if (!ifsc) {
+    if (!rawIfsc) {
       throw new ValidationError('IFSC code is required');
     }
 
-    // Validate IFSC code format
+    // Normalize to uppercase and validate
+    const ifsc = String(rawIfsc).trim().toUpperCase();
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
       throw new ValidationError('Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.');
     }
 
     try {
-      // Call DeepVue API to verify IFSC code
+      // Call DeepVue API to verify IFSC code (real API only in production)
       const verificationResult = await deepvueService.verifyIfsc(ifsc);
 
       // Determine if the IFSC is valid based on the response structure

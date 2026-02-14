@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import {
@@ -26,11 +27,13 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { cn } from '@/src/lib/utils';
 
 export function ShipmentsClient() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [page, setPage] = useState(1);
     const limit = 20;
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 500);
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_transit' | 'delivered' | 'rto' | 'ndr'>('all');
     const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -50,12 +53,35 @@ export function ShipmentsClient() {
 
     const { data: stats } = useShipmentStats();
 
+    // Hydrate/sync filters from URL for deep links from dashboard/order tracking actions
+    useEffect(() => {
+        const statusParam = searchParams.get('status');
+        const nextStatus = statusParam === 'all' || statusParam === 'pending' || statusParam === 'in_transit' || statusParam === 'delivered' || statusParam === 'rto' || statusParam === 'ndr'
+            ? statusParam
+            : 'all';
+        setStatusFilter((currentStatus) => (currentStatus === nextStatus ? currentStatus : nextStatus));
+
+        const searchParam = searchParams.get('search') || '';
+        setSearch((currentSearch) => (currentSearch === searchParam ? currentSearch : searchParam));
+    }, [searchParams]);
+
     useEffect(() => {
         setPage(1);
     }, [debouncedSearch, statusFilter]);
 
     const shipmentsData = shipmentsResponse?.shipments || [];
-    const pagination = shipmentsResponse?.pagination || { total: 0, pages: 1 };
+    const paginationMeta = shipmentsResponse?.pagination || { total: 0, pages: 1 };
+
+    // Reset to page 1 when current page is out of range (e.g. after filters reduce total)
+    useEffect(() => {
+        const total = paginationMeta.total;
+        const pages = paginationMeta.pages;
+        if (total > 0 && page > pages && shipmentsData.length === 0) {
+            setPage(1);
+        }
+    }, [paginationMeta.total, paginationMeta.pages, page, shipmentsData.length]);
+
+    const pagination = paginationMeta;
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -121,7 +147,7 @@ export function ShipmentsClient() {
         {
             header: 'Status',
             accessorKey: 'currentStatus',
-            cell: (row: any) => <StatusBadge domain="shipment" status={row.currentStatus} />,
+            cell: (row: any) => <StatusBadge domain="shipment" status={row.currentStatus} size="sm" />,
         },
         {
             header: 'Actions',
@@ -153,6 +179,16 @@ export function ShipmentsClient() {
                 actions={
                     <div className="flex items-center gap-3">
                         <DateRangePicker />
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
+                            onClick={() => window.location.assign('/seller/orders?status=unshipped')}
+                            aria-label="Go to orders page to ship more orders"
+                        >
+                            <Truck className="w-4 h-4 mr-2" />
+                            Ship More Orders
+                        </Button>
                         <Button
                             onClick={handleRefresh}
                             variant="ghost"
@@ -220,18 +256,31 @@ export function ShipmentsClient() {
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
-                        {['all', 'in_transit', 'delivered', 'rto', 'ndr'].map((tab) => (
+                        {[
+                            { key: 'all', label: 'All' },
+                            { key: 'pending', label: 'Pending Pickup' },
+                            { key: 'in_transit', label: 'In Transit' },
+                            { key: 'delivered', label: 'Delivered' },
+                            { key: 'rto', label: 'RTO' },
+                            { key: 'ndr', label: 'NDR' },
+                        ].map((tab) => (
                             <button
-                                key={tab}
-                                onClick={() => setStatusFilter(tab)}
+                                key={tab.key}
+                                onClick={() => {
+                                    setStatusFilter(tab.key as 'all' | 'pending' | 'in_transit' | 'delivered' | 'rto' | 'ndr');
+                                    const params = new URLSearchParams(searchParams.toString());
+                                    params.set('status', tab.key);
+                                    params.set('page', '1');
+                                    router.push(`?${params.toString()}`, { scroll: false });
+                                }}
                                 className={cn(
                                     'px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap',
-                                    statusFilter === tab
+                                    statusFilter === tab.key
                                         ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
                                 )}
                             >
-                                {tab.replace('_', ' ')}
+                                {tab.label}
                             </button>
                         ))}
                     </div>

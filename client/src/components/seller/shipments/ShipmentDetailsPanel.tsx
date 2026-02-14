@@ -89,7 +89,19 @@ function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPan
 
     const handleDownloadLabel = () => {
         if (!shipmentId) return;
-        generateLabel(shipmentId);
+        generateLabel(shipmentId, {
+            onSuccess: (data) => {
+                if (data?.labelUrl) {
+                    const a = document.createElement('a');
+                    a.href = data.labelUrl;
+                    a.download = `label-${trackingNumber || shipmentId}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(data.labelUrl);
+                }
+            },
+        });
     };
 
     const handleTrack = () => {

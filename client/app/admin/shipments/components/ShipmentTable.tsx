@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { formatCurrency, cn, formatPaginationRange } from '@/src/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '@/src/components/ui/core/Button';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
@@ -159,7 +159,7 @@ export function ShipmentTable({
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <StatusBadge domain="shipment" status={shipment.currentStatus} />
+                                        <StatusBadge domain="shipment" status={shipment.currentStatus} size="sm" />
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {(shipment as any).paymentDetails ? (
@@ -195,7 +195,7 @@ export function ShipmentTable({
             {/* Pagination Controls */}
             {pagination && (
                 <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/50 flex justify-between items-center text-xs text-[var(--text-tertiary)]">
-                    <span>Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} shipments</span>
+                    <span>{formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'shipments')}</span>
                     <div className="flex gap-2 items-center">
                         <button
                             className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
@@ -204,7 +204,7 @@ export function ShipmentTable({
                         >
                             Previous
                         </button>
-                        <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {pagination.totalPages}</span>
+                        <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {Math.max(1, pagination.totalPages)}</span>
                         <button
                             className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
                             disabled={pagination.page >= pagination.totalPages}

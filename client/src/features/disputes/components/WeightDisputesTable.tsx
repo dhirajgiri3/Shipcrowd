@@ -308,7 +308,7 @@ export function WeightDisputesTable() {
 
                                         {/* Status */}
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <StatusBadge domain="dispute" status={dispute.status} />
+                                            <StatusBadge domain="dispute" status={dispute.status} size="sm" />
                                         </td>
 
                                         {/* Detected Date */}

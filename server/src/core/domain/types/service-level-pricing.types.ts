@@ -27,6 +27,12 @@ export interface QuotePricingBreakdown {
     total?: number;
 }
 
+export interface RoutePerformanceMetrics {
+    deliverySuccessRate: number; // 0-100
+    rtoRate: number; // 0-100
+    dataSource: 'route' | 'courier' | 'default';
+}
+
 export interface QuoteOptionOutput {
     optionId: string;
     provider: ServiceLevelProvider;
@@ -45,6 +51,9 @@ export interface QuoteOptionOutput {
     tags: string[];
     sellBreakdown?: QuotePricingBreakdown;
     costBreakdown?: QuotePricingBreakdown;
+    // NEW: Route intelligence fields
+    performanceMetrics?: RoutePerformanceMetrics;
+    recommendationReason?: string;
 }
 
 export interface QuoteSessionOutput {

@@ -17,6 +17,7 @@ import { ManifestPickupRetryJob } from './infrastructure/jobs/logistics/shipping
 import LostShipmentDetectionJob from './infrastructure/jobs/logistics/shipping/lost-shipment-detection.job';
 import { WarehouseSyncJob } from './infrastructure/jobs/logistics/warehouse-sync.job';
 import { SellerPolicyBootstrapJob } from './infrastructure/jobs/organization/seller-policy-bootstrap.job';
+import { BulkOrderImportJobProcessor } from './infrastructure/jobs/shipping/bulk-order-import.job';
 
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import { initializeCRMListeners } from './core/application/listeners/crm/index';
@@ -126,6 +127,10 @@ const startServer = async (): Promise<void> => {
         const { default: NDRWeeklyReportJob } = await import('./infrastructure/jobs/ndr/ndr-weekly-report.job');
         await NDRWeeklyReportJob.initialize();
         logger.info('Weekly NDR report job initialized');
+
+        // Initialize Bulk Order Import Job
+        await BulkOrderImportJobProcessor.initialize();
+        logger.info('Bulk order import job initialized');
 
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();

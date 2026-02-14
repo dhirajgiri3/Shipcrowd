@@ -59,8 +59,14 @@ export class ManifestPickupRetryJob {
                 return { success: false, reason: 'Manifest not found' };
             }
 
-            // Get provider
-            const provider = await CourierFactory.getProvider(carrier, manifest.companyId);
+            // Get provider (resolve service types like "surface" to velocity)
+            const { CarrierNormalizationService } = await import('../../../core/application/services/shipping/carrier-normalization.service');
+            const { default: CourierProviderRegistry } = await import('../../../core/application/services/courier/courier-provider-registry');
+            const providerCarrier = CarrierNormalizationService.resolveCarrierForProviderLookup(carrier)
+                || CourierProviderRegistry.getIntegrationProvider(carrier)
+                || carrier;
+
+            const provider = await CourierFactory.getProvider(providerCarrier, manifest.companyId);
 
             if (!provider.schedulePickup) {
                 logger.warn('Provider does not support pickup scheduling', { carrier });

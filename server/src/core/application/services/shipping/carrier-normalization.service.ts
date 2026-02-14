@@ -1,13 +1,36 @@
 import { CARRIERS } from '../../../../infrastructure/database/seeders/data/carrier-data';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
 
+/** Service types that are NOT courier providers (surface, express, etc.) */
+const SERVICE_TYPES = new Set(['surface', 'express', 'air', 'standard', 'economy', 'ground', 'road']);
+
 /**
  * Carrier Normalization Service
- * 
+ *
  * Responsible for canonicalizing carrier names and service types
  * to ensure consistent lookups in the Rate Card system.
  */
 export class CarrierNormalizationService {
+
+    /**
+     * Check if a value is a service type (surface, express, etc.) rather than a courier provider.
+     * Used to handle legacy/bad data where carrier was incorrectly set to service type.
+     */
+    static isServiceType(value: string): boolean {
+        return SERVICE_TYPES.has(String(value || '').toLowerCase());
+    }
+
+    /**
+     * Resolve carrier to a valid provider for CourierFactory.
+     * If carrier is a service type, returns fallback (velocity) or null to skip carrier-specific logic.
+     */
+    static resolveCarrierForProviderLookup(carrier: string): string | null {
+        if (!carrier) return null;
+        const canonical = CourierProviderRegistry.toCanonical(carrier);
+        if (canonical) return CourierProviderRegistry.getIntegrationProvider(canonical);
+        if (this.isServiceType(carrier)) return 'velocity'; // Fallback for bad data
+        return null;
+    }
 
     /**
      * Normalize carrier name to canonical ID

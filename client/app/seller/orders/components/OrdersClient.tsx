@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { formatCurrency, cn, formatPaginationRange } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/orders/OrderDetailsPanel';
 import {
@@ -33,14 +34,26 @@ import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { OrderQuoteShipModal } from '@/src/components/seller/shipping/OrderQuoteShipModal';
 import { getShipDisabledReason } from '@/src/lib/utils/order-shipping-eligibility';
-import { isOrderCentricShippingEnabled } from '@/src/lib/utils/seller-shipping-flags';
+
+const ORDER_TABS = [
+    { key: 'all', label: 'All' },
+    { key: 'unshipped', label: 'To Ship' },
+    { key: 'shipped', label: 'Shipped' },
+    { key: 'delivered', label: 'Delivered' },
+    { key: 'rto', label: 'RTO' },
+    { key: 'cancelled', label: 'Cancelled' },
+] as const;
+
+type OrderTabKey = (typeof ORDER_TABS)[number]['key'];
 
 export function OrdersClient() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const isMobile = useIsMobile();
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 300);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [activeTab, setActiveTab] = useState('all');
+    const [activeTab, setActiveTab] = useState<OrderTabKey>('unshipped');
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
     const [smartFilter, setSmartFilter] = useState<FilterPreset>('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -48,7 +61,17 @@ export function OrdersClient() {
     const [shipTargetOrder, setShipTargetOrder] = useState<Order | null>(null);
     const { addToast } = useToast();
     const limit = 20;
-    const isOrderCentricShipping = isOrderCentricShippingEnabled();
+
+    // Hydrate/sync tab from URL for deep links (e.g. dashboard CTAs)
+    useEffect(() => {
+        const statusParam = searchParams.get('status');
+        const validTabs: OrderTabKey[] = ['all', 'unshipped', 'shipped', 'delivered', 'rto', 'cancelled'];
+        const nextTab = statusParam && validTabs.includes(statusParam as OrderTabKey)
+            ? (statusParam as OrderTabKey)
+            : 'unshipped';
+
+        setActiveTab((currentTab) => (currentTab === nextTab ? currentTab : nextTab));
+    }, [searchParams]);
 
     // Reset page when any filter changes
     useEffect(() => {
@@ -75,6 +98,15 @@ export function OrdersClient() {
     const pagination = ordersResponse?.pagination;
     const globalStats = ordersResponse?.globalStats;
 
+    // Reset to page 1 when current page is out of range (e.g. after filters reduce total)
+    useEffect(() => {
+        const total = pagination?.total ?? 0;
+        const pages = pagination?.pages ?? 1;
+        if (total > 0 && page > pages && ordersData.length === 0) {
+            setPage(1);
+        }
+    }, [pagination?.total, pagination?.pages, page, ordersData.length]);
+
     const refetch = async () => {
         setIsRefreshing(true);
         await refetchOrders();
@@ -97,7 +129,7 @@ export function OrdersClient() {
         return {
             totalOrders: pagination?.total || 0,
             totalRevenue: ordersData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0),
-            pendingShipmentCount: ordersData.filter((o: Order) => o.currentStatus === 'pending').length,
+            pendingShipmentCount: ordersData.filter((o: Order) => ['pending', 'ready_to_ship'].includes(o.currentStatus)).length,
             pendingPaymentCount: ordersData.filter((o: Order) => o.paymentStatus === 'pending').length
         };
     }, [globalStats, pagination?.total, ordersData]);
@@ -108,14 +140,14 @@ export function OrdersClient() {
             <OrderDetailsPanel
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
-                onShipOrder={isOrderCentricShipping ? (order) => {
+                onShipOrder={(order) => {
                     const disabledReason = getShipDisabledReason(order);
                     if (disabledReason) {
                         addToast(disabledReason, 'error');
                         return;
                     }
                     setShipTargetOrder(order);
-                } : undefined}
+                }}
             />
             <OrderQuoteShipModal
                 order={shipTargetOrder}
@@ -156,6 +188,16 @@ export function OrdersClient() {
                             <Download className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
+                            onClick={() => window.location.assign('/seller/shipments')}
+                            aria-label="Go to shipments page to track orders"
+                        >
+                            <ArrowUpRight className="w-4 h-4 mr-2" />
+                            Track Shipments
+                        </Button>
                     </div>
                 }
             />
@@ -179,12 +221,20 @@ export function OrdersClient() {
                     delay={1}
                 />
                 <StatsCard
-                    title="Pending Shipments"
+                    title="Orders to Ship"
                     value={metrics.pendingShipmentCount}
                     icon={Clock}
                     iconColor="text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400"
                     description="Orders waiting to be shipped"
                     delay={2}
+                    onClick={() => {
+                        setActiveTab('unshipped');
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('status', 'unshipped');
+                        params.set('page', '1');
+                        router.push(`?${params.toString()}`, { scroll: false });
+                    }}
+                    isActive={activeTab === 'unshipped'}
                 />
                 <StatsCard
                     title="Pending Payments"
@@ -200,18 +250,24 @@ export function OrdersClient() {
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                     {/* Tabs */}
                     <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
-                        {['all', 'unshipped', 'shipped', 'delivered'].map((tab) => (
+                        {ORDER_TABS.map((tab) => (
                             <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
+                                key={tab.key}
+                                onClick={() => {
+                                    setActiveTab(tab.key);
+                                    const params = new URLSearchParams(searchParams.toString());
+                                    params.set('status', tab.key);
+                                    params.set('page', '1');
+                                    router.push(`?${params.toString()}`, { scroll: false });
+                                }}
                                 className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap",
-                                    activeTab === tab
+                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+                                    activeTab === tab.key
                                         ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
                                         : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
                                 )}
                             >
-                                {tab}
+                                {tab.label}
                             </button>
                         ))}
                     </div>
@@ -295,14 +351,14 @@ export function OrdersClient() {
                         orders={filteredOrders}
                         isLoading={isLoading}
                         onOrderClick={(order) => setSelectedOrder(order)}
-                        onShipClick={isOrderCentricShipping ? (order) => {
+                        onShipClick={(order) => {
                             const disabledReason = getShipDisabledReason(order);
                             if (disabledReason) {
                                 addToast(disabledReason, 'error');
                                 return;
                             }
                             setShipTargetOrder(order);
-                        } : undefined}
+                        }}
                         className={isMobile ? '' : 'bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm'}
                     />
                 )}
@@ -327,6 +383,8 @@ export function OrdersClient() {
                                     setActiveTab('all');
                                     setPaymentFilter('all');
                                     setSmartFilter('all');
+                                    setPage(1);
+                                    router.push('/seller/orders?status=all&page=1', { scroll: false });
                                 }}
                                 className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
                             >
@@ -340,9 +398,7 @@ export function OrdersClient() {
                 {pagination && pagination.pages > 1 && (
                     <div className="flex items-center justify-between px-2 pt-4">
                         <p className="text-sm text-[var(--text-muted)]">
-                            Showing <span className="font-bold text-[var(--text-primary)]">{((page - 1) * limit) + 1}</span> to{' '}
-                            <span className="font-bold text-[var(--text-primary)]">{Math.min(page * limit, pagination.total)}</span> of{' '}
-                            <span className="font-bold text-[var(--text-primary)]">{pagination.total}</span> results
+                            {formatPaginationRange(page, limit, pagination.total, 'results')}
                         </p>
                         <div className="flex items-center gap-2">
                             <Button

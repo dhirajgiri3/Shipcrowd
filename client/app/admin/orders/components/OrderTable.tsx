@@ -20,7 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { formatCurrency, cn, formatPaginationRange } from '@/src/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '@/src/components/ui/core/Button';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
@@ -180,6 +180,7 @@ export function OrderTable({
                                         <StatusBadge
                                             domain="order"
                                             status={order.currentStatus}
+                                            size="sm"
                                         />
                                     </TableCell>
                                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -188,7 +189,7 @@ export function OrderTable({
                                                 onClick={() => handleViewDetails(order._id)}
                                             />
 
-                                            {['new', 'ready'].includes(order.currentStatus) && (
+                                            {['pending', 'ready_to_ship'].includes(String(order.currentStatus || '').toLowerCase()) && (
                                                 <Tooltip content="Ship Order">
                                                     <Button
                                                         size="sm"
@@ -204,7 +205,7 @@ export function OrderTable({
                                                 </Tooltip>
                                             )}
 
-                                            {!['new', 'ready'].includes(order.currentStatus) && (
+                                            {!['pending', 'ready_to_ship'].includes(String(order.currentStatus || '').toLowerCase()) && (
                                                 <>
                                                     <button
                                                         onClick={(e) => toggleDropdown(order._id, e)}
@@ -250,7 +251,7 @@ export function OrderTable({
             {/* Pagination Controls */}
             {pagination && (
                 <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/50 flex justify-between items-center text-xs text-[var(--text-tertiary)]">
-                    <span>Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} orders</span>
+                    <span>{formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'orders')}</span>
                     <div className="flex gap-2 items-center">
                         <button
                             className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
@@ -259,7 +260,7 @@ export function OrderTable({
                         >
                             Previous
                         </button>
-                        <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {pagination.totalPages}</span>
+                        <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {Math.max(1, pagination.totalPages)}</span>
                         <button
                             className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
                             disabled={pagination.page >= pagination.totalPages}

@@ -82,7 +82,7 @@ export class CarrierSyncJob {
 
         for (const shipment of pendingShipments) {
             const shipmentId = String(shipment._id);
-            const jobId = `${this.SYNC_JOB_NAME}:${shipmentId}`;
+            const jobId = `${this.SYNC_JOB_NAME}-${shipmentId}`;
 
             try {
                 await QueueManager.addJob(
@@ -102,9 +102,10 @@ export class CarrierSyncJob {
                 if (message.includes('Job') && message.includes('already exists')) {
                     continue;
                 }
-                logger.warn('Failed to enqueue awaiting carrier sync shipment', {
+                logger.warn(`Failed to enqueue awaiting carrier sync shipment: ${message}`, {
                     shipmentId,
-                    error: message || error,
+                    code: error?.code,
+                    name: error?.name,
                 });
             }
         }

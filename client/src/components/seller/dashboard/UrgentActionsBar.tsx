@@ -144,15 +144,16 @@ export function UrgentActionsBar({ actions }: UrgentActionsBarProps) {
 
                     if (isMobile) {
                         return (
-                            <SwipeableCard
-                                key={action.id}
-                                onSwipeLeft={() => handleDismiss(action.id)}
-                                onSwipeRight={() => handleAction(action.ctaUrl)}
-                                leftAction={{ icon: <XCircle className="w-6 h-6" />, label: 'Dismiss', color: 'red' }}
-                                rightAction={{ icon: <ArrowRightCircle className="w-6 h-6" />, label: 'Open', color: 'blue' }}
-                            >
-                                {CardContent}
-                            </SwipeableCard>
+                            <div key={action.id} role="group" aria-label={`${action.title}: ${action.ctaLabel}`}>
+                                <SwipeableCard
+                                    onSwipeLeft={() => handleDismiss(action.id)}
+                                    onSwipeRight={() => handleAction(action.ctaUrl)}
+                                    leftAction={{ icon: <XCircle className="w-6 h-6" />, label: 'Dismiss', color: 'red' }}
+                                    rightAction={{ icon: <ArrowRightCircle className="w-6 h-6" />, label: 'Open', color: 'blue' }}
+                                >
+                                    {CardContent}
+                                </SwipeableCard>
+                            </div>
                         );
                     }
 
@@ -164,6 +165,7 @@ export function UrgentActionsBar({ actions }: UrgentActionsBarProps) {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
                             className="block w-full text-left h-full"
+                            aria-label={`${action.title}: ${action.ctaLabel}`}
                         >
                             {CardContent}
                         </motion.button>

@@ -249,7 +249,7 @@ export function NdrClient() {
                                                     Fix Now
                                                 </Button>
                                             ) : (
-                                                <StatusBadge domain="ndr" status={ndr.status} className="px-3 py-1.5 min-w-[120px] justify-center" />
+                                                <StatusBadge domain="ndr" status={ndr.status} size="sm" className="min-w-[100px] justify-center" />
                                             )}
                                         </div>
 

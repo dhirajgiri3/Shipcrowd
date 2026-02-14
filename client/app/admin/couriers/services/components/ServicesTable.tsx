@@ -88,7 +88,7 @@ export function ServicesTable({ services, isLoading, onEdit, onDelete, onToggleS
             header: 'Status',
             accessorKey: 'status',
             cell: (row: CourierServiceItem) => (
-                <StatusBadge domain="courier" status={row.status} />
+                <StatusBadge domain="courier" status={row.status} size="sm" />
             ),
         },
         {

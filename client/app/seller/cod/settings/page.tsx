@@ -13,9 +13,11 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/src/lib/utils';
+import { useBankAccounts } from '@/src/core/api/hooks/seller/useBankAccounts';
 
 type PayoutFrequency = 'daily' | 'weekly' | 'bi-weekly' | 'monthly';
 
@@ -93,13 +95,9 @@ export default function CODSettingsPage() {
         isEnabled: true,
     });
 
-    // Mock bank account data - in production, fetch from API
-    const bankAccount = {
-        accountHolderName: 'Shipcrowd Seller',
-        bankName: 'HDFC Bank',
-        accountNumber: '****1234',
-        ifsc: 'HDFC0001234',
-    };
+    const { data, isLoading } = useBankAccounts();
+    const accounts = data?.data?.accounts ?? data?.accounts ?? [];
+    const bankAccount = accounts[0];
 
     const getNextPayoutDate = (): Date => {
         const now = new Date();
@@ -360,41 +358,63 @@ export default function CODSettingsPage() {
                             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                                 Payout Account
                             </h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[var(--primary-blue-soft)] flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-[var(--primary-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-[var(--text-primary)]">
-                                            {bankAccount.bankName}
-                                        </p>
-                                        <p className="text-sm text-[var(--text-secondary)] font-mono">
-                                            {bankAccount.accountNumber}
-                                        </p>
-                                    </div>
+                            {isLoading ? (
+                                <div className="space-y-3 animate-pulse">
+                                    <div className="h-10 bg-[var(--bg-tertiary)] rounded" />
+                                    <div className="h-4 bg-[var(--bg-tertiary)] rounded w-2/3" />
+                                    <div className="h-4 bg-[var(--bg-tertiary)] rounded w-1/2" />
                                 </div>
-                                <div className="pt-3 border-t border-[var(--border-default)]">
-                                    <p className="text-xs text-[var(--text-secondary)]">Account Holder</p>
-                                    <p className="text-sm font-medium text-[var(--text-primary)]">
-                                        {bankAccount.accountHolderName}
+                            ) : !bankAccount ? (
+                                <div className="text-center py-6">
+                                    <p className="text-sm text-[var(--text-secondary)] mb-4">
+                                        No bank account added. Add one to receive COD remittances.
                                     </p>
+                                    <Link
+                                        href="/seller/bank-accounts"
+                                        className="inline-flex px-4 py-2 text-sm border border-[var(--primary-blue)] text-[var(--primary-blue)] rounded-lg hover:bg-[var(--primary-blue-soft)] transition-colors"
+                                    >
+                                        Add Bank Account
+                                    </Link>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-[var(--text-secondary)]">IFSC Code</p>
-                                    <p className="text-sm font-mono text-[var(--text-primary)]">
-                                        {bankAccount.ifsc}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => router.push('/seller/settings/bank')}
-                                className="mt-4 w-full px-4 py-2 text-sm border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
-                            >
-                                Change Bank Account
-                            </button>
+                            ) : (
+                                <>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-[var(--primary-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-[var(--text-primary)]">
+                                                    {bankAccount.bankName}
+                                                </p>
+                                                <p className="text-sm text-[var(--text-secondary)] font-mono">
+                                                    ****{bankAccount.accountNumber ? bankAccount.accountNumber.slice(-4) : '****'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="pt-3 border-t border-[var(--border-default)]">
+                                            <p className="text-xs text-[var(--text-secondary)]">Account Holder</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">
+                                                {bankAccount.accountHolderName || 'Company Account'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-[var(--text-secondary)]">IFSC Code</p>
+                                            <p className="text-sm font-mono text-[var(--text-primary)]">
+                                                {bankAccount.ifscCode}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href="/seller/bank-accounts"
+                                        className="mt-4 w-full inline-block text-center px-4 py-2 text-sm border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
+                                    >
+                                        Change Bank Account
+                                    </Link>
+                                </>
+                            )}
                         </div>
 
                         {/* Info Card */}

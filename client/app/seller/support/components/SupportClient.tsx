@@ -364,7 +364,7 @@ export function SupportClient() {
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-mono text-[var(--text-muted)]">{ticket.ticketId}</span>
-                                                    <StatusBadge domain="support_ticket" status={ticket.status} />
+                                                    <StatusBadge domain="support_ticket" status={ticket.status} size="sm" />
                                                     <Badge variant="outline" className="text-xs capitalize">{ticket.category}</Badge>
                                                 </div>
                                                 <h3 className="font-medium text-[var(--text-primary)]">{ticket.subject}</h3>

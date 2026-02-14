@@ -290,6 +290,7 @@ export function CouponsClient() {
                                             <StatusBadge
                                                 domain="coupon"
                                                 status={getBonusStatus(coupon)}
+                                                size="sm"
                                             />
                                         </td>
                                         <td className="p-4 align-middle text-right">

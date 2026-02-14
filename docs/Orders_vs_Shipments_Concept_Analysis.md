@@ -79,10 +79,10 @@ Shipcrowd follows a **hybrid** model: Orders are created in Shipcrowd; shipments
 
 **Order Status Alias (Backend):**
 ```ts
-unshipped → ['pending', 'ready_to_ship', 'new', 'ready']
+unshipped → ['pending', 'ready_to_ship'] (legacy `new`/`ready` are compatibility-mapped)
 ```
 
-**Order Statuses (Full):** `new`, `ready`, `pending`, `shipped`, `delivered`, `rto`, `cancelled`, `processing`, `in_transit`, etc.
+**Order Statuses (Canonical):** `pending`, `ready_to_ship`, `shipped`, `delivered`, `rto`, `cancelled` (legacy `new`/`ready` handled via compatibility mapping).
 
 **Shipment Statuses:** `created`, `picked`, `picked_up`, `in_transit`, `out_for_delivery`, `delivered`, `ndr`, `rto`, `returned`, etc.
 
@@ -91,7 +91,7 @@ unshipped → ['pending', 'ready_to_ship', 'new', 'ready']
 | Page | Data Source | Intended Scope | Current Issue |
 |------|-------------|----------------|----------------|
 | **Seller Orders** | `GET /orders` | All orders (filtered by status) | Shows both unshipped and shipped; tabs: all, unshipped, shipped, delivered |
-| **Seller Shipments** | `GET /shipments` | All shipments | Also fetches `unshipped` orders for legacy "Ship from Shipments" modal (when order-centric shipping disabled) |
+| **Seller Shipments** | `GET /shipments` | All shipments | Tracking/operations page; shipment creation removed from this page |
 | **Admin Orders** | `GET /admin/orders` | All orders across sellers | Same as seller, broader scope |
 | **Admin Shipments** | `GET /shipments` (admin) | All shipments across sellers | Same as seller, broader scope |
 
@@ -100,7 +100,7 @@ unshipped → ['pending', 'ready_to_ship', 'new', 'ready']
 1. **Orders page** shows `shipped` and `delivered` orders—these have associated shipments. User sees order-centric view.
 2. **Shipments page** shows all shipments—each links to an order. User sees shipment-centric view.
 3. **Redundancy:** A shipped order appears on Orders (tab: shipped) AND its shipment appears on Shipments. Different views of the same fulfillment event.
-4. **Legacy flow:** Shipments page had a "Ship" modal that listed unshipped orders—duplicating Orders page responsibility.
+4. **Legacy flow removed:** Shipments page no longer contains shipment creation modal—Orders is the single shipping entry point.
 
 ---
 
@@ -119,7 +119,7 @@ An order is **shipped** when:
 - At least one **active** shipment exists for that order
 - Order `currentStatus` is updated to `shipped` when shipment is created (already done in `ShipmentService.createShipment`)
 
-**Unshipped orders:** `pending`, `ready_to_ship`, `new`, `ready`, `processing` (no shipment yet, or shipment failed before AWB)
+**Unshipped orders:** `pending`, `ready_to_ship` (legacy `new`/`ready` normalized to canonical statuses).
 
 **Shipped orders:** Have at least one shipment in `created` or later status.
 
@@ -135,7 +135,7 @@ An order is **shipped** when:
 | Tab | Backend Filter | Description |
 |-----|----------------|-------------|
 | **All** | (none) | All orders |
-| **To Ship** | `status=unshipped` | Pending, ready, new, ready_to_ship—need shipping action |
+| **To Ship** | `status=unshipped` | Pending and ready_to_ship—need shipping action |
 | **Shipped** | `status=shipped` | Has shipment, in transit |
 | **Delivered** | `status=delivered` | Delivered |
 | **RTO / Cancelled** | `status=rto`, `status=cancelled` | Closed/exception states |
@@ -191,7 +191,7 @@ An order is **shipped** when:
 
 **Required:** Ensure `unshipped` correctly excludes orders that have an active shipment. Current alias:
 ```ts
-unshipped: ['pending', 'ready_to_ship', 'new', 'ready']
+unshipped: ['pending', 'ready_to_ship']
 ```
 
 **Verification:** Orders with `currentStatus: 'shipped'` should NOT appear when `status=unshipped`. This is already correct—`unshipped` maps to pending-like statuses; `shipped` is separate.
@@ -255,10 +255,10 @@ unshipped: ['pending', 'ready_to_ship', 'new', 'ready']
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.4 Migration / Feature Flag
+### 4.4 Migration State
 
-1. **Order-centric shipping (current):** Shipments page no longer has "Ship" modal—removed. Orders page is the only place to create shipments.
-2. **`isOrderCentricShippingEnabled()`:** Still used on Orders page to show/hide the Ship button. Default: `true`.
+1. **Order-centric shipping (current):** Shipments page no longer has "Ship" modal. Orders page is the only place to create shipments.
+2. Feature-flag gating for seller shipping entry has been removed to avoid no-shipping-path states.
 
 ---
 
@@ -298,27 +298,77 @@ If shipment is `created` but carrier API failed (`awaiting_carrier_sync`):
 - [ ] Update Developer_Instructions.md with this logic
 
 ### Phase 2: Backend
-- [ ] Verify `unshipped` filter excludes orders with active shipment
-- [ ] Add `shippingDetails` or `hasShipment` to order response if needed for UI
-- [ ] Ensure shipment creation updates order `currentStatus` to `shipped`
+- [x] Verify `unshipped` filter maps to canonical unshipped statuses (`pending`, `ready_to_ship`)
+- [x] Add `hasShipment` to order response for UI (computed from status + shippingDetails)
+- [x] Ensure shipment creation updates order `currentStatus` to `shipped`
 
 ### Phase 3: Seller Frontend
-- [ ] Orders: Default tab to "To Ship" (unshipped)
-- [ ] Orders: Ensure tabs map correctly to API status
+- [x] Orders: Default tab to "To Ship" (unshipped)
+- [x] Orders: Ensure tabs map correctly to API status
 - [x] Shipments: Legacy "Ship" modal and Create Shipment button removed (Feb 2025)
 
 ### Phase 4: Admin Frontend
-- [ ] Admin Orders: Same tab logic as seller
-- [ ] Admin Shipments: Same as seller (no Ship when order-centric)
+- [x] Admin Orders: Same tab logic as seller
+- [x] Admin Shipments: Same as seller (no Ship when order-centric)
 
 ### Phase 5: Testing & Rollout
 - [ ] E2E: Ship from Orders → verify order moves to Shipped, shipment appears on Shipments
 - [ ] E2E: Shipments page shows only shipped orders' parcels
 - [ ] Document for support/CS team
 
+### Phase 6: Completed (Modernization Plan)
+- [x] Feature flag removed; ship always from Orders
+- [x] useUrgentActions: pending pickup from Shipments API
+- [x] Dashboard CTAs: Pickups → /seller/shipments?status=pending, RTO → /seller/orders?status=rto
+- [x] ShipmentPipeline drilldowns → /seller/shipments
+- [x] Order↔shipment linking in OrderDetailsPanel
+- [x] Track action in order list for shipped orders
+
 ---
 
-## 7. References
+## 7. Product/UX Spec (Alignment Reference)
+
+Use this section to align product specs, UX flows, and internal documentation with the implemented model.
+
+### 7.1 Page Roles
+
+| Page | Role | Primary Actions | Data Source |
+|------|------|-----------------|-------------|
+| **Orders** | Pre-shipment fulfillment queue | Ship Now, View, Track (when shipped) | `GET /orders` |
+| **Shipments** | Post-booking operations & tracking | View, Track, Labels, Manifest | `GET /shipments` |
+
+### 7.2 User Flows
+
+**Ship an order**
+1. Seller goes to **Orders** (default tab: To Ship)
+2. Clicks **Ship** on an eligible order (pending / ready_to_ship)
+3. Quote modal opens → selects courier → confirms
+4. Order moves to Shipped; shipment appears on Shipments page
+
+**Track a parcel**
+1. From **Orders**: Click **Track** on shipped order → navigates to Shipments with search
+2. From **Shipments**: View list, filter by status, click **View** for details
+3. From **Order Details**: Linked shipment block with **Track Shipment** CTA
+
+**Ship more orders**
+1. From **Shipments**: Click **Ship More Orders** → navigates to Orders with `?status=unshipped`
+
+### 7.3 Key UX Rules
+
+- **Single shipping entrypoint:** Ship only from Orders page
+- **Default Orders tab:** To Ship (unshipped)
+- **Stats labels:** "Orders to Ship" (not "Pending Shipments")
+- **Cross-navigation:** Track Shipments (Orders) ↔ Ship More Orders (Shipments)
+- **Dashboard drilldowns:** Shipment-stage counts → Shipments page; Order-stage counts → Orders page
+
+### 7.4 API Enhancements
+
+- **Order response:** Includes `hasShipment: boolean` when order has an associated shipment (avoids extra lookup for Track button)
+- **Shipments filter:** `GET /shipments?orderId=<id>` for order→shipment linking
+
+---
+
+## 8. References
 
 - Commerce Layer: [Shipments and shipping categories](https://commercelayer.io/docs/data-model/shipments-and-shipping-categories)
 - commercetools: [Shipping and Delivery Overview](https://docs.commercetools.com/api/shipping-delivery-overview)

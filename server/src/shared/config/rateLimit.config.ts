@@ -205,6 +205,20 @@ export const kycRateLimiter = createLimiterConfig(
 );
 
 /**
+ * Rate limiter for bank account mutations (add/delete)
+ * 20 requests per hour to prevent abuse
+ */
+export const bankAccountRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    20,
+    'Too many bank account operations. Please try again in an hour.',
+    'rl:bank:',
+    {
+        keyGenerator: (req: any) => req.user?._id?.toString() || req.ip || 'unknown',
+    }
+);
+
+/**
  * Rate limiter for login attempts
  * Strict: 5 requests per 15 minutes
  */

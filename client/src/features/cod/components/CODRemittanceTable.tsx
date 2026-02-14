@@ -212,7 +212,7 @@ export function CODRemittanceTable() {
                                         {formatCurrency(remittance.finalPayable)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <StatusBadge domain="remittance" status={remittance.status} />
+                                        <StatusBadge domain="remittance" status={remittance.status} size="sm" />
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {remittance.payout?.utr ? (

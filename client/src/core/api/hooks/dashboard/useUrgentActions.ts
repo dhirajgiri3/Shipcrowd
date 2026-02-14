@@ -1,6 +1,6 @@
 import { useQueries } from '@tanstack/react-query';
-import { orderApi } from '../../clients';
 import { ndrApi } from '../../clients/shipping/ndrApi';
+import { apiClient } from '../../http';
 import { useAuth } from '@/src/features/auth';
 
 interface UrgentActionsData {
@@ -13,7 +13,7 @@ interface UrgentActionsData {
 
 /**
  * Hook to fetch counts for urgent actions (Needs Attention)
- * Uses parallel queries with limit=1 for orders and dedicated stat endpoint for NDR.
+ * Uses parallel queries with limit=1 for shipments and dedicated stat endpoint for NDR.
  * Queries are only run when user has a company (avoids 500s for admin without company).
  */
 export const useUrgentActions = (): UrgentActionsData => {
@@ -21,26 +21,38 @@ export const useUrgentActions = (): UrgentActionsData => {
     const hasCompanyContext = isInitialized && !!user?.companyId;
 
     // We run three parallel queries (only when user has company context):
-    // 1. Pending Pickups (pending + ready_to_ship)
-    // 2. RTO Warning (rto + rto_initiated + rto_in_transit + rto_delivered)
+    // 1. Pending Pickups (shipment status=pending)
+    // 2. RTO Shipments (shipment status=rto)
     // 3. NDR Stats (action_required)
     const results = useQueries({
         queries: [
             {
-                queryKey: ['orders', 'count', 'pending_pickup'],
-                queryFn: async () => await orderApi.getOrders({
-                    limit: 1,
-                    status: 'pending,pending_pickup,ready_to_ship'
-                }),
+                queryKey: ['shipments', 'count', 'pending'],
+                queryFn: async () => {
+                    const response = await apiClient.get('/shipments', {
+                        params: {
+                            page: 1,
+                            limit: 1,
+                            status: 'pending',
+                        },
+                    });
+                    return response.data;
+                },
                 staleTime: 60 * 1000,
                 enabled: hasCompanyContext,
             },
             {
-                queryKey: ['orders', 'count', 'rto'],
-                queryFn: async () => await orderApi.getOrders({
-                    limit: 1,
-                    status: 'rto,rto_initiated,rto_in_transit,rto_delivered,rto_triggered'
-                }),
+                queryKey: ['shipments', 'count', 'rto'],
+                queryFn: async () => {
+                    const response = await apiClient.get('/shipments', {
+                        params: {
+                            page: 1,
+                            limit: 1,
+                            status: 'rto',
+                        },
+                    });
+                    return response.data;
+                },
                 staleTime: 60 * 1000,
                 enabled: hasCompanyContext,
             },

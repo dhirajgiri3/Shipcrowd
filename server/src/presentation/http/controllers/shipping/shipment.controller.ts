@@ -248,6 +248,16 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
 
         if (req.query.carrier) filter.carrier = { $regex: req.query.carrier, $options: 'i' };
         if (req.query.pincode) filter['deliveryDetails.address.postalCode'] = req.query.pincode;
+        if (req.query.orderId) {
+            const orderId = String(req.query.orderId);
+            if (!mongoose.Types.ObjectId.isValid(orderId)) {
+                throw new ValidationError('Invalid orderId filter', [{
+                    field: 'orderId',
+                    message: 'orderId must be a valid ObjectId',
+                }]);
+            }
+            filter.orderId = new mongoose.Types.ObjectId(orderId);
+        }
 
         if (req.query.startDate || req.query.endDate) {
             filter.createdAt = {};

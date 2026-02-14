@@ -197,7 +197,7 @@ export function ReturnsClient() {
                                             <span className="text-sm font-medium text-[var(--text-primary)]">{formatCurrency(item.refundAmount || 0)}</span>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <StatusBadge domain="return" status={item.status} />
+                                            <StatusBadge domain="return" status={item.status} size="sm" />
                                         </td>
                                         <td className="p-4 text-right">
                                             <span className="text-xs text-[var(--text-muted)]">{formatDate(item.createdAt)}</span>

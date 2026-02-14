@@ -14,7 +14,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeightDisputes } from '@/src/core/api/hooks';
-import { formatCurrency, formatDate } from '@/src/lib/utils';
+import { formatCurrency, formatDate, formatPaginationRange } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
 import { useAdminBatchDisputes } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
@@ -231,7 +231,7 @@ export function AdminDisputesTable() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <StatusBadge domain="dispute" status={dispute.status} />
+                                            <StatusBadge domain="dispute" status={dispute.status} size="sm" />
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <button
@@ -253,7 +253,7 @@ export function AdminDisputesTable() {
             {pagination && pagination.totalPages > 1 && (
                 <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                     <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+                        {formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'results')}
                     </span>
                     <div className="flex gap-2">
                         <button

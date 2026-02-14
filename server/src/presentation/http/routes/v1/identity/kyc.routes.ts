@@ -80,32 +80,32 @@ router.post('/verify-aadhaar', kycRateLimiter, authenticate, csrfProtection,
   wrapController(kycController.verifyAadhaar));
 
 /**
- * SECURITY: Requires SANDBOX tier
+ * SECURITY: Requires SANDBOX tier, rate limited
  * @route POST /kyc/verify-gstin
  * @desc Verify GSTIN in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-gstin', authenticate, csrfProtection,
+router.post('/verify-gstin', kycRateLimiter, authenticate, csrfProtection,
   requireAccess({ tier: AccessTier.SANDBOX }),
   wrapController(kycController.verifyGstin));
 
 /**
- * SECURITY: Requires SANDBOX tier
+ * SECURITY: Requires SANDBOX tier, rate limited, real DeepVue API only (no mocks in prod)
  * @route POST /kyc/verify-bank-account
  * @desc Verify bank account in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-bank-account', authenticate, csrfProtection,
+router.post('/verify-bank-account', kycRateLimiter, authenticate, csrfProtection,
   requireAccess({ tier: AccessTier.SANDBOX }),
   wrapController(kycController.verifyBankAccount));
 
 /**
- * SECURITY: Requires SANDBOX tier
+ * SECURITY: Requires SANDBOX tier, rate limited, real DeepVue API only (no mocks in prod)
  * @route POST /kyc/verify-ifsc
  * @desc Verify IFSC code in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-ifsc', authenticate, csrfProtection,
+router.post('/verify-ifsc', kycRateLimiter, authenticate, csrfProtection,
   requireAccess({ tier: AccessTier.SANDBOX }),
   wrapController(kycController.verifyIfscCode));
 

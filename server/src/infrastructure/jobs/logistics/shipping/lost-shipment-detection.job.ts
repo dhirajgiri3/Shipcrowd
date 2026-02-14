@@ -205,9 +205,16 @@ export class LostShipmentDetectionJob {
                 carrier: shipment.carrier,
             });
 
-            // Get courier provider
+            // Get courier provider (resolve service types like "surface" to velocity)
+            const { CarrierNormalizationService } = await import('../../../core/application/services/shipping/carrier-normalization.service');
+            const { default: CourierProviderRegistry } = await import('../../../core/application/services/courier/courier-provider-registry');
+            const rawCarrier = shipment.carrier || 'velocity-shipfast';
+            const providerCarrier = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+                || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+                || rawCarrier;
+
             const provider = await CourierFactory.getProvider(
-                shipment.carrier || 'velocity-shipfast',
+                providerCarrier,
                 shipment.companyId as unknown as mongoose.Types.ObjectId
             );
 

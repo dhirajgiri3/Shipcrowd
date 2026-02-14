@@ -7,6 +7,7 @@ import { NotFoundError, ValidationError } from '../../../../shared/errors/app.er
 import logger from '../../../../shared/logger/winston.logger';
 import { CourierFactory } from '../courier/courier.factory';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CarrierNormalizationService } from './carrier-normalization.service';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { getManifestCarrierStrategy } from './manifest-carrier-strategy';
 
@@ -43,6 +44,9 @@ class ManifestService {
 
         const supported = CourierProviderRegistry.toCanonical(carrier);
         if (supported) return supported;
+
+        // Resolve service types (surface, express) to default provider for legacy/bad data
+        if (CarrierNormalizationService.isServiceType(carrier)) return 'velocity';
 
         return carrier;
     }
@@ -217,8 +221,10 @@ class ManifestService {
             }
 
             try {
+                const providerCarrier = CarrierNormalizationService.resolveCarrierForProviderLookup(requestedCarrier)
+                    || CourierProviderRegistry.getIntegrationProvider(requestedCarrier);
                 const provider = await CourierFactory.getProvider(
-                    requestedCarrier,
+                    providerCarrier,
                     new mongoose.Types.ObjectId(data.companyId)
                 );
 
@@ -651,7 +657,9 @@ class ManifestService {
                         continue;
                     }
 
-                    const provider = await CourierFactory.getProvider(carrier, manifest.companyId);
+                    const providerCarrier = CarrierNormalizationService.resolveCarrierForProviderLookup(carrier)
+                        || CourierProviderRegistry.getIntegrationProvider(carrier);
+                    const provider = await CourierFactory.getProvider(providerCarrier, manifest.companyId);
 
                     if (!provider.schedulePickup) {
                         pickupResults.skipped += carrierBatch.length;

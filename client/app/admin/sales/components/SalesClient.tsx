@@ -484,7 +484,7 @@ function SalesPersonCard({ sp }: { sp: SalesRep }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <StatusBadge domain="sales_rep" status={sp.status} />
+                        <StatusBadge domain="sales_rep" status={sp.status} size="sm" />
                         <button onClick={toggleStatus} disabled={updateMutation.isPending}>
                             {updateMutation.isPending ? (
                                 <Loader className="h-5 w-5 text-[var(--primary-blue)]" />

@@ -128,7 +128,7 @@ function buildDashboardCsv(
             ? `${Number(adminData.globalSuccessRate).toFixed(1)}%`
             : 'N/A';
         rows.push(CSV_QUOTE('Success Rate') + ',' + CSV_QUOTE(sr) + ',' + CSV_QUOTE('percent'));
-        rows.push(CSV_QUOTE('Pending Orders') + ',' + (adminData.pendingOrders ?? 0) + ',' + CSV_QUOTE('count'));
+        rows.push(CSV_QUOTE('Orders to Ship') + ',' + (adminData.pendingOrders ?? 0) + ',' + CSV_QUOTE('count'));
         rows.push(CSV_QUOTE('Delivered Orders') + ',' + (adminData.deliveredOrders ?? 0) + ',' + CSV_QUOTE('count'));
         rows.push(CSV_QUOTE('Attempted Deliveries') + ',' + (adminData.attemptedDeliveries ?? 0) + ',' + CSV_QUOTE('count'));
     } else {
@@ -266,7 +266,7 @@ export function DashboardClient() {
         [router]
     );
 
-    /** Order status breakdown: Pending primary, Delivered secondary, then RTO and In Transit. */
+    /** Order status breakdown: To Ship primary, Delivered secondary, then RTO and In Transit. */
     const orderStatusData = useMemo(() => {
         if (!adminData) return [];
         const { totalOrders, pendingOrders, deliveredOrders, rtoCount } = adminData;
@@ -275,7 +275,7 @@ export function DashboardClient() {
         const rto = rtoCount ?? 0;
         const other = Math.max(0, (totalOrders ?? 0) - pending - delivered - rto);
         return [
-            { name: 'Pending', value: pending, color: 'var(--warning)' },
+            { name: 'To Ship', value: pending, color: 'var(--warning)' },
             { name: 'Delivered', value: delivered, color: 'var(--success)' },
             { name: 'RTO', value: rto, color: 'var(--error)' },
             { name: 'In Transit / Other', value: other, color: 'var(--primary-blue)' },
@@ -299,9 +299,9 @@ export function DashboardClient() {
     const orderStatusHint = useMemo(() => {
         if (!orderStatusData.length || !adminData?.totalOrders) return null;
         const delivered = orderStatusData.find((s) => s.name === 'Delivered')?.value ?? 0;
-        const pending = orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0;
+        const pending = orderStatusData.find((s) => s.name === 'To Ship')?.value ?? 0;
         if (delivered >= pending && delivered > 0) return 'Most orders delivered';
-        if (pending > delivered) return 'High pending share';
+        if (pending > delivered) return 'High to-ship share';
         return null;
     }, [orderStatusData, adminData?.totalOrders]);
 
@@ -312,7 +312,7 @@ export function DashboardClient() {
         return orderStatusData.map((s) => ({
             ...s,
             pct: total > 0 ? (s.value / total) * 100 : 0,
-            statusKey: s.name === 'Delivered' ? 'delivered' : s.name === 'Pending' ? 'pending' : s.name === 'RTO' ? 'rto' : 'shipped',
+            statusKey: s.name === 'Delivered' ? 'delivered' : s.name === 'To Ship' ? 'unshipped' : s.name === 'RTO' ? 'rto' : 'shipped',
         }));
     }, [orderStatusData, adminData?.totalOrders]);
 
@@ -692,7 +692,7 @@ export function DashboardClient() {
                         Orders
                         {adminData?.pendingOrders != null && adminData.pendingOrders > 0 && (
                             <span className="ml-1 px-1.5 py-0.5 rounded-md bg-[var(--warning-bg)] text-[var(--warning)] text-xs font-semibold">
-                                {adminData.pendingOrders} pending
+                                {adminData.pendingOrders} to ship
                             </span>
                         )}
                     </Link>
@@ -726,7 +726,7 @@ export function DashboardClient() {
                     <p className="text-xs text-[var(--text-muted)]">
                         Needs attention: {(adminData.pendingOrders ?? 0) > 0 && (
                             <Link href="/admin/orders" className="text-[var(--primary-blue)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-1 rounded">
-                                {(adminData.pendingOrders ?? 0)} pending orders
+                                {(adminData.pendingOrders ?? 0)} orders to ship
                             </Link>
                         )}
                         {needsAttentionSep1 ? ' \u2022 ' : null}
@@ -881,7 +881,7 @@ export function DashboardClient() {
                         )}
                     </section>
 
-                    {/* Order pipeline — Pending primary, Delivered secondary; relaxed spacing & responsive */}
+                    {/* Order pipeline — To Ship primary, Delivered secondary; relaxed spacing & responsive */}
                     <motion.section
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -907,10 +907,10 @@ export function DashboardClient() {
                                 </div>
                             ) : adminData ? (
                                 <div className="flex-1 overflow-auto px-4 sm:px-6 py-5 sm:py-6">
-                                    {/* Hero: Pending primary, Delivered secondary */}
+                                    {/* Hero: To Ship primary, Delivered secondary */}
                                     {(() => {
                                         const total = adminData?.totalOrders ?? 0;
-                                        const pending = orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0;
+                                        const pending = orderStatusData.find((s) => s.name === 'To Ship')?.value ?? 0;
                                         const delivered = orderStatusData.find((s) => s.name === 'Delivered')?.value ?? 0;
                                         const pendingPct = total > 0 ? (pending / total) * 100 : 0;
                                         const deliveredPct = total > 0 ? (delivered / total) * 100 : 0;
@@ -918,7 +918,7 @@ export function DashboardClient() {
                                             <div className="flex flex-wrap items-baseline gap-4 sm:gap-5 mb-4 sm:mb-5">
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tabular-nums"><AnimatedNumber value={pending} /></span>
-                                                    <span className="text-sm font-medium text-[var(--text-secondary)]">pending</span>
+                                                    <span className="text-sm font-medium text-[var(--text-secondary)]">to ship</span>
                                                 </div>
                                                 <span className="text-[var(--text-muted)]">·</span>
                                                 <div className="flex items-baseline gap-2">
@@ -927,7 +927,7 @@ export function DashboardClient() {
                                                 </div>
                                                 <span className="text-xs text-[var(--text-muted)]">
                                                     {total > 0 && (
-                                                        <span className="tabular-nums">{pendingPct.toFixed(1)}% pending · {deliveredPct.toFixed(1)}% delivered</span>
+                                                        <span className="tabular-nums">{pendingPct.toFixed(1)}% to ship · {deliveredPct.toFixed(1)}% delivered</span>
                                                     )}
                                                 </span>
                                             </div>
@@ -986,10 +986,10 @@ export function DashboardClient() {
                                             </ResponsiveContainer>
                                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" aria-hidden>
                                                 <span className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tabular-nums">
-                                                    <AnimatedNumber value={adminData?.totalOrders ? Math.round(((orderStatusData.find((s) => s.name === 'Pending')?.value ?? 0) / adminData.totalOrders) * 100) : 0} />
+                                                    <AnimatedNumber value={adminData?.totalOrders ? Math.round(((orderStatusData.find((s) => s.name === 'To Ship')?.value ?? 0) / adminData.totalOrders) * 100) : 0} />
                                                     %
                                                 </span>
-                                                <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mt-0.5">Pending</span>
+                                                <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mt-0.5">To Ship</span>
                                             </div>
                                         </div>
                                     </div>
@@ -997,8 +997,8 @@ export function DashboardClient() {
                                     {/* 4 status cards — below donut, 2 columns × 2 rows */}
                                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                         {orderStatusSegments.map((seg, i) => {
-                                            const Icon = seg.name === 'Delivered' ? CheckCircle2 : seg.name === 'Pending' ? Clock : seg.name === 'RTO' ? RotateCcw : Truck;
-                                            const isPrimary = seg.name === 'Pending';
+                                            const Icon = seg.name === 'Delivered' ? CheckCircle2 : seg.name === 'To Ship' ? Clock : seg.name === 'RTO' ? RotateCcw : Truck;
+                                            const isPrimary = seg.name === 'To Ship';
                                             return (
                                                 <Link
                                                     key={seg.name}

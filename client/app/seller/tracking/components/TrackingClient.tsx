@@ -1,7 +1,8 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Card } from '@/src/components/ui/core/Card';
@@ -22,9 +23,19 @@ import { useToast } from '@/src/components/ui/feedback/Toast';
 import { TrackingInfo } from '@/src/core/api/clients/shipping/shipmentApi';
 
 export function TrackingClient() {
+    const searchParams = useSearchParams();
+    const awbFromUrl = searchParams.get('awb')?.trim() || '';
     const [search, setSearch] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const { addToast } = useToast();
+
+    // Auto-search when awb is in URL (e.g. /seller/tracking?awb=SHP-20260214-2413)
+    useEffect(() => {
+        if (awbFromUrl) {
+            setSearch(awbFromUrl);
+            setSearchTerm(awbFromUrl);
+        }
+    }, [awbFromUrl]);
 
     // Use the hook to fetch data when searchTerm is set
     const { useTrackShipment } = useSellerTracking();

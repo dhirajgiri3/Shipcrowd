@@ -181,6 +181,10 @@ export * from './admin/impersonation-session.model';
 export { default as FeatureFlag } from './system/feature-flag.model';
 export * from './system/feature-flag.model';
 
+// System - Job Tracking
+export { BulkOrderImportJob } from './system/bulk-order-import-job.model';
+export * from './system/bulk-order-import-job.model';
+
 // Onboarding & Gamification
 export { default as OnboardingProgress } from './onboarding/onboarding-progress.model';
 export * from './onboarding/onboarding-progress.model';

@@ -20,6 +20,7 @@ import { CourierShipmentData, CourierReverseShipmentData } from '../base/courier
 import {
     EkartShipmentRequest,
     EkartLocation,
+    EkartAddressRequest,
     EKART_CONSTRAINTS,
 } from './ekart.types';
 
@@ -131,6 +132,37 @@ export class EkartMapper {
      * @param phone Contact phone
      * @returns Ekart location object
      */
+    /**
+     * Map warehouse to Ekart Address API request (POST /api/v2/address)
+     * Schema: alias, phone (int), address_line1, address_line2?, pincode (int), city?, state?, country?
+     */
+    static mapWarehouseToAddressRequest(warehouse: {
+        name: string;
+        address?: { line1?: string; line2?: string; city?: string; state?: string; country?: string; postalCode?: string };
+        contactInfo?: { phone?: string };
+    }): EkartAddressRequest {
+        const phone = warehouse.contactInfo?.phone || '';
+        const normalizedPhone = this.normalizePhone(phone);
+        this.validatePhone(normalizedPhone);
+        const pincode = warehouse.address?.postalCode || '';
+        this.validatePincode(pincode);
+        const addressLine1 = this.sanitize(warehouse.address?.line1) || warehouse.address?.line1 || '';
+        if (!addressLine1) {
+            throw new Error('Warehouse address line1 is required for Ekart address registration');
+        }
+
+        return {
+            alias: this.sanitize(warehouse.name) || warehouse.name,
+            phone: parseInt(normalizedPhone, 10),
+            address_line1: addressLine1,
+            address_line2: warehouse.address?.line2,
+            pincode: parseInt(pincode, 10),
+            city: warehouse.address?.city,
+            state: warehouse.address?.state,
+            country: warehouse.address?.country || 'India',
+        };
+    }
+
     static mapLocation(
         location: {
             address: string;
@@ -201,29 +233,11 @@ export class EkartMapper {
             data.destination.phone
         );
 
-        const pickupLocation: EkartLocation = {
-            location_type: 'Office',
-            name: options.pickupLocationName,
-            address: '',
-            city: '',
-            state: '',
-            country: 'India',
-            phone: 0,
-            pin: 0,
-        };
-
-        const returnLocation: EkartLocation = options.returnLocationName
-            ? {
-                location_type: 'Office',
-                name: options.returnLocationName,
-                address: '',
-                city: '',
-                state: '',
-                country: 'India',
-                phone: 0,
-                pin: 0,
-            }
-            : pickupLocation;
+        // Per Ekart doc: when using registered addresses, send only { name: alias }
+        const pickupLocation = { name: options.pickupLocationName } as EkartLocation;
+        const returnLocation = (options.returnLocationName
+            ? { name: options.returnLocationName }
+            : pickupLocation) as EkartLocation;
 
         // Calculate amounts
         const totalAmount = options.totalAmount || data.codAmount || 0;
@@ -305,16 +319,7 @@ export class EkartMapper {
             data.pickupAddress.phone
         );
 
-        const pickupLocation: EkartLocation = {
-            location_type: 'Office',
-            name: options.returnWarehouseName,
-            address: '',
-            city: '',
-            state: '',
-            country: 'India',
-            phone: 0,
-            pin: 0,
-        };
+        const pickupLocation = { name: options.returnWarehouseName } as EkartLocation;
 
         const totalAmount = options.totalAmount || 0;
         const taxValue = options.taxValue || 0;

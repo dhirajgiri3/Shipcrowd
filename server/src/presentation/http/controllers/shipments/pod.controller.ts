@@ -87,10 +87,16 @@ class PODController {
             }
 
             // Try courier if supported
-            const courierProvider = shipment.carrier;
-            if (!courierProvider) {
+            const rawCarrier = shipment.carrier;
+            if (!rawCarrier) {
                 throw new NotFoundError('POD not available for this shipment');
             }
+
+            const { CarrierNormalizationService } = await import('../../../../core/application/services/shipping/carrier-normalization.service');
+            const { default: CourierProviderRegistry } = await import('../../../../core/application/services/courier/courier-provider-registry');
+            const courierProvider = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+                || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+                || rawCarrier;
 
             const courier = await CourierFactory.getProvider(
                 courierProvider,

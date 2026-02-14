@@ -261,6 +261,28 @@ export class QueueManager {
       },
     });
 
+    // Create Bulk Order Import queue
+    await this.createQueue({
+      name: 'bulk-order-import',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 10000 }, // 10s initial delay
+        removeOnComplete: 500, // Keep more completed jobs for user reference
+        removeOnFail: false,   // Keep failed jobs indefinitely for debugging
+      },
+    });
+
+    // Create Lost Shipment Detection queue
+    await this.createQueue({
+      name: 'lost-shipment-detection',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 60000 }, // 1 min initial delay
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    });
+
     logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });

@@ -330,7 +330,7 @@ export class WarehouseSyncService {
             case 'delhivery':
                 return response.pickup_location_id || response.warehouse_id;
             case 'ekart':
-                return response.hub_id || response.facility_id;
+                return response.alias || response.hub_id || response.facility_id;
             default:
                 return (
                     response.warehouse_id ||

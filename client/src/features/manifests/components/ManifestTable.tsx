@@ -116,7 +116,7 @@ export function ManifestTable({
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <StatusBadge domain="manifest" status={manifest.status} />
+                                    <StatusBadge domain="manifest" status={manifest.status} size="sm" />
                                 </TableCell>
                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex justify-end items-center gap-2">

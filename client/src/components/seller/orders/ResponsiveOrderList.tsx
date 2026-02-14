@@ -22,7 +22,7 @@ import { MobileOrderCard, MobileOrderCardData } from './MobileOrderCard';
 import { orderToCardData, sortOrdersByPriority } from '@/src/lib/utils/orderPriority';
 import { useIsMobile } from '@/src/hooks/ux';
 import { DataTable } from '@/src/components/ui/data/DataTable';
-import { Package, Phone, Calendar, User, ShoppingBag, CreditCard, TrendingUp } from 'lucide-react';
+import { Package, Phone, Calendar, User, ShoppingBag, CreditCard, TrendingUp, Truck } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
@@ -118,23 +118,19 @@ const getDesktopColumns = (
     header: 'Payment',
     accessorKey: 'paymentStatus',
     cell: (row: Order) => (
-      <div className="flex flex-col gap-1">
-        <div className="flex flex-col gap-1">
-          <StatusBadge
-            domain="payment"
-            status={row.paymentStatus}
-            size="sm"
-            className="w-fit"
-          />
-        </div>
-      </div>
+      <StatusBadge
+        domain="payment"
+        status={row.paymentStatus}
+        size="sm"
+        className="w-fit"
+      />
     )
   },
   {
     header: 'Status',
     accessorKey: 'currentStatus',
     cell: (row: Order) => (
-      <StatusBadge domain="order" status={row.currentStatus} />
+      <StatusBadge domain="order" status={row.currentStatus} size="sm" className="w-fit" />
     )
   },
   {
@@ -149,29 +145,49 @@ const getDesktopColumns = (
   {
     header: 'Actions',
     accessorKey: 'actions',
-    cell: (row: Order) => (
-      <div className="flex items-center gap-2">
-        <ViewActionButton
-          label="View"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOrderClick?.(row);
-          }}
-        />
-        {onShipClick && isSellerOrderShippable(row) && (
-          <button
-            type="button"
+    cell: (row: Order) => {
+      const isShippable = onShipClick && isSellerOrderShippable(row);
+      const hasTrack = row.hasShipment ?? (['shipped', 'delivered', 'rto'].includes(String(row.currentStatus || '').toLowerCase()) || !!row.shippingDetails?.trackingNumber);
+      return (
+        <div className="flex items-center gap-2">
+          {isShippable && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShipClick(row);
+              }}
+              className="flex items-center gap-1.5 h-10 min-h-[40px] px-3 text-xs font-medium rounded-md bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] transition-colors"
+              aria-label={`Ship order ${row.orderNumber}`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+              Ship Now
+            </button>
+          )}
+          <ViewActionButton
+            label="View"
             onClick={(e) => {
               e.stopPropagation();
-              onShipClick(row);
+              onOrderClick?.(row);
             }}
-            className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--primary-blue)] text-[var(--primary-blue)] hover:bg-[var(--primary-blue)] hover:text-white transition-colors"
-          >
-            Ship
-          </button>
-        )}
-      </div>
-    )
+          />
+          {hasTrack && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const searchValue = row.shippingDetails?.trackingNumber || row.orderNumber;
+                window.location.assign(`/seller/shipments?search=${encodeURIComponent(searchValue)}`);
+              }}
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
+              aria-label={`Track shipment for order ${row.orderNumber}`}
+            >
+              Track
+            </button>
+          )}
+        </div>
+      );
+    }
   }
 ];
 
@@ -193,8 +209,9 @@ export function ResponsiveOrderList({
       metric: 'order_track',
       range: '7d'
     });
-    // TODO: Implement tracking logic
-    console.log('Track order:', orderData.id);
+    const order = sortedOrders.find((o) => o._id === orderData.id);
+    const searchValue = order?.shippingDetails?.trackingNumber || order?.orderNumber || orderData.awbNumber;
+    window.location.assign(`/seller/shipments?search=${encodeURIComponent(searchValue)}`);
   };
 
   // Handle call action

@@ -22,6 +22,7 @@ import ServiceLevelPricingMetricsService from '../metrics/service-level-pricing-
 import ServiceRateCardFormulaService from './service-rate-card-formula.service';
 import { getPricingFeatureFlags } from './pricing-feature-flags';
 import PricingStrategyService from './pricing-strategy.service';
+import RouteIntelligenceService from './route-intelligence.service';
 import {
     AutoPriority,
     PricingSource,
@@ -292,6 +293,31 @@ class QuoteEngineService {
                 })),
                 totalOptions: options.length,
             });
+
+            // Enrich with route intelligence performance metrics
+            if (options.length > 0) {
+                try {
+                    const uniqueProviders = [...new Set(options.map((opt) => opt.provider))];
+                    const perfMap = await RouteIntelligenceService.getBatchRoutePerformance(
+                        input.companyId,
+                        uniqueProviders,
+                        input.fromPincode,
+                        input.toPincode
+                    );
+
+                    for (const option of options) {
+                        const perf = perfMap.get(option.provider);
+                        if (perf) {
+                            option.performanceMetrics = perf;
+                        }
+                    }
+                } catch (perfError) {
+                    logger.warn('Route intelligence enrichment failed, continuing without perf metrics', {
+                        companyId: input.companyId,
+                        error: perfError instanceof Error ? perfError.message : perfError,
+                    });
+                }
+            }
             const failedProviders = providerResults.filter((result) => result.failed);
             const allProvidersFailed =
                 providerEntries.length > 0 && failedProviders.length === providerEntries.length;
@@ -1165,15 +1191,28 @@ class QuoteEngineService {
             balancedDeltaPercent
         ).optionId;
 
-        return options
+        const rankedOptions = options
             .map((option) => {
-                const priceRank =
+                // Price score (relative to cheapest)
+                const priceScore =
                     cheapest.quotedAmount > 0 && option.quotedAmount > 0
                         ? cheapest.quotedAmount / option.quotedAmount
                         : 0;
-                const speedRank = fastest?.eta?.maxDays
+
+                // Speed score (relative to fastest)
+                const speedScore = fastest?.eta?.maxDays
                     ? fastest.eta.maxDays / (option.eta?.maxDays || 999)
                     : 0;
+
+                // Reliability score (from performance metrics)
+                const reliabilityScore = option.performanceMetrics
+                    ? option.performanceMetrics.deliverySuccessRate / 100
+                    : 0.7; // Neutral default
+
+                // New formula: 40% price, 30% speed, 30% reliability
+                const rankScore = priceScore * 0.4 + speedScore * 0.3 + reliabilityScore * 0.3;
+
+                // Assign tags
                 const tags: string[] = [];
                 if (option.optionId === cheapest.optionId) tags.push('CHEAPEST');
                 if (fastest && option.optionId === fastest.optionId) tags.push('FASTEST');
@@ -1181,11 +1220,29 @@ class QuoteEngineService {
 
                 return {
                     ...option,
-                    rankScore: Number((priceRank * 0.6 + speedRank * 0.4).toFixed(4)),
+                    rankScore: Number(rankScore.toFixed(4)),
                     tags,
                 };
             })
             .sort((a, b) => b.rankScore - a.rankScore);
+
+        // Add recommendation reason to the top option (the recommended one)
+        const topOption = rankedOptions.find((opt) => opt.tags.includes('RECOMMENDED'));
+        if (topOption) {
+            const perf = topOption.performanceMetrics;
+
+            if (topOption.tags.includes('CHEAPEST') && perf && perf.deliverySuccessRate > 90) {
+                topOption.recommendationReason = 'Best price with reliable delivery';
+            } else if (topOption.tags.includes('FASTEST')) {
+                topOption.recommendationReason = 'Fastest delivery option';
+            } else if (perf && perf.rtoRate < 8) {
+                topOption.recommendationReason = 'Most reliable for this route';
+            } else {
+                topOption.recommendationReason = 'Best overall balance';
+            }
+        }
+
+        return rankedOptions;
     }
 
     private pickRecommendedOption(

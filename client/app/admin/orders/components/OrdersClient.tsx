@@ -27,8 +27,7 @@ import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 // Tabs configuration
 const ORDER_TABS = [
     { id: 'all', label: 'All' },
-    { id: 'new', label: 'New' },
-    { id: 'ready', label: 'Ready' },
+    { id: 'unshipped', label: 'To Ship' },
     { id: 'shipped', label: 'Shipped' },
     { id: 'delivered', label: 'Delivered' },
     { id: 'rto', label: 'RTO' },
@@ -123,6 +122,15 @@ export default function OrdersClient() {
     const orders = ordersResponse?.data || [];
     const pagination = ordersResponse?.pagination;
     const stats = ordersResponse?.stats || {};
+
+    // Reset to page 1 when current page is out of range (e.g. after filters reduce total)
+    useEffect(() => {
+        const total = pagination?.total ?? 0;
+        const pages = pagination?.pages ?? 1;
+        if (total > 0 && page > pages && orders.length === 0) {
+            updateUrl({ page: 1 });
+        }
+    }, [pagination?.total, pagination?.pages, page, orders.length]);
 
     // -- Event Handlers --
     // Sync search with URL
@@ -331,8 +339,8 @@ export default function OrdersClient() {
                     delay={0}
                 />
                 <StatsCard
-                    title="Pending Shipments"
-                    value={(stats['new'] || 0) + (stats['ready'] || 0) + (stats['pending'] || 0)}
+                    title="Orders to Ship"
+                    value={(stats['pending'] || 0) + (stats['ready_to_ship'] || 0)}
                     icon={Clock}
                     iconColor="bg-orange-500 text-white"
                     trend={{ value: 5, label: 'vs yesterday', positive: false }}
@@ -401,7 +409,11 @@ export default function OrdersClient() {
                     <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide max-w-[500px]">
                         {ORDER_TABS.map((tab) => {
                             const isActive = status === tab.id;
-                            const count = tab.id === 'all' ? (pagination?.total || 0) : (stats[tab.id] || 0);
+                            const count = tab.id === 'all'
+                                ? (pagination?.total || 0)
+                                : tab.id === 'unshipped'
+                                    ? ((stats['pending'] || 0) + (stats['ready_to_ship'] || 0))
+                                    : (stats[tab.id] || 0);
 
                             return (
                                 <button

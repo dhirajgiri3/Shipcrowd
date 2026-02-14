@@ -6,10 +6,26 @@ import { cn } from '@/src/lib/utils';
 
 /**
  * Modal Component
- * 
+ *
  * Accessible modal dialog using design system tokens.
  * Uses portal for proper stacking context.
+ * Implements focus trap: Tab/Shift+Tab cycle within modal; focus returns to trigger on close.
  */
+
+const FOCUSABLE_SELECTOR = [
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    'a[href]',
+    '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+function getFocusables(container: HTMLElement): HTMLElement[] {
+    return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null && !el.hasAttribute('aria-hidden')
+    );
+}
 
 interface ModalProps {
     isOpen: boolean;
@@ -37,6 +53,8 @@ export const Modal = memo(function Modal({
     size = 'md'
 }: ModalProps) {
     const overlayRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const previousActiveRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -45,14 +63,53 @@ export const Modal = memo(function Modal({
 
         if (isOpen) {
             document.body.style.overflow = 'hidden';
+            previousActiveRef.current = document.activeElement as HTMLElement | null;
             document.addEventListener('keydown', handleEscape);
         }
 
         return () => {
             document.body.style.overflow = 'unset';
             document.removeEventListener('keydown', handleEscape);
+            if (previousActiveRef.current?.focus) {
+                previousActiveRef.current.focus();
+            }
         };
     }, [isOpen, onClose]);
+
+    useEffect(() => {
+        if (!isOpen || !contentRef.current) return;
+
+        const container = contentRef.current;
+        const focusables = getFocusables(container);
+        if (focusables.length > 0) {
+            focusables[0].focus();
+        }
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab') return;
+
+            const focusables = getFocusables(container);
+            if (focusables.length === 0) return;
+
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+
+            if (e.shiftKey) {
+                if (document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else {
+                if (document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        };
+
+        container.addEventListener('keydown', handleKeyDown);
+        return () => container.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -77,6 +134,7 @@ export const Modal = memo(function Modal({
 
             {/* Modal Content */}
             <div
+                ref={contentRef}
                 className={cn(
                     "relative z-10 w-full",
                     "bg-[var(--bg-primary)] rounded-[var(--radius-xl)]",

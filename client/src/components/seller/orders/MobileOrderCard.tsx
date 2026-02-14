@@ -387,22 +387,36 @@ export function MobileOrderCard({
             )}
           </div>
 
-          {/* Quick action button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowActions(!showActions);
-            }}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white text-xs font-medium transition-colors"
-          >
-            <span>Actions</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          {/* When shippable: Ship Now as primary CTA. When shipped: Actions with Track, Call */}
+          {onShip ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onShip();
+              }}
+              className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-3 rounded-lg bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white text-sm font-medium transition-colors"
+              aria-label={`Ship order ${order.awbNumber}`}
+            >
+              <Truck className="w-4 h-4" />
+              <span>Ship Now</span>
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActions(!showActions);
+              }}
+              className="flex items-center gap-1 min-h-[44px] px-3 py-2 rounded-lg bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white text-xs font-medium transition-colors"
+            >
+              <span>Actions</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </motion.div>
 
-      {/* Expandable actions panel */}
-      {showActions && (
+      {/* Expandable actions panel (Track, Call) - only when shipped, not shippable */}
+      {!onShip && showActions && (
         <motion.div
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
@@ -417,6 +431,7 @@ export function MobileOrderCard({
                   setShowActions(false);
                 }}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-sm font-medium text-[var(--text-primary)] transition-colors"
+                aria-label="Track shipment"
               >
                 <Eye className="w-4 h-4" />
                 <span>Track</span>
@@ -432,18 +447,6 @@ export function MobileOrderCard({
               >
                 <Phone className="w-4 h-4" />
                 <span>Call</span>
-              </button>
-            )}
-            {onShip && (
-              <button
-                onClick={() => {
-                  onShip();
-                  setShowActions(false);
-                }}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-sm font-medium text-white transition-colors"
-              >
-                <Truck className="w-4 h-4" />
-                <span>Ship</span>
               </button>
             )}
           </div>

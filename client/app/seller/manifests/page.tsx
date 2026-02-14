@@ -129,9 +129,18 @@ export default function ManifestsPage() {
     }, [debouncedSearch, statusTab, courierFilter]);
 
     const manifests = manifestsData?.manifests ?? [];
-    const pagination = manifestsData
-        ? { total: manifestsData.total, pages: manifestsData.pages }
-        : null;
+    const paginationInfo = manifestsData ? { total: manifestsData.total, pages: manifestsData.pages } : null;
+
+    // Reset to page 1 when current page is out of range (e.g. after filters reduce total)
+    useEffect(() => {
+        if (!paginationInfo) return;
+        const { total, pages } = paginationInfo;
+        if (total > 0 && page > pages && manifests.length === 0) {
+            setPage(1);
+        }
+    }, [paginationInfo?.total, paginationInfo?.pages, page, manifests.length]);
+
+    const pagination = paginationInfo;
 
     return (
         <div className="min-h-screen space-y-8 pb-20 animate-fade-in">

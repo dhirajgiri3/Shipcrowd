@@ -114,7 +114,7 @@ export function BillingClient() {
         columns.push({
             accessorKey: 'status',
             header: 'Status',
-            cell: (row: BillingTransaction) => <StatusBadge domain="billing" status={row.status} />
+            cell: (row: BillingTransaction) => <StatusBadge domain="billing" status={row.status} size="sm" />
         });
     }
 

@@ -210,8 +210,13 @@ export default class ReturnService {
         }
 
         // Only Velocity-backed shipments are supported for automated reverse pickup
-        // Get courier provider via Factory
-        const courierProvider = (shipment as any).carrier || 'velocity';
+        // Get courier provider via Factory (resolve service types like "surface" to velocity)
+        const rawCarrier = (shipment as any).carrier || 'velocity';
+        const { CarrierNormalizationService } = await import('../shipping/carrier-normalization.service');
+        const { default: CourierProviderRegistry } = await import('../courier/courier-provider-registry');
+        const courierProvider = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+            || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+            || rawCarrier;
 
         const { CourierFactory } = await import('../courier/courier.factory.js');
         const courierAdapter = await CourierFactory.getProvider(

@@ -26,6 +26,8 @@ import { RTONotificationService } from './rto-notification.service';
 import ServiceRatePricingService from './rate-card.service';
 import InventoryService from '../warehouse/inventory.service';
 import RTOAnalyticsService from './rto-analytics.service';
+import { CarrierNormalizationService } from '../shipping/carrier-normalization.service';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
@@ -425,7 +427,10 @@ export default class RTOService {
             // Check if shipment uses Velocity courier
             // Get courier provider via Factory
             // This decouples the service from specific implementations (Velocity, etc.)
-            const courierProvider = fullShipment.carrier || 'velocity-shipfast'; // Default fallback
+            const rawCarrier = fullShipment.carrier || 'velocity-shipfast';
+            const courierProvider = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+                || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+                || rawCarrier;
 
             const { CourierFactory } = await import('../courier/courier.factory.js');
             const courierAdapter = await CourierFactory.getProvider(
@@ -739,8 +744,12 @@ export default class RTOService {
                 throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
             }
 
+            const rawCarrier = shipment.carrier || 'velocity-shipfast';
+            const courierProvider = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+                || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+                || rawCarrier;
+
             const { CourierFactory } = await import('../courier/courier.factory.js');
-            const courierProvider = shipment.carrier || 'velocity-shipfast';
             const courierAdapter = await CourierFactory.getProvider(
                 courierProvider,
                 new mongoose.Types.ObjectId(shipment.companyId)
@@ -806,7 +815,10 @@ export default class RTOService {
                 throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
             }
 
-            const courierProvider = shipment.carrier || 'velocity-shipfast';
+            const rawCarrier = shipment.carrier || 'velocity-shipfast';
+            const courierProvider = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+                || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+                || rawCarrier;
 
             const { CourierFactory } = await import('../courier/courier.factory.js');
             const courierAdapter = await CourierFactory.getProvider(
@@ -909,7 +921,11 @@ export default class RTOService {
                 throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
             }
 
-            const courierProvider = shipment.carrier || 'velocity-shipfast';
+            const rawCarrier = shipment.carrier || 'velocity-shipfast';
+            const courierProvider = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+                || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+                || rawCarrier;
+
             const { CourierFactory } = await import('../courier/courier.factory.js');
             const courierAdapter = await CourierFactory.getProvider(
                 courierProvider,

@@ -11,7 +11,16 @@ export const getShipDisabledReason = (order: Order): string | null => {
     return null;
   }
 
-  const status = String(order.currentStatus || 'unknown');
-  return `Only pending or ready_to_ship orders can be shipped. Current status: ${status}.`;
+  const status = String(order.currentStatus || '').toLowerCase();
+  if (['shipped', 'delivered', 'in_transit', 'out_for_delivery'].includes(status)) {
+    return 'This order is already shipped';
+  }
+  if (['rto', 'rto_initiated', 'rto_delivered'].includes(status)) {
+    return 'This order is in return. Track it from Shipments.';
+  }
+  if (['cancelled'].includes(status)) {
+    return 'This order is cancelled';
+  }
+  return 'This order cannot be shipped in its current state';
 };
 

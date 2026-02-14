@@ -14,16 +14,13 @@ Modernize seller shipping UX to be order-centric and easier to use, while preser
 - Do not bypass quote session flow in seller UI.
 - Do not treat Blueship-only statuses (`new`, `ready`) as shippable in Shipcrowd.
 
-### Feature Flag and Rollback
-- Flag: `NEXT_PUBLIC_SELLER_ORDER_CENTRIC_SHIPPING`
-- Location: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/.env.example`
-- Behavior:
-  - missing/undefined: enabled (default) — Ship button visible on Orders page
-  - `"false"`: hides Ship button on Orders page (no shipment creation UI anywhere)
-- **Note:** Legacy "Create Shipment" on Shipments page was removed (Feb 2025). Orders page is the only place to create shipments.
+### Shipping Entry Point
+- Seller shipment creation is always order-centric.
+- Orders page is the only shipment-creation entry point.
+- Legacy "Create Shipment" on Shipments page remains removed.
 
 ### Phase Sequence (Required)
-1. Utilities and flag
+1. Utilities and status normalization
 2. Order quote-ship modal
 3. Mobile status mapping and ship action wiring
 4. Orders page integration
@@ -39,11 +36,6 @@ Modernize seller shipping UX to be order-centric and easier to use, while preser
 - API:
   - `isSellerOrderShippable(order): boolean`
   - `getShipDisabledReason(order): string | null`
-
-#### Order-Centric Feature Flag Utility
-- File: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/src/lib/utils/seller-shipping-flags.ts`
-- API:
-  - `isOrderCentricShippingEnabled(): boolean`
 
 #### Quote Booking Modal
 - File: `/Users/dhirajgiri/Documents/Projects/Helix India/Shipcrowd/client/src/components/seller/shipping/OrderQuoteShipModal.tsx`
@@ -92,7 +84,6 @@ Modernize seller shipping UX to be order-centric and easier to use, while preser
 - Quote expiry auto-refreshes and preserves selected courier when available.
 - Wallet-insufficient flow blocks booking and supports recharge CTA.
 - Double-click on confirm does not submit twice.
-- Flag `false` restores legacy Shipments create flow.
 - Successful booking refreshes order/shipment data in UI.
 - Error states surface mapped messages:
   - insufficient balance

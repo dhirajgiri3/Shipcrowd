@@ -59,7 +59,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
       icon: Package,
       color: 'var(--warning)',
       bgColor: 'var(--warning-bg)',
-      url: '/seller/orders?status=pending'
+      url: '/seller/shipments?status=pending'
     },
     {
       id: 'picked',
@@ -68,7 +68,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
       icon: Truck,
       color: 'var(--info)',
       bgColor: 'var(--info-bg)',
-      url: '/seller/orders?status=picked'
+      url: '/seller/shipments?status=in_transit'
     },
     {
       id: 'in_transit',
@@ -77,7 +77,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
       icon: MapPin,
       color: 'var(--primary-blue)',
       bgColor: 'var(--bg-secondary)',
-      url: '/seller/orders?status=in_transit'
+      url: '/seller/shipments?status=in_transit'
     },
     {
       id: 'out_for_delivery',
@@ -86,7 +86,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
       icon: Home,
       color: 'var(--success)',
       bgColor: 'var(--success-bg)',
-      url: '/seller/orders?status=out_for_delivery'
+      url: '/seller/shipments?status=in_transit'
     },
     {
       id: 'delivered',
@@ -95,7 +95,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
       icon: Home,
       color: 'var(--success)',
       bgColor: 'var(--success-bg)',
-      url: '/seller/orders?status=delivered'
+      url: '/seller/shipments?status=delivered'
     }
   ];
 
@@ -108,7 +108,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
       icon: TrendingDown,
       color: 'var(--error)',
       bgColor: 'var(--error-bg)',
-      url: '/seller/orders?status=rto'
+      url: '/seller/shipments?status=rto'
     },
     {
       id: 'failed',
@@ -117,7 +117,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
       icon: XCircle,
       color: 'var(--error)',
       bgColor: 'var(--error-bg)',
-      url: '/seller/orders?status=failed'
+      url: '/seller/shipments?status=ndr'
     }
   ];
 
@@ -170,7 +170,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
 
               <div className="flex-1 text-left">
                 <div className="text-sm font-medium text-[var(--text-primary)]">{stage.label}</div>
-                <div className="text-xs text-[var(--text-secondary)]">{stage.count} orders</div>
+                <div className="text-xs text-[var(--text-secondary)]">{stage.count} shipments</div>
               </div>
 
               <div className="text-2xl font-bold" style={{ color: stage.color }}>
@@ -205,7 +205,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
                   <div className="text-sm font-bold" style={{ color: stage.color }}>
                     {stage.label}
                   </div>
-                  <div className="text-xs text-[var(--text-secondary)]">{stage.count} orders</div>
+                  <div className="text-xs text-[var(--text-secondary)]">{stage.count} shipments</div>
                 </div>
 
                 <div className="text-2xl font-bold" style={{ color: stage.color }}>
@@ -227,7 +227,7 @@ export function ShipmentPipeline({ statusCounts }: ShipmentPipelineProps) {
         <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">Shipment Flow</h2>
           <p className="text-sm text-[var(--text-secondary)] mt-1">
-            Track orders through delivery pipeline
+            Track shipments through delivery pipeline
           </p>
         </div>
       </div>

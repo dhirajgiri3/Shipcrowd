@@ -187,7 +187,13 @@ export class AddressUpdateController {
                 const mongoose = await import('mongoose');
                 const { CourierFactory } = await import('../../../../core/application/services/courier/courier.factory.js');
 
-                const courierProvider = shipment.carrier || 'velocity-shipfast';
+                const { CarrierNormalizationService } = await import('../../../../core/application/services/shipping/carrier-normalization.service');
+                const { default: CourierProviderRegistry } = await import('../../../../core/application/services/courier/courier-provider-registry');
+                const rawCarrier = shipment.carrier || 'velocity-shipfast';
+                const courierProvider = CarrierNormalizationService.resolveCarrierForProviderLookup(rawCarrier)
+                    || CourierProviderRegistry.getIntegrationProvider(rawCarrier)
+                    || rawCarrier;
+
                 const courierClient = await CourierFactory.getProvider(
                     courierProvider,
                     new mongoose.Types.ObjectId(String(shipment.companyId))

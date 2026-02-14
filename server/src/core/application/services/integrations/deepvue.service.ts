@@ -37,7 +37,15 @@ const DEEPVUE_CLIENT_ID = process.env.DEEPVUE_CLIENT_ID;
 const DEEPVUE_API_KEY = process.env.DEEPVUE_API_KEY;
 
 // Development mode flag - set to 'true' to use mock responses instead of real API calls
+// SECURITY: Mock mode is NEVER allowed in production - verification would be bypassed
 const DEEPVUE_DEV_MODE = process.env.DEEPVUE_DEV_MODE === 'true';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+if (IS_PRODUCTION && DEEPVUE_DEV_MODE) {
+  throw new Error(
+    'SECURITY: DEEPVUE_DEV_MODE=true is not allowed in production. Set DEEPVUE_DEV_MODE=false and configure DEEPVUE_CLIENT_ID/DEEPVUE_API_KEY for real API verification.'
+  );
+}
 
 // Validate credentials are present (skip if in dev mode)
 if (!DEEPVUE_DEV_MODE && (!DEEPVUE_CLIENT_ID || !DEEPVUE_API_KEY)) {
@@ -646,7 +654,7 @@ export const verifyBankAccount = async (
   name?: string
 ): Promise<any> => {
   try {
-    // If in development mode, return mock response
+    // If in development mode, return mock response (never in production - enforced at startup)
     if (DEEPVUE_DEV_MODE) {
       logger.info(`[DEV MODE] Using mock response for bank account verification: ${accountNumber}, IFSC: ${ifsc}`);
       return processBankAccountResponse(mockBankAccountResponse(accountNumber, ifsc, name || 'Test User'));
@@ -800,7 +808,7 @@ export const processBankAccountResponse = (responseData: any): any => {
  */
 export const verifyIfsc = async (ifsc: string): Promise<any> => {
   try {
-    // If in development mode, return mock response
+    // If in development mode, return mock response (never in production - enforced at startup)
     if (DEEPVUE_DEV_MODE) {
       logger.info(`[DEV MODE] Using mock response for IFSC verification: ${ifsc}`);
       return processIfscResponse(mockIfscResponse(ifsc));

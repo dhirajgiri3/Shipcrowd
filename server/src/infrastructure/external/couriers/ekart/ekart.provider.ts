@@ -163,13 +163,13 @@ export class EkartProvider implements ICourierAdapter {
                 // Validate data
                 EkartMapper.validateForwardShipmentData(data);
 
-                // Map data to Ekart request
+                // Map data to Ekart request (pickup/return use Ekart alias from carrierDetails.ekart.warehouseId)
                 const ekartRequest: EkartShipmentRequest = EkartMapper.mapToForwardShipment(data, {
                     sellerName: data.carrierOptions?.delhivery?.sellerName || data.origin.name,
                     sellerAddress: data.carrierOptions?.delhivery?.sellerAddress || data.origin.address,
-                    sellerGstTin: data.carrierOptions?.delhivery?.sellerInv || '', // Assuming sellerInv maps to GST/Tax ID for now, adjust as needed
-                    pickupLocationName: data.origin.name, // Using origin name as location alias
-                    returnLocationName: data.carrierOptions?.delhivery?.returnAddress?.name,
+                    sellerGstTin: data.carrierOptions?.delhivery?.sellerInv || '',
+                    pickupLocationName: data.carrierOptions?.ekart?.pickupLocationName || data.origin.name,
+                    returnLocationName: data.carrierOptions?.ekart?.returnLocationName || data.carrierOptions?.delhivery?.returnAddress?.name,
                     productsDesc: data.package.description,
                     hsnCode: data.carrierOptions?.delhivery?.hsn,
                     totalAmount: data.carrierOptions?.delhivery?.totalAmount,
@@ -177,12 +177,12 @@ export class EkartProvider implements ICourierAdapter {
                     // Note: sellerGstAmount, etc. should ideally come from data if available
                 });
 
-                // Execute request with retry
+                // Execute request with retry (API doc: Method PUT, single object body)
                 const response = await retryWithBackoff(async () => {
                     try {
-                        return await this.axiosInstance.post<EkartShipmentResponse>(
+                        return await this.axiosInstance.put<EkartShipmentResponse>(
                             EKART_ENDPOINTS.CREATE_SHIPMENT,
-                            [ekartRequest] // API expects array
+                            ekartRequest
                         );
                     } catch (error: any) {
                         const ekartError = handleEkartError(error);
@@ -194,17 +194,6 @@ export class EkartProvider implements ICourierAdapter {
                 });
 
                 const apiResponse = response.data;
-
-                // Ekart returns array of responses or single object? Docs usually imply array input gets array output
-                // But for single object wrapper above, let's treat it as if we sent one.
-                // Assuming the response structure based on typical Ekart integrations.
-                // NOTE: The types define it as single object, but let's verify if map returns array.
-                // Actually, the API call above sends `[ekartRequest]`.
-                // So response.data might be `EkartShipmentResponse[]` or object with property containing list.
-                // Based on types `EkartShipmentResponse`, it looks like a single object structure.
-                // Let's assume for now it returns a list if we sent a list.
-
-                // If it's an array, take the first one
                 const result = Array.isArray(apiResponse) ? apiResponse[0] : apiResponse;
 
                 if (!result.status && result.remark) {
@@ -664,9 +653,9 @@ export class EkartProvider implements ICourierAdapter {
 
     // Optional methods
     async createWarehouse(data: any): Promise<any> {
-        // Implement address registration
         try {
-            const response = await this.axiosInstance.post(EKART_ENDPOINTS.ADDRESS, data);
+            const payload = EkartMapper.mapWarehouseToAddressRequest(data);
+            const response = await this.axiosInstance.post(EKART_ENDPOINTS.ADDRESS, payload);
             return response.data;
         } catch (error) {
             throw handleEkartError(error);

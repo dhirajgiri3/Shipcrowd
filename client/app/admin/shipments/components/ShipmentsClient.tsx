@@ -109,6 +109,15 @@ export function ShipmentsClient() {
     const shipmentsData = shipmentsResponse?.shipments || [];
     const pagination = shipmentsResponse?.pagination;
 
+    // Reset to page 1 when current page is out of range (e.g. after filters reduce total)
+    useEffect(() => {
+        const total = pagination?.total ?? 0;
+        const pages = pagination?.pages ?? 1;
+        if (total > 0 && page > pages && shipmentsData.length === 0) {
+            updateUrl({ page: 1 });
+        }
+    }, [pagination?.total, pagination?.pages, page, shipmentsData.length]);
+
     // Helper to extract order number
     const getOrderNumber = (orderId: any) => {
         if (typeof orderId === 'object' && orderId?.orderNumber) {
@@ -218,7 +227,7 @@ export function ShipmentsClient() {
 
     const TABS = [
         { id: 'all', label: 'All' },
-        { id: 'pending', label: 'Pending' },
+        { id: 'pending', label: 'Pending Pickup' },
         { id: 'in_transit', label: 'In Transit' },
         { id: 'delivered', label: 'Delivered' },
         { id: 'ndr', label: 'NDR' },

@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Order, BulkOrderImportJob } from '../../../../infrastructure/database/mongoose/models';
 import RiskScoringService from '../../../../core/application/services/risk/risk-scoring.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
+import ExcelJS from 'exceljs';
+import { BulkOrderImportJobProcessor } from '../../../../infrastructure/jobs/shipping/bulk-order-import.job';
 import {
     guardChecks,
     requireCompanyContext,
@@ -182,7 +184,11 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
             throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
-        sendSuccess(res, { order }, 'Order retrieved successfully');
+        const status = String((order as any).currentStatus || '').toLowerCase();
+        const hasShipment = Boolean((order as any).shippingDetails?.trackingNumber) ||
+            ['shipped', 'delivered', 'rto', 'in_transit'].includes(status);
+
+        sendSuccess(res, { order: { ...order, hasShipment } }, 'Order retrieved successfully');
     } catch (error) {
         logger.error('Error fetching order:', error);
         next(error);
@@ -309,45 +315,236 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
         requireCompanyContext(auth);
 
         if (!req.file) {
-            throw new ValidationError('CSV file is required');
+            throw new ValidationError('CSV or Excel file is required');
         }
 
         const rows: any[] = [];
+        const mimetype = req.file.mimetype;
+        const isExcel = mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            || req.file.originalname.endsWith('.xlsx');
 
-        const stream = Readable.from(req.file.buffer.toString());
+        if (isExcel) {
+            // Excel parsing - pattern from remittance-reconciliation.service.ts
+            const workbook = new ExcelJS.Workbook();
+            // Multer buffer (Buffer<ArrayBufferLike>) vs Node Buffer type mismatch - runtime compatible
+            // @ts-expect-error - Multer.File.buffer type incompatible with ExcelJS Buffer; works at runtime
+            await workbook.xlsx.load(req.file.buffer);
+            const worksheet = workbook.getWorksheet(1);
 
-        stream
-            .pipe(csv())
-            .on('data', (row) => rows.push(row))
-            .on('end', async () => {
-                try {
-                    const result = await OrderService.getInstance().bulkImportOrders({
-                        rows,
-                        companyId: new mongoose.Types.ObjectId(auth.companyId)
+            if (!worksheet) {
+                throw new ValidationError('Excel file contains no worksheets');
+            }
+
+            let headerRow: Record<number, string> | null = null;
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) {
+                    headerRow = {};
+                    row.eachCell((cell, colNumber) => {
+                        headerRow![colNumber] = cell.toString().trim();
                     });
-
-                    await createAuditLog(auth.userId, auth.companyId, 'create', 'order', 'bulk', { imported: result.created.length, failed: result.errors.length }, req);
-
-                    sendCreated(res, {
-                        created: result.created,
-                        errors: result.errors.length > 0 ? result.errors : undefined,
-                        imported: result.created.length,
-                        failed: result.errors.length
-                    }, `Imported ${result.created.length} orders`);
-                } catch (error) {
-                    if (error instanceof Error && error.message === 'No orders imported') {
-                        // This seems like a validation error or just a bad request
-                        throw new ValidationError('No orders imported');
-                    }
-                    throw error;
+                    return;
                 }
-            })
-            .on('error', (error) => {
-                logger.error('CSV parsing error:', error);
-                next(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400));
+
+                if (headerRow) {
+                    const rowData: any = {};
+                    row.eachCell((cell, colNumber) => {
+                        const columnName = headerRow![colNumber];
+                        if (columnName) {
+                            rowData[columnName] = cell.toString().trim();
+                        }
+                    });
+                    rows.push(rowData);
+                }
             });
+        } else {
+            // CSV parsing - wrap in Promise to ensure errors propagate
+            await new Promise<void>((resolve, reject) => {
+                const stream = Readable.from(req.file!.buffer.toString());
+                stream
+                    .pipe(csv())
+                    .on('data', (row) => rows.push(row))
+                    .on('end', () => resolve())
+                    .on('error', (err) => reject(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400)));
+            });
+        }
+
+        const result = await OrderService.getInstance().bulkImportOrders({
+            rows,
+            companyId: new mongoose.Types.ObjectId(auth.companyId)
+        });
+
+        await createAuditLog(auth.userId, auth.companyId, 'create', 'order', 'bulk', {
+            imported: result.created.length,
+            failed: result.errors.length
+        }, req);
+
+        sendCreated(res, {
+            created: result.created,
+            errors: result.errors.length > 0 ? result.errors : undefined,
+            imported: result.created.length,
+            failed: result.errors.length
+        }, `Imported ${result.created.length} orders`);
     } catch (error) {
         logger.error('Error importing orders:', error);
+        next(error);
+    }
+};
+
+/**
+ * Bulk Import Orders (Async) - For large files (>1000 rows)
+ * Queues the import job and returns job tracking ID for polling
+ */
+export const bulkImportOrdersAsync = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+
+        if (!req.file) {
+            throw new ValidationError('CSV or Excel file is required');
+        }
+
+        const rows: any[] = [];
+        const mimetype = req.file.mimetype;
+        const fileName = req.file.originalname;
+        const fileSize = req.file.size;
+        const isExcel = mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            || fileName.endsWith('.xlsx');
+
+        // Parse file (same logic as sync endpoint)
+        if (isExcel) {
+            const workbook = new ExcelJS.Workbook();
+            // Multer buffer (Buffer<ArrayBufferLike>) vs Node Buffer type mismatch - runtime compatible
+            // @ts-expect-error - Multer.File.buffer type incompatible with ExcelJS Buffer; works at runtime
+            await workbook.xlsx.load(req.file.buffer);
+            const worksheet = workbook.getWorksheet(1);
+
+            if (!worksheet) {
+                throw new ValidationError('Excel file contains no worksheets');
+            }
+
+            let headerRow: Record<number, string> | null = null;
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) {
+                    headerRow = {};
+                    row.eachCell((cell, colNumber) => {
+                        headerRow![colNumber] = cell.toString().trim();
+                    });
+                    return;
+                }
+
+                if (headerRow) {
+                    const rowData: any = {};
+                    row.eachCell((cell, colNumber) => {
+                        const columnName = headerRow![colNumber];
+                        if (columnName) {
+                            rowData[columnName] = cell.toString().trim();
+                        }
+                    });
+                    rows.push(rowData);
+                }
+            });
+        } else {
+            await new Promise<void>((resolve, reject) => {
+                const stream = Readable.from(req.file!.buffer.toString());
+                stream
+                    .pipe(csv())
+                    .on('data', (row) => rows.push(row))
+                    .on('end', () => resolve())
+                    .on('error', (err) => reject(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400)));
+            });
+        }
+
+        // Validate row count
+        if (rows.length === 0) {
+            throw new ValidationError('File contains no data rows');
+        }
+
+        // Create job tracking record
+        const jobTracking = await BulkOrderImportJob.create({
+            companyId: new mongoose.Types.ObjectId(auth.companyId),
+            userId: new mongoose.Types.ObjectId(auth.userId),
+            fileName,
+            fileSize,
+            totalRows: rows.length,
+            status: 'pending',
+            progress: 0,
+            errors: [],
+            created: [],
+            jobId: '', // Will be set after queuing
+        });
+
+        // Queue the job
+        const jobId = await BulkOrderImportJobProcessor.queueBulkImport({
+            jobTrackingId: (jobTracking._id as mongoose.Types.ObjectId).toString(),
+            companyId: auth.companyId,
+            rows,
+        });
+
+        // Update job tracking with BullMQ job ID
+        jobTracking.jobId = jobId;
+        await jobTracking.save();
+
+        await createAuditLog(auth.userId, auth.companyId, 'create', 'order', 'bulk_async', {
+            jobId,
+            totalRows: rows.length
+        }, req);
+
+        sendCreated(res, {
+            jobId: (jobTracking._id as mongoose.Types.ObjectId).toString(),
+            status: 'pending',
+            totalRows: rows.length,
+            message: 'Bulk import job queued successfully. Use the job ID to poll for status.'
+        }, 'Bulk import job queued');
+    } catch (error) {
+        logger.error('Error queueing bulk import:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get Bulk Import Job Status
+ * Returns the current status and progress of a bulk import job
+ */
+export const getBulkImportJobStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+
+        const { jobId } = req.params;
+        validateObjectId(jobId, 'jobId');
+
+        const job = await BulkOrderImportJob.findOne({
+            _id: jobId,
+            companyId: new mongoose.Types.ObjectId(auth.companyId)
+        });
+
+        if (!job) {
+            throw new NotFoundError('Bulk import job not found');
+        }
+
+        sendSuccess(res, {
+            jobId: (job._id as mongoose.Types.ObjectId).toString(),
+            status: job.status,
+            progress: job.progress,
+            totalRows: job.totalRows,
+            processedRows: job.processedRows,
+            successCount: job.successCount,
+            errorCount: job.errorCount,
+            fileName: job.fileName,
+            fileSize: job.fileSize,
+            created: job.created,
+            errors: job.errors,
+            startedAt: job.startedAt,
+            completedAt: job.completedAt,
+            errorMessage: job.errorMessage,
+            metadata: job.metadata,
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
+        });
+    } catch (error) {
+        logger.error('Error fetching bulk import job status:', error);
         next(error);
     }
 };
@@ -469,6 +666,8 @@ export default {
     updateOrder,
     deleteOrder,
     bulkImportOrders,
+    bulkImportOrdersAsync,
+    getBulkImportJobStatus,
     cloneOrder,
     splitOrder,
     mergeOrders,

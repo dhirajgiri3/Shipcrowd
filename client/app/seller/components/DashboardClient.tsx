@@ -366,26 +366,15 @@ export function DashboardClient() {
     // --- PREPARE DATA FOR COMPONENTS (with fallback) ---
 
     // 1. Urgent Actions Logic - Use real API data when available
-
-    // Filter real orders by status or fall back to mock
-    // const pendingPickups = ordersListData?.data?.filter(order =>
-    //     order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
-    // ) || [];
-
-    // const rtoOrders = ordersListData?.data?.filter(order =>
-    //     order.currentStatus?.toLowerCase().includes('rto')
-    // ) || [];
-
-    // Determine urgent actions based on REAL data
     const urgentActions = [
         ...(pendingPickupCount > 0 ? [{
             id: 'pickup-1',
             type: 'pickup' as const,
             title: 'Pickups Pending',
-            description: `${pendingPickupCount} orders waiting for courier pickup`,
+            description: `${pendingPickupCount} shipments waiting for courier pickup`,
             count: pendingPickupCount,
-            ctaLabel: 'Schedule Pickup',
-            ctaUrl: '/seller/orders?status=pending_pickup',
+            ctaLabel: 'View Pending Pickups',
+            ctaUrl: '/seller/shipments?status=pending',
             severity: 'high' as const
         }] : []),
         ...(ndrActionRequiredCount > 0 ? [{
@@ -401,11 +390,11 @@ export function DashboardClient() {
         ...(rtoCount > 0 ? [{
             id: 'rto-1',
             type: 'rto' as const,
-            title: 'RTO Risk Detected',
-            description: `${rtoCount} orders flagged for RTO risk`,
+            title: 'RTO Cases',
+            description: `${rtoCount} shipments in return-to-origin`,
             count: rtoCount,
             ctaLabel: 'Review Cases',
-            ctaUrl: '/seller/orders?status=rto_risk',
+            ctaUrl: '/seller/shipments?status=rto',
             severity: 'medium' as const
         }] : []),
         // ✅ FIXED: Only show wallet alert if balance is actually low

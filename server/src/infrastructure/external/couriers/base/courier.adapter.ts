@@ -68,6 +68,10 @@ export interface CourierShipmentData {
             sellerAddress?: string;
             quantity?: string | number;
         };
+        ekart?: {
+            pickupLocationName?: string;  // Ekart alias (from Address API registration)
+            returnLocationName?: string;
+        };
     };
 }
 

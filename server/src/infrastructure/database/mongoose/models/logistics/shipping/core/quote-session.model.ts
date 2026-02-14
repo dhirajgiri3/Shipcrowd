@@ -56,6 +56,12 @@ export interface IQuoteSession extends Document {
             gst?: number;
             total?: number;
         };
+        performanceMetrics?: {
+            deliverySuccessRate: number;
+            rtoRate: number;
+            dataSource: 'route' | 'courier' | 'default';
+        };
+        recommendationReason?: string;
     }>;
     recommendation?: string;
     selectedOptionId?: string;
@@ -154,6 +160,15 @@ const QuoteSessionSchema = new Schema<IQuoteSession>(
                     gst: Number,
                     total: Number,
                 },
+                performanceMetrics: {
+                    deliverySuccessRate: Number,
+                    rtoRate: Number,
+                    dataSource: {
+                        type: String,
+                        enum: ['route', 'courier', 'default'],
+                    },
+                },
+                recommendationReason: String,
             },
         ],
         recommendation: String,

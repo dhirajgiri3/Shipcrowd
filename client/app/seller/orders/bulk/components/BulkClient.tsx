@@ -55,8 +55,8 @@ export function BulkClient() {
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
-            if (!selectedFile.name.match(/\.(csv|xlsx|xls)$/)) {
-                addToast('Please upload a CSV or Excel file', 'warning');
+            if (!selectedFile.name.match(/\.(csv|xlsx)$/)) {
+                addToast('Please upload a CSV or Excel (.xlsx) file', 'warning');
                 return;
             }
             setFile(selectedFile);
@@ -177,7 +177,7 @@ export function BulkClient() {
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".csv,.xlsx,.xls"
+                            accept=".csv,.xlsx"
                             className="hidden"
                             onChange={handleFileSelect}
                         />

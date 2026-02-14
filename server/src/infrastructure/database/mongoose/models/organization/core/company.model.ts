@@ -21,6 +21,8 @@ export interface ICompany extends Document {
     bankName?: string;
     accountNumber?: string;
     ifscCode?: string;
+    accountHolderName?: string;
+    bankVerifiedAt?: Date;
     upiId?: string;
   };
   branding: {
@@ -179,6 +181,8 @@ const CompanySchema = new Schema<ICompany>(
       bankName: String,
       accountNumber: String,
       ifscCode: String,
+      accountHolderName: String,
+      bankVerifiedAt: Date,
       upiId: String,
     },
     branding: {

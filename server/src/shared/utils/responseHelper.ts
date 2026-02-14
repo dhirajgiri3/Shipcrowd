@@ -92,7 +92,7 @@ export const calculatePagination = (
     page: number,
     limit: number
 ): PaginationMeta => {
-    const pages = Math.ceil(total / limit);
+    const pages = total === 0 ? 1 : Math.max(1, Math.ceil(total / limit));
 
     return {
         total,

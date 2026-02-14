@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from 'lucide-react';
 import { Button, type ButtonProps } from '@/src/components/ui/core/Button';
 import {
     Dialog,
@@ -47,6 +48,7 @@ export function ConfirmDialog({
                         {cancelText}
                     </Button>
                     <Button variant={confirmVariant} onClick={onConfirm} disabled={isLoading}>
+                        {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         {confirmText}
                     </Button>
                 </DialogFooter>

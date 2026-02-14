@@ -486,9 +486,16 @@ Need help? Reply to this message.
                 }
             }
 
+            // Resolve service types (surface, express) to provider for legacy/bad data
+            const { CarrierNormalizationService } = await import('../../shipping/carrier-normalization.service');
+            const { default: CourierProviderRegistry } = await import('../../courier/courier-provider-registry');
+            const resolvedCarrier = CarrierNormalizationService.resolveCarrierForProviderLookup(carrierName)
+                || CourierProviderRegistry.getIntegrationProvider(carrierName)
+                || carrierName;
+
             // Get generic courier provider
             const provider = await CourierFactory.getProvider(
-                carrierName,
+                resolvedCarrier,
                 new mongoose.Types.ObjectId(companyId)
             );
 

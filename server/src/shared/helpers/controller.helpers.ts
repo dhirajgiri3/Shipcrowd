@@ -142,12 +142,15 @@ export const buildPaginationResponse = (
     total: number,
     page: number,
     limit: number
-): { total: number; page: number; limit: number; pages: number } => ({
-    total,
-    page,
-    limit,
-    pages: Math.ceil(total / limit),
-});
+): { total: number; page: number; limit: number; pages: number } => {
+    const pages = total === 0 ? 1 : Math.max(1, Math.ceil(total / limit));
+    return {
+        total,
+        page,
+        limit,
+        pages,
+    };
+};
 
 /**
  * Parse date range from query parameters

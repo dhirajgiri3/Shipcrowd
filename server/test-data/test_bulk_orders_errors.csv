@@ -1,0 +1,5 @@
+customer_name,customer_phone,customer_email,address_line1,address_line2,city,state,postal_code,country,product_name,sku,quantity,price,weight,payment_method,payment_status,order_status
+Valid Order,9876543210,valid@example.com,123 Street,,Mumbai,Maharashtra,400001,India,Product,SKU-001,1,100,0.5,prepaid,paid,pending
+Invalid Phone,12345,invalid@example.com,456 Road,,Delhi,Delhi,110001,India,Product,SKU-002,1,200,0.5,prepaid,paid,pending
+Missing City,,missing@example.com,789 Lane,,,,700016,India,Product,SKU-003,1,300,0.5,prepaid,paid,pending
+Invalid Postal,9876543210,postal@example.com,321 Ave,,Chennai,Tamil Nadu,12345,India,Product,SKU-004,1,400,0.5,prepaid,paid,pending

@@ -54,6 +54,27 @@ const deriveOrderWeight = (order: Order): number => {
   return totalWeight > 0 ? totalWeight : 0.5;
 };
 
+const deriveOrderDimensions = (order: Order): { length: number; width: number; height: number } => {
+  let maxLength = 0;
+  let maxWidth = 0;
+  let maxHeight = 0;
+
+  for (const product of order.products) {
+    if (product.dimensions) {
+      maxLength = Math.max(maxLength, product.dimensions.length || 0);
+      maxWidth = Math.max(maxWidth, product.dimensions.width || 0);
+      maxHeight = Math.max(maxHeight, product.dimensions.height || 0);
+    }
+  }
+
+  // Fallback to sensible defaults if no dimensions available
+  return {
+    length: maxLength > 0 ? maxLength : 20,
+    width: maxWidth > 0 ? maxWidth : 15,
+    height: maxHeight > 0 ? maxHeight : 10,
+  };
+};
+
 export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: OrderQuoteShipModalProps) {
   const { addToast } = useToast();
   const { data: walletBalance } = useWalletBalance();
@@ -117,21 +138,22 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
       setHasMissingOriginError(true);
       setCourierRates([]);
       setSelectedCourierKey(null);
-      addToast('Order has no valid warehouse origin. Please assign a warehouse first.', 'error');
+      addToast('Assign a warehouse to this order first. Go to order settings or contact support.', 'error');
       return;
     }
 
     setHasMissingOriginError(false);
 
+    const dims = deriveOrderDimensions(targetOrder);
     const result = await fetchCourierRates({
       fromPincode,
       toPincode: targetOrder.customerInfo.address.postalCode,
       weight: deriveOrderWeight(targetOrder),
       paymentMode: targetOrder.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
       orderValue: Number(targetOrder.totals?.total || 0),
-      length: 20,
-      width: 15,
-      height: 10,
+      length: dims.length,
+      width: dims.width,
+      height: dims.height,
     });
 
     const rates = result.data || [];
@@ -370,6 +392,7 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
                 type="button"
                 className="ml-2 underline"
                 onClick={() => window.location.assign('/seller/wallet')}
+                aria-label="Recharge wallet"
               >
                 Recharge wallet
               </button>
@@ -379,10 +402,13 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Courier Quotes</p>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Select a courier</p>
             <div className="flex items-center gap-2">
               {quoteExpiresAt && (
-                <span className="text-xs text-[var(--text-muted)]">
+                <span
+                  className="text-xs text-[var(--text-muted)]"
+                  title="Rates refresh automatically when expired"
+                >
                   Expires in {Math.floor(quoteTimeLeftSec / 60)}:{String(quoteTimeLeftSec % 60).padStart(2, '0')}
                 </span>
               )}
@@ -393,13 +419,13 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
                 onClick={() => refreshQuotes('manual_refresh')}
               >
                 <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', isFetchingCourierRates && 'animate-spin')} />
-                Refresh
+                Refresh rates
               </Button>
             </div>
           </div>
 
           {isFetchingCourierRates ? (
-            <div className="flex items-center justify-center py-8 text-sm text-[var(--text-secondary)]">
+            <div className="flex items-center justify-center py-8 text-sm text-[var(--text-secondary)]" aria-live="polite">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Loading courier quotes...
             </div>
@@ -410,17 +436,26 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
                 : 'No quotes available for this order right now.'}
             </div>
           ) : (
-            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+            <div
+              role="radiogroup"
+              aria-label="Select courier option"
+              className="space-y-2 max-h-[260px] overflow-y-auto pr-1"
+            >
               {courierRates.map((rate) => {
                 const key = rate.optionId || rate.courierId;
+                const isSelected = selectedCourierKey === key;
+                const ariaLabel = `${rate.courierName}, ${formatCurrency(rate.rate)}, ETA ${rate.estimatedDeliveryDays} day(s)${rate.isRecommended ? ', Recommended' : ''}`;
                 return (
                   <button
                     key={key}
                     type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={ariaLabel}
                     onClick={() => setSelectedCourierKey(key)}
                     className={cn(
                       'w-full rounded-lg border p-3 text-left transition-all',
-                      selectedCourierKey === key
+                      isSelected
                         ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]/20'
                         : 'border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]'
                     )}
@@ -432,6 +467,11 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
                           ETA: {rate.estimatedDeliveryDays} day(s)
                           {rate.isRecommended ? ' • Recommended' : ''}
                         </p>
+                        {rate.recommendationReason && (
+                          <p className="text-[10px] text-[var(--primary-blue)] mt-0.5">
+                            {rate.recommendationReason}
+                          </p>
+                        )}
                       </div>
                       <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(rate.rate)}</p>
                     </div>
@@ -447,17 +487,23 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
           <Button
             onClick={handleBookShipment}
             disabled={isBookingDisabled}
+            title={isBookingDisabled && !isShipBooking ? 'Select a courier and ensure sufficient wallet balance' : undefined}
             className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
           >
             {isShipBooking ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Booking...
+                Creating shipment...
               </>
-            ) : selectedRate?.isRecommended ? (
-              'Quick Ship (Recommended)'
             ) : (
-              'Ship Selected Courier'
+              <>
+                Ship Now
+                {selectedRate?.isRecommended && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/20">
+                    Recommended
+                  </span>
+                )}
+              </>
             )}
           </Button>
         </div>

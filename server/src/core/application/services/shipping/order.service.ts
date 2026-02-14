@@ -17,8 +17,12 @@ import AddressValidationService from '../logistics/address-validation.service';
  */
 export class OrderService extends CachedService {
     protected serviceName = 'order';
+    private static readonly LEGACY_STATUS_MAP: Record<string, string> = {
+        new: 'pending',
+        ready: 'ready_to_ship',
+    };
     private static readonly STATUS_ALIASES: Record<string, string[]> = {
-        unshipped: ['pending', 'ready_to_ship', 'new', 'ready'],
+        unshipped: ['pending', 'ready_to_ship'],
     };
 
     // Singleton pattern helper
@@ -133,17 +137,48 @@ export class OrderService extends CachedService {
         return null;
     }
 
+    private static normalizeStatusValue(status: string): string[] {
+        const normalized = String(status || '').trim().toLowerCase();
+        if (!normalized) {
+            return [];
+        }
+
+        const legacyMapped = this.LEGACY_STATUS_MAP[normalized] || normalized;
+        const aliasStatuses = this.STATUS_ALIASES[legacyMapped];
+        if (aliasStatuses) {
+            return aliasStatuses;
+        }
+
+        return [legacyMapped];
+    }
+
     private static resolveStatusFilter(status?: string) {
-        if (!status || status === 'all') {
+        if (!status) {
             return {};
         }
 
-        const alias = this.STATUS_ALIASES[String(status).toLowerCase()];
-        if (alias) {
-            return { currentStatus: { $in: alias } };
+        const requestedStatuses = String(status)
+            .split(',')
+            .map((item) => item.trim().toLowerCase())
+            .filter(Boolean);
+
+        if (!requestedStatuses.length || requestedStatuses.includes('all')) {
+            return {};
         }
 
-        return { currentStatus: status };
+        const resolvedStatuses = Array.from(
+            new Set(requestedStatuses.flatMap((item) => this.normalizeStatusValue(item)))
+        );
+
+        if (!resolvedStatuses.length) {
+            return {};
+        }
+
+        if (resolvedStatuses.length === 1) {
+            return { currentStatus: resolvedStatuses[0] };
+        }
+
+        return { currentStatus: { $in: resolvedStatuses } };
     }
 
     private static deriveShipmentWeight(
@@ -324,7 +359,7 @@ export class OrderService extends CachedService {
             switch (queryParams.smartFilter) {
                 case 'needs_attention':
                     matchStageFiltered.currentStatus = {
-                        $in: ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception', 'ready', 'new']
+                        $in: ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception']
                     };
                     break;
                 case 'today':
@@ -396,7 +431,7 @@ export class OrderService extends CachedService {
                         {
                             $match: {
                                 currentStatus: {
-                                    $in: ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception', 'ready', 'new']
+                                    $in: ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception']
                                 }
                             }
                         },
@@ -443,7 +478,11 @@ export class OrderService extends CachedService {
                                 _id: null,
                                 totalOrders: { $sum: 1 },
                                 totalRevenue: { $sum: { $ifNull: ['$totals.total', 0] } },
-                                pendingShipments: { $sum: { $cond: [{ $eq: ['$currentStatus', 'pending'] }, 1, 0] } },
+                                pendingShipments: {
+                                    $sum: {
+                                        $cond: [{ $in: ['$currentStatus', ['pending', 'ready_to_ship', 'new', 'ready']] }, 1, 0]
+                                    }
+                                },
                                 pendingPayments: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'pending'] }, 1, 0] } }
                             }
                         }
@@ -458,12 +497,19 @@ export class OrderService extends CachedService {
             Order.aggregate(pipelineGlobal).then((r) => r[0])
         ]);
 
-        // 7. Format Result
-        const orders = (resultFiltered.orders || []).map((o: any) => ({
-            ...o,
-            warehouseId: o.warehouse,
-            id: o._id
-        }));
+        // 7. Format Result (include hasShipment for UI to show Track without extra lookup)
+        const SHIPPED_STATUSES = ['shipped', 'delivered', 'rto', 'in_transit'];
+        const orders = (resultFiltered.orders || []).map((o: any) => {
+            const status = String(o.currentStatus || '').toLowerCase();
+            const hasShipment = Boolean(o.shippingDetails?.trackingNumber) ||
+                SHIPPED_STATUSES.includes(status);
+            return {
+                ...o,
+                warehouseId: o.warehouse,
+                id: o._id,
+                hasShipment
+            };
+        });
 
         const total = resultFiltered.total?.[0]?.count || 0;
 
@@ -471,7 +517,7 @@ export class OrderService extends CachedService {
         (resultFiltered.stats || []).forEach((s: any) => {
             stats[s._id] = s.count;
         });
-        const allStatuses = ['new', 'ready', 'shipped', 'delivered', 'rto', 'cancelled', 'pending'];
+        const allStatuses = ['pending', 'ready_to_ship', 'shipped', 'delivered', 'rto', 'cancelled'];
         allStatuses.forEach(s => {
             if (!stats[s]) stats[s] = 0;
         });
@@ -925,6 +971,18 @@ export class OrderService extends CachedService {
         errors: Array<{ row: number; error: string; data?: any }>;
     }> {
         const { rows, companyId } = args;
+
+        // Guard: enforce row limit to prevent resource exhaustion
+        const MAX_BULK_IMPORT_ROWS = 1000;
+        if (rows.length === 0) {
+            throw new ValidationError('File contains no data rows');
+        }
+        if (rows.length > MAX_BULK_IMPORT_ROWS) {
+            throw new ValidationError(
+                `File contains ${rows.length} rows, which exceeds the maximum of ${MAX_BULK_IMPORT_ROWS}. Please split your file into smaller batches.`
+            );
+        }
+
         const created: Array<{ orderNumber: string; id: any }> = [];
         const errors: Array<{ row: number; error: string; data?: any }> = [];
 

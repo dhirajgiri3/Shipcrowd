@@ -201,8 +201,7 @@ export function calculateSmartFilterCounts(
     // Needs Attention: Orders requiring immediate action
     if ([
       'rto', 'cancelled', 'ready_to_ship', 'ndr',
-      'pickup_pending', 'pickup_failed', 'exception',
-      'ready', 'new'
+      'pickup_pending', 'pickup_failed', 'exception'
     ].includes(order.currentStatus)) {
       counts.needs_attention++;
     }

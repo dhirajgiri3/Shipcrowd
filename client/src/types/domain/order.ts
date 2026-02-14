@@ -109,6 +109,9 @@ export interface Order {
   currentStatus: string;
   statusHistory: StatusHistoryEntry[];
 
+  /** True when order has an associated shipment (computed by backend) */
+  hasShipment?: boolean;
+
   // Backend calculates this
   totals: OrderTotals;
 
@@ -289,6 +292,12 @@ export interface CourierRate {
     gst?: number;
     total?: number;
   };
+  performanceMetrics?: {
+    deliverySuccessRate: number;
+    rtoRate: number;
+    dataSource: 'route' | 'courier' | 'default';
+  };
+  recommendationReason?: string;
 }
 
 /**

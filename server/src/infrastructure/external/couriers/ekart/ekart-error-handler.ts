@@ -263,6 +263,10 @@ export function isRetryableError(error: any): boolean {
     if (errorCode === 'SWIFT_RESOURCE_NOT_FOUND_EXCEPTION') {
         return false;
     }
+    // Endpoint not implemented - verify EKART_BASE_URL and API config with Ekart
+    if (errorCode === 'PATH_NOT_IMPLEMENTED' || String(responseData?.message || '').includes('PATH_NOT_IMPLEMENTED')) {
+        return false;
+    }
 
     // Network errors are retryable
     if (error.code) {
@@ -331,8 +335,16 @@ export function handleEkartError(error: any, context?: Record<string, any>): Eka
         responseData?.error?.exception ||
         responseData?.error?.exceptionName;
     const isResourceNotFound = errorCode === 'SWIFT_RESOURCE_NOT_FOUND_EXCEPTION';
+    const isPathNotImplemented = errorCode === 'PATH_NOT_IMPLEMENTED' || String(responseData?.message || '').includes('PATH_NOT_IMPLEMENTED');
     const resolvedStatusCode = isResourceNotFound && statusCode >= 500 ? 404 : statusCode;
-    const retryable = isResourceNotFound ? false : isRetryableError(error);
+    const retryable = (isResourceNotFound || isPathNotImplemented) ? false : isRetryableError(error);
+
+    if (isPathNotImplemented) {
+        logger.warn('PATH_NOT_IMPLEMENTED from Ekart API - verify EKART_BASE_URL and that /api/v1/package/create is enabled for your account', {
+            endpoint: error.config?.url,
+            baseUrl: error.config?.baseURL,
+        });
+    }
     const responseMessage =
         responseData?.message ||
         responseData?.error?.message ||

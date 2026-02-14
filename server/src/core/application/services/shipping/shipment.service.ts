@@ -16,6 +16,7 @@ import WalletService from '../wallet/wallet.service';
 import WebhookDispatcherService from '../webhooks/webhook-dispatcher.service';
 import skuWeightProfileService from '../sku/sku-weight-profile.service';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CarrierNormalizationService } from './carrier-normalization.service';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -149,6 +150,14 @@ export class ShipmentService {
             return {
                 delhivery: {
                     pickupLocationName: warehouse?.carrierDetails?.delhivery?.warehouseId || warehouse?.name,
+                },
+            };
+        }
+        if (canonical === 'ekart') {
+            return {
+                ekart: {
+                    pickupLocationName: warehouse?.carrierDetails?.ekart?.warehouseId || warehouse?.name,
+                    returnLocationName: warehouse?.carrierDetails?.ekart?.warehouseId || warehouse?.name,
                 },
             };
         }
@@ -598,8 +607,10 @@ export class ShipmentService {
                     });
 
                     if (rates && rates.length > 0) {
+                        // Use provider name for carrier (velocity, delhivery, ekart), NOT serviceType (surface, express)
+                        const canonicalProvider = CourierProviderRegistry.toCanonical(preferredProvider) || preferredProvider;
                         selectedOption = {
-                            carrier: rates[0].serviceType || 'Velocity Shipfast',
+                            carrier: canonicalProvider,
                             rate: rates[0].total,
                             deliveryTime: rates[0].estimatedDeliveryDays || 3
                         };
@@ -895,12 +906,13 @@ export class ShipmentService {
                     });
                     await shipment.save({ session });
 
-                    // Add to retry queue for background processing
+                    // Add to retry queue for background processing (delay ensures DB commit is visible)
                     await QueueManager.addJob('carrier-sync', 'sync-shipment', {
                         shipmentId: (shipment._id as mongoose.Types.ObjectId).toString()
                     }, {
                         attempts: 5,
-                        backoff: { type: 'exponential', delay: 30000 }
+                        backoff: { type: 'exponential', delay: 30000 },
+                        delay: 5000,
                     });
                 }
             }
@@ -1269,7 +1281,7 @@ export class ShipmentService {
                 });
 
                 try {
-                    const { WarehouseSyncService } = await import('../logistics/warehouse-sync.service.js');
+                    const { WarehouseSyncService } = await import('../logistics/warehouse-sync.service');
                     if (ShipmentService.supportsLiveCarrierSync(canonicalCarrier)) {
                         await WarehouseSyncService.syncWithCarrier(warehouse as any, canonicalCarrier);
                     }
@@ -1291,10 +1303,15 @@ export class ShipmentService {
                         return false;
                     }
                 } catch (syncError) {
+                    const errMsg = syncError instanceof Error ? syncError.message : String(syncError);
                     logger.error('On-demand warehouse sync failed', {
                         shipmentId,
                         warehouseId: warehouse?._id?.toString() || warehouseId.toString(),
-                        error: syncError instanceof Error ? syncError.message : 'Unknown error'
+                        carrier: canonicalCarrier,
+                        error: errMsg,
+                        ...(syncError instanceof Error && (syncError as any).response?.data && {
+                            apiError: (syncError as any).response?.data?.code || (syncError as any).response?.data?.message,
+                        }),
                     });
                     // Continue anyway - provider will handle missing warehouse ID
                 }
@@ -1344,7 +1361,9 @@ export class ShipmentService {
                 retryAttempt: retryCount + 1
             });
 
-            const providerLookupName = ShipmentService.resolveProviderLookupKey(canonicalCarrier);
+            const resolvedCarrier = CarrierNormalizationService.resolveCarrierForProviderLookup(String(shipment.carrier || ''))
+                || CourierProviderRegistry.getIntegrationProvider(canonicalCarrier);
+            const providerLookupName = resolvedCarrier || ShipmentService.resolveProviderLookupKey(canonicalCarrier);
             const provider = await CourierFactory.getProvider(providerLookupName, shipment.companyId);
 
             // ✅ Use shipment ID as idempotency key for deterministic retries

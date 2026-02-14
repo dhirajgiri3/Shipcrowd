@@ -333,6 +333,8 @@ export const orderApi = {
         tags: option.tags || [],
         sellBreakdown: option.sellBreakdown,
         costBreakdown: option.costBreakdown,
+        performanceMetrics: option.performanceMetrics,
+        recommendationReason: option.recommendationReason,
       };
     });
 
@@ -354,7 +356,7 @@ export const orderApi = {
   },
 
   /**
-   * Bulk import orders from CSV file
+   * Bulk import orders from CSV file (sync, up to 1000 rows)
    * POST /api/v1/orders/bulk
    */
   bulkImportOrders: async (file: File): Promise<{
@@ -374,6 +376,64 @@ export const orderApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+
+  /**
+   * Bulk import orders asynchronously (for large files)
+   * POST /api/v1/orders/bulk/async
+   */
+  bulkImportOrdersAsync: async (file: File): Promise<{
+    success: boolean;
+    data: {
+      jobId: string;
+      status: string;
+      totalRows: number;
+      message: string;
+    };
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.post('/orders/bulk/async', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get bulk import job status
+   * GET /api/v1/orders/bulk/jobs/:jobId
+   */
+  getBulkImportJobStatus: async (jobId: string): Promise<{
+    success: boolean;
+    data: {
+      jobId: string;
+      status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+      progress: number;
+      totalRows: number;
+      processedRows: number;
+      successCount: number;
+      errorCount: number;
+      fileName: string;
+      fileSize: number;
+      created: Array<{ orderNumber: string; id: string }>;
+      errors: Array<{ row: number; error: string; data?: any }>;
+      startedAt?: string;
+      completedAt?: string;
+      errorMessage?: string;
+      metadata?: {
+        batchSize?: number;
+        batchesProcessed?: number;
+        totalBatches?: number;
+      };
+      createdAt: string;
+      updatedAt: string;
+    };
+  }> => {
+    const response = await apiClient.get(`/orders/bulk/jobs/${jobId}`);
     return response.data;
   },
 

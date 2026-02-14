@@ -67,6 +67,7 @@ export const useShipOrder = (options?: { suppressDefaultErrorHandling?: boolean 
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
     },
     onError: (error) => {
       if (!options?.suppressDefaultErrorHandling) {
@@ -92,6 +93,7 @@ export const useBulkShipOrders = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
     },
     onError: (error) => {
       handleApiError(error, 'Bulk shipment failed');

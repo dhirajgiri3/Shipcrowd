@@ -1,243 +1,99 @@
 "use client";
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { Loader } from '@/src/components/ui/feedback/Loader';
-import {
-    CreditCard,
-    Plus,
-    Trash2,
-    CheckCircle2,
-    Building,
-    AlertCircle
-} from 'lucide-react';
-import { useBankAccounts, useAddBankAccount, useDeleteBankAccount, useSetDefaultBankAccount } from '@/src/core/api/hooks/seller/useBankAccounts';
+import { CreditCard, Building, AlertCircle, CheckCircle } from 'lucide-react';
+import { useBankAccounts } from '@/src/core/api/hooks/seller/useBankAccounts';
 
 export function BillingSettings() {
-    const [isAdding, setIsAdding] = useState(false);
-    const [form, setForm] = useState({
-        bankName: '',
-        accountNumber: '',
-        ifscCode: '',
-        accountHolderName: ''
-    });
-    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-
-    const { addToast } = useToast();
-
-    // Hooks
-    const { data: accounts, isLoading, isError } = useBankAccounts();
-    const addAccountMutation = useAddBankAccount();
-    const deleteAccountMutation = useDeleteBankAccount();
-    const setDefaultMutation = useSetDefaultBankAccount();
-
-    const handleAddAccount = () => {
-        if (!form.bankName || !form.accountNumber || !form.ifscCode || !form.accountHolderName) {
-            addToast('Please fill all fields', 'warning');
-            return;
-        }
-
-        addAccountMutation.mutate(form, {
-            onSuccess: () => {
-                addToast('Bank account added successfully', 'success');
-                setIsAdding(false);
-                setForm({ bankName: '', accountNumber: '', ifscCode: '', accountHolderName: '' });
-            },
-            onError: (error: any) => {
-                addToast(error?.response?.data?.message || 'Failed to add bank account', 'error');
-            }
-        });
-    };
-
-    const handleDelete = (id: string) => {
-        setDeleteTarget(id);
-    };
-
-    const handleSetDefault = (id: string) => {
-        setDefaultMutation.mutate(id, {
-            onSuccess: () => addToast('Default account updated', 'success'),
-            onError: () => addToast('Failed to update default account', 'error')
-        });
-    };
+    const { data, isLoading, isError } = useBankAccounts();
+    const accounts = data?.data?.accounts ?? data?.accounts ?? [];
+    const bankAccount = accounts[0];
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <Loader variant="spinner" size="lg" />
-            </div>
+            <Card>
+                <CardContent className="py-12">
+                    <div className="flex items-center justify-center">
+                        <Loader variant="spinner" size="lg" />
+                    </div>
+                </CardContent>
+            </Card>
         );
     }
 
     if (isError) {
         return (
-            <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                <p>Failed to load bank accounts. Please try again later.</p>
-            </div>
+            <Card>
+                <CardContent className="py-6">
+                    <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <p>Failed to load bank accounts. Please try again later.</p>
+                    </div>
+                </CardContent>
+            </Card>
         );
     }
 
-    const bankAccounts = accounts?.accounts || [];
-
     return (
-        <>
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Bank Accounts</CardTitle>
                     <CardDescription>Manage your bank accounts for COD remittances.</CardDescription>
                 </div>
-                {!isAdding && (
-                    <Button onClick={() => setIsAdding(true)} size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Account
+                <Link href="/seller/bank-accounts">
+                    <Button variant="outline" size="sm">
+                        {bankAccount ? 'Manage' : 'Add Account'}
                     </Button>
-                )}
+                </Link>
             </CardHeader>
-            <CardContent className="space-y-6">
-                {/* Add New Account Form */}
-                {isAdding && (
-                    <div className="p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] space-y-4 animate-in slide-in-from-top-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-[var(--text-primary)]">Add New Bank Account</h3>
-                            <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Bank Name</label>
-                                <Input
-                                    value={form.bankName}
-                                    onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-                                    placeholder="Enter bank name"
-                                />
+            <CardContent>
+                {!bankAccount ? (
+                    <div className="text-center py-12 rounded-xl border-2 border-dashed border-[var(--border-subtle)]">
+                        <CreditCard className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3 opacity-50" />
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No Bank Accounts</h3>
+                        <p className="text-[var(--text-muted)] mb-4">Add a bank account to receive COD payments.</p>
+                        <Link href="/seller/bank-accounts">
+                            <Button variant="outline">Add Bank Account</Button>
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 rounded-lg bg-[var(--primary-blue-soft)]">
+                                <Building className="w-6 h-6 text-[var(--primary-blue)]" />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Account Holder Name</label>
-                                <Input
-                                    value={form.accountHolderName}
-                                    onChange={(e) => setForm({ ...form, accountHolderName: e.target.value })}
-                                    placeholder="Enter account holder name"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Account Number</label>
-                                <Input
-                                    value={form.accountNumber}
-                                    onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
-                                    placeholder="Enter account number"
-                                />
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">IFSC Code</label>
-                                <Input
-                                    value={form.ifscCode}
-                                    onChange={(e) => setForm({ ...form, ifscCode: e.target.value })}
-                                    placeholder="Enter IFSC code"
-                                    className="uppercase"
-                                />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="font-semibold text-[var(--text-primary)]">{bankAccount.bankName || 'Bank Account'}</h4>
+                                    {bankAccount.isVerified ? (
+                                        <Badge variant="success" className="text-[10px] px-1.5 py-0.5 h-5">
+                                            <CheckCircle className="w-3 h-3 mr-1" /> Verified
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="warning" className="text-[10px] px-1.5 py-0.5 h-5">Unverified</Badge>
+                                    )}
+                                </div>
+                                <p className="text-sm text-[var(--text-secondary)] mt-0.5 font-mono">
+                                    XXXX-XXXX-{bankAccount.accountNumber ? bankAccount.accountNumber.slice(-4) : '****'}
+                                </p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    {bankAccount.accountHolderName} • {bankAccount.ifscCode}
+                                </p>
                             </div>
                         </div>
-                        <div className="flex justify-end pt-2">
-                            <Button onClick={handleAddAccount} isLoading={addAccountMutation.isPending}>
-                                Save Account
+                        <Link href="/seller/bank-accounts" className="mt-4">
+                            <Button variant="ghost" size="sm" className="text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)]">
+                                Manage Bank Account
                             </Button>
-                        </div>
+                        </Link>
                     </div>
                 )}
-
-                {/* Accounts List */}
-                <div className="space-y-4">
-                    {bankAccounts.length === 0 && !isAdding ? (
-                        <div className="text-center py-12 rounded-xl border-2 border-dashed border-[var(--border-subtle)]">
-                            <CreditCard className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3 opacity-50" />
-                            <h3 className="text-lg font-medium text-[var(--text-primary)]">No Bank Accounts</h3>
-                            <p className="text-[var(--text-muted)] mb-4">Add a bank account to receive COD payments.</p>
-                            <Button onClick={() => setIsAdding(true)} variant="outline">
-                                Add Bank Account
-                            </Button>
-                        </div>
-                    ) : (
-                        bankAccounts.map((account: any) => (
-                            <div
-                                key={account._id}
-                                className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border transition-all ${account.isDefault
-                                    ? 'bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/30'
-                                    : 'bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--border-primary)]'
-                                    }`}
-                            >
-                                <div className="flex items-start gap-4 mb-4 sm:mb-0">
-                                    <div className={`p-3 rounded-lg ${account.isDefault ? 'bg-[var(--primary-blue)] text-white' : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
-                                        }`}>
-                                        <Building className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="font-semibold text-[var(--text-primary)]">{account.bankName || 'Bank Account'}</h4>
-                                            {account.isDefault && (
-                                                <Badge variant="success" className="text-[10px] px-1.5 py-0.5 h-5">Default</Badge>
-                                            )}
-                                            {!account.isVerified && (
-                                                <Badge variant="warning" className="text-[10px] px-1.5 py-0.5 h-5">Unverified</Badge>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-[var(--text-secondary)] mt-0.5 font-mono">
-                                            XXXX-XXXX-{account.accountNumber.slice(-4)}
-                                        </p>
-                                        <p className="text-xs text-[var(--text-muted)] mt-1">
-                                            {account.accountHolderName} • {account.ifscCode}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                                    {!account.isDefault && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleSetDefault(account._id)}
-                                            isLoading={setDefaultMutation.isPending}
-                                            className="text-[var(--text-muted)] hover:text-[var(--primary-blue)]"
-                                        >
-                                            Set Default
-                                        </Button>
-                                    )}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDelete(account._id)}
-                                        isLoading={deleteAccountMutation.isPending}
-                                        className="text-[var(--error)] hover:bg-[var(--error-bg)]"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
             </CardContent>
         </Card>
-
-        <ConfirmDialog
-            open={!!deleteTarget}
-            title="Remove bank account"
-            description="Are you sure you want to remove this bank account?"
-            confirmText="Remove"
-            confirmVariant="danger"
-            onCancel={() => setDeleteTarget(null)}
-            onConfirm={() => {
-                if (!deleteTarget) return;
-                deleteAccountMutation.mutate(deleteTarget, {
-                    onSuccess: () => addToast('Bank account removed', 'success'),
-                    onError: () => addToast('Failed to remove account', 'error')
-                });
-                setDeleteTarget(null);
-            }}
-        />
-        </>
     );
 }

@@ -251,7 +251,7 @@ export function SupportClient() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                    <StatusBadge domain="support_ticket" status={ticket.status} />
+                                    <StatusBadge domain="support_ticket" status={ticket.status} size="sm" />
                                     <span className="text-xs text-[var(--text-muted)]">
                                         Last update: {format(new Date(ticket.updatedAt), 'MMM d')}
                                     </span>

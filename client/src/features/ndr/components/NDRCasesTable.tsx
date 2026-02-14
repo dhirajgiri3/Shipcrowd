@@ -200,7 +200,7 @@ export function NDRCasesTable() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <StatusBadge domain="ndr" status={ndrCase.status} />
+                                            <StatusBadge domain="ndr" status={ndrCase.status} size="sm" />
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {ndrCase.slaBreach ? (

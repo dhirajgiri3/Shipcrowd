@@ -3,11 +3,13 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, MapPin, Package } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Package, Truck, Loader2 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { cn, formatCurrency, formatDate } from '@/src/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 import { Order } from '@/src/types/domain/order';
+import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
+import { isSellerOrderShippable } from '@/src/lib/utils/order-shipping-eligibility';
 
 interface OrderDetailsPanelProps {
     order: Order | null;
@@ -19,11 +21,29 @@ export const OrderDetailsPanel = React.memo(OrderDetailsPanelComponent);
 
 function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetailsPanelProps) {
     const router = useRouter();
+    const orderId = order?._id || '';
+    const normalizedStatus = String(order?.currentStatus || '').toLowerCase();
+    const shouldLookupShipment = Boolean(
+        order &&
+        (order.hasShipment ?? (
+            !!order.shippingDetails?.trackingNumber ||
+            ['shipped', 'delivered', 'rto'].includes(normalizedStatus)
+        ))
+    );
+    const { data: shipmentLookup, isLoading: isShipmentLookupLoading } = useShipments(
+        { orderId, page: 1, limit: 1 },
+        { enabled: Boolean(orderId) && shouldLookupShipment }
+    );
 
     if (!order) return null;
 
     const customerAddress = order.customerInfo.address;
     const formattedAddress = `${customerAddress.line1}${customerAddress.line2 ? `, ${customerAddress.line2}` : ''}\n${customerAddress.city}, ${customerAddress.state} ${customerAddress.postalCode}`;
+    const linkedShipment = shipmentLookup?.shipments?.[0];
+    const trackingNumber = linkedShipment?.trackingNumber || order.shippingDetails?.trackingNumber || null;
+    const shipmentStatus = linkedShipment?.currentStatus || null;
+    const shipmentCarrier = linkedShipment?.carrier || order.shippingDetails?.provider || null;
+    const hasShipmentContext = Boolean(trackingNumber || shipmentStatus || shipmentCarrier);
 
     return (
         <AnimatePresence>
@@ -57,13 +77,15 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
-                                {onShipOrder && (
+                                {onShipOrder && isSellerOrderShippable(order) && (
                                     <Button
                                         size="sm"
                                         onClick={() => onShipOrder(order)}
                                         className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
+                                        aria-label={`Ship order ${order.orderNumber}`}
                                     >
-                                        Ship Order
+                                        <Truck className="w-4 h-4 mr-1.5" />
+                                        Ship Now
                                     </Button>
                                 )}
                                 <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-[var(--bg-secondary)]">
@@ -86,6 +108,58 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
                                     <StatusBadge domain="payment" status={order.paymentStatus} size="sm" />
                                 </div>
                             </div>
+
+                            {/* Shipment Context */}
+                            {shouldLookupShipment && (
+                                <div>
+                                    <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                                        <Truck className="w-4 h-4 text-[var(--primary-blue)]" /> Shipment
+                                    </h3>
+                                    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)]/40 p-4 space-y-3">
+                                        {isShipmentLookupLoading ? (
+                                            <div className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Loading shipment details...
+                                            </div>
+                                        ) : hasShipmentContext ? (
+                                            <>
+                                                {trackingNumber && (
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-[var(--text-muted)]">Tracking</span>
+                                                        <span className="font-mono font-semibold text-[var(--text-primary)]">{trackingNumber}</span>
+                                                    </div>
+                                                )}
+                                                {shipmentCarrier && (
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-[var(--text-muted)]">Carrier</span>
+                                                        <span className="font-medium text-[var(--text-primary)] capitalize">{shipmentCarrier}</span>
+                                                    </div>
+                                                )}
+                                                {shipmentStatus && (
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-[var(--text-muted)]">Shipment Status</span>
+                                                        <StatusBadge domain="shipment" status={shipmentStatus} size="sm" />
+                                                    </div>
+                                                )}
+                                                <div className="pt-1">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => router.push(`/seller/shipments?search=${encodeURIComponent(trackingNumber || order.orderNumber)}`)}
+                                                        aria-label="Track shipment"
+                                                    >
+                                                        Track Shipment
+                                                    </Button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className="text-sm text-[var(--text-muted)]">
+                                                No linked shipment found yet.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Customer Details */}
                             <div>

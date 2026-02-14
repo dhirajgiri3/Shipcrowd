@@ -46,6 +46,7 @@ export interface Shipment {
 export interface ShipmentFilters {
     page?: number;
     limit?: number;
+    orderId?: string;
     status?: string;
     carrier?: string;
     search?: string;
@@ -104,7 +105,10 @@ export interface TrackingResponse {
  * Fetch paginated shipments list with filters
  * Uses medium cache time since shipments status changes frequently
  */
-export const useShipments = (filters: ShipmentFilters = {}, options?: UseQueryOptions<ShipmentsResponse, ApiError>) => {
+export const useShipments = (
+    filters: ShipmentFilters = {},
+    options?: Partial<Omit<UseQueryOptions<ShipmentsResponse, ApiError>, 'queryKey' | 'queryFn'>>
+) => {
     return useQuery<ShipmentsResponse, ApiError>({
         queryKey: queryKeys.shipments.list(filters),
         queryFn: async () => {
