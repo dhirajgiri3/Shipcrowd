@@ -24,6 +24,7 @@ import { ConfirmDialog } from "@/src/components/ui/feedback/ConfirmDialog";
 import { Tooltip } from "@/src/components/ui/feedback/Tooltip";
 import { useBankAccounts, useAddBankAccount, useDeleteBankAccount } from "@/src/core/api/hooks/seller/useBankAccounts";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/src/core/api/config/query-keys";
 import { useForm } from "react-hook-form";
 import { kycApi } from "@/src/core/api/clients/auth/kycApi";
 import { showSuccessToast, handleApiError } from "@/src/lib/error";
@@ -69,7 +70,7 @@ export function BankAccountsClient() {
             if (verified) {
                 setVerificationStatus('verified');
                 showSuccessToast('Bank account verified and saved successfully');
-                queryClient.invalidateQueries({ queryKey: ['seller', 'bank-accounts'] });
+                queryClient.invalidateQueries({ queryKey: queryKeys.seller.bankAccounts() });
                 setIsAddOpen(false);
                 reset();
                 setVerificationStatus('idle');

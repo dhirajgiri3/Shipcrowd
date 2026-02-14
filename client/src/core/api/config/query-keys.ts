@@ -541,6 +541,10 @@ export const queryKeys = {
     list: (params?: FilterParams) => ['seller', 'actions', 'list', params],
   },
 
+  seller: {
+    bankAccounts: () => ['seller', 'bank-accounts'] as const,
+  },
+
   // ========================================================================
   // ECOMMERCE INTEGRATIONS DOMAIN
   // ========================================================================
@@ -599,7 +603,6 @@ export const queryKeys = {
 
     companies: (filters?: CompanyFilters) => ['settings', 'companies', filters],
     companyStats: (companyId: string) => ['settings', 'companies', 'stats', companyId],
-    bankAccounts: () => ['settings', 'bank-accounts'],
   },
 
   // ========================================================================
