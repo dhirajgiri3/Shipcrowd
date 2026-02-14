@@ -2,10 +2,8 @@ import jwt from 'jsonwebtoken';
 import { AppError } from '../errors/app.error';
 
 /**
- * TokenService
- * 
- * Handles generation and verification of JWT tokens for various purposes
- * including magic links for address updates, password resets, etc.
+ * Legacy TokenService compatibility shim.
+ * Runtime flows now use NDRMagicLinkService, but tests still import this module.
  */
 
 interface AddressUpdateTokenPayload {
@@ -22,24 +20,18 @@ interface TokenVerificationResult {
 }
 
 export class TokenService {
-    // SECURITY: Removed weak fallback - JWT_SECRET is required
     private static readonly SECRET_KEY = (() => {
         const secret = process.env.JWT_SECRET;
         if (!secret) {
             console.error('FATAL: JWT_SECRET environment variable is required');
-            // Don't throw in module scope to avoid breaking imports
-            // Actual operations will fail when SECRET_KEY is empty
         }
         return secret || '';
     })();
-    private static readonly ADDRESS_UPDATE_EXPIRY = '48h'; // 48 hours
+    private static readonly ADDRESS_UPDATE_EXPIRY = '48h';
 
-    // In-memory token invalidation store (use Redis in production)
+    // In-memory invalidation store kept for backwards compatibility.
     private static invalidatedTokens: Set<string> = new Set();
 
-    /**
-     * Generate magic link token for address update
-     */
     static generateAddressUpdateToken(shipmentId: string, companyId: string, ndrEventId?: string): string {
         const payload: AddressUpdateTokenPayload = {
             shipmentId,
@@ -48,21 +40,15 @@ export class TokenService {
             purpose: 'address_update',
         };
 
-        const token = jwt.sign(payload, this.SECRET_KEY, {
+        return jwt.sign(payload, this.SECRET_KEY, {
             expiresIn: this.ADDRESS_UPDATE_EXPIRY,
             issuer: 'Shipcrowd',
             subject: 'address-update',
         });
-
-        return token;
     }
 
-    /**
-     * Verify address update token and extract payload
-     */
     static verifyAddressUpdateToken(token: string): TokenVerificationResult {
         try {
-            // Check if token has been invalidated
             if (this.invalidatedTokens.has(token)) {
                 throw new AppError('Token has been used and is no longer valid', 'TOKEN_INVALIDATED', 401);
             }
@@ -72,7 +58,6 @@ export class TokenService {
                 subject: 'address-update',
             }) as AddressUpdateTokenPayload;
 
-            // Validate payload structure
             if (!decoded.shipmentId || !decoded.companyId || decoded.purpose !== 'address_update') {
                 throw new AppError('Invalid token payload', 'INVALID_TOKEN', 401);
             }
@@ -93,28 +78,15 @@ export class TokenService {
         }
     }
 
-    /**
-     * Invalidate token after use (prevents reuse)
-     */
     static invalidateToken(token: string): void {
         this.invalidatedTokens.add(token);
-
-        // Auto-cleanup after 48 hours (should match token expiry)
-        setTimeout(() => {
-            this.invalidatedTokens.delete(token);
-        }, 48 * 60 * 60 * 1000);
+        setTimeout(() => this.invalidatedTokens.delete(token), 48 * 60 * 60 * 1000);
     }
 
-    /**
-     * Check if token is invalidated
-     */
     static isTokenInvalidated(token: string): boolean {
         return this.invalidatedTokens.has(token);
     }
 
-    /**
-     * Clear all invalidated tokens (for testing)
-     */
     static clearInvalidatedTokens(): void {
         this.invalidatedTokens.clear();
     }

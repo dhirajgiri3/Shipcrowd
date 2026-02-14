@@ -77,9 +77,11 @@ export function CostAnalysis() {
     }));
 
     const codCost = costs.current.byPaymentMethod.cod.cost;
-    const prepaidCost = costs.current.byPaymentMethod.prepaid.cost;
-    const codShare = codCost + prepaidCost > 0 ? Math.round((codCost / (codCost + prepaidCost)) * 100) : 0;
-    const totalShipments = costs.current.byPaymentMethod.cod.count + costs.current.byPaymentMethod.prepaid.count;
+    const totalCost = costs.current.totalCost;
+    const codShare = totalCost > 0 ? Math.round((codCost / totalCost) * 100) : 0;
+    const totalShipments =
+        costs.current.shipmentCount ??
+        costs.current.byPaymentMethod.cod.count + costs.current.byPaymentMethod.prepaid.count;
 
     return (
         <div className="min-h-screen space-y-8 pb-20 animate-fade-in">

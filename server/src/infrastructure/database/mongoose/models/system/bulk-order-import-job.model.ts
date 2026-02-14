@@ -1,6 +1,6 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
-export interface IBulkOrderImportJob extends Document {
+export interface IBulkOrderImportJob {
     jobId: string;                          // BullMQ job ID
     companyId: mongoose.Types.ObjectId;     // Company ownership
     userId: mongoose.Types.ObjectId;        // User who initiated

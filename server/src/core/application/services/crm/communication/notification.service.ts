@@ -1,12 +1,68 @@
 import NotificationTemplate, {
-  NotificationChannel,
-  NotificationTrigger,
   INotificationTemplate,
-} from '@/infrastructure/database/mongoose/models/crm/communication/notification-template.model';
+} from '@/infrastructure/database/mongoose/models/communication/notification-template.model';
 import Notification, { INotification } from '@/infrastructure/database/mongoose/models/crm/communication/notification.model';
 import { AppError, NotFoundError, ValidationError } from '@/shared/errors';
 import logger from '@/shared/logger/winston.logger';
 import mongoose from 'mongoose';
+
+export type NotificationChannel = 'email' | 'whatsapp' | 'sms';
+export type NotificationTrigger =
+  | 'ticket_created'
+  | 'ticket_assigned'
+  | 'ticket_status_changed'
+  | 'ticket_escalated'
+  | 'dispute_created'
+  | 'dispute_resolved'
+  | 'callback_pending'
+  | 'sla_breached'
+  | 'manual';
+
+const TRIGGER_TO_TEMPLATE_CODE: Record<NotificationTrigger, string> = {
+  ticket_created: 'CRM_TICKET_CREATED',
+  ticket_assigned: 'CRM_TICKET_ASSIGNED',
+  ticket_status_changed: 'CRM_TICKET_STATUS_CHANGED',
+  ticket_escalated: 'CRM_TICKET_ESCALATED',
+  dispute_created: 'CRM_DISPUTE_CREATED',
+  dispute_resolved: 'CRM_DISPUTE_RESOLVED',
+  callback_pending: 'CRM_CALLBACK_PENDING',
+  sla_breached: 'CRM_SLA_BREACHED',
+  manual: 'CRM_MANUAL',
+};
+
+const TEMPLATE_CODE_TO_TRIGGER: Record<string, NotificationTrigger> = Object.entries(TRIGGER_TO_TEMPLATE_CODE).reduce(
+  (acc, [trigger, code]) => {
+    acc[code] = trigger as NotificationTrigger;
+    return acc;
+  },
+  {} as Record<string, NotificationTrigger>
+);
+
+const normalizeVariables = (variables: unknown): string[] => {
+  if (!Array.isArray(variables)) return [];
+  return variables
+    .map((entry) => {
+      if (typeof entry === 'string') return entry;
+      if (entry && typeof entry === 'object' && 'name' in entry && typeof (entry as any).name === 'string') {
+        return (entry as any).name;
+      }
+      return null;
+    })
+    .filter((value): value is string => Boolean(value));
+};
+
+type CRMTemplateInput = {
+  name?: string;
+  description?: string;
+  channel?: NotificationChannel;
+  trigger?: NotificationTrigger;
+  subject?: string;
+  body?: string;
+  variables?: unknown;
+  isActive?: boolean;
+  company?: mongoose.Types.ObjectId | string | null;
+  footer?: string;
+};
 
 export interface NotificationPayload {
   channel: NotificationChannel;
@@ -17,6 +73,12 @@ export interface NotificationPayload {
   variables?: Record<string, string | number | boolean>;
   companyId?: string;
 }
+
+type LegacyNotificationTemplate = INotificationTemplate & {
+  trigger?: NotificationTrigger;
+  company?: mongoose.Types.ObjectId | null;
+  footer?: string;
+};
 
 /**
  * NotificationService
@@ -30,10 +92,20 @@ export interface NotificationPayload {
  * the sending logic (actual sending would be done by respective providers).
  */
 export class NotificationService {
+  private toLegacyTemplate(template: INotificationTemplate): LegacyNotificationTemplate {
+    const doc = template.toObject ? template.toObject() : template;
+    return {
+      ...(doc as LegacyNotificationTemplate),
+      trigger: TEMPLATE_CODE_TO_TRIGGER[(doc as INotificationTemplate).code] || 'manual',
+      company: (doc as any).companyId || null,
+      footer: undefined,
+    };
+  }
+
   /**
    * Create a new notification template
    */
-  async createTemplate(data: Partial<INotificationTemplate>): Promise<INotificationTemplate> {
+  async createTemplate(data: CRMTemplateInput): Promise<LegacyNotificationTemplate> {
     try {
       // Validate required fields
       if (!data.name || !data.channel || !data.trigger || !data.body) {
@@ -42,8 +114,18 @@ export class NotificationService {
         });
       }
 
-      const template = await NotificationTemplate.create(data);
-      return template;
+      const templateDoc = await NotificationTemplate.create({
+        companyId: data.company || null,
+        name: data.name,
+        code: TRIGGER_TO_TEMPLATE_CODE[data.trigger],
+        category: 'general',
+        channel: data.channel,
+        subject: data.subject,
+        body: data.footer ? `${data.body}\n${data.footer}` : data.body,
+        variables: normalizeVariables(data.variables),
+        isActive: data.isActive ?? true,
+      });
+      return this.toLegacyTemplate(templateDoc);
     } catch (error: any) {
       if (error instanceof ValidationError) throw error;
       throw new AppError(
@@ -59,12 +141,12 @@ export class NotificationService {
   /**
    * Get a template by ID
    */
-  async getTemplate(id: string): Promise<INotificationTemplate> {
+  async getTemplate(id: string): Promise<LegacyNotificationTemplate> {
     const template = await NotificationTemplate.findById(id);
     if (!template) {
       throw new NotFoundError('Notification template not found');
     }
-    return template;
+    return this.toLegacyTemplate(template);
   }
 
   /**
@@ -74,9 +156,9 @@ export class NotificationService {
     trigger: NotificationTrigger,
     channel?: NotificationChannel,
     companyId?: string
-  ): Promise<INotificationTemplate[]> {
+  ): Promise<LegacyNotificationTemplate[]> {
     const query: any = {
-      trigger,
+      code: TRIGGER_TO_TEMPLATE_CODE[trigger],
       isActive: true,
     };
 
@@ -87,15 +169,16 @@ export class NotificationService {
     if (companyId) {
       // Get company-specific templates and system templates
       query.$or = [
-        { company: new mongoose.Types.ObjectId(companyId) },
-        { company: null },
+        { companyId: new mongoose.Types.ObjectId(companyId) },
+        { companyId: null },
       ];
     } else {
       // System templates only
-      query.company = null;
+      query.companyId = null;
     }
 
-    return NotificationTemplate.find(query).sort({ createdAt: -1 });
+    const templates = await NotificationTemplate.find(query).sort({ createdAt: -1 });
+    return templates.map((template) => this.toLegacyTemplate(template));
   }
 
   /**
@@ -104,7 +187,7 @@ export class NotificationService {
   async getTemplatesByChannel(
     channel: NotificationChannel,
     companyId?: string
-  ): Promise<INotificationTemplate[]> {
+  ): Promise<LegacyNotificationTemplate[]> {
     const query: any = {
       channel,
       isActive: true,
@@ -112,25 +195,46 @@ export class NotificationService {
 
     if (companyId) {
       query.$or = [
-        { company: new mongoose.Types.ObjectId(companyId) },
-        { company: null },
+        { companyId: new mongoose.Types.ObjectId(companyId) },
+        { companyId: null },
       ];
     } else {
-      query.company = null;
+      query.companyId = null;
     }
 
-    return NotificationTemplate.find(query).sort({ trigger: 1, createdAt: -1 });
+    const templates = await NotificationTemplate.find(query).sort({ code: 1, createdAt: -1 });
+    return templates.map((template) => this.toLegacyTemplate(template));
   }
 
   /**
    * Update a notification template
    */
-  async updateTemplate(id: string, data: Partial<INotificationTemplate>): Promise<INotificationTemplate> {
-    const template = await NotificationTemplate.findByIdAndUpdate(id, data, { new: true });
+  async updateTemplate(id: string, data: CRMTemplateInput): Promise<LegacyNotificationTemplate> {
+    const updateData: Record<string, unknown> = {
+      ...data,
+    };
+
+    if (data.trigger) {
+      updateData.code = TRIGGER_TO_TEMPLATE_CODE[data.trigger];
+      delete updateData.trigger;
+    }
+    delete updateData.company;
+    delete updateData.footer;
+    if (Object.prototype.hasOwnProperty.call(data, 'company')) {
+      updateData.companyId = data.company ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'footer') && typeof data.body === 'string') {
+      updateData.body = `${data.body}\n${data.footer || ''}`.trim();
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'variables')) {
+      updateData.variables = normalizeVariables(data.variables);
+    }
+
+    const template = await NotificationTemplate.findByIdAndUpdate(id, updateData, { new: true });
     if (!template) {
       throw new NotFoundError('Notification template not found');
     }
-    return template;
+    return this.toLegacyTemplate(template);
   }
 
   /**
@@ -233,13 +337,15 @@ export class NotificationService {
     filters: any = {},
     page: number = 1,
     limit: number = 20
-  ): Promise<{ templates: INotificationTemplate[]; total: number; pages: number }> {
+  ): Promise<{ templates: LegacyNotificationTemplate[]; total: number; pages: number }> {
     const query: any = { isActive: true };
 
     if (filters.channel) query.channel = filters.channel;
-    if (filters.trigger) query.trigger = filters.trigger;
+    if (filters.trigger) {
+      query.code = TRIGGER_TO_TEMPLATE_CODE[filters.trigger as NotificationTrigger];
+    }
     if (filters.company) {
-      query.company = new mongoose.Types.ObjectId(filters.company);
+      query.companyId = new mongoose.Types.ObjectId(filters.company);
     }
 
     const total = await NotificationTemplate.countDocuments(query);
@@ -249,7 +355,7 @@ export class NotificationService {
       .limit(limit);
 
     return {
-      templates,
+      templates: templates.map((template) => this.toLegacyTemplate(template)),
       total,
       pages: Math.ceil(total / limit),
     };
@@ -264,7 +370,7 @@ export class NotificationService {
    * Replaces {{variableName}} with actual values
    */
   private interpolateTemplate(
-    template: INotificationTemplate,
+    template: LegacyNotificationTemplate,
     variables?: Record<string, string | number | boolean>
   ): {
     subject?: string;
@@ -287,7 +393,7 @@ export class NotificationService {
     return {
       subject: template.subject ? interpolate(template.subject) : undefined,
       body: interpolate(template.body),
-      footer: template.footer ? interpolate(template.footer) : undefined,
+      footer: undefined,
     };
   }
 

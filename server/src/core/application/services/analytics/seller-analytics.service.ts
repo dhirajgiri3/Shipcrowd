@@ -160,7 +160,24 @@ export default class SellerAnalyticsService {
                             $ifNull: ['$paymentDetails.codCharges', { $ifNull: ['$pricingDetails.codCharge', 0] }],
                         },
                     },
-                    weightCharges: { $sum: { $ifNull: ['$pricingDetails.weightCharge', 0] } },
+                    weightCharges: {
+                        $sum: {
+                            $ifNull: [
+                                '$pricingDetails.weightCharge',
+                                {
+                                    $ifNull: [
+                                        '$pricingDetails.selectedQuote.costBreakdown.weightCharge',
+                                        {
+                                            $ifNull: [
+                                                '$pricingDetails.selectedQuote.sellBreakdown.weightCharge',
+                                                0,
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    },
                     fuelSurcharge: {
                         $sum: {
                             $ifNull: [
@@ -243,7 +260,12 @@ export default class SellerAnalyticsService {
                             },
                         },
                         shippingCost: { $ifNull: ['$paymentDetails.shippingCost', 0] },
-                        codCharges: { $ifNull: ['$paymentDetails.codCharges', 0] },
+                        codCharges: {
+                            $ifNull: [
+                                '$paymentDetails.codCharges',
+                                { $ifNull: ['$pricingDetails.codCharge', 0] },
+                            ],
+                        },
                     },
                 },
                 {
@@ -252,10 +274,7 @@ export default class SellerAnalyticsService {
                         shipmentCount: { $sum: 1 },
                         cost: {
                             $sum: {
-                                $add: [
-                                    '$shippingCost',
-                                    '$codCharges',
-                                ],
+                                $add: ['$shippingCost', '$codCharges'],
                             },
                         },
                     },
@@ -286,7 +305,19 @@ export default class SellerAnalyticsService {
                     $group: {
                         _id: { $ifNull: ['$deliveryDetails.address.state', 'Unknown'] },
                         shipmentCount: { $sum: 1 },
-                        cost: { $sum: { $ifNull: ['$paymentDetails.shippingCost', 0] } },
+                        cost: {
+                            $sum: {
+                                $add: [
+                                    { $ifNull: ['$paymentDetails.shippingCost', 0] },
+                                    {
+                                        $ifNull: [
+                                            '$paymentDetails.codCharges',
+                                            { $ifNull: ['$pricingDetails.codCharge', 0] },
+                                        ],
+                                    },
+                                ],
+                            },
+                        },
                     },
                 },
                 { $sort: { cost: -1 } },
@@ -312,13 +343,24 @@ export default class SellerAnalyticsService {
                 },
                 {
                     $group: {
-                        _id: '$paymentDetails.type',
+                        _id: {
+                            $cond: [
+                                { $eq: [{ $toLower: { $ifNull: ['$paymentDetails.type', ''] } }, 'cod'] },
+                                'cod',
+                                'prepaid',
+                            ],
+                        },
                         count: { $sum: 1 },
                         cost: {
                             $sum: {
                                 $add: [
                                     { $ifNull: ['$paymentDetails.shippingCost', 0] },
-                                    { $ifNull: ['$paymentDetails.codCharges', 0] },
+                                    {
+                                        $ifNull: [
+                                            '$paymentDetails.codCharges',
+                                            { $ifNull: ['$pricingDetails.codCharge', 0] },
+                                        ],
+                                    },
                                 ],
                             },
                         },
@@ -336,9 +378,20 @@ export default class SellerAnalyticsService {
                 {
                     $group: {
                         _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                        totalCost: { $sum: { $ifNull: ['$paymentDetails.shippingCost', 0] } },
                         shippingCost: { $sum: { $ifNull: ['$paymentDetails.shippingCost', 0] } },
-                        codCharges: { $sum: { $ifNull: ['$paymentDetails.codCharges', 0] } },
+                        codCharges: {
+                            $sum: {
+                                $ifNull: [
+                                    '$paymentDetails.codCharges',
+                                    { $ifNull: ['$pricingDetails.codCharge', 0] },
+                                ],
+                            },
+                        },
+                    },
+                },
+                {
+                    $addFields: {
+                        totalCost: { $add: ['$shippingCost', '$codCharges'] },
                     },
                 },
                 { $sort: { _id: 1 } },
@@ -407,6 +460,7 @@ export default class SellerAnalyticsService {
             current: {
                 totalCost: current.totalCost,
                 breakdown: current.breakdown,
+                shipmentCount: current.shipmentCount,
                 byCourier: normalizedByCourier,
                 byZone,
                 byPaymentMethod: {

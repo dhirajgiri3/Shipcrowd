@@ -49,7 +49,7 @@ export class BulkOrderImportJobProcessor {
      * Queue a new bulk import job
      */
     static async queueBulkImport(data: BulkOrderImportJobData): Promise<string> {
-        const jobId = await QueueManager.addJob(
+        const job = await QueueManager.addJob(
             this.QUEUE_NAME,
             `bulk-import-${data.jobTrackingId}`,
             data,
@@ -61,12 +61,12 @@ export class BulkOrderImportJobProcessor {
         );
 
         logger.info('Bulk import job queued', {
-            jobId,
+            jobId: job.id,
             companyId: data.companyId,
             totalRows: data.rows.length,
         });
 
-        return jobId;
+        return String(job.id ?? data.jobTrackingId);
     }
 
     /**

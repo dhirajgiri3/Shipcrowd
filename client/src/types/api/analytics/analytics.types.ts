@@ -176,6 +176,7 @@ export interface CourierComparison {
 
 export interface CostBreakdown {
     totalCost: number;
+    shipmentCount?: number;
     breakdown: {
         shippingCost: number;
         codCharges: number;

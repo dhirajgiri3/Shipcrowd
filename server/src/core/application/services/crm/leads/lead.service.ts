@@ -1,5 +1,5 @@
 import Lead, { ILead } from '@/infrastructure/database/mongoose/models/crm/leads/lead.model';
-import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-rep.model';
+import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
 import { AppError, NotFoundError, ConflictError } from '@/shared/errors';
 import mongoose from 'mongoose';
 
@@ -14,11 +14,11 @@ export class LeadService {
                 // Find a rep in this territory
                 const rep = await SalesRepresentative.findOne({
                     territory: data.territory,
-                    availabilityStatus: 'available' // Assuming field
+                    status: 'active',
                 });
 
                 if (rep) {
-                    data.salesRepresentative = rep._id;
+                    data.salesRepresentative = rep._id as mongoose.Types.ObjectId;
                 }
             }
 

@@ -9,7 +9,7 @@ import { CallLog } from '../../../../../infrastructure/database/mongoose/models'
 import ExotelClient from '../../../../../infrastructure/external/communication/exotel/exotel.client';
 import WhatsAppService from '../../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import OpenAIService from '../../../../../infrastructure/external/ai/openai/openai.service';
-import TokenService from '../../../../../shared/services/token.service';
+import NDRMagicLinkService from '../ndr-magic-link.service';
 import logger from '../../../../../shared/logger/winston.logger';
 import smsService from '../../communication/sms.service';
 import NotificationPreferenceService from '../../communication/notification-preferences.service';
@@ -410,13 +410,8 @@ export class NDRActionExecutors {
         actionConfig: Record<string, any>
     ): Promise<ActionResult> {
         try {
-            const { ndrEvent, customer, companyId } = context;
-
-            // Generate magic link token using TokenService (48-hour expiry)
-            const shipmentId = String(ndrEvent.shipment);
-            const ndrEventId = String(ndrEvent._id);
-            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId, ndrEventId);
-            const updateUrl = `${process.env.BASE_URL || 'https://Shipcrowd.com'}/public/update-address/${token}`;
+            const { ndrEvent, customer } = context;
+            const updateUrl = NDRMagicLinkService.generateMagicLink(String(ndrEvent._id));
 
             // Send via WhatsApp with update link
             const message = `Hi ${customer.name},
@@ -439,7 +434,7 @@ Need help? Reply to this message.
                 success: result.success,
                 actionType: 'update_address',
                 result: result.success ? 'success' : 'failed',
-                metadata: { token, updateUrl, messageId: result.messageId },
+                metadata: { updateUrl, messageId: result.messageId },
                 error: result.error,
             };
         } catch (error: any) {
@@ -615,8 +610,6 @@ Need help? Reply to this message.
             };
         }
     }
-
-    // Note: generateAddressUpdateToken removed - now using TokenService.generateAddressUpdateToken()
 
     /**
      * Record action result in NDR event

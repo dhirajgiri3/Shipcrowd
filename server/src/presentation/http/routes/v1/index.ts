@@ -112,6 +112,7 @@ import featureFlagRoutes from './admin/feature-flag.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
 import disputeMetricsRoutes from './admin/dispute-metrics.routes';
 import companyGroupRoutes from './admin/company-group.routes';
+import emailQueueRoutes from './admin/email-queue.routes';
 
 // ============================================================================
 // 10. WEBHOOKS
@@ -238,6 +239,7 @@ router.use('/admin/feature-flags', featureFlagRoutes);
 router.use('/admin/sku-weight-profiles', skuWeightProfileRoutes);
 router.use('/admin/disputes/weight', disputeMetricsRoutes);
 router.use('/admin/company-groups', companyGroupRoutes);
+router.use('/admin/email-queue', emailQueueRoutes);
 
 // 10. Webhooks
 router.use('/webhooks/velocity', velocityWebhookRoutes);

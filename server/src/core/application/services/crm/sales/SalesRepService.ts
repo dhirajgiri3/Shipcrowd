@@ -1,12 +1,8 @@
 import { FilterQuery, Types } from 'mongoose';
-import SalesRepresentative, { ISalesRep } from '@/infrastructure/database/mongoose/models/crm/sales/sales-rep.model';
+import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
+import User from '@/infrastructure/database/mongoose/models/iam/users/user.model';
 import SupportTicket from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
 import { NotFoundError, ValidationError } from '@/shared/errors/app.error';
-// import { encrypt, decrypt } from '@/shared/utils/encryption'; // TODO: Ensure this utility exists or create it
-
-// Mock encryption for now if utility doesn't exist, to be replaced with real one
-const encrypt = (text: string) => `enc_${text}`;
-const decrypt = (text: string) => text.replace('enc_', '');
 
 interface CreateSalesRepDTO {
     companyId: string;
@@ -38,6 +34,25 @@ interface UpdateSalesRepDTO {
     };
 }
 
+type CRMRepResponse = {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    territory: string;
+    status: 'active' | 'inactive';
+    availabilityStatus: 'available' | 'busy' | 'offline';
+    reportingTo?: string;
+    bankDetails?: {
+        accountNumber?: string;
+        ifscCode?: string;
+        accountHolderName: string;
+        bankName?: string;
+    };
+    createdAt: Date;
+    updatedAt: Date;
+};
+
 class SalesRepService {
     private static instance: SalesRepService;
 
@@ -50,42 +65,113 @@ class SalesRepService {
         return SalesRepService.instance;
     }
 
-    /**
-     * Create a new Sales Representative
-     */
-    public async createSalesRep(data: CreateSalesRepDTO): Promise<ISalesRep> {
-        // Check for existing rep with same email in company? 
-        // Or globally unique email? Assuming company scoped uniqueness for now, but usually email is unique.
-        const existing = await SalesRepresentative.findOne({
-            companyId: new Types.ObjectId(data.companyId),
-            email: data.email
-        });
+    private async ensureUser(data: CreateSalesRepDTO): Promise<Types.ObjectId> {
+        if (data.userId) {
+            return new Types.ObjectId(data.userId);
+        }
 
-        if (existing) {
+        let user = await User.findOne({ email: data.email.toLowerCase(), isDeleted: false });
+        if (!user) {
+            user = await User.create({
+                name: data.name,
+                email: data.email.toLowerCase(),
+                phone: data.phone,
+                role: 'salesperson',
+                companyId: new Types.ObjectId(data.companyId),
+                isVerified: false,
+            });
+        }
+
+        return user._id as Types.ObjectId;
+    }
+
+    private async generateEmployeeId(companyId: Types.ObjectId): Promise<string> {
+        const base = `CRM-${Date.now().toString().slice(-8)}`;
+        let suffix = 0;
+        while (true) {
+            const candidate = suffix === 0 ? base : `${base}-${suffix}`;
+            const exists = await SalesRepresentative.exists({ company: companyId, employeeId: candidate });
+            if (!exists) {
+                return candidate;
+            }
+            suffix += 1;
+        }
+    }
+
+    private mapToCRMShape(rep: any, includeBankDetails = false): CRMRepResponse {
+        const user = rep.user || {};
+        const territory = Array.isArray(rep.territory) && rep.territory.length > 0 ? rep.territory[0] : '';
+
+        const mapped: CRMRepResponse = {
+            id: String(rep._id),
+            name: user.name || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            territory,
+            status: rep.status === 'inactive' ? 'inactive' : 'active',
+            availabilityStatus: rep.status === 'active' ? 'available' : 'offline',
+            reportingTo: rep.reportingTo ? String(rep.reportingTo) : undefined,
+            createdAt: rep.createdAt,
+            updatedAt: rep.updatedAt,
+        };
+
+        if (includeBankDetails && rep.bankDetails) {
+            const decrypted = typeof rep.decryptBankDetails === 'function'
+                ? rep.decryptBankDetails()
+                : rep.bankDetails;
+            mapped.bankDetails = {
+                accountNumber: decrypted.accountNumber,
+                ifscCode: decrypted.ifscCode,
+                accountHolderName: decrypted.accountHolderName,
+                bankName: decrypted.bankName,
+            };
+        } else if (rep.bankDetails) {
+            mapped.bankDetails = {
+                accountHolderName: rep.bankDetails.accountHolderName,
+                bankName: rep.bankDetails.bankName,
+            };
+        }
+
+        return mapped;
+    }
+
+    public async createSalesRep(data: CreateSalesRepDTO): Promise<CRMRepResponse> {
+        const companyObjectId = new Types.ObjectId(data.companyId);
+        const normalizedEmail = data.email.toLowerCase();
+
+        const existing = await SalesRepresentative.findOne({
+            company: companyObjectId,
+        })
+            .populate('user', 'email')
+            .lean();
+
+        if (existing && (existing as any).user?.email === normalizedEmail) {
             throw new ValidationError('Sales Representative with this email already exists');
         }
 
+        const userId = await this.ensureUser(data);
+        const employeeId = await this.generateEmployeeId(companyObjectId);
+
         const salesRep = await SalesRepresentative.create({
-            companyId: new Types.ObjectId(data.companyId),
-            userId: data.userId ? new Types.ObjectId(data.userId) : undefined,
-            name: data.name,
-            email: data.email,
-            phone: data.phone,
-            territory: data.territory,
+            user: userId,
+            company: companyObjectId,
+            employeeId,
+            role: 'rep',
+            territory: [data.territory],
             reportingTo: data.reportingTo ? new Types.ObjectId(data.reportingTo) : undefined,
+            status: 'active',
             bankDetails: {
-                accountNumber: encrypt(data.bankDetails.accountNumber),
-                ifscCode: encrypt(data.bankDetails.ifscCode),
-                accountHolderName: data.bankDetails.accountHolderName
-            }
+                accountNumber: data.bankDetails.accountNumber,
+                ifscCode: data.bankDetails.ifscCode,
+                accountHolderName: data.bankDetails.accountHolderName,
+                bankName: 'UNKNOWN',
+            },
         });
 
-        return salesRep;
+        await salesRep.populate('user', 'name email phone');
+        return this.mapToCRMShape(salesRep, true);
     }
 
-    /**
-     * Get Sales Reps with filtering
-     */
     public async getSalesReps(
         companyId: string,
         filters: {
@@ -99,116 +185,110 @@ class SalesRepService {
         const limit = filters.limit || 10;
         const skip = (page - 1) * limit;
 
-        const query: FilterQuery<ISalesRep> = {
-            companyId: new Types.ObjectId(companyId)
+        const query: FilterQuery<any> = {
+            company: new Types.ObjectId(companyId),
         };
 
-        if (filters.territory) query.territory = filters.territory;
-        if (filters.status) query.status = filters.status;
+        if (filters.territory) {
+            query.territory = filters.territory;
+        }
+        if (filters.status) {
+            query.status = filters.status;
+        }
 
         const [reps, total] = await Promise.all([
             SalesRepresentative.find(query)
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
-                .populate('reportingTo', 'name email')
-                .lean(),
-            SalesRepresentative.countDocuments(query)
+                .populate('user', 'name email phone')
+                .populate('reportingTo', 'employeeId')
+                .exec(),
+            SalesRepresentative.countDocuments(query),
         ]);
 
         return {
-            reps,
+            reps: reps.map((rep) => this.mapToCRMShape(rep, false)),
             total,
             page,
             limit,
-            pages: Math.ceil(total / limit)
+            pages: Math.ceil(total / limit),
         };
     }
 
-    /**
-     * Get Sales Rep by ID
-     */
-    public async getSalesRepById(id: string, companyId: string, includeBankDetails = false): Promise<ISalesRep> {
-        const query = SalesRepresentative.findOne({
+    public async getSalesRepById(id: string, companyId: string, includeBankDetails = false): Promise<CRMRepResponse> {
+        const rep = await SalesRepresentative.findOne({
             _id: new Types.ObjectId(id),
-            companyId: new Types.ObjectId(companyId)
-        }).populate('reportingTo', 'name email');
-
-        if (includeBankDetails) {
-            query.select('+bankDetails.accountNumber +bankDetails.ifscCode');
-        }
-
-        const rep = await query.exec();
+            company: new Types.ObjectId(companyId),
+        })
+            .populate('user', 'name email phone')
+            .populate('reportingTo', 'employeeId');
 
         if (!rep) {
             throw new NotFoundError('Sales Representative not found');
         }
 
-        if (includeBankDetails && rep.bankDetails) {
-            // Decrypt on retrieval for authorized viewers
-            // Note: We need to cast to any or define the type as potentially decrypted because the interface says string
-            // but we want to return the plain text.
-            const decryptedRep = rep.toObject();
-            if (decryptedRep.bankDetails) {
-                decryptedRep.bankDetails.accountNumber = decrypt(rep.bankDetails.accountNumber);
-                decryptedRep.bankDetails.ifscCode = decrypt(rep.bankDetails.ifscCode);
-            }
-            return decryptedRep as any;
-        }
-
-        return rep;
+        return this.mapToCRMShape(rep, includeBankDetails);
     }
 
-    /**
-     * Update Sales Rep
-     */
     public async updateSalesRep(
         id: string,
         companyId: string,
         updates: UpdateSalesRepDTO
-    ): Promise<ISalesRep> {
+    ): Promise<CRMRepResponse> {
         const rep = await SalesRepresentative.findOne({
             _id: new Types.ObjectId(id),
-            companyId: new Types.ObjectId(companyId)
+            company: new Types.ObjectId(companyId),
+        }).populate('user', 'name email phone');
+
+        if (!rep) {
+            throw new NotFoundError('Sales Representative not found');
+        }
+
+        if (updates.territory) {
+            rep.territory = [updates.territory];
+        }
+        if (updates.status) {
+            rep.status = updates.status;
+        }
+        if (updates.reportingTo) {
+            rep.reportingTo = new Types.ObjectId(updates.reportingTo);
+        }
+
+        if (updates.bankDetails) {
+            rep.bankDetails = {
+                ...rep.bankDetails,
+                accountNumber: updates.bankDetails.accountNumber,
+                ifscCode: updates.bankDetails.ifscCode,
+                accountHolderName: updates.bankDetails.accountHolderName,
+            } as any;
+        }
+
+        const user = rep.user as any;
+        if (user) {
+            if (updates.name) user.name = updates.name;
+            if (updates.email) user.email = updates.email.toLowerCase();
+            if (updates.phone) user.phone = updates.phone;
+            await user.save();
+        }
+
+        await rep.save();
+        await rep.populate('user', 'name email phone');
+        return this.mapToCRMShape(rep, true);
+    }
+
+    public async getPerformanceMetrics(id: string, companyId: string) {
+        const repId = new Types.ObjectId(id);
+
+        const rep = await SalesRepresentative.exists({
+            _id: repId,
+            company: new Types.ObjectId(companyId),
         });
 
         if (!rep) {
             throw new NotFoundError('Sales Representative not found');
         }
 
-        if (updates.name) rep.name = updates.name;
-        if (updates.email) rep.email = updates.email;
-        if (updates.phone) rep.phone = updates.phone;
-        if (updates.territory) rep.territory = updates.territory;
-        if (updates.status) rep.status = updates.status;
-        if (updates.availabilityStatus) rep.availabilityStatus = updates.availabilityStatus;
-        if (updates.reportingTo) rep.reportingTo = new Types.ObjectId(updates.reportingTo);
-
-        if (updates.bankDetails) {
-            rep.bankDetails = {
-                accountNumber: encrypt(updates.bankDetails.accountNumber),
-                ifscCode: encrypt(updates.bankDetails.ifscCode),
-                accountHolderName: updates.bankDetails.accountHolderName
-            };
-        }
-
-        await rep.save();
-        return rep;
-    }
-
-    /**
-     * Get Performance Metrics
-     */
-    public async getPerformanceMetrics(id: string, companyId: string) {
-        const repId = new Types.ObjectId(id);
-
-        // Ensure rep exists
-        const rep = await SalesRepresentative.exists({ _id: repId, companyId: new Types.ObjectId(companyId) });
-        if (!rep) {
-            throw new NotFoundError('Sales Representative not found');
-        }
-
-        // Aggregate tickets
         const stats = await SupportTicket.aggregate([
             { $match: { assignedTo: repId } },
             {
@@ -216,33 +296,34 @@ class SalesRepService {
                     _id: null,
                     totalTickets: { $sum: 1 },
                     resolvedTickets: {
-                        $sum: { $cond: [{ $in: ['$status', ['resolved', 'closed']] }, 1, 0] }
+                        $sum: { $cond: [{ $in: ['$status', ['resolved', 'closed']] }, 1, 0] },
                     },
                     openTickets: {
-                        $sum: { $cond: [{ $in: ['$status', ['open', 'in_progress']] }, 1, 0] }
+                        $sum: { $cond: [{ $in: ['$status', ['open', 'in_progress']] }, 1, 0] },
                     },
                     avgResolutionTime: {
                         $avg: {
                             $cond: [
                                 { $and: [{ $ne: ['$resolvedAt', null] }, { $ne: ['$createdAt', null] }] },
                                 { $subtract: ['$resolvedAt', '$createdAt'] },
-                                null
-                            ]
-                        }
-                    }
-                }
-            }
+                                null,
+                            ],
+                        },
+                    },
+                },
+            },
         ]);
 
         const metrics = stats[0] || {
             totalTickets: 0,
             resolvedTickets: 0,
             openTickets: 0,
-            avgResolutionTime: 0
+            avgResolutionTime: 0,
         };
 
-        // Convert avgResolutionTime from ms to hours
-        metrics.avgResolutionTimeHours = metrics.avgResolutionTime ? Math.round(metrics.avgResolutionTime / (1000 * 60 * 60) * 100) / 100 : 0;
+        metrics.avgResolutionTimeHours = metrics.avgResolutionTime
+            ? Math.round((metrics.avgResolutionTime / (1000 * 60 * 60)) * 100) / 100
+            : 0;
         delete metrics._id;
 
         return metrics;

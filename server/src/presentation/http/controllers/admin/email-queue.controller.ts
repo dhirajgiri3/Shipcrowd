@@ -239,9 +239,7 @@ export async function getRecentJobs(req: Request, res: Response, next: NextFunct
             return timeB - timeA;
         }).slice(0, Number(limit));
 
-        sendSuccess(res, {
-            jobs: recentJobs,
-        }, 'Recent jobs retrieved');
+        sendSuccess(res, recentJobs, 'Recent jobs retrieved');
     } catch (error) {
         logger.error('Error getting recent jobs:', error);
         next(error);

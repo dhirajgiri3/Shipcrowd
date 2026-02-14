@@ -60,8 +60,8 @@ export class ManifestPickupRetryJob {
             }
 
             // Get provider (resolve service types like "surface" to velocity)
-            const { CarrierNormalizationService } = await import('../../../core/application/services/shipping/carrier-normalization.service');
-            const { default: CourierProviderRegistry } = await import('../../../core/application/services/courier/courier-provider-registry');
+            const { CarrierNormalizationService } = await import('../../../../core/application/services/shipping/carrier-normalization.service');
+            const { default: CourierProviderRegistry } = await import('../../../../core/application/services/courier/courier-provider-registry');
             const providerCarrier = CarrierNormalizationService.resolveCarrierForProviderLookup(carrier)
                 || CourierProviderRegistry.getIntegrationProvider(carrier)
                 || carrier;

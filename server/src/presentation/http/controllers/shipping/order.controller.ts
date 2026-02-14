@@ -326,8 +326,6 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
         if (isExcel) {
             // Excel parsing - pattern from remittance-reconciliation.service.ts
             const workbook = new ExcelJS.Workbook();
-            // Multer buffer (Buffer<ArrayBufferLike>) vs Node Buffer type mismatch - runtime compatible
-            // @ts-expect-error - Multer.File.buffer type incompatible with ExcelJS Buffer; works at runtime
             await workbook.xlsx.load(req.file.buffer);
             const worksheet = workbook.getWorksheet(1);
 
@@ -414,8 +412,6 @@ export const bulkImportOrdersAsync = async (req: Request, res: Response, next: N
         // Parse file (same logic as sync endpoint)
         if (isExcel) {
             const workbook = new ExcelJS.Workbook();
-            // Multer buffer (Buffer<ArrayBufferLike>) vs Node Buffer type mismatch - runtime compatible
-            // @ts-expect-error - Multer.File.buffer type incompatible with ExcelJS Buffer; works at runtime
             await workbook.xlsx.load(req.file.buffer);
             const worksheet = workbook.getWorksheet(1);
 
