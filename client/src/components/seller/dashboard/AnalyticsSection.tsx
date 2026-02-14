@@ -20,6 +20,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useIsMobile } from '../../../hooks/ux';
 import { BottomSheet } from '@/src/components/patterns/BottomSheet';
+import { Card } from '@/src/components/ui/core/Card';
 
 interface AnalyticsData {
     orderTrend: {
@@ -43,15 +44,29 @@ interface AnalyticsSectionProps {
     defaultExpanded?: boolean;
 }
 
+const DEFAULT_ANALYTICS_DATA: AnalyticsData = {
+    orderTrend: { labels: [], values: [] },
+    topCouriers: [],
+    zoneDistribution: [],
+};
+
 export function AnalyticsSection({ data, defaultExpanded = true }: AnalyticsSectionProps) {
     const isMobile = useIsMobile();
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+    // Defensive: ensure data has expected shape (API may return different structure)
+    const safeData = data ?? DEFAULT_ANALYTICS_DATA;
+    const orderTrend = safeData.orderTrend ?? DEFAULT_ANALYTICS_DATA.orderTrend;
+    const topCouriers = Array.isArray(safeData.topCouriers) ? safeData.topCouriers : [];
+    const zoneDistribution = Array.isArray(safeData.zoneDistribution) ? safeData.zoneDistribution : [];
+    const labels = Array.isArray(orderTrend.labels) ? orderTrend.labels : [];
+    const values = Array.isArray(orderTrend.values) ? orderTrend.values : [];
+
     // Transform order trend data for recharts
-    const chartData = data.orderTrend.labels.map((label, index) => ({
-        name: label,
-        value: data.orderTrend.values[index]
+    const chartData = labels.map((label, index) => ({
+        name: String(label),
+        value: typeof values[index] === 'number' ? values[index] : 0
     }));
 
     const handleToggle = () => {
@@ -162,7 +177,7 @@ export function AnalyticsSection({ data, defaultExpanded = true }: AnalyticsSect
                     </div>
                 </div>
                 <div className="space-y-4">
-                    {data.topCouriers.map((courier, index) => (
+                    {topCouriers.map((courier, index) => (
                         <motion.div
                             key={courier.name}
                             initial={{ opacity: 0, x: -10 }}
@@ -217,7 +232,7 @@ export function AnalyticsSection({ data, defaultExpanded = true }: AnalyticsSect
                     </div>
                 </div>
                 <div className="space-y-5">
-                    {data.zoneDistribution.map((zone, index) => (
+                    {zoneDistribution.map((zone, index) => (
                         <motion.div
                             key={zone.zone}
                             initial={{ opacity: 0, y: 10 }}
@@ -254,7 +269,7 @@ export function AnalyticsSection({ data, defaultExpanded = true }: AnalyticsSect
 
     return (
         <>
-            <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] shadow-[var(--shadow-sm)] overflow-hidden">
+            <Card className="overflow-hidden shadow-[var(--shadow-sm)]" padding="none">
                 {/* Header */}
                 <button
                     onClick={handleToggle}
@@ -308,7 +323,7 @@ export function AnalyticsSection({ data, defaultExpanded = true }: AnalyticsSect
                         )}
                     </AnimatePresence>
                 )}
-            </div>
+            </Card>
 
             {/* Mobile Bottom Sheet */}
             {isMobile && (

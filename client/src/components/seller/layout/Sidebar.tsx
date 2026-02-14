@@ -35,6 +35,7 @@ import {
     CheckSquare,
     MessageSquare,
     Landmark,
+    TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
@@ -97,6 +98,7 @@ export const sellerNavSections: SellerNavSection[] = [
         title: 'Analytics',
         defaultOpen: false,
         items: [
+            { label: 'Analytics Overview', href: '/seller/analytics', icon: TrendingUp },
             { label: 'Cost Analysis', href: '/seller/analytics/costs', icon: BarChart3 },
             { label: 'Courier Comparison', href: '/seller/analytics/comparison', icon: Trophy },
             { label: 'SLA Dashboard', href: '/seller/analytics/sla', icon: Timer },

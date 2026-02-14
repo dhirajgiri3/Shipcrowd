@@ -147,7 +147,25 @@ const normalizeReportRows = (rawData: any, selectedMetrics: string[]): ReportDat
 // ==================== Dashboard ====================
 
 /**
+ * Map period to startDate/endDate for backend API.
+ * Backend expects startDate/endDate (ISO date strings), not period.
+ */
+function periodToDateRange(period: '7d' | '30d' | '90d' | '1y'): { startDate: string; endDate: string } {
+    const end = new Date();
+    const start = new Date();
+    if (period === '7d') start.setDate(start.getDate() - 7);
+    else if (period === '30d') start.setDate(start.getDate() - 30);
+    else if (period === '90d') start.setDate(start.getDate() - 90);
+    else if (period === '1y') start.setFullYear(start.getFullYear() - 1);
+    return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+    };
+}
+
+/**
  * Legacy dashboard analytics (backward compatibility)
+ * Maps period to startDate/endDate for backend compatibility.
  */
 export const useAnalytics = (
     params: { period?: '7d' | '30d' | '90d' | '1y' } = {},
@@ -158,8 +176,9 @@ export const useAnalytics = (
     return useQuery<AnalyticsData, ApiError>({
         queryKey: queryKeys.analytics.dashboard(period as any),
         queryFn: async () => {
+            const { startDate, endDate } = periodToDateRange(period);
             const response = await apiClient.get('/analytics/dashboard/seller', {
-                params: { period },
+                params: { startDate, endDate },
             });
             return response.data.data as AnalyticsData;
         },
