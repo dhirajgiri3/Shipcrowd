@@ -752,10 +752,24 @@ export const processBankAccountResponse = (responseData: any): any => {
         accountExists: bankAccountInfo.accountExists,
       });
 
+      if (bankAccountInfo.accountExists) {
+        return {
+          status: 'success',
+          message: data.message || 'Bank account verified successfully',
+          data: bankAccountInfo,
+          transactionId: responseData.transaction_id
+        };
+      }
+
       return {
-        status: 'success',
-        message: data.message || 'Bank account verified successfully',
-        data: bankAccountInfo,
+        status: 'error',
+        message: data.message || 'Bank account does not exist',
+        data: {
+          ...bankAccountInfo,
+          valid: false,
+          accountExists: false,
+          error: data.message || 'account_not_found'
+        },
         transactionId: responseData.transaction_id
       };
     }

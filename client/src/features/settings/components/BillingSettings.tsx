@@ -10,8 +10,8 @@ import { useBankAccounts } from '@/src/core/api/hooks/seller/useBankAccounts';
 
 export function BillingSettings() {
     const { data, isLoading, isError } = useBankAccounts();
-    const accounts = data?.data?.accounts ?? data?.accounts ?? [];
-    const bankAccount = accounts[0];
+    const accounts = data?.accounts ?? [];
+    const bankAccount = accounts.find((a) => a.isDefault) ?? accounts[0];
 
     if (isLoading) {
         return (
@@ -70,7 +70,7 @@ export function BillingSettings() {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <h4 className="font-semibold text-[var(--text-primary)]">{bankAccount.bankName || 'Bank Account'}</h4>
-                                    {bankAccount.isVerified ? (
+                                    {bankAccount.verificationStatus === 'verified' ? (
                                         <Badge variant="success" className="text-[10px] px-1.5 py-0.5 h-5">
                                             <CheckCircle className="w-3 h-3 mr-1" /> Verified
                                         </Badge>
@@ -79,7 +79,7 @@ export function BillingSettings() {
                                     )}
                                 </div>
                                 <p className="text-sm text-[var(--text-secondary)] mt-0.5 font-mono">
-                                    XXXX-XXXX-{bankAccount.accountNumber ? bankAccount.accountNumber.slice(-4) : '****'}
+                                    {bankAccount.maskedAccountNumber}
                                 </p>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">
                                     {bankAccount.accountHolderName} • {bankAccount.ifscCode}

@@ -99,10 +99,8 @@ export interface ICompany extends Document {
     };
   };
 
-  // ✅ P0 FIX: Razorpay Fund Account Integration
+  // Financial aggregates for company payouts
   financial?: {
-    razorpayContactId?: string;
-    razorpayFundAccountId?: string;
     lastPayoutAt?: Date;
     totalPayoutsReceived?: number;
   };
@@ -291,10 +289,8 @@ const CompanySchema = new Schema<ICompany>(
       },
     },
 
-    // ✅ P0 FIX: Razorpay Fund Account Integration for COD Settlements
+    // Financial aggregates for company payouts
     financial: {
-      razorpayContactId: String,
-      razorpayFundAccountId: String,
       lastPayoutAt: Date,
       totalPayoutsReceived: {
         type: Number,

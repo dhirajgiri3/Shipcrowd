@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import CODRemittance, { ICODRemittance } from '../../../../infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { SellerBankAccount, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -539,11 +539,19 @@ export class CODRemittanceService {
 
             const company: any = remittance.companyId;
 
-            // Check Razorpay configuration
-            const razorpayFundAccountId = company.financial?.razorpayFundAccountId;
+            // Resolve payout account from verified default bank account.
+            const defaultVerifiedBankAccount = await SellerBankAccount.findOne({
+                companyId: company._id,
+                isDefault: true,
+                verificationStatus: 'verified',
+                razorpayFundAccountId: { $exists: true, $ne: '' },
+            }).select('razorpayFundAccountId');
+
+            const razorpayFundAccountId = defaultVerifiedBankAccount?.razorpayFundAccountId;
+
             if (!razorpayFundAccountId) {
                 throw new AppError(
-                    'Razorpay fund account not configured. Please add bank details.',
+                    'No verified default bank account. Please add and verify a bank account.',
                     ErrorCode.BIZ_SETUP_FAILED,
                     400
                 );

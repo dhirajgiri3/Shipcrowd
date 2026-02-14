@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { showSuccessToast, handleApiError } from '@/src/lib/error';
+import { showSuccessToast, showWarningToast, handleApiError } from '@/src/lib/error';
 import {
     User,
     Building2,
@@ -390,6 +390,9 @@ export function KycClient() {
                 }
                 
                 showSuccessToast('Bank account verified successfully!');
+                if (response.data?.payoutSyncStatus === 'failed') {
+                    showWarningToast('Bank verified, but payout setup failed. Please retry in Bank Accounts.');
+                }
             } else {
                 setBankVerification({
                     state: verificationState,

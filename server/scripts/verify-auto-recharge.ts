@@ -2,6 +2,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Company } from '../src/infrastructure/database/mongoose/models';
+import FeatureFlag from '../src/infrastructure/database/mongoose/models/system/feature-flag.model';
 import { AutoRechargeLog } from '../src/infrastructure/database/mongoose/models/finance/auto-recharge-log.model';
 import { autoRechargeWorker } from '../src/workers/finance/auto-recharge.worker';
 import logger from '../src/shared/logger/winston.logger';
@@ -17,6 +18,7 @@ const autoRechargeMetrics = AutoRechargeMetricsService.getInstance();
 // Mock environment
 process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '0000000000000000000000000000000000000000000000000000000000000000';
 process.env.MOCK_PAYMENTS = 'true'; // Enable mock mode for testing
+process.env.AUTO_RECHARGE_FEATURE_ENABLED = 'true'; // Enable env kill switch for this verification
 
 let mongoServer: MongoMemoryServer | null = null;
 
@@ -79,6 +81,23 @@ async function verifyAutoRecharge() {
             await mongoose.connect(mongoServer.getUri());
             console.log('✅ Connected to in-memory MongoDB\n');
         }
+
+        // Enable DB feature flag required by auto-recharge worker gate.
+        await FeatureFlag.findOneAndUpdate(
+            { key: 'wallet_auto_recharge' },
+            {
+                $set: {
+                    name: 'Wallet Auto Recharge',
+                    description: 'Enables wallet auto-recharge processing',
+                    isEnabled: true,
+                    type: 'boolean',
+                    isArchived: false,
+                    category: 'billing',
+                    createdBy: new mongoose.Types.ObjectId(),
+                },
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
 
         // =================================================================
         // TEST 1: Happy Path - Successful Auto-Recharge

@@ -81,6 +81,11 @@ async function main() {
                 await new ServiceLevelPricingFoundationMigration(dryRun).runIndexHygieneOnly();
                 break;
             }
+            case 'seller-bank-account-cutover': {
+                const { SellerBankAccountCutoverMigration } = await import('./bank-accounts/seller-bank-account-cutover.migration');
+                await new SellerBankAccountCutoverMigration(dryRun).run();
+                break;
+            }
             default:
                 console.log('Available migrations:');
                 console.log('  wallet-soft-delete      -- Run WalletTransaction soft delete migration');
@@ -91,6 +96,7 @@ async function main() {
                 console.log('  cod-enhancement         -- Run COD fields backfill (totalCollection, collectionStatus)');
                 console.log('  service-level-pricing-foundation -- Create/sync collections and indexes for new service-level pricing models');
                 console.log('  service-level-pricing-index-hygiene -- Drop stale duplicate index names and restore canonical service-level indexes');
+                console.log('  seller-bank-account-cutover -- Backfill SellerBankAccount from legacy Company bank fields and unset legacy fields');
                 console.log('\nOptions:');
                 console.log('  --dry-run               -- Simulate migration without writes');
                 break;

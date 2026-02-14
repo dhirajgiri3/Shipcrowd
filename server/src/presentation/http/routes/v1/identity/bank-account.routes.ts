@@ -18,20 +18,20 @@ router.get('/', authenticate, asyncHandler(bankAccountController.getBankAccounts
  * @desc Add a bank account
  * @access Private (CSRF + rate limited)
  */
-router.post('/', bankAccountRateLimiter, authenticate, csrfProtection, asyncHandler(bankAccountController.addBankAccount));
+router.post('/', authenticate, bankAccountRateLimiter, csrfProtection, asyncHandler(bankAccountController.addBankAccount));
 
 /**
  * @route PUT /api/v1/seller/bank-accounts/:id/default
- * @desc Set bank account as default (no-op for single-account model)
+ * @desc Set bank account as default
  * @access Private (CSRF + rate limited)
  */
-router.put('/:id/default', bankAccountRateLimiter, authenticate, csrfProtection, asyncHandler(bankAccountController.setDefaultBankAccount));
+router.put('/:id/default', authenticate, bankAccountRateLimiter, csrfProtection, asyncHandler(bankAccountController.setDefaultBankAccount));
 
 /**
  * @route DELETE /api/v1/seller/bank-accounts/:id
  * @desc Delete a bank account
  * @access Private (CSRF + rate limited)
  */
-router.delete('/:id', bankAccountRateLimiter, authenticate, csrfProtection, asyncHandler(bankAccountController.deleteBankAccount));
+router.delete('/:id', authenticate, bankAccountRateLimiter, csrfProtection, asyncHandler(bankAccountController.deleteBankAccount));
 
 export default router;

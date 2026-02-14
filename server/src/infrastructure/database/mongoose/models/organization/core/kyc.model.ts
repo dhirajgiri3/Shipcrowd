@@ -83,6 +83,7 @@ export interface IKYC extends Document {
       verificationHistory?: IKYCVerificationHistoryEntry[];
     };
     bankAccount?: {
+      bankAccountId?: mongoose.Types.ObjectId;
       accountNumber: string;
       ifscCode: string;
       accountHolderName: string;
@@ -274,6 +275,10 @@ const KYCSchema = new Schema<IKYC>(
         },
       },
       bankAccount: {
+        bankAccountId: {
+          type: Schema.Types.ObjectId,
+          ref: 'SellerBankAccount',
+        },
         accountNumber: String,
         ifscCode: String,
         accountHolderName: String,

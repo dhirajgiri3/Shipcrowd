@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import { KYC, KYCVerificationAttempt, User, IUser, Company } from '../../../../infrastructure/database/mongoose/models';
+import { KYC, KYCVerificationAttempt, User, IUser, Company, SellerBankAccount } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
@@ -28,7 +28,10 @@ import {
   resolveVerificationState,
 } from '../../../../shared/utils/kyc-utils';
 import { queueKYCApprovedEmail, queueKYCRejectedEmail } from '../../../../core/application/services/communication/email-queue.service';
-import { syncRazorpayFundAccount } from '../../../../core/application/services/finance/sync-razorpay-fund-account.service';
+import {
+  syncRazorpayFundAccountForSellerBankAccount,
+} from '../../../../core/application/services/finance/sync-razorpay-fund-account.service';
+import { computeFingerprint, normalizeAccount, normalizeIfsc } from '../../../../infrastructure/database/mongoose/models/finance/payouts/seller-bank-account.model';
 
 
 /**
@@ -1286,10 +1289,8 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       // Find or create KYC record
       let kyc = await findOrCreateKyc(user._id, user.companyId);
 
-      // Determine if the bank account is valid based on the response structure
-      const isValid = verificationResult.status === 'success' ||
-        (verificationResult.data && verificationResult.data.accountExists === true) ||
-        (verificationResult.data && verificationResult.data.account_exists === true);
+      // Determine if the bank account is valid based on authoritative account existence flag
+      const isValid = verificationResult.data?.accountExists === true;
 
       // Extract account holder name from the response
       const holderName = verificationResult.data?.accountHolderName ||
@@ -1323,10 +1324,12 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
         : DocumentVerificationState.SOFT_FAILED;
 
       const expiresAt = isValid ? buildExpiryDate('bankAccount', now) || undefined : undefined;
+      let payoutSyncStatus: 'success' | 'failed' | 'not_applicable' = 'not_applicable';
 
       if (isValid || existingState !== DocumentVerificationState.VERIFIED || sameInput) {
         if (!kyc.documents.bankAccount) {
           kyc.documents.bankAccount = {
+            bankAccountId: undefined,
             accountNumber: '',
             ifscCode: '',
             accountHolderName: '',
@@ -1353,6 +1356,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
         } else {
           kyc.documents.bankAccount.verified = false;
           kyc.documents.bankAccount.verifiedAt = undefined;
+          kyc.documents.bankAccount.bankAccountId = undefined;
           kyc.documents.bankAccount.accountHolderName = '';
           kyc.documents.bankAccount.bankName = '';
         }
@@ -1426,37 +1430,88 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
         req
       );
 
-      // Sync verified bank to Company.billingInfo for payouts and Bank Accounts page
-      if (isValid && user.companyId) {
+      // Sync verified bank to SellerBankAccount collection and payout configuration
+      if (isValid && user.companyId && kyc.documents.bankAccount) {
         try {
-          const company = await Company.findById(user.companyId);
-          if (company) {
-            company.billingInfo = {
-              ...company.billingInfo,
-              bankName: bankNameValue,
-              accountNumber: accountNumberClean,
-              ifscCode: ifsc,
-              accountHolderName: holderName,
-              bankVerifiedAt: now,
-            };
-            // Sync Razorpay fund account for COD payouts (idempotent, non-blocking)
-            await syncRazorpayFundAccount(company, {
-              accountNumber: accountNumberClean,
-              ifscCode: ifsc,
-              accountHolderName: holderName,
-            });
-            await company.save();
-            logger.info('Synced verified bank to Company.billingInfo', {
+          const normalizedAccount = normalizeAccount(accountNumberClean);
+          const normalizedIfsc = normalizeIfsc(ifsc);
+          const fingerprint = computeFingerprint({
+            companyId: user.companyId,
+            accountNumber: normalizedAccount,
+            ifscCode: normalizedIfsc,
+          });
+
+          let sellerBankAccountId: mongoose.Types.ObjectId | null = null;
+          await withTransaction(async (session) => {
+            let sellerBankAccount = await SellerBankAccount.findOne({
               companyId: user.companyId,
-              accountNumber: `****${accountNumberClean.slice(-4)}`,
-            });
+              accountFingerprint: fingerprint,
+              ifscCode: normalizedIfsc,
+            }).session(session);
+
+            if (!sellerBankAccount) {
+              sellerBankAccount = new SellerBankAccount({
+                companyId: user.companyId,
+                bankName: bankNameValue || 'Unknown Bank',
+                accountHolderName: holderName,
+                accountNumberEncrypted: normalizedAccount,
+                accountLast4: normalizedAccount.slice(-4),
+                accountFingerprint: fingerprint,
+                ifscCode: normalizedIfsc,
+                verificationStatus: 'verified',
+                verifiedAt: now,
+                isDefault: false,
+              });
+            } else {
+              sellerBankAccount.bankName = bankNameValue || sellerBankAccount.bankName;
+              sellerBankAccount.accountHolderName = holderName || sellerBankAccount.accountHolderName;
+              sellerBankAccount.accountNumberEncrypted = normalizedAccount;
+              sellerBankAccount.accountLast4 = normalizedAccount.slice(-4);
+              sellerBankAccount.verificationStatus = 'verified';
+              sellerBankAccount.verifiedAt = now;
+            }
+
+            await sellerBankAccount.save({ session });
+
+            const hasVerifiedDefault = await SellerBankAccount.exists({
+              companyId: user.companyId,
+              isDefault: true,
+              verificationStatus: 'verified',
+            }).session(session);
+
+            if (!hasVerifiedDefault) {
+              await SellerBankAccount.updateMany(
+                { companyId: user.companyId, isDefault: true },
+                { $set: { isDefault: false } },
+                { session }
+              );
+              sellerBankAccount.isDefault = true;
+              await sellerBankAccount.save({ session });
+            }
+
+            sellerBankAccountId = sellerBankAccount._id as mongoose.Types.ObjectId;
+            kyc.documents.bankAccount.bankAccountId = sellerBankAccountId as any;
+            await kyc.save({ session });
+          });
+
+          if (sellerBankAccountId) {
+            const sellerBankAccount = await SellerBankAccount.findById(sellerBankAccountId);
+            if (sellerBankAccount) {
+              const syncResult = await syncRazorpayFundAccountForSellerBankAccount(sellerBankAccount, {
+                accountNumber: normalizedAccount,
+                ifscCode: normalizedIfsc,
+                accountHolderName: holderName || sellerBankAccount.accountHolderName,
+              });
+              payoutSyncStatus = syncResult.success ? 'success' : 'failed';
+              await sellerBankAccount.save();
+            }
           }
         } catch (syncErr: any) {
-          logger.error('Failed to sync bank to Company.billingInfo', {
+          payoutSyncStatus = 'failed';
+          logger.error('Failed to sync verified bank to SellerBankAccount', {
             companyId: user.companyId,
             error: syncErr?.message,
           });
-          // Non-blocking: KYC is saved; Company sync can be retried manually
         }
       }
 
@@ -1470,6 +1525,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
           expiresAt,
           attemptId,
         },
+        payoutSyncStatus,
         data: {
           accountNumber: `****${accountNumberClean.slice(-4)}`, // Mask account number for security
           ifsc,

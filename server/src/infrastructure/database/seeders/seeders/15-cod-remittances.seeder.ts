@@ -214,14 +214,14 @@ async function generateRemittanceBatch(
         });
     }
 
-    // Get company bank details
-    const bankDetails = company.billingInfo?.accountNumber ? {
-        accountNumber: company.billingInfo.accountNumber,
-        ifscCode: company.billingInfo.ifscCode || 'HDFC0000001',
+    // Seeder-only payout details (runtime payout routing resolves from SellerBankAccount)
+    const bankDetails = {
+        accountNumber: `${Math.floor(1_000_000_000 + Math.random() * 9_000_000_000)}`,
+        ifscCode: 'HDFC0000001',
         accountHolderName: company.name,
-        bankName: company.billingInfo.bankName || 'HDFC Bank',
-        upiId: company.billingInfo.upiId,
-    } : undefined;
+        bankName: 'HDFC Bank',
+        upiId: undefined,
+    };
 
     return {
         remittanceId: generateRemittanceId(createdDate),
@@ -262,7 +262,7 @@ async function generateRemittanceBatch(
             status: payoutStatus,
             method: payoutMethod,
             razorpayPayoutId: payoutStatus !== 'pending' ? `payout_${Math.random().toString(36).substring(2, 15)}` : undefined,
-            razorpayFundAccountId: bankDetails ? `fa_${Math.random().toString(36).substring(2, 15)}` : undefined,
+            razorpayFundAccountId: `fa_${Math.random().toString(36).substring(2, 15)}`,
             razorpayContactId: `contact_${Math.random().toString(36).substring(2, 15)}`,
             accountDetails: bankDetails,
             initiatedAt,

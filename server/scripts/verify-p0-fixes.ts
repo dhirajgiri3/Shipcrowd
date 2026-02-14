@@ -2,7 +2,7 @@
  * P0 Fixes Verification Script
  * 
  * Verifies critical fixes:
- * 1. Company.financial field exists
+ * 1. SellerBankAccount model can persist payout mapping
  * 2. Bank account sync with Razorpay
  * 3. Payment verification before wallet credit
  * 4. Webhook signature verification
@@ -20,7 +20,7 @@ if (!process.env.ENCRYPTION_KEY) {
 async function verifyP0Fixes() {
     try {
         // Dynamic imports to ensure env vars are set before models load
-        const { Company } = await import('../src/infrastructure/database/mongoose/models/index.js');
+        const { Company, SellerBankAccount } = await import('../src/infrastructure/database/mongoose/models/index.js');
         const { default: WalletService } = await import('../src/core/application/services/wallet/wallet.service.js');
         const { default: logger } = await import('../src/shared/logger/winston.logger.js');
 
@@ -28,8 +28,8 @@ async function verifyP0Fixes() {
         await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd');
         logger.info('Connected to database');
 
-        // ✅ TEST 1: Verify Company.financial field exists
-        console.log('\n=== TEST 1: Company Schema ===');
+        // ✅ TEST 1: Verify SellerBankAccount can persist payout mapping
+        console.log('\n=== TEST 1: SellerBankAccount Schema ===');
         const testCompany = new Company({
             name: 'P0-Test-Company-' + Date.now(),
             wallet: {
@@ -41,19 +41,28 @@ async function verifyP0Fixes() {
                     threshold: 1000,
                     amount: 5000,
                 }
-            },
-            financial: {
-                razorpayContactId: 'test_contact_123',
-                razorpayFundAccountId: 'test_fa_456',
-                totalPayoutsReceived: 0,
             }
         });
 
         await testCompany.save();
-        console.log('✅ Company.financial field: EXISTS');
+        const sellerBankAccount = await SellerBankAccount.create({
+            companyId: testCompany._id,
+            bankName: 'HDFC Bank',
+            accountHolderName: 'P0 Test',
+            accountNumberEncrypted: '123456789012',
+            accountLast4: '9012',
+            accountFingerprint: crypto.createHash('sha256').update(`p0:${testCompany._id}`).digest('hex'),
+            ifscCode: 'HDFC0000001',
+            verificationStatus: 'verified',
+            verifiedAt: new Date(),
+            isDefault: true,
+            razorpayContactId: 'test_contact_123',
+            razorpayFundAccountId: 'test_fa_456',
+        });
+        console.log('✅ SellerBankAccount: EXISTS');
         console.log('✅ Company.wallet.autoRecharge field: EXISTS');
-        console.log('   - razorpayContactId:', testCompany.financial?.razorpayContactId);
-        console.log('   - razorpayFundAccountId:', testCompany.financial?.razorpayFundAccountId);
+        console.log('   - bankAccountId:', sellerBankAccount._id.toString());
+        console.log('   - razorpayFundAccountId:', sellerBankAccount.razorpayFundAccountId);
         console.log('   - autoRecharge.enabled:', testCompany.wallet?.autoRecharge?.enabled);
 
         // ✅ TEST 2: Verify payment verification in handleRecharge
@@ -98,12 +107,13 @@ async function verifyP0Fixes() {
         }
 
         // Cleanup
+        await SellerBankAccount.deleteOne({ _id: sellerBankAccount._id });
         await Company.deleteOne({ _id: testCompany._id });
         console.log('\n✅ Test company cleaned up');
 
         // Summary
         console.log('\n=== P0 FIXES VERIFICATION SUMMARY ===');
-        console.log('✅ 1. Company.financial field: ADDED');
+        console.log('✅ 1. SellerBankAccount payout mapping: ADDED');
         console.log('✅ 2. Company.wallet.autoRecharge: ADDED');
         console.log('✅ 3. Payment verification: IMPLEMENTED');
         console.log('✅ 4. Webhook timing-safe comparison: IMPLEMENTED');

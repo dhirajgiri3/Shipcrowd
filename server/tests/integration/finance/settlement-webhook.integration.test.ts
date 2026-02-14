@@ -11,8 +11,94 @@ import { Shipment } from '../../../src/infrastructure/database/mongoose/models';
 import CODRemittance from '../../../src/infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 import { setupTestDatabase, teardownTestDatabase } from '../../setup/testDatabase';
 
+jest.mock('../../../src/core/application/services/communication/email.service', () => ({
+    __esModule: true,
+    default: {
+        sendOperationalAlert: jest.fn().mockResolvedValue(undefined),
+    },
+}));
+
+jest.mock('../../../src/core/application/services/communication/email.service.js', () => ({
+    __esModule: true,
+    default: {
+        sendOperationalAlert: jest.fn().mockResolvedValue(undefined),
+    },
+}), { virtual: true });
+
 describe('Settlement Webhook Integration Tests', () => {
     let testCompanyId: mongoose.Types.ObjectId;
+
+    const createValidRemittanceBatch = async (params: {
+        companyId: mongoose.Types.ObjectId;
+        shipments: Array<any>;
+    }) => {
+        const createdDate = new Date();
+        const cutoffDate = new Date();
+        const totalCODCollected = params.shipments.reduce((sum, s) => sum + (s.paymentDetails?.codAmount || 0), 0);
+        const totalShippingCharges = params.shipments.reduce((sum, s) => sum + (s.paymentDetails?.shippingCost || 0), 0);
+        const totalPlatformFees = 60;
+        const grandTotal = totalShippingCharges + totalPlatformFees;
+        const netPayable = totalCODCollected - grandTotal;
+
+        return CODRemittance.create({
+            remittanceId: `REM-TEST-${Date.now()}`,
+            companyId: params.companyId,
+            batch: {
+                batchNumber: 1,
+                createdDate,
+                cutoffDate,
+                shippingPeriod: {
+                    start: new Date(createdDate.getTime() - 7 * 24 * 60 * 60 * 1000),
+                    end: cutoffDate,
+                },
+            },
+            schedule: {
+                type: 'manual',
+            },
+            shipments: params.shipments.map((shipment) => ({
+                shipmentId: shipment._id,
+                awb: shipment.trackingNumber,
+                codAmount: shipment.paymentDetails.codAmount,
+                deliveredAt: new Date(),
+                status: 'delivered',
+                deductions: {
+                    shippingCharge: shipment.paymentDetails.shippingCost || 0,
+                    weightDispute: 0,
+                    rtoCharge: 0,
+                    insuranceCharge: 0,
+                    platformFee: 0,
+                    otherFees: 0,
+                    total: shipment.paymentDetails.shippingCost || 0,
+                },
+                netAmount: shipment.paymentDetails.codAmount - (shipment.paymentDetails.shippingCost || 0),
+            })),
+            financial: {
+                totalCODCollected,
+                totalShipments: params.shipments.length,
+                successfulDeliveries: params.shipments.length,
+                rtoCount: 0,
+                disputedCount: 0,
+                deductionsSummary: {
+                    totalShippingCharges,
+                    totalWeightDisputes: 0,
+                    totalRTOCharges: 0,
+                    totalInsuranceCharges: 0,
+                    totalPlatformFees,
+                    totalOtherFees: 0,
+                    grandTotal,
+                },
+                netPayable,
+            },
+            payout: {
+                status: 'pending',
+                method: 'manual',
+            },
+            status: 'approved',
+            reportGenerated: false,
+            timeline: [],
+            isDeleted: false,
+        });
+    };
 
     beforeAll(async () => {
         await setupTestDatabase();
@@ -110,20 +196,9 @@ describe('Settlement Webhook Integration Tests', () => {
             });
 
             // Create remittance batch
-            const batch = await CODRemittance.create({
+            const batch = await createValidRemittanceBatch({
                 companyId: testCompanyId,
-                batchType: 'weekly',
-                cutoffDate: new Date(),
-                shipments: [shipment1._id, shipment2._id],
-                status: 'approved',
-                financial: {
-                    totalCOD: 3000,
-                    totalShipments: 2,
-                    platformFee: 60,
-                    courierCharges: 125,
-                    netPayable: 2815
-                },
-                createdBy: new mongoose.Types.ObjectId()
+                shipments: [shipment1, shipment2],
             });
 
             // Simulate settlement webhook

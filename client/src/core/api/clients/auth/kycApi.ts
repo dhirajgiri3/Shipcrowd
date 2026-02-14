@@ -197,6 +197,7 @@ class KYCApiService {
         success: boolean;
         data: {
             verified: boolean;
+            payoutSyncStatus?: 'success' | 'failed' | 'not_applicable';
             verification?: VerificationMeta;
             data: {
                 accountHolderName?: string;

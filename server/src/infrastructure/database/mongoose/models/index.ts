@@ -50,6 +50,8 @@ export { default as Payout } from './finance/payouts/payout.model';
 export * from './finance/payouts/payout.model';
 export { default as CODRemittance } from './finance/payouts/cod-remittance.model';
 export * from './finance/payouts/cod-remittance.model';
+export { default as SellerBankAccount } from './finance/payouts/seller-bank-account.model';
+export * from './finance/payouts/seller-bank-account.model';
 export { default as Invoice } from './finance/billing/invoice.model';
 export * from './finance/billing/invoice.model';
 export { default as CarrierBillingRecord } from './finance/reconciliation/carrier-billing-record.model';

@@ -119,7 +119,7 @@ describe('COD Finance API Integration (E2E)', () => {
         it('should enroll user in program', async () => {
             const res = await agent
                 .post('/api/v1/finance/cod/early-program/enroll')
-                .send({ tier: 'T+1' })
+                .send({ tier: 'T+3' })
                 .expect(200);
 
             expect(res.body.success).toBe(true);
@@ -127,7 +127,7 @@ describe('COD Finance API Integration (E2E)', () => {
 
             const enrollment = await EarlyCODEnrollment.findOne({ companyId });
             expect(enrollment).not.toBeNull();
-            expect(enrollment!.tier).toBe('T+1');
+            expect(enrollment!.tier).toBe('T+3');
         });
 
         it('should fail enrollment if tier missing', async () => {

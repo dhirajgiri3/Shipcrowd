@@ -10,6 +10,9 @@
 import RemittanceReconciliationService from '../../../src/core/application/services/finance/remittance-reconciliation.service';
 
 describe('Remittance Reconciliation - Column Mapping', () => {
+    const mappingFor = (provider: 'velocity' | 'delhivery' | 'generic') =>
+        (RemittanceReconciliationService as any).resolveColumnMapping(provider);
+
     describe('normalizeRow', () => {
         it('should parse Velocity MIS format', () => {
             const velocityRow = {
@@ -20,7 +23,7 @@ describe('Remittance Reconciliation - Column Mapping', () => {
             };
 
             // Access private method via type assertion
-            const result = (RemittanceReconciliationService as any).normalizeRow(velocityRow, 'velocity');
+            const result = (RemittanceReconciliationService as any).normalizeRow(velocityRow, mappingFor('velocity'));
 
             expect(result).not.toBeNull();
             expect(result.awb).toBe('VEL123456789');
@@ -36,7 +39,7 @@ describe('Remittance Reconciliation - Column Mapping', () => {
                 'UTR No': 'UTR999888'
             };
 
-            const result = (RemittanceReconciliationService as any).normalizeRow(delhiveryRow, 'delhivery');
+            const result = (RemittanceReconciliationService as any).normalizeRow(delhiveryRow, mappingFor('delhivery'));
 
             expect(result).not.toBeNull();
             expect(result.awb).toBe('DEL987654321');
@@ -51,7 +54,7 @@ describe('Remittance Reconciliation - Column Mapping', () => {
                 'Reference': 'REF-ABC'
             };
 
-            const result = (RemittanceReconciliationService as any).normalizeRow(genericRow, 'generic');
+            const result = (RemittanceReconciliationService as any).normalizeRow(genericRow, mappingFor('generic'));
 
             expect(result).not.toBeNull();
             expect(result.awb).toBe('GEN111222333');
@@ -61,10 +64,10 @@ describe('Remittance Reconciliation - Column Mapping', () => {
         it('should handle column names with underscores and spaces', () => {
             const rowWithVariations = {
                 'AWB_Number': 'TEST123',
-                'COD Collected': '500'
+                'COD Amount': '500'
             };
 
-            const result = (RemittanceReconciliationService as any).normalizeRow(rowWithVariations, 'generic');
+            const result = (RemittanceReconciliationService as any).normalizeRow(rowWithVariations, mappingFor('generic'));
 
             expect(result).not.toBeNull();
             expect(result.awb).toBe('TEST123');
@@ -77,7 +80,7 @@ describe('Remittance Reconciliation - Column Mapping', () => {
                 'Value': '1200'
             };
 
-            const result = (RemittanceReconciliationService as any).normalizeRow(nonStandardRow, 'generic');
+            const result = (RemittanceReconciliationService as any).normalizeRow(nonStandardRow, mappingFor('generic'));
 
             expect(result).not.toBeNull();
             expect(result.awb).toBe('REF123');
@@ -90,7 +93,7 @@ describe('Remittance Reconciliation - Column Mapping', () => {
                 'Another Column': 'value2'
             };
 
-            const result = (RemittanceReconciliationService as any).normalizeRow(invalidRow, 'generic');
+            const result = (RemittanceReconciliationService as any).normalizeRow(invalidRow, mappingFor('generic'));
 
             expect(result).toBeNull();
         });
@@ -101,7 +104,7 @@ describe('Remittance Reconciliation - Column Mapping', () => {
                 'Amount': '100'
             };
 
-            const result = (RemittanceReconciliationService as any).normalizeRow(rowWithEmptyAwb, 'generic');
+            const result = (RemittanceReconciliationService as any).normalizeRow(rowWithEmptyAwb, mappingFor('generic'));
 
             expect(result).toBeNull();
         });
@@ -112,7 +115,7 @@ describe('Remittance Reconciliation - Column Mapping', () => {
                 'COD Amount': '1,234.56'
             };
 
-            const result = (RemittanceReconciliationService as any).normalizeRow(rowWithFormattedAmount, 'generic');
+            const result = (RemittanceReconciliationService as any).normalizeRow(rowWithFormattedAmount, mappingFor('generic'));
 
             // parseFloat should handle comma (or not) - verify behavior
             expect(result).not.toBeNull();
@@ -122,14 +125,12 @@ describe('Remittance Reconciliation - Column Mapping', () => {
 
     describe('Column Mapping Configuration', () => {
         it('should have velocity mapping with all standard columns', () => {
-            const COURIER_COLUMN_MAPPINGS = (RemittanceReconciliationService as any).constructor.COURIER_COLUMN_MAPPINGS || {
-                velocity: {
-                    awbColumns: ['awb', 'awb_number', 'tracking_number', 'waybill', 'shipment_id'],
-                    amountColumns: ['cod_amount', 'cod_collected', 'amount', 'net_amount', 'collectible']
-                }
-            };
-
-            expect(COURIER_COLUMN_MAPPINGS).toBeDefined();
+            const mapping = mappingFor('velocity');
+            expect(mapping).toBeDefined();
+            expect(Array.isArray(mapping.awbColumns)).toBe(true);
+            expect(Array.isArray(mapping.amountColumns)).toBe(true);
+            expect(mapping.awbColumns.length).toBeGreaterThan(0);
+            expect(mapping.amountColumns.length).toBeGreaterThan(0);
         });
     });
 });

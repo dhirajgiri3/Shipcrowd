@@ -96,8 +96,8 @@ export default function CODSettingsPage() {
     });
 
     const { data, isLoading } = useBankAccounts();
-    const accounts = data?.data?.accounts ?? data?.accounts ?? [];
-    const bankAccount = accounts[0];
+    const accounts = data?.accounts ?? [];
+    const bankAccount = accounts.find((a) => a.isDefault) ?? accounts[0];
 
     const getNextPayoutDate = (): Date => {
         const now = new Date();
@@ -390,7 +390,7 @@ export default function CODSettingsPage() {
                                                     {bankAccount.bankName}
                                                 </p>
                                                 <p className="text-sm text-[var(--text-secondary)] font-mono">
-                                                    ****{bankAccount.accountNumber ? bankAccount.accountNumber.slice(-4) : '****'}
+                                                    {bankAccount.maskedAccountNumber}
                                                 </p>
                                             </div>
                                         </div>

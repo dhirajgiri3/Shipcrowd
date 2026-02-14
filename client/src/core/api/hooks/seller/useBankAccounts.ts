@@ -58,3 +58,20 @@ export const useDeleteBankAccount = () => {
     });
 };
 
+/**
+ * Hook to set default bank account
+ */
+export const useSetDefaultBankAccount = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => bankAccountApi.setDefaultBankAccount(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.seller.bankAccounts() });
+            showSuccessToast('Default bank account updated');
+        },
+        onError: (error: ApiError) => {
+            handleApiError(error, 'Failed to set default bank account');
+        },
+    });
+};

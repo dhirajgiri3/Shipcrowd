@@ -22,7 +22,7 @@ import { PageHeader } from "@/src/components/ui/layout/PageHeader";
 import { Skeleton } from "@/src/components/ui/data/Skeleton";
 import { ConfirmDialog } from "@/src/components/ui/feedback/ConfirmDialog";
 import { Tooltip } from "@/src/components/ui/feedback/Tooltip";
-import { useBankAccounts, useAddBankAccount, useDeleteBankAccount } from "@/src/core/api/hooks/seller/useBankAccounts";
+import { useBankAccounts, useAddBankAccount, useDeleteBankAccount, useSetDefaultBankAccount } from "@/src/core/api/hooks/seller/useBankAccounts";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/src/core/api/config/query-keys";
 import { useForm } from "react-hook-form";
@@ -51,8 +51,9 @@ export function BankAccountsClient() {
     const { data, isLoading } = useBankAccounts();
     const { mutate: addAccount, isPending: isAdding } = useAddBankAccount();
     const { mutate: deleteAccount, isPending: isDeleting } = useDeleteBankAccount();
+    const { mutate: setDefaultAccount, isPending: isSettingDefault } = useSetDefaultBankAccount();
 
-    const accounts = data?.data?.accounts ?? data?.accounts ?? [];
+    const accounts = data?.accounts ?? [];
 
     // Form
     const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<BankAccountForm>();
@@ -66,17 +67,21 @@ export function BankAccountsClient() {
                 ifsc: formData.ifscCode,
                 accountHolderName: formData.accountHolderName,
             });
-            const verified = response?.data?.verified ?? response?.verified ?? false;
+            const verified = response?.data?.verified ?? false;
+            const payoutSyncStatus = response?.data?.payoutSyncStatus;
             if (verified) {
                 setVerificationStatus('verified');
                 showSuccessToast('Bank account verified and saved successfully');
+                if (payoutSyncStatus === 'failed') {
+                    setVerificationError('Bank verified, but payout setup failed. Please try again from this page.');
+                }
                 queryClient.invalidateQueries({ queryKey: queryKeys.seller.bankAccounts() });
                 setIsAddOpen(false);
                 reset();
                 setVerificationStatus('idle');
             } else {
                 setVerificationStatus('failed');
-                setVerificationError(response?.data?.message || response?.message || 'Verification failed');
+                setVerificationError(response?.message || 'Verification failed');
             }
         } catch (err: any) {
             setVerificationStatus('failed');
@@ -298,7 +303,7 @@ export function BankAccountsClient() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {accounts.map((account: any) => (
-                        <Card key={account._id || 'primary'} className="overflow-hidden">
+                        <Card key={account.id} className="overflow-hidden">
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
@@ -308,7 +313,7 @@ export function BankAccountsClient() {
                                         <div>
                                             <h3 className="font-semibold text-[var(--text-primary)]">{account.bankName}</h3>
                                             <p className="text-xs text-[var(--text-secondary)] flex items-center gap-1">
-                                                {account.isVerified ? (
+                                                {account.verificationStatus === 'verified' ? (
                                                     <span className="flex items-center text-[var(--success)]">
                                                         <CheckCircle className="h-3 w-3 mr-1" /> Verified
                                                     </span>
@@ -328,7 +333,7 @@ export function BankAccountsClient() {
                                             variant="ghost"
                                             size="icon"
                                             className="text-[var(--error)] hover:text-[var(--error-hover)] hover:bg-[var(--error-bg)]"
-                                            onClick={() => handleDelete(account._id || 'primary')}
+                                            onClick={() => handleDelete(account.id)}
                                             disabled={isDeleting}
                                             aria-label="Remove bank account"
                                         >
@@ -340,9 +345,7 @@ export function BankAccountsClient() {
                                 <div className="mt-6 space-y-3">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-[var(--text-secondary)]">Account Number</span>
-                                        <span className="font-mono font-medium text-[var(--text-primary)]">
-                                            •••• {account.accountNumber ? account.accountNumber.slice(-4) : '****'}
-                                        </span>
+                                        <span className="font-mono font-medium text-[var(--text-primary)]">{account.maskedAccountNumber}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-[var(--text-secondary)]">IFSC Code</span>
@@ -353,6 +356,18 @@ export function BankAccountsClient() {
                                         <span className="font-medium text-[var(--text-primary)]">{account.accountHolderName || 'Company Account'}</span>
                                     </div>
                                 </div>
+                                {!account.isDefault && (
+                                    <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={account.verificationStatus !== 'verified' || isSettingDefault}
+                                            onClick={() => setDefaultAccount(account.id)}
+                                        >
+                                            Set as Default
+                                        </Button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     ))}
