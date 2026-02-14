@@ -74,7 +74,15 @@ export interface NotificationPayload {
   companyId?: string;
 }
 
-type LegacyNotificationTemplate = INotificationTemplate & {
+type LegacyNotificationTemplate = {
+  [key: string]: any;
+  _id?: unknown;
+  name?: string;
+  channel?: NotificationChannel;
+  code?: string;
+  subject?: string;
+  body: string;
+  isActive?: boolean;
   trigger?: NotificationTrigger;
   company?: mongoose.Types.ObjectId | null;
   footer?: string;
