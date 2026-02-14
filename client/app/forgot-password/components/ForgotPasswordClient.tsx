@@ -19,7 +19,7 @@ import { Input } from '@/src/components/ui/core/Input';
 import { useForgotPassword } from '@/src/core/api/hooks/auth/useForgotPassword';
 
 export function ForgotPasswordClient() {
-    const { email, setEmail, isLoading, isSuccess, handleSubmit } = useForgotPassword();
+    const { email, setEmail, isLoading, isSuccess, errorMessage, clearError, handleSubmit } = useForgotPassword();
 
     return (
         <div className="flex min-h-screen bg-[var(--bg-primary)]">
@@ -75,6 +75,13 @@ export function ForgotPasswordClient() {
                         </motion.div>
                     ) : (
                         <>
+                            {/* Error Alert */}
+                            {errorMessage && (
+                                <Alert variant="error" className="mb-5" dismissible onDismiss={clearError}>
+                                    <AlertDescription>{errorMessage}</AlertDescription>
+                                </Alert>
+                            )}
+
                             {/* Form */}
                             <form onSubmit={handleSubmit} className="space-y-5">
                                 {/* Email Field */}

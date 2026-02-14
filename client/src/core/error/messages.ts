@@ -28,8 +28,13 @@ export const ERROR_MESSAGES = {
     HTTP_504: "The server took too long to respond. Please try again.",
 
     // authentication
-    AUTH_FAILED: "Authentication failed. Please check your credentials.",
+    AUTH_FAILED: "Invalid email or password. Please check your credentials and try again.",
     SESSION_EXPIRED: "Your secure session has ended. Please sign in again.",
+    AUTH_INVALID_CREDENTIALS: "Invalid email or password. Please check your credentials and try again.",
+    AUTH_EMAIL_NOT_VERIFIED: "Please verify your email address before signing in. Check your inbox for the verification link.",
+    AUTH_ACCOUNT_DISABLED: "Your account has been disabled. Please contact support for assistance.",
+    AUTH_ACCOUNT_LOCKED: "Account temporarily locked due to multiple failed attempts. Please try again in 30 minutes or reset your password.",
+    EMAIL_ALREADY_EXISTS: "An account with this email already exists. Please sign in or use a different email address.",
 
     // validation
     VALIDATION_ERROR: "Please correct the highlighted errors before proceeding.",

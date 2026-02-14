@@ -156,3 +156,30 @@ export function dismissAllToasts() {
 export function showErrorToast(message: string) {
     toast.error(message, { id: message });
 }
+
+/**
+ * Auth error code to user-friendly message mapping.
+ * Use when displaying auth errors inline (e.g. login/signup forms).
+ * Backend messages are preferred; this provides fallbacks for known codes.
+ */
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+    AUTH_INVALID_CREDENTIALS: ERROR_MESSAGES.AUTH_INVALID_CREDENTIALS,
+    AUTH_EMAIL_NOT_VERIFIED: ERROR_MESSAGES.AUTH_EMAIL_NOT_VERIFIED,
+    AUTH_ACCOUNT_DISABLED: ERROR_MESSAGES.AUTH_ACCOUNT_DISABLED,
+    AUTH_ACCOUNT_LOCKED: ERROR_MESSAGES.AUTH_ACCOUNT_LOCKED,
+    AUTH_TOKEN_EXPIRED: ERROR_MESSAGES.SESSION_EXPIRED,
+    BIZ_ALREADY_EXISTS: ERROR_MESSAGES.EMAIL_ALREADY_EXISTS,
+    HTTP_401: ERROR_MESSAGES.AUTH_FAILED,
+};
+
+/**
+ * Get a user-friendly message for auth errors (login, signup, etc.).
+ * Uses backend message when available, falls back to known code mappings.
+ */
+export function getAuthErrorMessage(error: { code?: string; message?: string } | null | undefined): string {
+    if (!error) return ERROR_MESSAGES.AUTH_FAILED;
+    const code = error.code || '';
+    const backendMessage = error.message?.trim();
+    if (backendMessage) return backendMessage;
+    return AUTH_ERROR_MESSAGES[code] || ERROR_MESSAGES.AUTH_FAILED;
+}

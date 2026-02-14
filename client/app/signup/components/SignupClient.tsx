@@ -29,6 +29,7 @@ import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { getDefaultRedirectForUser } from '@/src/config/redirect';
 import { useSignup } from '@/src/core/api/hooks/auth/useSignup';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { getAuthErrorMessage } from '@/src/lib/error';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Loader } from '@/src/components/ui/feedback/Loader';
@@ -36,7 +37,7 @@ import { PasswordStrengthIndicator } from '@/src/components/ui/form/PasswordStre
 
 export function SignupClient() {
   const router = useRouter();
-  const { isInitialized, isAuthenticated, user } = useAuth();
+  const { isInitialized, isAuthenticated, user, error, clearError } = useAuth();
 
   // Use centralized hook for form state and logic
   const {
@@ -149,6 +150,13 @@ export function SignupClient() {
               <span className="px-2 bg-[var(--bg-primary)] text-[var(--text-tertiary)]">Or sign up with email</span>
             </div>
           </div>
+
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="error" className="mb-5" dismissible onDismiss={clearError}>
+              <AlertDescription>{getAuthErrorMessage(error)}</AlertDescription>
+            </Alert>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">

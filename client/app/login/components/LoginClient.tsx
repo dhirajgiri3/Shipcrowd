@@ -13,7 +13,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
     ArrowRight,
@@ -29,6 +30,7 @@ import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Loader } from '@/src/components/ui/feedback/Loader';
+import { getAuthErrorMessage } from '@/src/lib/error';
 
 export function LoginClient() {
     return (
@@ -43,9 +45,10 @@ export function LoginClient() {
 }
 
 function LoginForm() {
-    const { isInitialized, isAuthenticated } = useAuth();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { isInitialized, isAuthenticated, error, clearError } = useAuth();
 
-    // Use centralized hook for form state and submission
     const {
         email,
         setEmail,
@@ -56,6 +59,18 @@ function LoginForm() {
         togglePasswordVisibility,
         handleSubmit
     } = useLogin();
+
+    const sessionExpired = searchParams.get('session_expired') === 'true' || searchParams.get('auth_error') === 'session_expired';
+    const displayError = sessionExpired
+        ? 'Your session has expired. Please sign in again to continue.'
+        : (error ? getAuthErrorMessage(error) : null);
+
+    const handleDismissError = useCallback(() => {
+        clearError();
+        if (sessionExpired) {
+            router.replace('/login', { scroll: false });
+        }
+    }, [clearError, sessionExpired, router]);
 
     // Don't render until auth is initialized
     if (!isInitialized) {
@@ -139,6 +154,13 @@ function LoginForm() {
                             <span className="px-2 bg-[var(--bg-primary)] text-[var(--text-tertiary)]">Or continue with email</span>
                         </div>
                     </div>
+
+                    {/* Error Alert */}
+                    {displayError && (
+                        <Alert variant="error" className="mb-5" dismissible onDismiss={handleDismissError}>
+                            <AlertDescription>{displayError}</AlertDescription>
+                        </Alert>
+                    )}
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">

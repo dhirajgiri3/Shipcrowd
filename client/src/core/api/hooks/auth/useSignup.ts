@@ -1,10 +1,8 @@
-
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { showSuccessToast, showErrorToast } from '@/src/lib/error';
 import { consentApi } from '@/src/core/api/clients/auth/consentApi';
-import { toast } from 'sonner';
 
 export function useSignup() {
     const router = useRouter();
@@ -22,20 +20,24 @@ export function useSignup() {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            toast.error('Passwords do not match');
+            showErrorToast('Passwords do not match. Please ensure both passwords are identical.');
             return;
         }
 
         if (!termsAccepted) {
-            toast.error('Please accept the Terms and Conditions');
+            showErrorToast('Please accept the Terms of Service and Privacy Policy to continue.');
             return;
         }
 
         setIsLoading(true);
 
         try {
-            // 1. Register the user
-            await register({ name, email, password });
+            const result = await register({ name, email, password });
+
+            if (!result.success) {
+                // Error is set in AuthContext; SignupClient displays it inline via Alert
+                return;
+            }
 
             // 2. Accept terms
             try {
@@ -48,8 +50,6 @@ export function useSignup() {
 
             showSuccessToast('Account created successfully! Please verify your email.');
             router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-        } catch (error: any) {
-            handleApiError(error, 'Registration failed');
         } finally {
             setIsLoading(false);
         }

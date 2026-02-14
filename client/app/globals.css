@@ -269,6 +269,23 @@ body {
 }
 
 /* ========================================
+   NUMBER INPUT - Remove default spinners
+   ======================================== */
+
+/* Chrome, Safari, Edge - hide up/down arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+   -webkit-appearance: none;
+   margin: 0;
+}
+
+/* Firefox - hide up/down arrows */
+input[type="number"] {
+   -moz-appearance: textfield;
+   appearance: textfield;
+}
+
+/* ========================================
    UTILITY CLASSES
    ======================================== */
 
