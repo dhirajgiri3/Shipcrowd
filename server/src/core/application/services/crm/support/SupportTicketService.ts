@@ -195,7 +195,18 @@ class SupportTicketService {
         updates: UpdateTicketDTO,
         actorId: string
     ): Promise<ISupportTicket> {
-        const ticket = await this.getTicketById(ticketId, companyId);
+        const query: FilterQuery<ISupportTicket> = { companyId: new Types.ObjectId(companyId) };
+
+        if (Types.ObjectId.isValid(ticketId)) {
+            query._id = new Types.ObjectId(ticketId);
+        } else {
+            query.ticketId = ticketId;
+        }
+
+        const ticket = await SupportTicket.findOne(query);
+        if (!ticket) {
+            throw new NotFoundError('Support ticket not found');
+        }
         const historyEntry = {
             action: 'updated',
             actor: new Types.ObjectId(actorId),

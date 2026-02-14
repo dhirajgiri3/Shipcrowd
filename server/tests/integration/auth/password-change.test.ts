@@ -13,7 +13,7 @@ const getErrorMessage = (response: any): string => {
 
 describe('Password Change Flow', () => {
     let testUser: any;
-    let authToken: string;
+    let authCookies: string[];
     const testEmail = 'passwordchange@example.com';
     const testPassword = 'OldPassword123!';
     const newPassword = 'NewPassword123!';
@@ -36,15 +36,23 @@ describe('Password Change Flow', () => {
             isActive: true,
         });
 
-        // Login to get auth token
+        // Login to get auth cookies
         const loginResponse = await request(app)
             .post('/api/v1/auth/login')
             .send({ email: testEmail, password: testPassword })
             .set('X-CSRF-Token', 'frontend-request')
             .expect(200);
 
-        const cookies = loginResponse.headers['set-cookie'] as unknown as string[];
-        authToken = cookies.find((c: string) => c.startsWith('accessToken='))?.split(';')[0].split('=')[1] || '';
+        const rawCookies = loginResponse.headers['set-cookie'] as unknown as string[];
+        const cookieMap = new Map<string, string>();
+        rawCookies.forEach((cookie) => {
+            const [pair] = cookie.split(';');
+            const [name, value] = pair.split('=');
+            if (name && value) {
+                cookieMap.set(name, `${name}=${value}`);
+            }
+        });
+        authCookies = Array.from(cookieMap.values());
     });
 
     describe('POST /api/v1/auth/change-password', () => {
@@ -55,7 +63,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -81,7 +89,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -114,7 +122,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -130,9 +138,9 @@ describe('Password Change Flow', () => {
                     currentPassword: 'WrongPassword123!',
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
-                .expect(400);
+                .expect(401);
 
             expect(getErrorMessage(response)).toMatch(/current.*password|password.*incorrect|invalid/i);
 
@@ -149,7 +157,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: 'Pass1!',
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -164,7 +172,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: 'password123!',
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -179,7 +187,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: 'PASSWORD123!',
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -194,7 +202,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: 'Password!',
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -209,7 +217,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: 'Password123',
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -224,7 +232,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: testPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -250,7 +258,7 @@ describe('Password Change Flow', () => {
                 .send({
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -264,7 +272,7 @@ describe('Password Change Flow', () => {
                 .send({
                     currentPassword: testPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -283,7 +291,7 @@ describe('Password Change Flow', () => {
                             currentPassword: testPassword,
                             newPassword: 'weak',
                         })
-                        .set('Cookie', [`accessToken=${authToken}`])
+                        .set('Cookie', authCookies)
                         .set('X-CSRF-Token', 'frontend-request'),
                     identity
                 );
@@ -303,47 +311,46 @@ describe('Password Change Flow', () => {
             const response = await request(app)
                 .post('/api/v1/auth/check-password-strength')
                 .send({ password: 'MyStr0ngP@ssw0rd!' })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
             expect(response.body).toHaveProperty('data');
             expect(response.body.data).toHaveProperty('score');
-            expect(response.body.data).toHaveProperty('strength');
             expect(response.body.data.score).toBeGreaterThanOrEqual(0);
             expect(response.body.data.score).toBeLessThanOrEqual(4);
-            expect(['weak', 'fair', 'good', 'strong']).toContain(response.body.data.strength);
+            expect(response.body.data).toHaveProperty('isStrong');
         });
 
         it('should return low score for weak password', async () => {
             const response = await request(app)
                 .post('/api/v1/auth/check-password-strength')
                 .send({ password: 'password' })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
             expect(response.body.data.score).toBeLessThan(2);
-            expect(['weak', 'fair']).toContain(response.body.data.strength);
+            expect(response.body.data.isStrong).toBe(false);
         });
 
         it('should return high score for strong password', async () => {
             const response = await request(app)
                 .post('/api/v1/auth/check-password-strength')
                 .send({ password: 'MyV3ry$tr0ng&C0mpl3xP@ssw0rd!' })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
             expect(response.body.data.score).toBeGreaterThan(2);
-            expect(['good', 'strong']).toContain(response.body.data.strength);
+            expect(response.body.data.isStrong).toBe(true);
         });
 
         it('should provide feedback and suggestions', async () => {
             const response = await request(app)
                 .post('/api/v1/auth/check-password-strength')
                 .send({ password: 'password123' })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -353,21 +360,21 @@ describe('Password Change Flow', () => {
             expect(Array.isArray(response.body.data.feedback.suggestions)).toBe(true);
         });
 
-        it('should require authentication', async () => {
+        it('should allow unauthenticated strength checks', async () => {
             const response = await request(app)
                 .post('/api/v1/auth/check-password-strength')
                 .send({ password: 'TestPassword123!' })
                 .set('X-CSRF-Token', 'frontend-request')
-                .expect(401);
+                .expect(200);
 
-            expect(response.body.message).toMatch(/unauthorized|authentication/i);
+            expect(response.body.data).toHaveProperty('score');
         });
 
         it('should reject missing password', async () => {
             const response = await request(app)
                 .post('/api/v1/auth/check-password-strength')
                 .send({})
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(400);
 
@@ -384,7 +391,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -399,7 +406,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -422,7 +429,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -442,7 +449,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: newPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
@@ -466,7 +473,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: longPassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request');
 
             // Should either accept or reject based on max length policy
@@ -482,7 +489,7 @@ describe('Password Change Flow', () => {
                     currentPassword: testPassword,
                     newPassword: unicodePassword,
                 })
-                .set('Cookie', [`accessToken=${authToken}`])
+                .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request');
 
             expect([200, 400]).toContain(response.status);

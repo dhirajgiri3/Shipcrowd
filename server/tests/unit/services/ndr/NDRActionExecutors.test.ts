@@ -5,7 +5,7 @@
 import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/ndr-action-executors';
 import ExotelClient from '../../../../src/infrastructure/external/communication/exotel/exotel.client';
 import WhatsAppService from '../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service';
-import TokenService from '../../../../src/shared/services/token.service';
+import NDRMagicLinkService from '../../../../src/core/application/services/ndr/ndr-magic-link.service';
 import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
 
@@ -18,7 +18,18 @@ jest.mock('../../../../src/infrastructure/external/communication/whatsapp/whatsa
 jest.mock('../../../../src/core/application/services/communication/email.service', () => {
     return require('../../../mocks/email.mock');
 });
-jest.mock('../../../../src/shared/services/token.service');
+jest.mock('../../../../src/core/application/services/ndr/ndr-magic-link.service', () => ({
+    __esModule: true,
+    default: {
+        generateMagicLink: jest.fn(),
+    },
+}));
+jest.mock('../../../../src/core/application/services/ndr/ndr-magic-link.service.js', () => ({
+    __esModule: true,
+    default: {
+        generateMagicLink: jest.fn(),
+    },
+}));
 jest.mock('../../../../src/core/application/services/communication/notification-preferences.service', () => ({
     default: { shouldSend: jest.fn().mockResolvedValue(true) },
 }));
@@ -76,6 +87,9 @@ describe('NDRActionExecutors', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        (NDRMagicLinkService.generateMagicLink as jest.Mock).mockReturnValue(
+            'https://example.com/resolve-ndr/test-token'
+        );
         (mockContext.ndrEvent as any).save.mockResolvedValue(undefined);
         // Exotel real API: initiateCall(toNumber, callbackUrl?, customField?)
         (ExotelClient.prototype.initiateCall as jest.Mock).mockImplementation(
@@ -206,10 +220,9 @@ describe('NDRActionExecutors', () => {
 
     describe('executeUpdateAddress', () => {
         it('should generate magic link and send WhatsApp', async () => {
-            const mockToken = 'test_token_123';
-            const mockMagicLink = `https://example.com/update-address/${mockToken}`;
+            const mockMagicLink = 'https://example.com/resolve-ndr/test_token_123';
 
-            (TokenService.generateAddressUpdateToken as jest.Mock).mockReturnValue(mockToken);
+            (NDRMagicLinkService.generateMagicLink as jest.Mock).mockReturnValue(mockMagicLink);
             (WhatsAppService.prototype.sendMessage as jest.Mock).mockResolvedValue({
                 success: true,
                 messageId: 'MSG123',
@@ -219,17 +232,14 @@ describe('NDRActionExecutors', () => {
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('update_address');
-            expect(TokenService.generateAddressUpdateToken).toHaveBeenCalledWith(
-                String(mockContext.ndrEvent.shipment),
-                mockContext.companyId,
+            expect(NDRMagicLinkService.generateMagicLink).toHaveBeenCalledWith(
                 String(mockContext.ndrEvent._id)
             );
-            expect(result.metadata?.token).toBe(mockToken);
-            expect(result.metadata?.updateUrl).toContain(mockToken);
+            expect(result.metadata?.updateUrl).toBe(mockMagicLink);
         });
 
         it('should handle token generation failure', async () => {
-            (TokenService.generateAddressUpdateToken as jest.Mock).mockImplementation(() => {
+            (NDRMagicLinkService.generateMagicLink as jest.Mock).mockImplementation(() => {
                 throw new Error('Token generation failed');
             });
 

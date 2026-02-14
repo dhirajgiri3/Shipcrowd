@@ -1,18 +1,23 @@
 import WarehouseNotificationService from '../../../../src/core/application/services/warehouse/warehouse-notification.service';
-import WhatsAppService from '../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service';
 
 jest.mock('../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service');
 
 describe('WarehouseNotificationService', () => {
+    let sendMessageSpy: jest.SpyInstance;
+
     beforeEach(() => {
         jest.clearAllMocks();
+        sendMessageSpy = jest
+            .spyOn((WarehouseNotificationService as any).whatsapp, 'sendMessage')
+            .mockResolvedValue({ success: true });
+    });
+
+    afterEach(() => {
+        sendMessageSpy.mockRestore();
     });
 
     describe('notifyRTOIncoming', () => {
         it('should send WhatsApp notification for RTO incoming', async () => {
-            const mockSendMessage = jest.fn().mockResolvedValue({ success: true });
-            (WhatsAppService.prototype.sendMessage as jest.Mock) = mockSendMessage;
-
             await WarehouseNotificationService.notifyRTOIncoming(
                 'rto123',
                 'warehouse123',
@@ -25,16 +30,13 @@ describe('WarehouseNotificationService', () => {
                 }
             );
 
-            expect(mockSendMessage).toHaveBeenCalled();
-            const messageContent = mockSendMessage.mock.calls[0][1];
+            expect(sendMessageSpy).toHaveBeenCalled();
+            const messageContent = sendMessageSpy.mock.calls[0][1];
             expect(messageContent).toContain('RTO Incoming');
             expect(messageContent).toContain('AWB123456');
         });
 
         it('should send address change notification', async () => {
-            const mockSendMessage = jest.fn().mockResolvedValue({ success: true });
-            (WhatsAppService.prototype.sendMessage as jest.Mock) = mockSendMessage;
-
             const oldAddress = {
                 street: '123 Old Street',
                 city: 'Mumbai',
@@ -57,15 +59,14 @@ describe('WarehouseNotificationService', () => {
                 newAddress
             );
 
-            expect(mockSendMessage).toHaveBeenCalled();
-            const messageContent = mockSendMessage.mock.calls[0][1];
+            expect(sendMessageSpy).toHaveBeenCalled();
+            const messageContent = sendMessageSpy.mock.calls[0][1];
             expect(messageContent).toContain('Address Updated');
             expect(messageContent).toContain('Pune');
         });
 
         it('should handle notification failures gracefully', async () => {
-            const mockSendMessage = jest.fn().mockRejectedValue(new Error('WhatsApp API error'));
-            (WhatsAppService.prototype.sendMessage as jest.Mock) = mockSendMessage;
+            sendMessageSpy.mockRejectedValue(new Error('WhatsApp API error'));
 
             // Should not throw error even if notification fails
             await expect(
