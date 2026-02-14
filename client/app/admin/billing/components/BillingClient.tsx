@@ -10,7 +10,7 @@ import { DataTable } from '@/src/components/ui/data/DataTable';
 import {
     Receipt,
     Search,
-    Download,
+    FileOutput,
     IndianRupee,
     Users,
     Clock,
@@ -133,7 +133,7 @@ export function BillingClient() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => addToast('Downloading report...', 'info')}>
-                        <Download className="h-4 w-4 mr-2" />
+                        <FileOutput className="h-4 w-4 mr-2" />
                         Export
                     </Button>
                     <Button onClick={() => setShowAddManual(true)}>

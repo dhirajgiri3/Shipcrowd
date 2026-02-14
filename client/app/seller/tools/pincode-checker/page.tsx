@@ -19,7 +19,7 @@ import {
   Truck,
   Clock,
   IndianRupee,
-  Download,
+  FileOutput,
   CheckCircle2,
   XCircle,
   RotateCcw,
@@ -290,7 +290,7 @@ export default function PincodeCheckerPage() {
             Reset
           </Button>
           <Button variant="primary" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
+            <FileOutput className="mr-2 h-4 w-4" />
             Export Report
           </Button>
         </div>

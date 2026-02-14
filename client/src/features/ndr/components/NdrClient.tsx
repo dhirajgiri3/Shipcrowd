@@ -11,18 +11,11 @@ import {
     AlertTriangle,
     Clock,
     CheckCircle2,
-    TrendingUp,
-    Phone,
-    Mail,
-    MessageSquare,
     AlertCircle,
     MapPin,
     Package,
-    MoreVertical,
-    Filter,
-    ArrowUpRight,
     RefreshCw,
-    Download
+    FileOutput,
 } from 'lucide-react';
 import { Card } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
@@ -203,7 +196,7 @@ export function NDRClient() {
                             <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                         </Button>
                         <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>
                     </div>

@@ -9,7 +9,7 @@ import {
     Filter,
     MoreVertical,
     FileText,
-    Download,
+    FileOutput,
     Loader2,
     AlertCircle,
     User,
@@ -89,7 +89,7 @@ export function CommissionListClient() {
                 </div>
                 <div className="flex items-center gap-3">
                     <Button variant="outline" className="gap-2">
-                        <Download className="h-4 w-4" />
+                        <FileOutput className="h-4 w-4" />
                         Export
                     </Button>
                 </div>

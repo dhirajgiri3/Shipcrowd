@@ -19,7 +19,7 @@ import {
     AlertCircle,
     Clock,
     Filter,
-    Download,
+    FileOutput,
     Calendar,
     Loader2
 } from 'lucide-react';
@@ -237,7 +237,7 @@ export default function ShopifySyncPage() {
                     <CardTitle className="flex items-center justify-between">
                         <span>Sync Logs ({filteredLogs.length})</span>
                         <Button variant="ghost" size="sm">
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Export
                         </Button>
                     </CardTitle>

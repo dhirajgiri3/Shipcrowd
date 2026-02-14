@@ -16,7 +16,7 @@ import {
     Filter,
     MoreVertical,
     Send,
-    Download,
+    FileOutput,
     Plus,
     ChevronLeft,
     ChevronRight,
@@ -113,7 +113,7 @@ export function SupportClient() {
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline">
-                        <Download className="w-4 h-4 mr-2" /> Export
+                        <FileOutput className="w-4 h-4 mr-2" /> Export
                     </Button>
                     <Button>
                         <Plus className="w-4 h-4 mr-2" /> New Ticket

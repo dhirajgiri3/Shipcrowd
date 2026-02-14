@@ -10,6 +10,7 @@ import {
     IndianRupee,
     Upload,
     Download,
+    FileOutput,
     FileSpreadsheet,
     TrendingUp,
     CheckCircle,
@@ -397,7 +398,7 @@ export function ProfitClient() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
-                            <Download className="h-5 w-5 text-[var(--primary-blue)]" />
+                            <FileOutput className="h-5 w-5 text-[var(--primary-blue)]" />
                             Export Profit Report
                         </CardTitle>
                         <CardDescription>Download profit data in your preferred format</CardDescription>
@@ -427,7 +428,7 @@ export function ProfitClient() {
                                 onClick={() => handleExport('csv')}
                                 disabled={isExporting}
                             >
-                                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileOutput className="h-4 w-4 mr-2" />}
                                 Export as CSV
                             </Button>
                             <Button
@@ -435,7 +436,7 @@ export function ProfitClient() {
                                 onClick={() => handleExport('xlsx')}
                                 disabled={isExporting}
                             >
-                                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileOutput className="h-4 w-4 mr-2" />}
                                 Export as Excel
                             </Button>
                         </div>

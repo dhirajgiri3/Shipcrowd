@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import {
-    Download,
+    FileOutput,
     Truck,
     Package,
     AlertCircle,
@@ -220,7 +220,7 @@ export function ShipmentsClient() {
                             size="sm"
                             className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
                         >
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>
                     </div>

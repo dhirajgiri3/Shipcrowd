@@ -24,7 +24,7 @@ import {
     LazyCell as Cell
 } from '@/src/components/features/charts/LazyCharts';
 import { ChartSkeleton } from '@/src/components/ui/data/Skeleton';
-import { Download, IndianRupee, Package, TrendingUp, Percent, MapPin, Truck } from 'lucide-react';
+import { FileOutput, IndianRupee, Package, TrendingUp, Percent, MapPin, Truck } from 'lucide-react';
 import { formatCurrency } from '@/src/lib/utils'; // Ensure this utility exists or import relevant one
 
 const COLORS = ['var(--primary-blue)', '#4338CA', 'var(--success)', 'var(--warning)', 'var(--error)'];
@@ -135,7 +135,7 @@ export function AnalyticsClient() {
                         className="w-40"
                     />
                     <Button variant="outline">
-                        <Download className="h-4 w-4 mr-2" /> Export PDF
+                        <FileOutput className="h-4 w-4 mr-2" /> Export PDF
                     </Button>
                 </div>
             </div>

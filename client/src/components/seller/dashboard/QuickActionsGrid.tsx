@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Truck, FileText, Settings, BarChart3, Upload, Download } from 'lucide-react';
+import { Truck, FileText, Settings, BarChart3, Upload, FileOutput } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '../../../hooks/ux';
@@ -59,8 +59,8 @@ export function QuickActionsGrid({ pendingPickups = 0 }: QuickActionsGridProps) 
         },
         {
             id: 'download-reports',
-            icon: Download,
-            title: 'Download Reports',
+            icon: FileOutput,
+            title: 'Export Reports',
             description: 'Export your data',
             url: '/seller/reports',
             color: 'var(--text-secondary)'

@@ -26,7 +26,7 @@ import {
     Package,
     Wallet,
     CreditCard,
-    FileDown,
+    FileOutput,
     Calendar
 } from 'lucide-react';
 import { format, isThisWeek, isToday } from 'date-fns';
@@ -224,7 +224,7 @@ export function TransactionList({ transactions, isLoading = false, className = '
                         disabled={isExporting}
                         className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] rounded-xl transition-colors disabled:opacity-50"
                     >
-                        <FileDown className="w-4 h-4" />
+                        <FileOutput className="w-4 h-4" />
                         <span className="text-sm font-medium hidden md:inline">Export</span>
                     </button>
                 </div>

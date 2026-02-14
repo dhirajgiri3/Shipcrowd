@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import {
-    Download,
+    FileOutput,
     RefreshCw,
     IndianRupee,
     CheckCircle,
@@ -263,7 +263,7 @@ export function CodClient() {
                             onClick={handleExportReport}
                             className="h-10 px-4 rounded-xl"
                         >
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Export Report
                         </Button>
                         <Button

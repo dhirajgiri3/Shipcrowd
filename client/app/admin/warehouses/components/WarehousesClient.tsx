@@ -8,7 +8,7 @@ import {
     Building2,
     Package,
     Filter,
-    Download,
+    FileOutput,
     CheckSquare,
     MapPin
 } from 'lucide-react';
@@ -76,7 +76,7 @@ export function WarehousesClient() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" className="gap-2">
-                        <Download className="w-4 h-4" />
+                        <FileOutput className="w-4 h-4" />
                         <span>Export</span>
                     </Button>
                     <Button

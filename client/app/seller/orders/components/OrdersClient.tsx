@@ -10,7 +10,7 @@ import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/orders/OrderDetailsPanel';
 import {
     Filter,
-    Download,
+    FileOutput,
     Package,
     ArrowUpRight,
     AlertCircle,
@@ -185,7 +185,7 @@ export function OrdersClient() {
                             Bulk Label
                         </Button>
                         <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>
                         <Button

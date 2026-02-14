@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useAuditLogs, useExportAuditLogs } from '@/src/core/api/hooks/security/useAuditLogs';
-import { Download, Calendar, Filter, Loader2, Search } from 'lucide-react';
+import { FileOutput, Calendar, Filter, Loader2, Search } from 'lucide-react';
 import { formatDate, formatDateTime } from '@/src/lib/utils';
 import { Button, Card, Input, Label, Select, Badge } from '@/src/components/ui';
 import type { AuditLogFilters, AuditAction, AuditResource, AuditLog } from '@/src/types/api/settings';
@@ -27,7 +27,7 @@ export function AuditLogsViewer() {
                     disabled={isExporting}
                     className="flex items-center gap-2"
                 >
-                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileOutput className="w-4 h-4" />}
                     Export CSV
                 </Button>
             </div>

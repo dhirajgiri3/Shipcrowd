@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { RotateCcw, TrendingUp, RefreshCw, Filter, Download, Package, AlertTriangle, CheckCircle2, Truck, ClipboardCheck } from 'lucide-react';
+import { RotateCcw, TrendingUp, RefreshCw, Filter, FileOutput, Package, AlertTriangle, CheckCircle2, Truck, ClipboardCheck } from 'lucide-react';
 import { useRTOAnalytics } from '@/src/core/api/hooks/rto/useRTOAnalytics';
 import { useRTOEvents, type RTOFilters } from '@/src/core/api/hooks/rto/useRTOManagement';
 import { RTOAnalytics } from '@/src/components/seller/dashboard/RTOAnalytics';
@@ -195,7 +195,7 @@ export function RTOListPage() {
                             <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                         </Button>
                         <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>
                     </div>

@@ -13,7 +13,7 @@ import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import {
     PackageX,
     Search,
-    Download,
+    FileOutput,
     RefreshCw,
     Clock,
     Package,
@@ -75,7 +75,7 @@ export function ReturnsClient() {
                         Sync
                     </Button>
                     <Button variant="outline" onClick={() => addToast('Feature coming soon', 'info')}>
-                        <Download className="h-4 w-4 mr-2" />
+                        <FileOutput className="h-4 w-4 mr-2" />
                         Export
                     </Button>
                 </div>

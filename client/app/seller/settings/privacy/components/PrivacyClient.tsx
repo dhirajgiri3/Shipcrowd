@@ -13,7 +13,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Shield, Download, Bell, FileText, Clock, Check, CheckCircle2, Loader2, X } from 'lucide-react';
+import { Shield, FileOutput, Bell, FileText, Clock, Check, CheckCircle2, Loader2, X } from 'lucide-react';
 import { Loader, Button } from '@/src/components/ui';
 import { consentApi, type ConsentMap, type ConsentHistoryItem } from '@/src/core/api/clients/auth/consentApi';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
@@ -230,7 +230,7 @@ export function PrivacyClient() {
             >
                 <div className="flex items-start gap-4 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-[var(--success)]/10 flex items-center justify-center">
-                        <Download className="w-5 h-5 text-[var(--success)]" />
+                        <FileOutput className="w-5 h-5 text-[var(--success)]" />
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your Data</h2>
@@ -256,7 +256,7 @@ export function PrivacyClient() {
                         </>
                     ) : (
                         <>
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Request Data Export
                         </>
                     )}

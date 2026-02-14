@@ -16,7 +16,7 @@ import {
 } from '@/src/core/api/hooks/analytics/useAnalytics';
 import type { ReportConfiguration } from '@/src/types/api/analytics';
 import { ClientChartType as ChartType } from '@/src/types/analytics/client-analytics.types';
-import { Download, Play, Save, Trash2 } from 'lucide-react';
+import { FileOutput, Play, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
     ResponsiveContainer,
@@ -241,7 +241,7 @@ export function ReportBuilder() {
                     <CardTitle>Report Preview</CardTitle>
                     {generateReport.data && (
                         <Button variant="outline" size="sm" onClick={handleExport} disabled={exportReport.isPending}>
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             {exportReport.isPending ? 'Exporting...' : 'Export CSV'}
                         </Button>
                     )}

@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   XCircle,
   Download,
+  FileOutput,
   X,
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
@@ -427,7 +428,7 @@ export function BulkAddressValidationClient() {
                         </Button>
                         {results.invalidAddresses > 0 && (
                             <Button variant="danger" onClick={handleExportInvalid}>
-                                <Download className="mr-2 h-4 w-4" />
+                                <FileOutput className="mr-2 h-4 w-4" />
                                 Export Invalid ({results.invalidAddresses})
                             </Button>
                         )}

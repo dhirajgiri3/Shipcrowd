@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import {
     Filter, RefreshCw, RotateCcw, Package,
-    CheckCircle2, AlertCircle, Clock, Download
+    CheckCircle2, AlertCircle, Clock, FileOutput
 } from 'lucide-react';
 
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
@@ -81,7 +81,7 @@ export function ReturnsClient() {
                             <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                         </Button>
                         <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
-                            <Download className="w-4 h-4 mr-2" />
+                            <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>
                     </div>
