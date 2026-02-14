@@ -37,7 +37,7 @@ import {
     ChevronRight,
     AlertCircle
 } from 'lucide-react';
-import { LoadingButton } from '@/src/components/ui';
+import { Button } from '@/src/components/ui/core/Button';
 import { cn } from '@/src/lib/utils';
 
 export type PaymentMethod = 'upi' | 'card' | 'netbanking';
@@ -135,7 +135,8 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, className = '' }: Qui
             setSelectedAmount(5000);
             onClose();
         } catch (error) {
-            setError('Payment failed. Please try again.');
+            const message = error instanceof Error ? error.message : 'Payment failed. Please try again.';
+            setError(message);
             console.error('Payment error:', error);
         } finally {
             setIsLoading(false);
@@ -248,14 +249,14 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, className = '' }: Qui
                                     ))}
                                 </div>
 
-                                {/* Custom Amount Input */}
+                                {/* Custom Amount Input - Synced with preset selection */}
                                 <div className="relative">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-[var(--text-secondary)] pointer-events-none">
                                         ₹
                                     </div>
                                     <input
                                         type="number"
-                                        value={customAmount}
+                                        value={customAmount || (selectedAmount ? String(selectedAmount) : '')}
                                         onChange={(e) => handleCustomAmountChange(e.target.value)}
                                         placeholder="Or enter custom amount"
                                         className={cn(
@@ -382,22 +383,23 @@ export function QuickAddMoney({ isOpen, onClose, onSubmit, className = '' }: Qui
 
                         {/* Footer - Sticky Action */}
                         <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] px-6 py-4">
-                            <LoadingButton
+                            <Button
                                 onClick={handleSubmit}
                                 isLoading={isLoading}
-                                loadingText="Processing payment..."
                                 disabled={!finalAmount || finalAmount < 100 || isLoading}
                                 className={cn(
                                     'w-full h-14 font-bold text-lg rounded-2xl shadow-lg transition-all',
-                                    'bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] active:scale-[0.98]',
-                                    'text-white',
-                                    'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--primary-blue)]'
+                                    'active:scale-[0.98]'
                                 )}
                             >
-                                {finalAmount && finalAmount >= 100
-                                    ? `Proceed to Pay ₹${finalAmount.toLocaleString('en-IN')}`
-                                    : 'Select an amount to continue'}
-                            </LoadingButton>
+                                {isLoading ? (
+                                    'Processing payment...'
+                                ) : finalAmount && finalAmount >= 100 ? (
+                                    `Proceed to Pay ₹${finalAmount.toLocaleString('en-IN')}`
+                                ) : (
+                                    'Select an amount to continue'
+                                )}
+                            </Button>
 
                             <p className="text-xs text-center text-[var(--text-muted)] mt-3">
                                 Secure payment powered by Razorpay. Amount credited instantly.

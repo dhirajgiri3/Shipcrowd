@@ -36,6 +36,7 @@ export interface DiscrepancyFilters {
     type?: string;
     page?: number;
     limit?: number;
+    search?: string;
 }
 
 class CODDiscrepancyApiService {

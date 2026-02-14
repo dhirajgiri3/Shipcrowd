@@ -124,15 +124,15 @@ export function CODRemittanceTable() {
                         Approved
                     </Button>
                     <Button
-                        onClick={() => handleStatusFilter('completed')}
-                        variant={filters.status === 'completed' ? "primary" : "outline"}
+                        onClick={() => handleStatusFilter('paid')}
+                        variant={filters.status === 'paid' ? "primary" : "outline"}
                         size="sm"
-                        className={filters.status === 'completed'
+                        className={filters.status === 'paid'
                             ? "bg-[var(--primary-blue)] text-white"
                             : "bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)]"
                         }
                     >
-                        Completed
+                        Paid
                     </Button>
                 </div>
             </CardHeader>

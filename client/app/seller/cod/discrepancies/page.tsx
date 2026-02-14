@@ -1,155 +1,403 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { codDiscrepancyApi, CODDiscrepancy } from '@/src/core/api/clients/finance/codDiscrepancyApi';
-import { Card } from '@/src/components/ui/core/Card';
-import { Button } from '@/src/components/ui/core/Button'; // Assuming Button exists
-import { Badge } from '@/src/components/ui/core/Badge'; // Assuming Badge exists
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+    useCodDiscrepancies,
+    useCodDiscrepancyStats,
+    useResolveCodDiscrepancy,
+} from '@/src/core/api/hooks/finance';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
-import { Loader2, Filter, CheckCircle, AlertTriangle, FileText, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { formatCurrency, cn } from '@/src/lib/utils';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import {
+    AlertCircle,
+    RefreshCw,
+    FileText,
+    Search,
+    AlertTriangle,
+    CheckCircle2,
+    Clock,
+    IndianRupee,
+} from 'lucide-react';
+import type { CODDiscrepancy } from '@/src/core/api/clients/finance/codDiscrepancyApi';
+
+const DISCREPANCY_TABS = [
+    { key: '', label: 'All' },
+    { key: 'detected', label: 'Detected' },
+    { key: 'under_review', label: 'Under Review' },
+    { key: 'resolved', label: 'Resolved' },
+] as const;
+
+type StatusFilterKey = (typeof DISCREPANCY_TABS)[number]['key'];
 
 export default function CODDiscrepancyPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { addToast } = useToast();
     const [page, setPage] = useState(1);
-    const [statusFilter, setStatusFilter] = useState<string>('');
+    const limit = 10;
+    const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('');
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 300);
     const [resolveTarget, setResolveTarget] = useState<string | null>(null);
-    const queryClient = useQueryClient();
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Fetch Discrepancies
-    const { data: response, isLoading } = useQuery({
-        queryKey: ['cod-discrepancies', page, statusFilter],
-        queryFn: () => codDiscrepancyApi.getDiscrepancies({ page, limit: 10, status: statusFilter || undefined })
+    const stats = useCodDiscrepancyStats();
+
+    const {
+        data: response,
+        isLoading,
+        error,
+        refetch: refetchDiscrepancies,
+    } = useCodDiscrepancies({
+        page,
+        limit,
+        status: statusFilter || undefined,
+        search: debouncedSearch || undefined,
     });
 
-    // Resolve Mutation
-    const resolveMutation = useMutation({
-        mutationFn: ({ id, method }: { id: string, method: any }) =>
-            codDiscrepancyApi.resolveDiscrepancy(id, { method, remarks: 'Manual resolution via dashboard' }),
-        onSuccess: () => {
-            toast.success('Discrepancy resolved successfully');
-            queryClient.invalidateQueries({ queryKey: ['cod-discrepancies'] });
-        },
-        onError: (err) => {
-            toast.error('Failed to resolve discrepancy');
-        }
-    });
-
-    const handleQuickResolve = (id: string) => {
-        setResolveTarget(id);
-    };
-
-    if (isLoading) {
-        return (
-            <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
+    const resolveMutation = useResolveCodDiscrepancy();
 
     const discrepancies: CODDiscrepancy[] = response?.data || [];
-    const pagination = response?.pagination || {};
+    const pagination = response?.pagination || { total: 0, pages: 1, page: 1, limit };
+
+    // Sync status filter from URL
+    useEffect(() => {
+        const statusParam = searchParams.get('status');
+        const validKeys = DISCREPANCY_TABS.map((t) => t.key);
+        const nextStatus: StatusFilterKey =
+            !statusParam || statusParam === 'all' ? '' : validKeys.includes(statusParam as StatusFilterKey) ? (statusParam as StatusFilterKey) : '';
+        setStatusFilter((prev) => (prev === nextStatus ? prev : nextStatus));
+    }, [searchParams]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [statusFilter, debouncedSearch]);
+
+    // Reset to page 1 when current page is out of range
+    useEffect(() => {
+        const total = pagination.total;
+        const pages = pagination.pages;
+        if (total > 0 && page > pages && discrepancies.length === 0) {
+            setPage(1);
+        }
+    }, [pagination.total, pagination.pages, page, discrepancies.length]);
+
+    const handleRefresh = useCallback(async () => {
+        setIsRefreshing(true);
+        await refetchDiscrepancies();
+        setIsRefreshing(false);
+    }, [refetchDiscrepancies]);
+
+    const handleStatusChange = useCallback(
+        (status: StatusFilterKey) => {
+            setStatusFilter(status);
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('status', status || 'all');
+            params.set('page', '1');
+            router.push(`?${params.toString()}`, { scroll: false });
+        },
+        [router, searchParams]
+    );
+
+    const handleQuickResolve = useCallback((id: string) => setResolveTarget(id), []);
+
+    const handleConfirmResolve = useCallback(() => {
+        if (!resolveTarget) return;
+        resolveMutation.mutate({
+            id: resolveTarget,
+            params: { method: 'merchant_writeoff', remarks: 'Manual resolution via dashboard' },
+        });
+        setResolveTarget(null);
+    }, [resolveTarget, resolveMutation]);
+
+    const columns = useMemo(() => [
+        {
+            header: 'ID',
+            accessorKey: 'discrepancyNumber',
+            cell: (row: CODDiscrepancy) => (
+                <div className="font-mono text-sm font-medium text-[var(--text-primary)]">
+                    {row.discrepancyNumber}
+                </div>
+            ),
+        },
+        {
+            header: 'AWB',
+            accessorKey: 'awb',
+            cell: (row: CODDiscrepancy) => (
+                <div className="font-mono text-sm text-[var(--text-primary)]">{row.awb}</div>
+            ),
+        },
+        {
+            header: 'Type',
+            accessorKey: 'type',
+            cell: (row: CODDiscrepancy) => (
+                <span className="text-sm text-[var(--text-secondary)] capitalize">
+                    {row.type.replace(/_/g, ' ')}
+                </span>
+            ),
+        },
+        {
+            header: 'Expected',
+            accessorKey: 'amounts.expected.total',
+            cell: (row: CODDiscrepancy) => (
+                <span className="text-sm text-[var(--text-primary)]">
+                    {formatCurrency(row.amounts.expected.total)}
+                </span>
+            ),
+        },
+        {
+            header: 'Actual',
+            accessorKey: 'amounts.actual.collected',
+            cell: (row: CODDiscrepancy) => (
+                <span className="text-sm text-[var(--text-primary)]">
+                    {formatCurrency(row.amounts.actual.collected)}
+                </span>
+            ),
+        },
+        {
+            header: 'Diff',
+            accessorKey: 'amounts.difference',
+            cell: (row: CODDiscrepancy) => (
+                <span
+                    className={cn(
+                        'text-sm font-semibold',
+                        row.amounts.difference > 0
+                            ? 'text-[var(--error)]'
+                            : row.amounts.difference < 0
+                              ? 'text-[var(--success)]'
+                              : 'text-[var(--text-muted)]'
+                    )}
+                >
+                    {row.amounts.difference > 0 ? '+' : ''}
+                    {formatCurrency(row.amounts.difference)}
+                </span>
+            ),
+        },
+        {
+            header: 'Status',
+            accessorKey: 'status',
+            cell: (row: CODDiscrepancy) => (
+                <Badge
+                    variant={
+                        row.status === 'resolved'
+                            ? 'success'
+                            : row.status === 'under_review'
+                              ? 'info'
+                              : 'warning'
+                    }
+                    size="sm"
+                >
+                    {row.status.replace(/_/g, ' ')}
+                </Badge>
+            ),
+        },
+        {
+            header: 'Actions',
+            accessorKey: 'actions',
+            cell: (row: CODDiscrepancy) => (
+                <div className="flex items-center gap-2">
+                    {row.status === 'detected' && (
+                        <ViewActionButton
+                            label="Accept"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickResolve(row._id);
+                            }}
+                        />
+                    )}
+                    {row.status === 'resolved' && (
+                        <span className="text-xs text-[var(--text-muted)]">Resolved</span>
+                    )}
+                </div>
+            ),
+        },
+    ], [handleQuickResolve]);
 
     return (
-        <div className="space-y-6 p-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Discrepancy Management</h1>
-                    <p className="text-muted-foreground">Review and resolve COD payment mismatches</p>
-                </div>
-                <div className="flex gap-2">
-                    <select
-                        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="detected">Detected</option>
-                        <option value="under_review">Under Review</option>
-                        <option value="resolved">Resolved</option>
-                    </select>
-                </div>
-            </div>
-
-            <Card>
-                <div className="relative w-full overflow-auto">
-                    <table className="w-full caption-bottom text-sm text-left">
-                        <thead className="[&_tr]:border-b">
-                            <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">ID</th>
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">AWB</th>
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Type</th>
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Expected</th>
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Actual</th>
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Diff</th>
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Status</th>
-                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="[&_tr:last-child]:border-0">
-                            {discrepancies.length === 0 ? (
-                                <tr>
-                                    <td colSpan={8} className="p-4 text-center text-muted-foreground">No discrepancies found</td>
-                                </tr>
-                            ) : (
-                                discrepancies.map((item) => (
-                                    <tr key={item._id} className="border-b transition-colors hover:bg-muted/50">
-                                        <td className="p-4 font-medium">{item.discrepancyNumber}</td>
-                                        <td className="p-4">{item.awb}</td>
-                                        <td className="p-4 capitalize">{item.type.replace(/_/g, ' ')}</td>
-                                        <td className="p-4">₹{item.amounts.expected.total}</td>
-                                        <td className="p-4">₹{item.amounts.actual.collected}</td>
-                                        <td className="p-4 font-bold text-red-500">
-                                            {item.amounts.difference > 0 ? '+' : ''}₹{item.amounts.difference}
-                                        </td>
-                                        <td className="p-4">
-                                            <Badge variant={item.status === 'resolved' ? 'success' : 'warning'}>
-                                                {item.status.replace(/_/g, ' ')}
-                                            </Badge>
-                                        </td>
-                                        <td className="p-4">
-                                            {item.status === 'detected' && (
-                                                <div className="flex gap-2">
-                                                    <Button size="sm" variant="outline" onClick={() => handleQuickResolve(item._id)}>
-                                                        Accept
-                                                    </Button>
-                                                </div>
-                                            )}
-                                            {item.status === 'resolved' && (
-                                                <span className="text-muted-foreground text-xs">Resolved</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </Card>
-
-            {/* Pagination Controls */}
-            <div className="flex items-center justify-end space-x-2 py-4">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                    Previous
-                </Button>
-                <div className="text-sm font-medium">Page {page} of {pagination.pages || 1}</div>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= (pagination.pages || 1)}>
-                    Next
-                </Button>
-            </div>
-
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
             <ConfirmDialog
                 open={!!resolveTarget}
                 title="Accept courier amount"
                 description="Are you sure you want to accept the courier amount? This will close the discrepancy."
                 confirmText="Accept"
+                isLoading={resolveMutation.isPending}
                 onCancel={() => setResolveTarget(null)}
-                onConfirm={() => {
-                    if (!resolveTarget) return;
-                    resolveMutation.mutate({ id: resolveTarget, method: 'merchant_writeoff' });
-                    setResolveTarget(null);
-                }}
+                onConfirm={handleConfirmResolve}
             />
+
+            <PageHeader
+                title="COD Discrepancies"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller/dashboard' },
+                    { label: 'COD', href: '/seller/cod' },
+                    { label: 'Discrepancies', active: true },
+                ]}
+                description="Review and resolve COD payment mismatches"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <DateRangePicker />
+                        <Button
+                            onClick={handleRefresh}
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                'h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm',
+                                isRefreshing && 'animate-spin'
+                            )}
+                        >
+                            <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
+                            onClick={() => addToast('Export feature coming soon', 'info')}
+                        >
+                            <FileText className="w-4 h-4 mr-2" />
+                            Export
+                        </Button>
+                    </div>
+                }
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                    title="Total Discrepancies"
+                    value={stats.total ?? 0}
+                    icon={AlertTriangle}
+                    iconColor="text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400"
+                    delay={0}
+                />
+                <StatsCard
+                    title="Detected"
+                    value={stats.detected ?? 0}
+                    icon={AlertCircle}
+                    iconColor="text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400"
+                    variant="critical"
+                    description="Requires attention"
+                    delay={1}
+                    onClick={() => handleStatusChange('detected')}
+                    isActive={statusFilter === 'detected'}
+                />
+                <StatsCard
+                    title="Under Review"
+                    value={stats.under_review ?? 0}
+                    icon={Clock}
+                    iconColor="text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400"
+                    delay={2}
+                    onClick={() => handleStatusChange('under_review')}
+                    isActive={statusFilter === 'under_review'}
+                />
+                <StatsCard
+                    title="Resolved"
+                    value={stats.resolved ?? 0}
+                    icon={CheckCircle2}
+                    iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    delay={3}
+                    onClick={() => handleStatusChange('resolved')}
+                    isActive={statusFilter === 'resolved'}
+                />
+            </div>
+
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
+                        {DISCREPANCY_TABS.map((tab) => (
+                            <button
+                                key={tab.key || 'all'}
+                                onClick={() => handleStatusChange(tab.key)}
+                                className={cn(
+                                    'px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+                                    statusFilter === tab.key
+                                        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                                )}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                            <input
+                                type="text"
+                                placeholder="Search by ID or AWB..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm py-20 text-center">
+                        <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertCircle className="w-10 h-10 text-[var(--error)]" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">
+                            Failed to load discrepancies
+                        </h3>
+                        <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">
+                            {error.message ||
+                                'An unexpected error occurred while fetching discrepancies. Please try again.'}
+                        </p>
+                        <Button variant="primary" onClick={() => refetchDiscrepancies()} className="mx-auto">
+                            <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
+                        </Button>
+                    </div>
+                )}
+
+                {!error &&
+                    (discrepancies.length > 0 || isLoading ? (
+                        <DataTable
+                            columns={columns}
+                            data={discrepancies}
+                            isLoading={isLoading}
+                            pagination={{
+                                currentPage: page,
+                                totalPages: pagination.pages,
+                                onPageChange: setPage,
+                                totalItems: pagination.total,
+                            }}
+                        />
+                    ) : (
+                        <div className="py-24 text-center bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]">
+                            <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
+                                <IndianRupee className="w-10 h-10 text-[var(--text-muted)]" />
+                            </div>
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                                No discrepancies found
+                            </h3>
+                            <p className="text-[var(--text-muted)] text-sm mt-2 mb-6">
+                                {statusFilter
+                                    ? 'No discrepancies match your current filter'
+                                    : 'COD discrepancies will appear here when payment mismatches are detected'}
+                            </p>
+                            {statusFilter && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleStatusChange('')}
+                                    className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
+                                >
+                                    Clear filter
+                                </Button>
+                            )}
+                        </div>
+                    ))}
+            </div>
         </div>
     );
 }

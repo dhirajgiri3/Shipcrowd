@@ -29,7 +29,7 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
 
     if (!isOpen) return null;
 
-    const availableBalance = stats?.pending?.amount || 0;
+    const availableBalance = stats?.available?.amount || 0;
     const numAmount = parseFloat(amount) || 0;
     const isValidAmount = numAmount > 0 && numAmount <= availableBalance;
 
@@ -89,7 +89,7 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                                     {formatCurrency(availableBalance)}
                                 </p>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    From {stats?.pending?.count || 0} eligible shipments
+                                    Available for immediate payout
                                 </p>
                             </div>
 

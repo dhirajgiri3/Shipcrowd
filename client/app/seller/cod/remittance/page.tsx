@@ -127,10 +127,10 @@ export default function CODRemittancePage() {
                                         Pending Amount
                                     </p>
                                     <p className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                                        {formatCompactCurrency(stats?.pending.amount || 0)}
+                                        {formatCompactCurrency(stats?.pendingCollection?.amount || 0)}
                                     </p>
                                     <p className="text-xs text-[var(--text-muted)]">
-                                        {stats?.pending.count || 0} remittances awaiting processing
+                                        {stats?.pendingCollection?.orders || 0} shipments awaiting processing
                                     </p>
                                 </>
                             )}
@@ -166,10 +166,10 @@ export default function CODRemittancePage() {
                                         This Month
                                     </p>
                                     <p className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                                        {formatCompactCurrency(stats?.thisMonth.netPaid || 0)}
+                                        {formatCompactCurrency(stats?.thisMonth?.received || 0)}
                                     </p>
                                     <p className="text-xs text-[var(--text-muted)]">
-                                        {stats?.thisMonth.count || 0} completed remittances
+                                        {formatCompactCurrency(stats?.thisMonth?.deducted || 0)} deducted
                                     </p>
                                 </>
                             )}
@@ -191,38 +191,27 @@ export default function CODRemittancePage() {
                                     <div className="h-10 bg-[var(--bg-tertiary)] rounded w-32" />
                                     <div className="h-3 bg-[var(--bg-tertiary)] rounded w-20" />
                                 </div>
-                            ) : stats?.lastRemittance ? (
+                            ) : (
                                 <>
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="w-12 h-12 rounded-xl bg-[var(--success-bg)] border-2 border-[var(--success)]/20 flex items-center justify-center">
                                             <DollarSign className="w-6 h-6 text-[var(--success)]" />
                                         </div>
                                         <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-2 py-1 rounded">
-                                            PAID
+                                            AVAILABLE
                                         </span>
                                     </div>
                                     <p className="text-sm font-medium text-[var(--text-secondary)] mb-2">
-                                        Last Payout
+                                        Available for Payout
                                     </p>
                                     <p className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                                        {formatCompactCurrency(stats.lastRemittance.amount)}
+                                        {formatCompactCurrency(stats?.available?.amount || 0)}
                                     </p>
-                                    <p className="text-xs text-[var(--text-muted)] font-mono">
-                                        UTR: {stats.lastRemittance.utr}
-                                    </p>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="w-12 h-12 rounded-xl bg-[var(--bg-tertiary)] border-2 border-[var(--border-subtle)] flex items-center justify-center">
-                                            <DollarSign className="w-6 h-6 text-[var(--text-muted)]" />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm font-medium text-[var(--text-secondary)] mb-2">
-                                        Last Payout
-                                    </p>
-                                    <p className="text-sm text-[var(--text-muted)] py-3">
-                                        No payouts yet
+                                    <p className="text-xs text-[var(--text-muted)]">
+                                        {stats?.available?.estimatedPayoutDate
+                                            ? `Est. payout: ${stats.available.estimatedPayoutDate}`
+                                            : 'Ready for payout'
+                                        }
                                     </p>
                                 </>
                             )}

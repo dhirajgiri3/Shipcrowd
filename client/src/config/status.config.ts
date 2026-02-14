@@ -291,6 +291,11 @@ export const DISPUTE_STATUS_CONFIG: Record<DisputeStatus, StatusConfig> = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const REMITTANCE_STATUS_CONFIG: Record<RemittanceStatus, StatusConfig> = {
+  draft: {
+    label: 'Draft',
+    color: 'neutral',
+    description: 'Remittance draft created',
+  },
   pending_approval: {
     label: 'Pending Approval',
     color: 'warning',
@@ -301,15 +306,15 @@ export const REMITTANCE_STATUS_CONFIG: Record<RemittanceStatus, StatusConfig> = 
     color: 'info',
     description: 'Remittance approved',
   },
-  payout_initiated: {
-    label: 'Payout Initiated',
-    color: 'pending',
-    description: 'Payout has been initiated',
-  },
-  completed: {
-    label: 'Completed',
+  paid: {
+    label: 'Paid',
     color: 'success',
-    description: 'Remittance completed',
+    description: 'Payout has been processed',
+  },
+  settled: {
+    label: 'Settled',
+    color: 'success',
+    description: 'Remittance fully settled',
   },
   failed: {
     label: 'Failed',

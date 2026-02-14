@@ -312,6 +312,7 @@ export const queryKeys = {
     eligible: (cutoffDate?: string) => ['cod', 'eligible', cutoffDate],
     analytics: () => ['cod', 'analytics'],
     timeline: () => ['cod', 'timeline'],
+    discrepancies: (filters?: FilterParams) => ['cod', 'discrepancies', filters],
   },
 
   // ========================================================================

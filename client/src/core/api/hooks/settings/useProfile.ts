@@ -43,7 +43,11 @@ export const useProfile = (options?: UseQueryOptions<UserProfile, ApiError>) => 
         queryKey: queryKeys.settings.profile(),
         queryFn: async () => {
             const response = await apiClient.get('/users/profile');
-            return response.data.user;
+            const user = response.data?.data?.user;
+            if (!user) {
+                throw new Error('Profile not found');
+            }
+            return user;
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
@@ -60,7 +64,11 @@ export const useUpdateProfile = (options?: UseMutationOptions<UserProfile, ApiEr
     return useMutation<UserProfile, ApiError, UpdateProfilePayload>({
         mutationFn: async (payload) => {
             const response = await apiClient.patch('/profile/basic', payload);
-            return response.data.user;
+            const user = response.data?.data?.user;
+            if (!user) {
+                throw new Error('Profile update failed');
+            }
+            return user;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.settings.profile() });

@@ -1,396 +1,545 @@
 "use client";
-export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import {
+    Search,
+    Download,
+    RefreshCw,
+    IndianRupee,
+    CheckCircle,
+    Clock,
+    TrendingUp,
+    Calendar,
+    Banknote,
+    Eye,
+} from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import {
-    Banknote,
-    Search,
-    Download,
-    Calendar,
-    TrendingUp,
-    Clock,
-    CheckCircle,
-    IndianRupee,
-    ArrowUpRight,
-    ArrowDownRight,
-    Filter,
-    Eye,
-    AlertCircle
-} from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
+import { EmptyState, NoSearchResults } from '@/src/components/ui/feedback/EmptyState';
+import { CardSkeleton, TableSkeleton } from '@/src/components/ui/data/Skeleton';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/lib/utils';
-import { useCODRemittances, useCODStats } from '@/src/core/api/hooks/finance';
+import { cn, formatCurrency } from '@/src/lib/utils';
+import {
+    useCODRemittances,
+    useCODStats,
+    useEligibleCODShipments,
+} from '@/src/core/api/hooks/finance';
+import type { RemittanceStatus } from '@/src/types/api/finance';
 
-// Mock COD remittance data (fallback)
-const MOCK_REMITTANCES = [
-    {
-        id: 'REM-001',
-        date: '2024-12-11',
-        totalCOD: 45890,
-        deductions: 2500,
-        tds: 459,
-        netAmount: 42931,
-        shipmentCount: 32,
-        status: 'processed',
-        utr: 'UTR123456789',
-    },
-    {
-        id: 'REM-002',
-        date: '2024-12-08',
-        totalCOD: 38450,
-        deductions: 1800,
-        tds: 385,
-        netAmount: 36265,
-        shipmentCount: 28,
-        status: 'processed',
-        utr: 'UTR987654321',
-    },
-    {
-        id: 'REM-003',
-        date: '2024-12-05',
-        totalCOD: 52300,
-        deductions: 3200,
-        tds: 523,
-        netAmount: 48577,
-        shipmentCount: 41,
-        status: 'processed',
-        utr: 'UTR456789123',
-    },
-    {
-        id: 'REM-004',
-        date: '2024-12-02',
-        totalCOD: 29750,
-        deductions: 1500,
-        tds: 298,
-        netAmount: 27952,
-        shipmentCount: 22,
-        status: 'processed',
-        utr: 'UTR789123456',
-    },
-    {
-        id: 'REM-005',
-        date: '2024-12-13',
-        totalCOD: 35200,
-        deductions: 0,
-        tds: 0,
-        netAmount: 35200,
-        shipmentCount: 26,
-        status: 'pending',
-        utr: null,
-    },
-];
+// Tabs matching actual backend status values:
+// Backend model uses: draft | pending_approval | approved | paid | settled | cancelled | failed
+const REMITTANCE_TABS = [
+    { key: 'all', label: 'All' },
+    { key: 'pending_approval', label: 'Pending' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'paid', label: 'Paid' },
+    { key: 'settled', label: 'Settled' },
+    { key: 'failed', label: 'Failed' },
+    { key: 'pending', label: 'Pending COD' }, // For eligible shipments tab (not a backend status)
+] as const;
 
-// Mock pending COD shipments (fallback)
-const MOCK_PENDING_COD = [
-    { awb: 'DL987654321IN', amount: 1299, deliveredDate: '2024-12-10', expectedRemit: '2024-12-13' },
-    { awb: 'XB123456789IN', amount: 2499, deliveredDate: '2024-12-11', expectedRemit: '2024-12-14' },
-    { awb: 'BD555666777IN', amount: 899, deliveredDate: '2024-12-11', expectedRemit: '2024-12-14' },
-    { awb: 'DT999888777IN', amount: 1599, deliveredDate: '2024-12-12', expectedRemit: '2024-12-15' },
-];
+type RemittanceTabKey = (typeof REMITTANCE_TABS)[number]['key'];
+
+// Status badge variant mapping (matching backend status values)
+const statusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
+    'draft': 'neutral',
+    'pending_approval': 'warning',
+    'approved': 'info',
+    'paid': 'success',
+    'settled': 'success',
+    'failed': 'error',
+    'cancelled': 'neutral',
+};
 
 export function CodClient() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'remittances' | 'pending'>('remittances');
-    const [page, setPage] = useState(1);
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { addToast } = useToast();
 
-    // --- REAL API INTEGRATION ---
-    const { data: remittancesResponse, isLoading: isLoadingRemittances } = useCODRemittances({
+    // State
+    const [activeTab, setActiveTab] = useState<RemittanceTabKey>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | RemittanceStatus>('all');
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 300);
+    const [page, setPage] = useState(1);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const limit = 20;
+
+    // Sync from URL params (for deep linking)
+    useEffect(() => {
+        const statusParam = searchParams.get('status');
+        const validTabs: RemittanceTabKey[] = ['all', 'pending_approval', 'approved', 'paid', 'settled', 'failed', 'pending'];
+        const nextTab = statusParam && validTabs.includes(statusParam as RemittanceTabKey)
+            ? (statusParam as RemittanceTabKey)
+            : 'all';
+        setActiveTab(nextTab);
+        setStatusFilter(nextTab === 'all' || nextTab === 'pending' ? 'all' : nextTab);
+    }, [searchParams]);
+
+    // Reset page on filter change
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, statusFilter]);
+
+    // API Hooks - Real data only, no mock fallbacks
+    const {
+        data: remittancesResponse,
+        isLoading: isLoadingRemittances,
+        error: remittancesError,
+        refetch: refetchRemittances,
+    } = useCODRemittances({
         page,
-        limit: 25,
-        search: searchQuery || undefined
+        limit,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: debouncedSearch || undefined,
     });
 
-    const { data: statsResponse, isLoading: isLoadingStats } = useCODStats();
+    const { data: stats, isLoading: isLoadingStats } = useCODStats();
 
-    // Extract data with mock fallback
-    const remittancesData: any[] = remittancesResponse?.remittances || MOCK_REMITTANCES;
-    const isUsingMockRemittances = !remittancesResponse?.remittances;
+    // For Pending COD tab - use far future date as cutoff to get all eligible shipments
+    const futureDate = useMemo(() => {
+        const date = new Date();
+        date.setFullYear(date.getFullYear() + 10);
+        return date.toISOString().split('T')[0];
+    }, []);
 
-    // Build stats from API or mock data
-    const totalCODCollected = statsResponse?.thisMonth?.totalCODCollected ||
-        MOCK_REMITTANCES.reduce((sum, r) => sum + r.totalCOD, 0);
-    const totalRemitted = statsResponse?.thisMonth?.netPaid ||
-        MOCK_REMITTANCES.filter(r => r.status === 'processed').reduce((sum, r) => sum + r.netAmount, 0);
-    const totalPending = statsResponse?.pending?.amount ||
-        MOCK_REMITTANCES.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.netAmount, 0);
-    const thisMonthCount = statsResponse?.thisMonth?.count || MOCK_REMITTANCES.length;
+    const { data: eligibleShipmentsData, isLoading: isLoadingEligible } = useEligibleCODShipments(
+        activeTab === 'pending' ? futureDate : undefined,
+        {
+            enabled: activeTab === 'pending',
+        } as any
+    );
 
-    const isUsingMockStats = !statsResponse;
+    const remittances = remittancesResponse?.remittances || [];
+    const pagination = remittancesResponse?.pagination;
+    const eligibleShipments = eligibleShipmentsData?.shipments || [];
+    const eligibleSummary = eligibleShipmentsData?.summary;
 
-    // Server-side filtered data for real API, client-side for mock
-    const filteredRemittances = isUsingMockRemittances
-        ? remittancesData.filter(rem =>
-            rem.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            rem.utr?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        : remittancesData;
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await refetchRemittances();
+        setIsRefreshing(false);
+    };
+
+    const handleTabChange = (tabKey: RemittanceTabKey) => {
+        setActiveTab(tabKey);
+        setStatusFilter(tabKey === 'all' || tabKey === 'pending' ? 'all' : tabKey);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('status', tabKey);
+        params.set('page', '1');
+        router.push(`?${params.toString()}`, { scroll: false });
+    };
+
+    const handleViewRemittance = (id: string) => {
+        router.push(`/seller/cod/remittance/${id}`);
+    };
+
+    const handleExportReport = () => {
+        // TODO: Implement export functionality
+        addToast('Export functionality coming soon', 'info');
+    };
+
+    const handleRequestPayout = () => {
+        // TODO: Implement request payout modal
+        addToast('Request payout functionality coming soon', 'info');
+    };
+
+    // Loading state
+    if (isLoadingStats && !stats) {
+        return (
+            <div className="min-h-screen space-y-8 pb-20">
+                <PageHeader
+                    title="COD Remittance"
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: '/seller/dashboard' },
+                        { label: 'COD Remittance', active: true },
+                    ]}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[...Array(4)].map((_, i) => (
+                        <CardSkeleton key={i} />
+                    ))}
+                </div>
+                <TableSkeleton rows={10} columns={8} />
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Mock Data Indicator */}
-            {(isUsingMockRemittances || isUsingMockStats) && (
-                <div className="flex items-center gap-3 p-3 bg-[var(--warning-bg)] border border-[var(--warning-border)] rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-[var(--warning)] flex-shrink-0" />
-                    <p className="text-sm text-[var(--warning)]">
-                        ⚠️ Using mock data (API data not available)
-                    </p>
-                </div>
-            )}
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            {/* Page Header */}
+            <PageHeader
+                title="COD Remittance"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller/dashboard' },
+                    { label: 'COD Remittance', active: true },
+                ]}
+                actions={
+                    <div className="flex items-center gap-3">
+                        <DateRangePicker />
+                        <Button
+                            onClick={handleRefresh}
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                "h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm",
+                                isRefreshing && "animate-spin"
+                            )}
+                        >
+                            <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleExportReport}
+                            className="h-10 px-4 rounded-xl"
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Export Report
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleRequestPayout}
+                            className="h-10 px-5 rounded-xl"
+                        >
+                            <Banknote className="w-4 h-4 mr-2" />
+                            Request Payout
+                        </Button>
+                    </div>
+                }
+            />
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <Banknote className="h-6 w-6 text-[var(--primary-blue)]" />
-                        COD Remittance
-                    </h1>
-                    <p className="text-[var(--text-muted)] text-sm mt-1">
-                        Track your COD collections and bank remittances
-                    </p>
-                </div>
-                <Button variant="outline" onClick={() => addToast('Downloading report...', 'info')}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Report
-                </Button>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                    title="Pending Collection"
+                    value={formatCurrency(stats?.pendingCollection?.amount || 0)}
+                    icon={IndianRupee}
+                    iconColor="text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
+                    description={`${stats?.pendingCollection?.orders || 0} shipments`}
+                    delay={0}
+                    onClick={() => handleTabChange('pending')}
+                    isActive={activeTab === 'pending'}
+                />
+                <StatsCard
+                    title="In Settlement"
+                    value={formatCurrency(stats?.inSettlement?.amount || 0)}
+                    icon={Clock}
+                    variant="warning"
+                    iconColor="text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400"
+                    description={`${stats?.inSettlement?.orders || 0} shipments processing`}
+                    delay={1}
+                    onClick={() => handleTabChange('pending_approval')}
+                    isActive={activeTab === 'pending_approval'}
+                />
+                <StatsCard
+                    title="Available for Payout"
+                    value={formatCurrency(stats?.available?.amount || 0)}
+                    icon={CheckCircle}
+                    variant="success"
+                    iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    delay={2}
+                    onClick={() => handleTabChange('approved')}
+                    isActive={activeTab === 'approved'}
+                />
+                <StatsCard
+                    title="This Month Received"
+                    value={formatCurrency(stats?.thisMonth?.received || 0)}
+                    icon={TrendingUp}
+                    variant="info"
+                    iconColor="text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400"
+                    description={`₹${(stats?.thisMonth?.deducted || 0).toLocaleString('en-IN')} deducted`}
+                    delay={3}
+                />
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-muted)]">Total COD Collected</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalCODCollected)}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
-                                <IndianRupee className="h-5 w-5 text-[var(--primary-blue)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-muted)]">Total Remitted</p>
-                                <p className="text-2xl font-bold text-[var(--success)]">{formatCurrency(totalRemitted)}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-[var(--success-bg)] flex items-center justify-center">
-                                <CheckCircle className="h-5 w-5 text-[var(--success)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-muted)]">Pending Remit</p>
-                                <p className="text-2xl font-bold text-[var(--warning)]">{formatCurrency(totalPending)}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-[var(--warning)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-muted)]">This Month</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{thisMonthCount}</p>
-                                <p className="text-xs text-[var(--text-muted)]">remittances</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                                <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 border-b border-gray-200">
-                <button
-                    onClick={() => setActiveTab('remittances')}
-                    className={cn(
-                        "px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-px",
-                        activeTab === 'remittances'
-                            ? "border-[var(--primary-blue)] text-[var(--primary-blue)]"
-                            : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    )}
-                >
-                    Remittance History
-                </button>
-                <button
-                    onClick={() => setActiveTab('pending')}
-                    className={cn(
-                        "px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-px flex items-center gap-2",
-                        activeTab === 'pending'
-                            ? "border-[var(--primary-blue)] text-[var(--primary-blue)]"
-                            : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    )}
-                >
-                    Pending COD
-                    <Badge variant="warning" className="text-xs">{MOCK_PENDING_COD.length}</Badge>
-                </button>
-            </div>
-
-            {/* Remittance History */}
-            {activeTab === 'remittances' && (
-                <>
-                    {/* Search */}
-                    <div className="flex gap-4">
-                        <div className="flex-1">
-                            <Input
-                                placeholder="Search by ID or UTR..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                icon={<Search className="h-4 w-4" />}
-                            />
-                        </div>
+            {/* Tabs & Search */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    {/* Pill-style Tabs */}
+                    <div className="flex p-1.5 rounded-xl bg-[var(--bg-secondary)] w-fit border border-[var(--border-subtle)] overflow-x-auto">
+                        {REMITTANCE_TABS.map((tab) => (
+                            <button
+                                key={tab.key}
+                                onClick={() => handleTabChange(tab.key)}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+                                    activeTab === tab.key
+                                        ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                                )}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Remittances Table */}
-                    <Card>
-                        <CardContent className="p-0">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
-                                        <tr>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Remit ID</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Total COD</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Deductions</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">TDS</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Net Amount</th>
-                                            <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Shipments</th>
-                                            <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-[var(--border-subtle)]">
-                                        {filteredRemittances.map((rem) => (
-                                            <tr key={rem.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                <td className="p-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
-                                                        <span className="text-sm text-[var(--text-primary)]">{rem.date}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">{rem.id}</code>
-                                                    {rem.utr && (
-                                                        <p className="text-xs text-[var(--text-muted)] mt-1">UTR: {rem.utr}</p>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <p className="text-sm font-medium text-[var(--text-primary)]">{formatCurrency(rem.totalCOD)}</p>
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <p className="text-sm text-[var(--error)]">-{formatCurrency(rem.deductions)}</p>
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <p className="text-sm text-[var(--text-secondary)]">-{formatCurrency(rem.tds)}</p>
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <p className="text-sm font-bold text-[var(--success)]">{formatCurrency(rem.netAmount)}</p>
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <span className="text-sm text-[var(--text-primary)]">{rem.shipmentCount}</span>
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    {rem.status === 'processed' ? (
-                                                        <Badge variant="success" className="gap-1">
-                                                            <CheckCircle className="h-3 w-3" />
-                                                            Processed
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="warning" className="gap-1">
-                                                            <Clock className="h-3 w-3" />
-                                                            Pending
-                                                        </Badge>
-                                                    )}
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="flex justify-end">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => addToast('Opening details...', 'info')}
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </>
-            )}
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                        <input
+                            type="text"
+                            placeholder="Search by batch ID or UTR..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-10 pr-4 py-2.5 h-11 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm w-72 transition-all placeholder:text-[var(--text-muted)] shadow-sm"
+                        />
+                    </div>
+                </div>
 
-            {/* Pending COD */}
-            {activeTab === 'pending' && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Pending COD Shipments</CardTitle>
-                        <CardDescription>COD amounts waiting to be remitted</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
-                                    <tr>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB Number</th>
-                                        <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">COD Amount</th>
-                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Delivered</th>
-                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Expected Remit</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[var(--border-subtle)]">
-                                    {MOCK_PENDING_COD.map((item) => (
-                                        <tr key={item.awb} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                            <td className="p-4">
-                                                <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">{item.awb}</code>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(item.amount)}</p>
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <p className="text-sm text-[var(--text-secondary)]">{item.deliveredDate}</p>
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <Badge variant="info" className="text-xs">{item.expectedRemit}</Badge>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot className="bg-[var(--bg-secondary)] border-t border-[var(--border-subtle)]">
-                                    <tr>
-                                        <td className="p-4 font-medium text-[var(--text-primary)]">Total</td>
-                                        <td className="p-4 text-right font-bold text-[var(--text-primary)]">
-                                            {formatCurrency(MOCK_PENDING_COD.reduce((sum, i) => sum + i.amount, 0))}
-                                        </td>
-                                        <td colSpan={2}></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                {/* Remittance History Table */}
+                {activeTab !== 'pending' && (
+                    <>
+                        {isLoadingRemittances ? (
+                            <TableSkeleton rows={10} columns={8} />
+                        ) : remittancesError ? (
+                            <div className="flex flex-col items-center justify-center py-12 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-default)]">
+                                <div className="text-center space-y-4">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--error-bg)]">
+                                        <Clock className="w-8 h-8 text-[var(--error)]" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                                        Failed to Load Remittances
+                                    </h3>
+                                    <p className="text-sm text-[var(--text-secondary)] max-w-md">
+                                        We couldn't load your remittance data. Please try again.
+                                    </p>
+                                    <Button onClick={handleRefresh}>
+                                        <RefreshCw className="w-4 h-4 mr-2" />
+                                        Retry
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : remittances.length === 0 ? (
+                            debouncedSearch ? (
+                                <NoSearchResults onClear={() => setSearch('')} />
+                            ) : (
+                                <EmptyState
+                                    variant="noData"
+                                    title="No Remittances Found"
+                                    description={
+                                        statusFilter === 'all'
+                                            ? "You don't have any COD remittances yet. Remittances will appear here once your COD shipments are delivered."
+                                            : `No ${REMITTANCE_TABS.find(t => t.key === statusFilter)?.label.toLowerCase()} remittances found.`
+                                    }
+                                    icon={<Banknote className="w-12 h-12" />}
+                                />
+                            )
+                        ) : (
+                            <div className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
+                                            <tr>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Remit ID</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Total COD</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Deductions</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Net Amount</th>
+                                                <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Shipments</th>
+                                                <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[var(--border-subtle)]">
+                                            {remittances.map((remittance) => (
+                                                <tr
+                                                    key={remittance._id}
+                                                    className="hover:bg-[var(--bg-secondary)] transition-colors"
+                                                >
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
+                                                            <span className="text-sm text-[var(--text-primary)]">
+                                                                {format(new Date(remittance.createdAt), 'MMM dd, yyyy')}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">
+                                                            {remittance.remittanceId}
+                                                        </code>
+                                                        {remittance.payout?.utr && (
+                                                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                                                UTR: {remittance.payout.utr}
+                                                            </p>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <p className="text-sm font-medium text-[var(--text-primary)]">
+                                                            {formatCurrency(remittance.batch.totalCODCollected)}
+                                                        </p>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <p className="text-sm text-[var(--error)]">
+                                                            -{formatCurrency(remittance.deductions.total)}
+                                                        </p>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <p className="text-sm font-bold text-[var(--success)]">
+                                                            {formatCurrency(remittance.finalPayable)}
+                                                        </p>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <span className="text-sm text-[var(--text-primary)]">
+                                                            {remittance.batch.shipmentsCount}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <Badge
+                                                            variant={statusVariantMap[remittance.status] || 'neutral'}
+                                                            className="gap-1 capitalize"
+                                                        >
+                                                            {(remittance.status === 'paid' || remittance.status === 'settled') && <CheckCircle className="h-3 w-3" />}
+                                                            {remittance.status === 'pending_approval' && <Clock className="h-3 w-3" />}
+                                                            {remittance.status.replace(/_/g, ' ')}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex justify-end">
+                                                            <ViewActionButton
+                                                                onClick={() => handleViewRemittance(remittance._id)}
+                                                                label="View"
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Pagination */}
+                                {pagination && pagination.pages > 1 && (
+                                    <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--border-subtle)]">
+                                        <p className="text-sm text-[var(--text-secondary)]">
+                                            Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, pagination.total)} of {pagination.total} results
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                disabled={!pagination.hasPrev}
+                                            >
+                                                Previous
+                                            </Button>
+                                            <span className="text-sm text-[var(--text-secondary)] px-3">
+                                                Page {page} of {pagination.pages}
+                                            </span>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setPage(p => p + 1)}
+                                                disabled={!pagination.hasNext}
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* Pending COD Shipments Tab */}
+                {activeTab === 'pending' && (
+                    <>
+                        {isLoadingEligible ? (
+                            <TableSkeleton rows={8} columns={5} />
+                        ) : eligibleShipments.length === 0 ? (
+                            <EmptyState
+                                variant="noData"
+                                title="No Pending COD Shipments"
+                                description="All your COD shipments have been included in remittances. New eligible shipments will appear here after delivery."
+                                icon={<Banknote className="w-12 h-12" />}
+                            />
+                        ) : (
+                            <div className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
+                                            <tr>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB Number</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Order ID</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">COD Amount</th>
+                                                <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Delivered</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Shipping Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[var(--border-subtle)]">
+                                            {eligibleShipments.map((shipment) => (
+                                                <tr key={shipment.awb} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                                                    <td className="p-4">
+                                                        <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">
+                                                            {shipment.awb}
+                                                        </code>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="text-sm text-[var(--text-primary)]">
+                                                            {shipment.orderId}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <p className="text-sm font-bold text-[var(--text-primary)]">
+                                                            {formatCurrency(shipment.codAmount)}
+                                                        </p>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <p className="text-sm text-[var(--text-secondary)]">
+                                                            {format(new Date(shipment.deliveredAt), 'MMM dd, yyyy')}
+                                                        </p>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <p className="text-sm text-[var(--text-secondary)]">
+                                                            {formatCurrency(shipment.shippingCost)}
+                                                        </p>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        {eligibleSummary && (
+                                            <tfoot className="bg-[var(--bg-secondary)] border-t border-[var(--border-subtle)]">
+                                                <tr>
+                                                    <td className="p-4 font-medium text-[var(--text-primary)]" colSpan={2}>
+                                                        Total ({eligibleSummary.totalShipments} shipments)
+                                                    </td>
+                                                    <td className="p-4 text-right font-bold text-[var(--text-primary)]">
+                                                        {formatCurrency(eligibleSummary.totalCODAmount)}
+                                                    </td>
+                                                    <td className="p-4"></td>
+                                                    <td className="p-4 text-right font-medium text-[var(--text-secondary)]">
+                                                        {formatCurrency(eligibleSummary.totalShippingCost)}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={5} className="p-4 text-center">
+                                                        <p className="text-sm text-[var(--text-muted)]">
+                                                            Estimated Payable: <span className="font-bold text-[var(--success)]">
+                                                                {formatCurrency(eligibleSummary.estimatedPayable)}
+                                                            </span>
+                                                        </p>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        )}
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
         </div>
     );
 }

@@ -10,10 +10,11 @@
 // ==================== COD Remittance Types ====================
 
 export type RemittanceStatus =
+    | 'draft'
     | 'pending_approval'
     | 'approved'
-    | 'payout_initiated'
-    | 'completed'
+    | 'paid'
+    | 'settled'
     | 'failed'
     | 'cancelled';
 
@@ -130,22 +131,27 @@ export interface CODRemittance {
 }
 
 // ==================== Dashboard Stats ====================
+// Matches backend: CODRemittanceService.getDashboardStats()
 
 export interface CODStats {
-    pending: {
-        count: number;
+    pendingCollection: {
         amount: number;
+        orders: number;
+        estimatedDate: string;
+    };
+    inSettlement: {
+        amount: number;
+        orders: number;
+        estimatedDate: string;
+    };
+    available: {
+        amount: number;
+        estimatedPayoutDate: string;
     };
     thisMonth: {
-        count: number;
-        totalCODCollected: number;
-        totalDeductions: number;
-        netPaid: number;
-    };
-    lastRemittance?: {
-        date: string;
-        amount: number;
-        utr: string;
+        collected: number;
+        deducted: number;
+        received: number;
     };
 }
 
