@@ -1,6 +1,6 @@
 /**
  * Pincode Checker Component
- * 
+ *
  * Checks pincode serviceability and displays courier coverage.
  * Features:
  * - Pincode input with validation
@@ -14,7 +14,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePincodeLookup } from '@/src/core/api/hooks/logistics/useAddress';
-import { MapPin, Truck, Clock, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { MapPin, Truck, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Input } from '@/src/components/ui/core/Input';
+import { SpinnerLoader } from '@/src/components/ui/feedback/Loader';
+import { handleApiError } from '@/src/lib/error';
 import type { CourierCoverage } from '@/src/types/api/logistics';
 
 interface PincodeCheckerProps {
@@ -71,10 +74,11 @@ export function PincodeChecker({
         }
     }, [serviceability, isServiceable, availableCouriers, debouncedPincode, onServiceabilityResult]);
 
-    // Notify parent on error
+    // Notify parent on error and show Toast
     useEffect(() => {
-        if (isError && onError && error) {
-            onError(error.message || 'Failed to check pincode');
+        if (isError && error) {
+            handleApiError(error, 'Failed to check pincode');
+            onError?.(error.message || 'Failed to check pincode');
         }
     }, [isError, error, onError]);
 
@@ -89,29 +93,27 @@ export function PincodeChecker({
         <div className={`space-y-4 ${className}`}>
             {/* Pincode Input */}
             <div className="relative">
-                <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                        type="text"
-                        value={pincode}
-                        onChange={handlePincodeChange}
-                        placeholder="Enter 6-digit pincode"
-                        className={`w-full pl-10 pr-10 py-3 rounded-lg border transition-colors text-lg font-medium tracking-wider
-              ${isError ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 dark:border-gray-700 focus:ring-primary-500'}
-              bg-white dark:bg-gray-800 
-              focus:outline-none focus:ring-2
-            `}
-                        maxLength={6}
-                    />
-                    {isLoading && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-500 animate-spin" />
-                    )}
-                </div>
+                <Input
+                    type="text"
+                    value={pincode}
+                    onChange={handlePincodeChange}
+                    placeholder="Enter 6-digit pincode"
+                    maxLength={6}
+                    size="lg"
+                    error={isError}
+                    icon={<MapPin className="h-5 w-5 text-[var(--text-muted)]" />}
+                    rightIcon={
+                        isLoading ? (
+                            <SpinnerLoader size="sm" />
+                        ) : undefined
+                    }
+                    className="text-lg font-medium tracking-wider"
+                />
 
                 {/* Validation indicator */}
                 {pincode.length > 0 && pincode.length < 6 && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
+                    <p className="mt-1 flex items-center gap-1 text-xs text-[var(--warning)]">
+                        <AlertCircle className="h-3 w-3" />
                         Enter {6 - pincode.length} more digits
                     </p>
                 )}
@@ -119,15 +121,15 @@ export function PincodeChecker({
 
             {/* City/State Auto-fill */}
             {pincodeInfo && (
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 px-4 py-2 rounded-lg">
-                    <MapPin className="w-4 h-4 text-primary-500" />
+                <div className="flex items-center gap-2 rounded-lg bg-[var(--bg-secondary)] px-4 py-2 text-sm text-[var(--text-secondary)]">
+                    <MapPin className="h-4 w-4 text-[var(--primary-blue)]" />
                     <span className="font-medium">{pincodeInfo.city}</span>
-                    <span className="text-gray-400">•</span>
+                    <span className="text-[var(--text-muted)]">•</span>
                     <span>{pincodeInfo.state}</span>
                     {pincodeInfo.isMetro && (
                         <>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-full">
+                            <span className="text-[var(--text-muted)]">•</span>
+                            <span className="rounded-full bg-[var(--primary-blue-soft)] px-2 py-0.5 text-xs text-[var(--primary-blue)]">
                                 Metro
                             </span>
                         </>
@@ -137,31 +139,33 @@ export function PincodeChecker({
 
             {/* Serviceability Status Banner */}
             {isPincodeValid && !isLoading && serviceability && (
-                <div className={`p-4 rounded-lg ${isServiceable
-                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                    }`}>
+                <div
+                    className={`rounded-lg border p-4 ${
+                        isServiceable
+                            ? 'border-[var(--success)]/20 bg-[var(--success-bg)]'
+                            : 'border-[var(--error)]/20 bg-[var(--error-bg)]'
+                    }`}
+                >
                     <div className="flex items-center gap-3">
                         {isServiceable ? (
                             <>
-                                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                                <CheckCircle2 className="h-6 w-6 text-[var(--success)]" />
                                 <div>
-                                    <p className="font-semibold text-green-800 dark:text-green-200">
+                                    <p className="font-semibold text-[var(--success)]">
                                         Serviceable Pincode
                                     </p>
-                                    <p className="text-sm text-green-600 dark:text-green-400">
-                                        {availableCouriers.length} courier{availableCouriers.length !== 1 ? 's' : ''} available
+                                    <p className="text-sm text-[var(--text-secondary)]">
+                                        {availableCouriers.length} courier
+                                        {availableCouriers.length !== 1 ? 's' : ''} available
                                     </p>
                                 </div>
                             </>
                         ) : (
                             <>
-                                <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                                <XCircle className="h-6 w-6 text-[var(--error)]" />
                                 <div>
-                                    <p className="font-semibold text-red-800 dark:text-red-200">
-                                        Not Serviceable
-                                    </p>
-                                    <p className="text-sm text-red-600 dark:text-red-400">
+                                    <p className="font-semibold text-[var(--error)]">Not Serviceable</p>
+                                    <p className="text-sm text-[var(--text-secondary)]">
                                         No courier partners deliver to this pincode
                                     </p>
                                 </div>
@@ -171,11 +175,11 @@ export function PincodeChecker({
                 </div>
             )}
 
-            {/* Error State */}
+            {/* Error State - Toast handles global feedback; inline for context */}
             {isError && (
-                <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                    <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-                        <AlertCircle className="w-5 h-5" />
+                <div className="rounded-lg border border-[var(--error)]/20 bg-[var(--error-bg)] p-4">
+                    <div className="flex items-center gap-3 text-[var(--error)]">
+                        <AlertCircle className="h-5 w-5" />
                         <span className="text-sm">Failed to check serviceability. Please try again.</span>
                     </div>
                 </div>
@@ -184,12 +188,14 @@ export function PincodeChecker({
             {/* Courier Coverage Grid */}
             {showCourierDetails && isServiceable && availableCouriers.length > 0 && (
                 <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                        <Truck className="w-4 h-4" />
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]">
+                        <Truck className="h-4 w-4" />
                         Available Couriers ({availableCouriers.length})
                     </h4>
 
-                    <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+                    <div
+                        className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}
+                    >
                         {availableCouriers.map((courier) => (
                             <CourierCard key={courier.courier} courier={courier} compact={compact} />
                         ))}
@@ -209,25 +215,23 @@ interface CourierCardProps {
 
 function CourierCard({ courier, compact = false }: CourierCardProps) {
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
+        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] p-4 transition-shadow hover:shadow-md">
             <div className="flex items-start justify-between">
                 <div>
-                    <h5 className="font-semibold text-gray-900 dark:text-white">
+                    <h5 className="font-semibold text-[var(--text-primary)]">
                         {courier.courierDisplayName}
                     </h5>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Zone: {courier.zone}
-                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">Zone: {courier.zone}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
                     {courier.codAvailable && (
-                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                        <span className="rounded-full bg-[var(--success)]/10 px-2 py-0.5 text-xs text-[var(--success)]">
                             COD
                         </span>
                     )}
                     {courier.expressAvailable && (
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                        <span className="rounded-full bg-[var(--primary-blue-soft)] px-2 py-0.5 text-xs text-[var(--primary-blue)]">
                             Express
                         </span>
                     )}
@@ -236,29 +240,32 @@ function CourierCard({ courier, compact = false }: CourierCardProps) {
 
             {!compact && (
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Clock className="w-4 h-4" />
-                        <span>{courier.estimatedDaysMin ?? courier.estimatedDays}-{courier.estimatedDaysMax ?? courier.estimatedDays} days</span>
+                    <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                        <Clock className="h-4 w-4" />
+                        <span>
+                            {courier.estimatedDaysMin ?? courier.estimatedDays}-
+                            {courier.estimatedDaysMax ?? courier.estimatedDays} days
+                        </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                         {courier.prepaidAvailable ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
                         ) : (
-                            <XCircle className="w-4 h-4 text-red-500" />
+                            <XCircle className="h-4 w-4 text-[var(--error)]" />
                         )}
-                        <span className="text-gray-600 dark:text-gray-400">Prepaid</span>
+                        <span className="text-[var(--text-secondary)]">Prepaid</span>
                     </div>
 
                     {courier.sundayDelivery && (
-                        <div className="flex items-center gap-2 col-span-2">
-                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            <span className="text-gray-600 dark:text-gray-400">Sunday Delivery</span>
+                        <div className="col-span-2 flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
+                            <span className="text-[var(--text-secondary)]">Sunday Delivery</span>
                         </div>
                     )}
 
                     {courier.codLimit && (
-                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="col-span-2 text-xs text-[var(--text-muted)]">
                             COD Limit: ₹{courier.codLimit.toLocaleString()}
                         </div>
                     )}

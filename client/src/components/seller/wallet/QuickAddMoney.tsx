@@ -188,13 +188,13 @@ export function QuickAddMoney({
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
+                    {/* Backdrop - h-[100dvh] overflow-hidden matches OrderDetailsPanel/DetailPanel for proper viewport coverage */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                        className="fixed inset-0 h-[100dvh] bg-black/60 backdrop-blur-sm z-50 overflow-hidden"
                         onClick={onClose}
                     />
 
@@ -237,8 +237,8 @@ export function QuickAddMoney({
                             </button>
                         </div>
 
-                        {/* Content - Scrollable */}
-                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+                        {/* Content - Scrollable (min-h-0 required for flex+overflow to shrink properly) */}
+                        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-8">
                             {/* Error Message - Top for visibility */}
                             <AnimatePresence>
                                 {error && (
@@ -411,31 +411,40 @@ export function QuickAddMoney({
                             </div>
                         </div>
 
-                        {/* Footer - Sticky Action */}
-                        <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] px-6 py-4">
+                        {/* Footer - Sticky Action; responsive padding and safe area on mobile */}
+                        <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 sm:px-6 pt-4 pb-3 shrink-0">
                             <Button
                                 onClick={handleSubmit}
                                 isLoading={isLoading}
                                 disabled={!finalAmount || finalAmount < 100 || isLoading || !isGatewayReady || !!gatewayError}
                                 className={cn(
-                                    'w-full h-14 font-bold text-lg rounded-2xl shadow-lg transition-all',
+                                    'w-full min-h-[48px] h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg transition-all',
+                                    'text-base sm:text-lg font-semibold sm:font-bold',
+                                    'px-4 py-3 sm:py-4',
                                     'active:scale-[0.98]'
                                 )}
                             >
                                 {isLoading ? (
-                                    'Processing payment...'
+                                    <span className="truncate">Processing payment...</span>
                                 ) : gatewayError ? (
-                                    'Payment gateway unavailable'
+                                    <span className="truncate">Payment gateway unavailable</span>
                                 ) : !isGatewayReady ? (
-                                    'Loading payment gateway...'
+                                    <span className="truncate">Loading payment gateway...</span>
                                 ) : finalAmount && finalAmount >= 100 ? (
-                                    `Proceed to Pay ₹${finalAmount.toLocaleString('en-IN')}`
+                                    <>
+                                        <span className="sm:hidden truncate">
+                                            Pay ₹{finalAmount.toLocaleString('en-IN')}
+                                        </span>
+                                        <span className="hidden sm:inline truncate">
+                                            Proceed to Pay ₹{finalAmount.toLocaleString('en-IN')}
+                                        </span>
+                                    </>
                                 ) : (
-                                    'Select an amount to continue'
+                                    <span className="truncate">Select an amount to continue</span>
                                 )}
                             </Button>
 
-                            <p className="text-xs text-center text-[var(--text-muted)] mt-3">
+                            <p className="text-xs text-center text-[var(--text-muted)] mt-3 mb-0">
                                 Secure payment powered by Razorpay. Amount credited instantly.
                             </p>
                         </div>

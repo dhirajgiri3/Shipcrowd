@@ -1,6 +1,6 @@
 /**
  * Bulk Address Validation Client Component
- * 
+ *
  * Handles all client-side logic for bulk address validation:
  * - File upload and parsing
  * - CSV validation
@@ -15,15 +15,24 @@ import { useDropzone } from 'react-dropzone';
 import { useBulkValidateAddresses } from '@/src/core/api/hooks/logistics/useAddress';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import {
-    Upload,
-    FileSpreadsheet,
-    CheckCircle2,
-    XCircle,
-    Download,
-    Loader2,
-    X,
+  Upload,
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+  Download,
+  X,
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { Loader } from '@/src/components/ui/feedback/Loader';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/src/components/ui/core/Table';
 import type { Address, BulkAddressValidationResult } from '@/src/types/api/logistics';
 
 type ValidationStatus = 'idle' | 'parsing' | 'validating' | 'complete' | 'error';
@@ -146,9 +155,11 @@ export function BulkAddressValidationClient() {
                 onSuccess: (data) => {
                     setResults(data);
                     setStatus('complete');
+                    showSuccessToast(`Validated ${data.totalAddresses} addresses`);
                 },
-                onError: () => {
+                onError: (error) => {
                     setStatus('error');
+                    handleApiError(error, 'Address validation failed');
                 },
             }
         );
@@ -189,7 +200,7 @@ export function BulkAddressValidationClient() {
     };
 
     return (
-        <div className="bg-[var(--bg-primary)] rounded-xl shadow-sm border border-[var(--border-default)] overflow-hidden">
+        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-primary)] shadow-sm overflow-hidden">
             {/* Upload Section */}
             {status === 'idle' && parsedAddresses.length === 0 && (
                 <div className="p-8">
@@ -251,29 +262,25 @@ export function BulkAddressValidationClient() {
 
             {/* Parsing Status */}
             {status === 'parsing' && (
-                <div className="p-12 text-center">
-                    <Loader2 className="w-12 h-12 mx-auto mb-4 text-[var(--primary-blue)] animate-spin" />
-                    <p className="text-[var(--text-secondary)]">Parsing CSV file...</p>
+                <div className="p-12">
+                    <Loader variant="spinner" size="lg" message="Parsing CSV file..." centered />
                 </div>
             )}
 
             {/* Parse Error */}
             {status === 'error' && parseError && (
                 <div className="p-8">
-                    <div className="bg-[var(--error-bg)] rounded-lg p-6 border border-[var(--error)]/20 text-center">
-                        <XCircle className="w-12 h-12 mx-auto mb-4 text-[var(--error)]" />
-                        <h3 className="font-semibold text-[var(--error)] mb-2">
+                    <div className="rounded-xl border border-[var(--error)]/20 bg-[var(--error-bg)] p-6 text-center">
+                        <XCircle className="mx-auto mb-4 h-12 w-12 text-[var(--error)]" />
+                        <h3 className="mb-2 font-semibold text-[var(--error)]">
                             Failed to Parse CSV
                         </h3>
-                        <p className="text-sm text-[var(--error)] mb-4">
+                        <p className="mb-4 text-sm text-[var(--text-secondary)]">
                             {parseError}
                         </p>
-                        <button
-                            onClick={handleReset}
-                            className="px-4 py-2 bg-[var(--error)] hover:bg-[var(--error)]/90 text-white rounded-lg transition-colors"
-                        >
+                        <Button variant="danger" onClick={handleReset}>
                             Try Again
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -293,67 +300,55 @@ export function BulkAddressValidationClient() {
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={handleReset}
-                            className="p-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                        <Button variant="ghost" size="icon" onClick={handleReset} aria-label="Clear file">
+                            <X className="h-5 w-5" />
+                        </Button>
                     </div>
 
                     {/* Preview Table */}
-                    <div className="border border-[var(--border-default)] rounded-lg overflow-hidden mb-6">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-[var(--bg-secondary)]">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">#</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Address</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">City</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">State</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Pincode</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[var(--border-default)]">
-                                    {parsedAddresses.slice(0, 5).map((addr, idx) => (
-                                        <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
-                                            <td className="px-4 py-3 text-sm text-[var(--text-muted)]">{idx + 1}</td>
-                                            <td className="px-4 py-3 text-sm text-[var(--text-primary)] truncate max-w-[200px]">
-                                                {addr.line1 || '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-[var(--text-secondary)]">{addr.city}</td>
-                                            <td className="px-4 py-3 text-sm text-[var(--text-secondary)]">{addr.state}</td>
-                                            <td className="px-4 py-3 text-sm font-mono text-[var(--text-primary)]">{addr.pincode}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div className="mb-6 overflow-hidden rounded-lg border border-[var(--border-default)]">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-secondary)]">
+                                    <TableHead className="text-[var(--text-muted)]">#</TableHead>
+                                    <TableHead className="text-[var(--text-muted)]">Address</TableHead>
+                                    <TableHead className="text-[var(--text-muted)]">City</TableHead>
+                                    <TableHead className="text-[var(--text-muted)]">State</TableHead>
+                                    <TableHead className="text-[var(--text-muted)]">Pincode</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {parsedAddresses.slice(0, 5).map((addr, idx) => (
+                                    <TableRow key={idx} className="border-[var(--border-default)]">
+                                        <TableCell className="text-[var(--text-muted)]">{idx + 1}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate text-[var(--text-primary)]">
+                                            {addr.line1 || '-'}
+                                        </TableCell>
+                                        <TableCell className="text-[var(--text-secondary)]">{addr.city}</TableCell>
+                                        <TableCell className="text-[var(--text-secondary)]">{addr.state}</TableCell>
+                                        <TableCell className="font-mono text-[var(--text-primary)]">{addr.pincode}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                         {parsedAddresses.length > 5 && (
-                            <div className="px-4 py-2 bg-[var(--bg-secondary)] text-sm text-[var(--text-muted)] text-center">
+                            <div className="bg-[var(--bg-secondary)] px-4 py-2 text-center text-sm text-[var(--text-muted)]">
                                 and {parsedAddresses.length - 5} more...
                             </div>
                         )}
                     </div>
 
                     {/* Validate Button */}
-                    <button
+                    <Button
                         onClick={handleValidate}
                         disabled={isPending}
-                        className="w-full py-3 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        isLoading={isPending}
+                        className="w-full"
+                        size="lg"
                     >
-                        {isPending ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Validating addresses...
-                            </>
-                        ) : (
-                            <>
-                                <CheckCircle2 className="w-5 h-5" />
-                                Validate {parsedAddresses.length} Addresses
-                            </>
-                        )}
-                    </button>
+                        <CheckCircle2 className="mr-2 h-5 w-5" />
+                        Validate {parsedAddresses.length} Addresses
+                    </Button>
                 </div>
             )}
 
@@ -361,78 +356,80 @@ export function BulkAddressValidationClient() {
             {results && (
                 <div className="p-6">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
-                            <p className="text-3xl font-bold text-[var(--text-primary)]">{results.totalAddresses}</p>
-                            <p className="text-sm text-[var(--text-muted)]">Total</p>
-                        </div>
-                        <div className="bg-[var(--success)]/10 rounded-lg p-4 text-center border border-[var(--success)]/20">
-                            <p className="text-3xl font-bold text-[var(--success)]">{results.validAddresses}</p>
-                            <p className="text-sm text-[var(--success)]">Valid</p>
-                        </div>
-                        <div className="bg-[var(--error)]/10 rounded-lg p-4 text-center border border-[var(--error)]/20">
-                            <p className="text-3xl font-bold text-[var(--error)]">{results.invalidAddresses}</p>
-                            <p className="text-sm text-[var(--error)]">Invalid</p>
-                        </div>
+                    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <StatsCard
+                            title="Total"
+                            value={results.totalAddresses}
+                            icon={FileSpreadsheet}
+                            variant="default"
+                        />
+                        <StatsCard
+                            title="Valid"
+                            value={results.validAddresses}
+                            icon={CheckCircle2}
+                            variant="success"
+                        />
+                        <StatsCard
+                            title="Invalid"
+                            value={results.invalidAddresses}
+                            icon={XCircle}
+                            variant="critical"
+                        />
                     </div>
 
                     {/* Results Table */}
-                    <div className="border border-[var(--border-default)] rounded-lg overflow-hidden mb-6">
-                        <div className="overflow-x-auto max-h-[400px]">
-                            <table className="w-full">
-                                <thead className="bg-[var(--bg-secondary)] sticky top-0">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Address</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Pincode</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase">Issues</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[var(--border-default)]">
-                                    {results.results.map((result, idx) => (
-                                        <tr
-                                            key={idx}
-                                            className={`${result.isValid ? '' : 'bg-[var(--error)]/5'}`}
-                                        >
-                                            <td className="px-4 py-3">
-                                                {result.isValid ? (
-                                                    <CheckCircle2 className="w-5 h-5 text-[var(--success)]" />
-                                                ) : (
-                                                    <XCircle className="w-5 h-5 text-[var(--error)]" />
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-[var(--text-primary)]">
-                                                {result.originalAddress.city}, {result.originalAddress.state}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-[var(--text-secondary)]">
-                                                {result.originalAddress.pincode}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-[var(--error)]">
-                                                {result.errors.map(e => e.message).join(', ') || '-'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div className="mb-6 max-h-[400px] overflow-auto rounded-lg border border-[var(--border-default)]">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="sticky top-0 z-10 border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-secondary)]">
+                                    <TableHead className="text-[var(--text-muted)]">Status</TableHead>
+                                    <TableHead className="text-[var(--text-muted)]">Address</TableHead>
+                                    <TableHead className="text-[var(--text-muted)]">Pincode</TableHead>
+                                    <TableHead className="text-[var(--text-muted)]">Issues</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {results.results.map((result, idx) => (
+                                    <TableRow
+                                        key={idx}
+                                        className={
+                                            result.isValid
+                                                ? 'border-[var(--border-default)]'
+                                                : 'border-[var(--border-default)] bg-[var(--error)]/5'
+                                        }
+                                    >
+                                        <TableCell>
+                                            {result.isValid ? (
+                                                <CheckCircle2 className="h-5 w-5 text-[var(--success)]" />
+                                            ) : (
+                                                <XCircle className="h-5 w-5 text-[var(--error)]" />
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-[var(--text-primary)]">
+                                            {result.originalAddress.city}, {result.originalAddress.state}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-[var(--text-secondary)]">
+                                            {result.originalAddress.pincode}
+                                        </TableCell>
+                                        <TableCell className="text-[var(--error)]">
+                                            {result.errors.map((e) => e.message).join(', ') || '-'}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-between">
-                        <button
-                            onClick={handleReset}
-                            className="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                        >
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <Button variant="ghost" onClick={handleReset}>
                             Validate Another File
-                        </button>
+                        </Button>
                         {results.invalidAddresses > 0 && (
-                            <button
-                                onClick={handleExportInvalid}
-                                className="flex items-center gap-2 px-4 py-2 bg-[var(--error)] hover:bg-[var(--error)]/90 text-white rounded-lg transition-colors"
-                            >
-                                <Download className="w-4 h-4" />
+                            <Button variant="danger" onClick={handleExportInvalid}>
+                                <Download className="mr-2 h-4 w-4" />
                                 Export Invalid ({results.invalidAddresses})
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </div>
