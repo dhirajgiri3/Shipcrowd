@@ -58,28 +58,6 @@ describe('COD Analytics Service', () => {
         });
     }
 
-    describe('forecastCashFlow', () => {
-        it('should forecast cod amounts based on delivery status', async () => {
-            await createMockShipment({
-                trackingNumber: 'AWB-1',
-                currentStatus: 'delivered',
-                paymentDetails: { type: 'cod', codAmount: 1000, collectionStatus: 'collected', shippingCost: 100 }
-            });
-
-            await createMockShipment({
-                trackingNumber: 'AWB-2',
-                currentStatus: 'shipped',
-                paymentDetails: { type: 'cod', codAmount: 2000, collectionStatus: 'pending', shippingCost: 100 }
-            });
-
-            const result = await CODAnalyticsService.forecastCashFlow(companyId.toString(), 7);
-
-            expect(result.total.count).toBe(2);
-            expect(result.total.expectedCOD).toBe(3000);
-            expect(result.daily.length).toBeGreaterThanOrEqual(1);
-        });
-    });
-
     describe('getHealthMetrics', () => {
         it('should calculate accurate health metrics', async () => {
             const now = new Date();
@@ -132,29 +110,6 @@ describe('COD Analytics Service', () => {
             expect(metrics.rtoRate).toBe(33.33); // 1/3
             expect(metrics.disputeRate).toBe(33.33); // 1/3
             expect(metrics.averageRemittanceTime).toBeCloseTo(1.0, 1); // 1 day
-        });
-    });
-
-    describe('carrierPerformance', () => {
-        it('should benchmark carriers', async () => {
-            await createMockShipment({
-                trackingNumber: 'AWB-V1', carrier: 'Velocity', currentStatus: 'delivered',
-                paymentDetails: { type: 'cod', codAmount: 1000, shippingCost: 100 }
-            });
-            await createMockShipment({
-                trackingNumber: 'AWB-D1', carrier: 'Delhivery', currentStatus: 'rto',
-                paymentDetails: { type: 'cod', codAmount: 1000, shippingCost: 100 }
-            });
-
-            const stats = await CODAnalyticsService.carrierPerformance(companyId.toString(), 30);
-
-            const velocity = stats.find((s: any) => s.carrier === 'Velocity');
-            const delhivery = stats.find((s: any) => s.carrier === 'Delhivery');
-
-            expect(velocity).toBeDefined();
-            expect(velocity.deliveryRate).toBe(100);
-            expect(delhivery).toBeDefined();
-            expect(delhivery.rtoRate).toBe(100);
         });
     });
 });

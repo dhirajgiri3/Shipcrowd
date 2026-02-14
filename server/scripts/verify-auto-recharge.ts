@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Company } from '../src/infrastructure/database/mongoose/models';
 import FeatureFlag from '../src/infrastructure/database/mongoose/models/system/feature-flag.model';
 import { AutoRechargeLog } from '../src/infrastructure/database/mongoose/models/finance/auto-recharge-log.model';
@@ -20,24 +20,25 @@ process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '00000000000000000000
 process.env.MOCK_PAYMENTS = 'true'; // Enable mock mode for testing
 process.env.AUTO_RECHARGE_FEATURE_ENABLED = 'true'; // Enable env kill switch for this verification
 
-let mongoServer: MongoMemoryServer | null = null;
+let mongoServer: MongoMemoryReplSet | null = null;
 
 // Mock Services for Verification
 // ----------------------------------------------------------------
 const originalAcquireLock = redisLockService.acquireLock.bind(redisLockService);
 const originalReleaseLock = redisLockService.releaseLock.bind(redisLockService);
 const originalCreateOrder = razorpayPaymentService.createOrder.bind(razorpayPaymentService);
+const defaultMockCreateOrder = async (options: any) => ({
+    id: `pay_mock_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+    amount: options.amount,
+    status: 'captured' // Simulate IMMEDIATE capture to allow credit
+});
 
 // Default: Mock Redis Lock to always succeed
 redisLockService.acquireLock = async () => true;
 redisLockService.releaseLock = async () => { };
 
 // Default: Mock Razorpay to simulate captured payment (Synchronous Success)
-razorpayPaymentService.createOrder = async (options) => ({
-    id: `pay_mock_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-    amount: options.amount,
-    status: 'captured' // Simulate IMMEDIATE capture to allow credit
-});
+razorpayPaymentService.createOrder = defaultMockCreateOrder;
 // ----------------------------------------------------------------
 
 interface TestResult {
@@ -73,13 +74,14 @@ async function verifyAutoRecharge() {
             await mongoose.connect(process.env.MONGODB_URI);
             console.log('✅ Connected to MongoDB (external)\n');
         } else {
-            mongoServer = await MongoMemoryServer.create({
-                instance: {
-                    ip: '127.0.0.1'
-                }
+            mongoServer = await MongoMemoryReplSet.create({
+                replSet: {
+                    count: 1,
+                },
+                instanceOpts: [{ ip: '127.0.0.1' }],
             });
             await mongoose.connect(mongoServer.getUri());
-            console.log('✅ Connected to in-memory MongoDB\n');
+            console.log('✅ Connected to in-memory MongoDB replica set\n');
         }
 
         // Enable DB feature flag required by auto-recharge worker gate.
@@ -509,7 +511,7 @@ async function verifyAutoRecharge() {
                 updated.wallet.autoRecharge?.lastFailure?.retryCount === 1;
 
             // Restore mock
-            razorpayPaymentService.createOrder = originalCreateOrder;
+            razorpayPaymentService.createOrder = defaultMockCreateOrder;
 
             await Company.deleteOne({ _id: company._id });
             await AutoRechargeLog.deleteMany({ companyId: company._id });
@@ -563,7 +565,7 @@ async function verifyAutoRecharge() {
             const success = retryCount === 3 && delayWithinRange;
 
             // Restore mock
-            razorpayPaymentService.createOrder = originalCreateOrder;
+            razorpayPaymentService.createOrder = defaultMockCreateOrder;
 
             await Company.deleteOne({ _id: company._id });
             await AutoRechargeLog.deleteMany({ companyId: company._id });
@@ -612,7 +614,7 @@ async function verifyAutoRecharge() {
                 updated?.wallet.autoRecharge?.lastFailure?.retryCount === 4;
 
             // Restore mock
-            razorpayPaymentService.createOrder = originalCreateOrder;
+            razorpayPaymentService.createOrder = defaultMockCreateOrder;
 
             await Company.deleteOne({ _id: company._id });
             await AutoRechargeLog.deleteMany({ companyId: company._id });

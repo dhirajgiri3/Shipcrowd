@@ -22,6 +22,7 @@ import type {
     TransactionFilters,
     RechargeInitResponse,
     RechargeWalletPayload,
+    RechargeWalletResponse,
 } from '@/src/types/api/finance';
 
 // ==================== Hooks ====================
@@ -66,9 +67,11 @@ export const useWalletTransactions = (
 /**
  * Initialize wallet recharge order before opening Razorpay checkout
  */
-export const useInitWalletRecharge = (options?: UseMutationOptions<RechargeInitResponse, Error, { amount: number }>) => {
-    return useMutation<RechargeInitResponse, Error, { amount: number }>({
-        mutationFn: (data: { amount: number }) => walletApi.initRecharge(data),
+export const useInitWalletRecharge = (
+    options?: UseMutationOptions<RechargeInitResponse, Error, { amount: number; promoCode?: string }>
+) => {
+    return useMutation<RechargeInitResponse, Error, { amount: number; promoCode?: string }>({
+        mutationFn: (data: { amount: number; promoCode?: string }) => walletApi.initRecharge(data),
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
@@ -77,7 +80,9 @@ export const useInitWalletRecharge = (options?: UseMutationOptions<RechargeInitR
 /**
  * Recharge wallet with optimistic update
  */
-export const useRechargeWallet = (options?: UseMutationOptions<any, Error, RechargeWalletPayload>) => {
+export const useRechargeWallet = (
+    options?: UseMutationOptions<RechargeWalletResponse, Error, RechargeWalletPayload>
+) => {
     const queryClient = useQueryClient();
 
     return useMutation({

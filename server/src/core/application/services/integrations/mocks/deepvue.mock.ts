@@ -184,15 +184,18 @@ export const mockIfscResponse = (ifsc: string) => {
   }
 
   const bankCode = ifsc.substring(0, 4);
-  let bankName = 'Test Bank';
-
-  if (bankCode === 'SBIN') {
-    bankName = 'State Bank of India';
-  } else if (bankCode === 'HDFC') {
-    bankName = 'HDFC Bank';
-  } else if (bankCode === 'ICIC') {
-    bankName = 'ICICI Bank';
-  }
+  const bankMap: Record<string, string> = {
+    SBIN: 'State Bank of India',
+    HDFC: 'HDFC Bank',
+    ICIC: 'ICICI Bank',
+    UTIB: 'Axis Bank',
+    YESB: 'Yes Bank',
+    KKBK: 'Kotak Mahindra Bank',
+    PUNB: 'Punjab National Bank',
+    BARB: 'Bank of Baroda',
+    CNRB: 'Canara Bank',
+  };
+  const bankName = bankMap[bankCode] || 'Test Bank';
 
   return {
     status: 'success',

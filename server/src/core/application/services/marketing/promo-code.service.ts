@@ -138,8 +138,8 @@ class PromoCodeService {
      * Apply promo code (increment usage)
      * Atomic operation to prevent race conditions
      */
-    async applyPromo(code: string): Promise<boolean> {
-        const result = await Coupon.findOneAndUpdate(
+    async applyPromo(code: string, session?: mongoose.ClientSession): Promise<boolean> {
+        let query = Coupon.findOneAndUpdate(
             {
                 code: code.toUpperCase(),
                 isActive: true,
@@ -151,6 +151,10 @@ class PromoCodeService {
             { $inc: { 'restrictions.usageCount': 1 } },
             { new: true }
         );
+        if (session) {
+            query = query.session(session);
+        }
+        const result = await query;
 
         if (!result) {
             throw new ValidationError('Promo code invalid or usage limit exceeded');

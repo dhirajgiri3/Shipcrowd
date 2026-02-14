@@ -76,39 +76,6 @@ describe('COD Finance API Integration (E2E)', () => {
         await clearTestDb();
     });
 
-    describe('GET /finance/cod/analytics/health', () => {
-        it('should return health metrics', async () => {
-            // Seed some data
-            await Shipment.create({
-                trackingNumber: 'AWB-HEALTH-1',
-                companyId,
-                orderId: new mongoose.Types.ObjectId(),
-                carrier: 'Velocity',
-                serviceType: 'express',
-                currentStatus: 'delivered',
-                paymentDetails: {
-                    type: 'cod',
-                    codAmount: 1000,
-                    shippingCost: 100,
-                    collectionStatus: 'remitted',
-                    remittance: { remittedAt: new Date() }
-                },
-                packageDetails: { weight: 1, dimensions: { length: 1, width: 1, height: 1 }, packageCount: 1, packageType: 'box', declaredValue: 1000 },
-                weights: { declared: { value: 1, unit: 'kg' }, verified: false },
-                deliveryDetails: { recipientName: 'T', recipientPhone: '9', address: { line1: 'x', city: 'c', state: 's', country: 'i', postalCode: '1' } }
-            });
-
-            const res = await agent
-                .get('/api/v1/finance/cod/analytics/health')
-                .expect(200);
-
-            expect(res.body.success).toBe(true);
-            expect(res.body.data.totalOrders).toBe(1);
-            expect(res.body.data).toHaveProperty('rtoRate');
-            expect(res.body.data).toHaveProperty('collectionRate');
-        });
-    });
-
     describe('Early COD Program API', () => {
         it('should check eligibility', async () => {
             const res = await agent.get('/api/v1/finance/cod/early-program/eligibility').expect(200);

@@ -107,12 +107,13 @@ export const initRecharge = async (
             throw new ValidationError('Validation failed', details);
         }
 
-        const { amount } = validation.data;
+        const { amount, promoCode } = validation.data;
 
         const result = await WalletService.createRechargeOrder(
             auth.companyId,
             amount,
-            auth.userId
+            auth.userId,
+            promoCode
         );
 
         sendSuccess(res, result, 'Recharge order initialized successfully');
@@ -161,6 +162,10 @@ export const rechargeWallet = async (
                 {
                     transactionId: result.transactionId,
                     newBalance: result.newBalance,
+                    rechargeAmount: result.rechargeAmount,
+                    promoCredit: result.promoCredit,
+                    totalWalletCredit: result.totalWalletCredit,
+                    appliedPromoCode: result.appliedPromoCode,
                 },
                 'Wallet recharged successfully'
             );

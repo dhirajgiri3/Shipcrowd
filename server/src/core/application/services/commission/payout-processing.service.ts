@@ -325,12 +325,10 @@ export default class PayoutProcessingService {
      * Handle Razorpay webhook event
      */
     static async handleWebhook(
-        payload: any,
-        signature: string,
-        webhookSecret: string
+        payload: any
     ): Promise<void> {
         try {
-            const event = await this.razorpay.handleWebhook(payload, signature, webhookSecret);
+            const event = payload;
 
             if (event.event === 'payout.processed') {
                 await this.handlePayoutProcessed(event.payload.payout.entity);

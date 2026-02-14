@@ -39,8 +39,15 @@ export interface PromoCodeFilters {
     active?: boolean; // Backend only supports active=true/false
 }
 
-export interface ValidatePromoPayload { code: string; amount: number; }
-export interface ValidatePromoResponse { valid: boolean; discount: number; finalAmount: number; message?: string; }
+export interface ValidatePromoPayload { code: string; orderAmount: number; }
+export interface ValidatePromoResponse {
+    valid: boolean;
+    discountAmount: number;
+    code?: string;
+    discountType?: 'percentage' | 'fixed';
+    discountValue?: number;
+    message?: string;
+}
 
 export const usePromoCodes = (filters?: PromoCodeFilters, options?: UseQueryOptions<PromoCodeResponse, ApiError>) => {
     return useQuery<PromoCodeResponse, ApiError>({

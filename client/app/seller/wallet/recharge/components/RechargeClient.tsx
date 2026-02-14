@@ -3,10 +3,9 @@ export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
 import Script from 'next/script';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Wallet,
     CreditCard,
@@ -28,6 +27,7 @@ import { TruckLoader } from '@/src/components/ui';
 // API Hooks
 import { useInitWalletRecharge, useWalletBalance, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
 import { useProfile } from '@/src/core/api/hooks/settings/useProfile';
+import { useValidatePromoCode } from '@/src/core/api/hooks/marketing/usePromoCodes';
 
 const quickAmounts = [1000, 2000, 5000, 10000, 25000, 50000];
 
@@ -37,44 +37,73 @@ const paymentMethods = [
     { id: 'netbanking', name: 'Net Banking', description: 'All major banks', icon: Building2 },
 ];
 
-// Mock promo codes (Strategy: Keep mocks for non-critical features like promos for now, unless API exists)
-// Mock promo codes (Strategy: Keep mocks for non-critical features like promos for now, unless API exists)
-const mockPromoCodes = [
-    { code: 'SHIP50', discount: 50, type: 'flat', minAmount: 2000 },
-    { code: 'FIRST10', discount: 10, type: 'percent', minAmount: 1000, maxDiscount: 500 },
-];
+interface AppliedPromo {
+    code: string;
+    bonusCredit: number;
+    discountType?: 'percentage' | 'fixed';
+    discountValue?: number;
+}
 
 export function RechargeClient() {
     const [amount, setAmount] = useState('');
     const [selectedMethod, setSelectedMethod] = useState('upi');
     const [promoCode, setPromoCode] = useState('');
-    const [appliedPromo, setAppliedPromo] = useState<typeof mockPromoCodes[0] | null>(null);
+    const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
     const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
 
     // API Hooks
     const { data: balanceData } = useWalletBalance();
     const initRecharge = useInitWalletRecharge();
     const { mutate: rechargeWallet, isPending: isRecharging } = useRechargeWallet();
+    const validatePromo = useValidatePromoCode();
     const { data: profile } = useProfile();
     const { addToast } = useToast();
 
     const currentBalance = balanceData?.balance || 0;
+    const rechargeAmount = Number(amount) || 0;
+    const promoCredit = appliedPromo?.bonusCredit || 0;
+    const totalWalletCredit = rechargeAmount + promoCredit;
 
     const handleQuickAmount = (value: number) => {
+        if (appliedPromo && value !== rechargeAmount) {
+            setAppliedPromo(null);
+        }
         setAmount(value.toString());
     };
 
-    const handleApplyPromo = () => {
-        const promo = mockPromoCodes.find(p => p.code === promoCode.toUpperCase());
-        if (promo) {
-            if (Number(amount) >= promo.minAmount) {
-                setAppliedPromo(promo);
-                addToast(`Promo code applied! You'll get ${promo.type === 'flat' ? formatCurrency(promo.discount) : `${promo.discount}%`} off`, 'success');
-            } else {
-                addToast(`Minimum recharge of ${formatCurrency(promo.minAmount)} required`, 'warning');
+    const handleApplyPromo = async () => {
+        if (rechargeAmount < 100) {
+            addToast('Enter recharge amount first (minimum ₹100)', 'warning');
+            return;
+        }
+
+        if (!promoCode.trim()) {
+            addToast('Please enter a promo code', 'warning');
+            return;
+        }
+
+        try {
+            const result = await validatePromo.mutateAsync({
+                code: promoCode.trim(),
+                orderAmount: rechargeAmount,
+            });
+
+            if (!result.valid) {
+                addToast(result.message || 'Promo code is not valid', 'warning');
+                setAppliedPromo(null);
+                return;
             }
-        } else {
-            addToast('Invalid promo code', 'error');
+
+            setAppliedPromo({
+                code: result.code || promoCode.trim().toUpperCase(),
+                bonusCredit: result.discountAmount || 0,
+                discountType: result.discountType,
+                discountValue: result.discountValue,
+            });
+            addToast(`Promo applied: ${formatCurrency(result.discountAmount || 0)} bonus credit`, 'success');
+        } catch (error) {
+            setAppliedPromo(null);
+            addToast('Invalid or expired promo code', 'error');
         }
     };
 
@@ -83,28 +112,8 @@ export function RechargeClient() {
         setPromoCode('');
     };
 
-    const calculateTotal = () => {
-        const baseAmount = Number(amount) || 0;
-        // Note: For wallet recharge, usually promos give EXTRA credit, not discount on payment.
-        // But following existing logic: user pays LESS for same credit? Or pays SAME for MORE credit?
-        // Standard wallet logic: Pay X, Get X + Bonus. 
-        // Current logic implies: Pay X - Discount. 
-        // We will assume "Pay calculated total, get 'amount' credit".
-
-        if (appliedPromo) {
-            if (appliedPromo.type === 'flat') {
-                return Math.max(0, baseAmount - appliedPromo.discount);
-            } else {
-                const discount = (baseAmount * appliedPromo.discount) / 100;
-                const cappedDiscount = appliedPromo.maxDiscount ? Math.min(discount, appliedPromo.maxDiscount) : discount;
-                return Math.max(0, baseAmount - cappedDiscount);
-            }
-        }
-        return baseAmount;
-    };
-
     const handleProceed = async () => {
-        if (!amount || Number(amount) < 100) {
+        if (!amount || rechargeAmount < 100) {
             addToast('Minimum recharge amount is ₹100', 'warning');
             return;
         }
@@ -115,12 +124,18 @@ export function RechargeClient() {
         }
 
         try {
-            const payAmount = calculateTotal();
-            const init = await initRecharge.mutateAsync({ amount: payAmount });
+            const init = await initRecharge.mutateAsync({
+                amount: rechargeAmount,
+                promoCode: appliedPromo?.code,
+            });
+            if (!(init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+                addToast('Razorpay key is not configured. Please contact support.', 'error');
+                return;
+            }
 
             // Initialize Razorpay Options
             const options: RazorpayOptions = {
-                key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
+                key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
                 amount: init.amount * 100, // Amount in paise
                 currency: init.currency || "INR",
                 name: "Shipcrowd Logistics",
@@ -223,7 +238,13 @@ export function RechargeClient() {
                                 <Input
                                     type="number"
                                     value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
+                                    onChange={(e) => {
+                                        const nextValue = e.target.value;
+                                        if (appliedPromo && Number(nextValue || 0) !== rechargeAmount) {
+                                            setAppliedPromo(null);
+                                        }
+                                        setAmount(nextValue);
+                                    }}
                                     placeholder="Enter amount"
                                     className="pl-10 h-14 text-2xl font-bold"
                                 />
@@ -312,10 +333,7 @@ export function RechargeClient() {
                                         <div>
                                             <p className="font-semibold text-[var(--success)]">{appliedPromo.code}</p>
                                             <p className="text-sm text-[var(--success)]">
-                                                {appliedPromo.type === 'flat'
-                                                    ? `${formatCurrency(appliedPromo.discount)} off`
-                                                    : `${appliedPromo.discount}% off (max ${formatCurrency(appliedPromo.maxDiscount || 0)})`
-                                                }
+                                                Bonus wallet credit: {formatCurrency(appliedPromo.bonusCredit)}
                                             </p>
                                         </div>
                                     </div>
@@ -349,30 +367,25 @@ export function RechargeClient() {
                         <CardContent className="space-y-4">
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-[var(--text-secondary)]">Recharge Amount</span>
-                                    <span className="font-medium">{amount ? formatCurrency(Number(amount)) : '₹0'}</span>
+                                    <span className="text-[var(--text-secondary)]">You Pay</span>
+                                    <span className="font-medium">{amount ? formatCurrency(rechargeAmount) : '₹0'}</span>
                                 </div>
                                 {appliedPromo && (
                                     <div className="flex justify-between text-sm text-[var(--success)]">
-                                        <span>Discount ({appliedPromo.code})</span>
-                                        <span>
-                                            -{appliedPromo.type === 'flat'
-                                                ? formatCurrency(appliedPromo.discount)
-                                                : formatCurrency(Math.min((Number(amount) * appliedPromo.discount) / 100, appliedPromo.maxDiscount || Infinity))
-                                            }
-                                        </span>
+                                        <span>Promo Bonus ({appliedPromo.code})</span>
+                                        <span>+{formatCurrency(appliedPromo.bonusCredit)}</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-[var(--text-secondary)]">GST (0%)</span>
-                                    <span className="text-[var(--success)]">Free</span>
+                                <div className="flex justify-between text-sm font-medium">
+                                    <span className="text-[var(--text-secondary)]">Total Wallet Credit</span>
+                                    <span>{formatCurrency(totalWalletCredit)}</span>
                                 </div>
                             </div>
 
                             <div className="border-t pt-4">
                                 <div className="flex justify-between text-lg font-bold">
                                     <span>Total Pay</span>
-                                    <span>{formatCurrency(calculateTotal())}</span>
+                                    <span>{formatCurrency(rechargeAmount)}</span>
                                 </div>
                             </div>
 

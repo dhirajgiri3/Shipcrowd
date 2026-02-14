@@ -17,7 +17,7 @@ export const useBankAccounts = () => {
     return useQuery({
         queryKey: queryKeys.seller.bankAccounts(),
         queryFn: () => bankAccountApi.getBankAccounts(),
-        ...CACHE_TIMES.LONG, // Bank accounts rarely change
+        ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
     });
 };

@@ -82,14 +82,7 @@ export class PayoutController {
      */
     static async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const signature = req.headers['x-razorpay-signature'] as string;
-            const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
-
-            if (!signature) {
-                throw new AppError('Missing webhook signature', 'BAD_REQUEST', 400);
-            }
-
-            await PayoutProcessingService.handleWebhook(req.body, signature, webhookSecret);
+            await PayoutProcessingService.handleWebhook(req.body);
 
             sendSuccess(res, { success: true });
         } catch (error) {

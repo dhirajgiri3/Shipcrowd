@@ -103,12 +103,24 @@ export interface RechargeInitResponse {
     amount: number;
     currency: string;
     key: string; // Razorpay Key ID
+    rechargeAmount?: number;
+    promoCredit?: number;
+    totalWalletCredit?: number;
+    promoMeta?: {
+        code: string;
+        discountType?: 'percentage' | 'fixed';
+        discountValue?: number;
+    };
 }
 
 
 export interface RechargeWalletResponse {
     transactionId: string;
     newBalance: number;
+    rechargeAmount?: number;
+    promoCredit?: number;
+    totalWalletCredit?: number;
+    appliedPromoCode?: string;
 }
 
 export interface WithdrawWalletPayload {

@@ -108,12 +108,17 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import redisLockService from '../infra/redis-lock.service';
 import razorpayPaymentService from '../payment/razorpay-payment.service';
 import { isWalletAutoRechargeFeatureEnabled } from './wallet-feature-flags';
+import PromoCodeService from '../marketing/promo-code.service';
 
 interface TransactionResult {
     success: boolean;
     transactionId?: string;
     newBalance?: number;
     error?: string;
+    rechargeAmount?: number;
+    promoCredit?: number;
+    totalWalletCredit?: number;
+    appliedPromoCode?: string;
 }
 
 interface TransactionReference {
@@ -435,6 +440,8 @@ export default class WalletService {
                     error.code === ErrorCode.BIZ_VERSION_CONFLICT ||
                     error.code === 112 ||
                     error.message?.includes('WriteConflict') ||
+                    error.message?.includes('Unable to acquire IX lock') ||
+                    error.message?.includes('LockTimeout') ||
                     error.name === 'VersionError' ||
                     (error.hasErrorLabel && error.hasErrorLabel('TransientTransactionError')));
 
@@ -541,8 +548,11 @@ export default class WalletService {
     static async processAutoRecharge(
         companyId: string,
         amount: number,
-        paymentMethodId: string
+        paymentMethodId: string,
+        attempt: number = 0,
+        operationId?: string
     ): Promise<{ success: boolean; error?: string; transactionId?: string }> {
+        const MAX_TRANSIENT_RETRIES = 2;
         const lockKey = `auto-recharge:lock:${companyId}`;
         let lockAcquired = false;
 
@@ -558,7 +568,7 @@ export default class WalletService {
                 };
             }
 
-            const idempotencyKey = `auto-recharge:${companyId}:${Date.now()}`;
+            const idempotencyKey = operationId || `auto-recharge:${companyId}:${Date.now()}`;
             let session = null;
 
             try {
@@ -672,10 +682,20 @@ export default class WalletService {
                 }
 
                 // 7. Update Metadata (Last success & attempt)
-                company.wallet.autoRecharge!.lastSuccess = new Date();
-                company.wallet.autoRecharge!.lastAttempt = new Date();
-                company.wallet.autoRecharge!.lastFailure = undefined; // Clear failures
-                await company.save({ session });
+                // Use updateOne to avoid __v conflicts with the earlier wallet CAS update in credit().
+                await Company.updateOne(
+                    { _id: companyId },
+                    {
+                        $set: {
+                            'wallet.autoRecharge.lastSuccess': new Date(),
+                            'wallet.autoRecharge.lastAttempt': new Date(),
+                        },
+                        $unset: {
+                            'wallet.autoRecharge.lastFailure': '',
+                        },
+                    },
+                    { session }
+                );
 
                 // Update Log
                 await AutoRechargeLog.findOneAndUpdate(
@@ -689,7 +709,21 @@ export default class WalletService {
 
             } catch (error: any) {
                 if (session) await session.abortTransaction();
-                logger.error('Auto-recharge process failed', { companyId, error: error.message });
+                logger.error(`Auto-recharge process failed: ${error.message}`, { companyId });
+
+                const isTransientTxnError =
+                    /Unable to acquire IX lock|WriteConflict|transaction.*aborted|catalog changes|Please retry your operation|TransientTransactionError/i
+                        .test(error.message || '');
+                if (isTransientTxnError && attempt < MAX_TRANSIENT_RETRIES) {
+                    const retryDelayMs = 50 * (attempt + 1);
+                    logger.warn('Retrying auto-recharge after transient transaction error', {
+                        companyId,
+                        attempt: attempt + 1,
+                        retryDelayMs,
+                    });
+                    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+                    return this.processAutoRecharge(companyId, amount, paymentMethodId, attempt + 1, idempotencyKey);
+                }
 
                 // Log failure status (outside transaction to persist failure)
                 try {
@@ -907,11 +941,56 @@ export default class WalletService {
     static async createRechargeOrder(
         companyId: string,
         amount: number,
-        createdBy: string
-    ): Promise<{ orderId: string; amount: number; currency: string; key: string }> {
+        createdBy: string,
+        promoCode?: string
+    ): Promise<{
+        orderId: string;
+        amount: number;
+        currency: string;
+        key: string;
+        rechargeAmount: number;
+        promoCredit: number;
+        totalWalletCredit: number;
+        promoMeta?: {
+            code: string;
+            discountType?: 'percentage' | 'fixed';
+            discountValue?: number;
+        };
+    }> {
         const companyExists = await Company.exists({ _id: companyId });
         if (!companyExists) {
             throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
+        }
+
+        let promoCredit = 0;
+        let normalizedPromoCode: string | undefined;
+        let promoMeta:
+            | {
+                code: string;
+                discountType?: 'percentage' | 'fixed';
+                discountValue?: number;
+            }
+            | undefined;
+
+        if (promoCode?.trim()) {
+            const promoValidation = await PromoCodeService.validatePromo(
+                promoCode.trim(),
+                amount,
+                createdBy,
+                companyId
+            );
+
+            if (!promoValidation.valid) {
+                throw new ValidationError(promoValidation.message || 'Invalid promo code');
+            }
+
+            promoCredit = promoValidation.discountAmount;
+            normalizedPromoCode = promoValidation.coupon?.code || promoCode.trim().toUpperCase();
+            promoMeta = {
+                code: normalizedPromoCode,
+                discountType: promoValidation.coupon?.discount.type,
+                discountValue: promoValidation.coupon?.discount.value,
+            };
         }
 
         const order = await razorpayPaymentService.createOrder({
@@ -921,6 +1000,8 @@ export default class WalletService {
                 companyId,
                 purpose: 'wallet_recharge',
                 createdBy,
+                promoCode: normalizedPromoCode || '',
+                promoCreditAmount: String(promoCredit || 0),
             },
             description: `Wallet recharge for company ${companyId}`,
         });
@@ -930,6 +1011,10 @@ export default class WalletService {
             amount: order.amount,
             currency: 'INR',
             key: process.env.RAZORPAY_KEY_ID || '',
+            rechargeAmount: amount,
+            promoCredit,
+            totalWalletCredit: amount + promoCredit,
+            ...(promoMeta ? { promoMeta } : {}),
         };
     }
 
@@ -947,6 +1032,8 @@ export default class WalletService {
     ): Promise<TransactionResult> {
         // ✅ CRITICAL: Verify payment with Razorpay before crediting
         let verifiedAmount = 0;
+        let promoCreditAmount = 0;
+        let promoCode: string | undefined;
         try {
             const Razorpay = (await import('razorpay')).default;
             const razorpay = new Razorpay({
@@ -1020,6 +1107,13 @@ export default class WalletService {
                 };
             }
 
+            const paymentNotes = (payment.notes as Record<string, string> | undefined) || {};
+            promoCode = paymentNotes.promoCode || undefined;
+            promoCreditAmount = Number(paymentNotes.promoCreditAmount || 0);
+            if (!Number.isFinite(promoCreditAmount) || promoCreditAmount < 0) {
+                promoCreditAmount = 0;
+            }
+
             // Verify payment status
             if (payment.status !== 'captured') {
                 logger.error('Payment verification failed: not captured', {
@@ -1067,20 +1161,86 @@ export default class WalletService {
             };
         }
 
-        // Only credit wallet after successful verification
-        return this.credit(
-            companyId,
-            verifiedAmount,
-            'recharge',
-            `Wallet recharge via payment ${paymentId}`,
-            {
-                type: 'payment',
-                externalId: paymentId,
-            },
-            createdBy,
-            undefined,
-            `wallet-recharge:${paymentId}`
-        );
+        // Credit recharge (+ optional promo credit) atomically
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const baseResult = await this.credit(
+                companyId,
+                verifiedAmount,
+                'recharge',
+                `Wallet recharge via payment ${paymentId}`,
+                {
+                    type: 'payment',
+                    externalId: paymentId,
+                },
+                createdBy,
+                session,
+                `wallet-recharge:${paymentId}`
+            );
+
+            if (!baseResult.success) {
+                throw new AppError(baseResult.error || 'Recharge failed', ErrorCode.BIZ_WALLET_TRANSACTION_FAILED);
+            }
+
+            if (promoCode && promoCreditAmount > 0) {
+                const promoIdempotencyKey = `wallet-recharge-promo:${paymentId}`;
+                const existingPromoTx = await WalletTransaction.findOne({
+                    company: companyId,
+                    'metadata.idempotencyKey': promoIdempotencyKey,
+                }).session(session);
+
+                if (!existingPromoTx) {
+                    const promoCreditResult = await this.credit(
+                        companyId,
+                        promoCreditAmount,
+                        'promotional_credit',
+                        `Promo bonus credit via code ${promoCode}`,
+                        {
+                            type: 'payment',
+                            externalId: paymentId,
+                        },
+                        createdBy,
+                        session,
+                        promoIdempotencyKey
+                    );
+
+                    if (!promoCreditResult.success) {
+                        throw new AppError(
+                            promoCreditResult.error || 'Promo credit failed',
+                            ErrorCode.BIZ_WALLET_TRANSACTION_FAILED
+                        );
+                    }
+
+                    await PromoCodeService.applyPromo(promoCode, session);
+                }
+            }
+
+            await session.commitTransaction();
+            const finalBalance = await this.getBalance(companyId);
+            return {
+                success: true,
+                transactionId: baseResult.transactionId,
+                newBalance: finalBalance.balance,
+                rechargeAmount: verifiedAmount,
+                promoCredit: promoCreditAmount,
+                totalWalletCredit: verifiedAmount + promoCreditAmount,
+                appliedPromoCode: promoCode,
+            };
+        } catch (error: any) {
+            await session.abortTransaction();
+            logger.error('Failed to complete wallet recharge credit', {
+                companyId,
+                paymentId,
+                error: error.message,
+            });
+            return {
+                success: false,
+                error: error.message || 'Recharge credit failed',
+            };
+        } finally {
+            await session.endSession();
+        }
     }
 
 

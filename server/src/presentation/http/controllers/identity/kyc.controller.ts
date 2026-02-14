@@ -1431,7 +1431,8 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
       );
 
       // Sync verified bank to SellerBankAccount collection and payout configuration
-      if (isValid && user.companyId && kyc.documents.bankAccount) {
+      const bankAccountDoc = kyc.documents?.bankAccount;
+      if (isValid && user.companyId && bankAccountDoc) {
         try {
           const normalizedAccount = normalizeAccount(accountNumberClean);
           const normalizedIfsc = normalizeIfsc(ifsc);
@@ -1440,6 +1441,9 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
             accountNumber: normalizedAccount,
             ifscCode: normalizedIfsc,
           });
+          const h = (holderName ?? '').trim();
+          const a = (accountHolderName ?? '').trim();
+          const accountHolderNameSafe = h.length >= 2 ? h : a.length >= 2 ? a : 'Account Holder';
 
           let sellerBankAccountId: mongoose.Types.ObjectId | null = null;
           await withTransaction(async (session) => {
@@ -1453,7 +1457,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
               sellerBankAccount = new SellerBankAccount({
                 companyId: user.companyId,
                 bankName: bankNameValue || 'Unknown Bank',
-                accountHolderName: holderName,
+                accountHolderName: accountHolderNameSafe,
                 accountNumberEncrypted: normalizedAccount,
                 accountLast4: normalizedAccount.slice(-4),
                 accountFingerprint: fingerprint,
@@ -1464,7 +1468,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
               });
             } else {
               sellerBankAccount.bankName = bankNameValue || sellerBankAccount.bankName;
-              sellerBankAccount.accountHolderName = holderName || sellerBankAccount.accountHolderName;
+              sellerBankAccount.accountHolderName = accountHolderNameSafe;
               sellerBankAccount.accountNumberEncrypted = normalizedAccount;
               sellerBankAccount.accountLast4 = normalizedAccount.slice(-4);
               sellerBankAccount.verificationStatus = 'verified';
@@ -1490,7 +1494,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
             }
 
             sellerBankAccountId = sellerBankAccount._id as mongoose.Types.ObjectId;
-            kyc.documents.bankAccount.bankAccountId = sellerBankAccountId as any;
+            (bankAccountDoc as any).bankAccountId = sellerBankAccountId;
             await kyc.save({ session });
           });
 
@@ -1500,10 +1504,20 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
               const syncResult = await syncRazorpayFundAccountForSellerBankAccount(sellerBankAccount, {
                 accountNumber: normalizedAccount,
                 ifscCode: normalizedIfsc,
-                accountHolderName: holderName || sellerBankAccount.accountHolderName,
+                accountHolderName: accountHolderNameSafe,
               });
               payoutSyncStatus = syncResult.success ? 'success' : 'failed';
-              await sellerBankAccount.save();
+              if (syncResult.success && syncResult.fundAccountId) {
+                await SellerBankAccount.updateOne(
+                  { _id: sellerBankAccountId },
+                  {
+                    $set: {
+                      razorpayContactId: syncResult.contactId,
+                      razorpayFundAccountId: syncResult.fundAccountId,
+                    },
+                  }
+                );
+              }
             }
           }
         } catch (syncErr: any) {
@@ -1511,6 +1525,7 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
           logger.error('Failed to sync verified bank to SellerBankAccount', {
             companyId: user.companyId,
             error: syncErr?.message,
+            stack: syncErr?.stack,
           });
         }
       }

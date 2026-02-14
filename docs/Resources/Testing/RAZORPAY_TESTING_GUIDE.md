@@ -22,6 +22,10 @@ RAZORPAY_KEY_SECRET=s5GRxGnQhvY5mtUwQk54E3ql
 RAZORPAY_ACCOUNT_NUMBER=2323230057507372
 # This must be the WEBHOOK SIGNING SECRET from Razorpay Dashboard, NOT a URL
 RAZORPAY_WEBHOOK_SECRET=<your_webhook_secret_from_dashboard>
+# Optional endpoint-specific secrets (fallback to RAZORPAY_WEBHOOK_SECRET if omitted)
+RAZORPAY_PAYMENT_WEBHOOK_SECRET=<optional_payment_secret>
+RAZORPAY_PAYOUT_WEBHOOK_SECRET=<optional_payout_secret>
+RAZORPAY_COMMISSION_WEBHOOK_SECRET=<optional_commission_secret>
 ```
 
 ### 1.2 Client-Side Key (Optional)
@@ -68,9 +72,14 @@ You'll get a URL like: `https://abc123.ngrok-free.app`
 7. Add another webhook for payouts:
    - **Webhook URL:** `https://YOUR-NGROK-URL.ngrok-free.app/api/v1/webhooks/razorpay/payout`
    - **Active Events:** `payout.processed`, `payout.failed`, `payout.reversed`
-   - **Secret:** Can reuse same secret or create a new one (if different, you may need separate env vars — current code uses one `RAZORPAY_WEBHOOK_SECRET` for both)
+   - **Secret:** Can reuse same secret or set `RAZORPAY_PAYOUT_WEBHOOK_SECRET`
 
-**Note:** Razorpay allows one secret per webhook. If you create two webhooks with different secrets, the app uses a single `RAZORPAY_WEBHOOK_SECRET`. Use the same secret for both webhooks when creating them.
+8. Add webhook for commission payouts (if using commission payouts module):
+   - **Webhook URL:** `https://YOUR-NGROK-URL.ngrok-free.app/api/v1/commission/payouts/webhook`
+   - **Active Events:** `payout.processed`, `payout.failed`, `payout.rejected`
+   - **Secret:** Can reuse same secret or set `RAZORPAY_COMMISSION_WEBHOOK_SECRET`
+
+**Note:** App now supports endpoint-specific secrets with fallback. If specific env vars are missing, it uses `RAZORPAY_WEBHOOK_SECRET`.
 
 ### 2.4 Update .env
 

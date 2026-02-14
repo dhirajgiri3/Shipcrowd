@@ -6,7 +6,7 @@ import verifyRazorpayWebhook from '../../../middleware/webhooks/razorpay-webhook
 const router = express.Router();
 
 // Apply verification middleware to all Razorpay webhooks
-router.use(verifyRazorpayWebhook);
+router.use(verifyRazorpayWebhook('auto'));
 
 // Razorpay payout webhook
 router.post('/payout', razorpayPayoutWebhook.handlePayoutWebhook);

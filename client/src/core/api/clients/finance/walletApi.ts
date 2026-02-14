@@ -12,7 +12,8 @@ import {
   WalletStats,
   TransactionFilters,
   RechargeWalletPayload,
-  RechargeInitResponse
+  RechargeInitResponse,
+  RechargeWalletResponse
 } from '@/src/types/api/finance';
 
 export interface AutoRechargeSettings {
@@ -73,7 +74,7 @@ export class WalletApiService {
    * Initialize wallet recharge order
    * POST /api/v1/finance/wallet/recharge/init
    */
-  async initRecharge(data: { amount: number }): Promise<RechargeInitResponse> {
+  async initRecharge(data: { amount: number; promoCode?: string }): Promise<RechargeInitResponse> {
     const response = await apiClient.post('/finance/wallet/recharge/init', data);
     return response.data.data;
   }
@@ -82,7 +83,7 @@ export class WalletApiService {
    * Recharge wallet
    * POST /api/v1/finance/wallet/recharge
    */
-  async rechargeWallet(data: RechargeWalletPayload): Promise<{ transactionId: string; newBalance: number }> {
+  async rechargeWallet(data: RechargeWalletPayload): Promise<RechargeWalletResponse> {
     const response = await apiClient.post('/finance/wallet/recharge', data);
     return response.data.data;
   }

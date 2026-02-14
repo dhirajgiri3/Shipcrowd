@@ -5,6 +5,7 @@ import { z } from 'zod';
  */
 export const initRechargeSchema = z.object({
     amount: z.number().positive('Amount must be positive').max(1000000, 'Amount cannot exceed ₹10,00,000'),
+    promoCode: z.string().trim().min(3, 'Promo code is too short').max(32, 'Promo code is too long').optional(),
 });
 
 export const rechargeWalletSchema = z.object({

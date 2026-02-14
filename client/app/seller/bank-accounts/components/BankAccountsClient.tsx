@@ -38,6 +38,24 @@ interface BankAccountForm {
 
 const formatIFSC = (value: string) => value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 11);
 
+/** Fallback bank name from IFSC prefix when API fails or returns empty */
+const getBankNameFromIfscPrefix = (ifsc: string): string => {
+    if (!ifsc || ifsc.length < 4) return '';
+    const prefix = ifsc.substring(0, 4).toUpperCase();
+    const map: Record<string, string> = {
+        ICIC: 'ICICI Bank',
+        HDFC: 'HDFC Bank',
+        SBIN: 'State Bank of India',
+        UTIB: 'Axis Bank',
+        YESB: 'Yes Bank',
+        KKBK: 'Kotak Mahindra Bank',
+        PUNB: 'Punjab National Bank',
+        BARB: 'Bank of Baroda',
+        CNRB: 'Canara Bank',
+    };
+    return map[prefix] || '';
+};
+
 export function BankAccountsClient() {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -96,10 +114,17 @@ export function BankAccountsClient() {
         setIfscLookupLoading(true);
         try {
             const response = await kycApi.verifyIFSC(ifsc);
-            const bankName = response?.data?.bankName || response?.data?.bank || '';
+            // Handle envelope: { data: bankDetails } or { data: { data: bankDetails } }
+            const bankDetails = response?.data?.data ?? response?.data;
+            const bankName =
+                (typeof bankDetails === 'object' && bankDetails !== null
+                    ? bankDetails.bankName || bankDetails.bank_name || bankDetails.bank
+                    : '') || getBankNameFromIfscPrefix(ifsc);
             if (bankName) setValue('bankName', bankName);
         } catch {
-            // Ignore - user can enter manually
+            // Fallback: use IFSC prefix when API fails (e.g. 403, network error)
+            const fallback = getBankNameFromIfscPrefix(ifsc);
+            if (fallback) setValue('bankName', fallback);
         } finally {
             setIfscLookupLoading(false);
         }
@@ -144,11 +169,27 @@ export function BankAccountsClient() {
                             </Button>
                         </DialogTrigger>
                     <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Add Bank Account</DialogTitle>
-                            <DialogDescription>
-                                Enter your bank details and verify to receive COD remittances and settlements.
-                            </DialogDescription>
+                        <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-10">
+                            <div className="space-y-1.5 min-w-0">
+                                <DialogTitle>Add Bank Account</DialogTitle>
+                                <DialogDescription>
+                                    Enter your bank details and verify to receive COD remittances and settlements.
+                                </DialogDescription>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={isAdding || verificationStatus === 'verifying'}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSubmit(onSubmit)(e);
+                                }}
+                                className="shrink-0"
+                            >
+                                {isAdding && <Loader2 className="h-4 w-4 mr-1.5 animate-spin shrink-0" />}
+                                Save Without Verification
+                            </Button>
                         </DialogHeader>
 
                         <form onSubmit={handleSubmit((formData) => handleVerifyAndAdd(formData))} className="space-y-4 mt-4">
@@ -230,25 +271,20 @@ export function BankAccountsClient() {
                                 </Alert>
                             )}
 
-                            <DialogFooter className="gap-2 sm:gap-0 mt-6">
-                                <Button type="button" variant="ghost" onClick={() => handleDialogOpenChange(false)}>Cancel</Button>
+                            <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pt-6 border-t border-[var(--border-subtle)]">
                                 <Button
                                     type="button"
-                                    variant="outline"
-                                    disabled={isAdding || verificationStatus === 'verifying'}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        handleSubmit(onSubmit)(e);
-                                    }}
+                                    variant="ghost"
+                                    onClick={() => handleDialogOpenChange(false)}
                                 >
-                                    {isAdding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                    Save Without Verification
+                                    Cancel
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={isAdding || verificationStatus === 'verifying'}
+                                    className="w-full sm:w-auto"
                                 >
-                                    {(isAdding || verificationStatus === 'verifying') && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                    {(isAdding || verificationStatus === 'verifying') && <Loader2 className="h-4 w-4 mr-2 animate-spin shrink-0" />}
                                     {verificationStatus === 'verifying' ? 'Verifying...' : 'Verify & Add Account'}
                                 </Button>
                             </DialogFooter>

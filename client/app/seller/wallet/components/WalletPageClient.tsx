@@ -84,9 +84,13 @@ export function WalletPageClient() {
             }
 
             const init = await initRecharge.mutateAsync({ amount });
+            if (!(init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+                addToast('Razorpay key is not configured. Please contact support.', 'error');
+                return;
+            }
 
             const options: RazorpayOptions = {
-                key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
+                key: init.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
                 amount: Math.round(init.amount * 100),
                 currency: init.currency || 'INR',
                 name: 'Shipcrowd Logistics',

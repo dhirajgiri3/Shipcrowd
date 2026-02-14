@@ -61,7 +61,7 @@ app.use(express.json({
     limit: '10mb',
     verify: (req: any, _res, buf, _encoding) => {
         // Store raw body for webhook signature verification
-        if (req.url.includes('/webhooks/')) {
+        if (req.url.includes('/webhooks/') || req.url.includes('/commission/payouts/webhook')) {
             req.rawBody = buf;
         }
 

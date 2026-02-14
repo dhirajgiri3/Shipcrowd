@@ -6,11 +6,12 @@ import { Router } from 'express';
 import { PayoutController } from '../../../controllers/commission/index';
 import { authenticate } from '../../../middleware/index';
 import { requireAccess } from '../../../middleware/auth/unified-access';
+import verifyRazorpayWebhook from '../../../middleware/webhooks/razorpay-webhook-auth.middleware';
 
 const router = Router();
 
 // Public webhook (no auth)
-router.post('/webhook', PayoutController.handleWebhook);
+router.post('/webhook', verifyRazorpayWebhook('commission'), PayoutController.handleWebhook);
 
 // All other routes require authentication
 router.use(authenticate);

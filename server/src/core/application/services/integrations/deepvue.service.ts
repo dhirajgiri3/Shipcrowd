@@ -856,6 +856,32 @@ export const verifyIfsc = async (ifsc: string): Promise<any> => {
 };
 
 /**
+ * Fallback: Get bank name from IFSC prefix when API returns empty
+ * Covers common Indian banks (ICICI, HDFC, SBI, etc.)
+ */
+const getBankNameFromIfscPrefix = (ifsc: string): string => {
+  if (!ifsc || ifsc.length < 4) return '';
+  const prefix = ifsc.substring(0, 4).toUpperCase();
+  const map: Record<string, string> = {
+    ICIC: 'ICICI Bank',
+    HDFC: 'HDFC Bank',
+    SBIN: 'State Bank of India',
+    UTIB: 'Axis Bank',
+    YESB: 'Yes Bank',
+    KKBK: 'Kotak Mahindra Bank',
+    INDB: 'IndusInd Bank',
+    PUNB: 'Punjab National Bank',
+    BARB: 'Bank of Baroda',
+    CNRB: 'Canara Bank',
+    UBIN: 'Union Bank of India',
+    FDRL: 'Federal Bank',
+    IDIB: 'Indian Bank',
+    CBIN: 'Central Bank of India',
+  };
+  return map[prefix] || '';
+};
+
+/**
  * Process IFSC verification response to extract and structure information
  * @param responseData Raw response data from DeepVue API
  * @returns Processed response with structured information
@@ -865,12 +891,18 @@ export const processIfscResponse = (responseData: any): any => {
     // Check if the response has the expected format for success
     if (responseData.code === 200 && responseData.data) {
       const data = responseData.data;
+      const rawIfsc = (data.ifsc || responseData.ifsc || '').toString().toUpperCase();
+
+      // Extract bank name - support multiple API response formats (bank_name, bankName, bank, BANK)
+      const bankName =
+        (data.bank_name || data.bankName || data.bank || data.BANK || '').toString().trim()
+        || getBankNameFromIfscPrefix(rawIfsc);
 
       // Extract IFSC information
       const ifscInfo = {
-        ifsc: data.ifsc || '',
-        bankName: data.bank_name || data.bankName || '',
-        branch: data.branch || '',
+        ifsc: data.ifsc || rawIfsc || '',
+        bankName,
+        branch: data.branch || data.branch_name || '',
         address: data.address || '',
         city: data.city || '',
         state: data.state || '',

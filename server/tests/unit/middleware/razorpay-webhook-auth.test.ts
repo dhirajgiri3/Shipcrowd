@@ -38,6 +38,8 @@ describe('Razorpay Webhook Auth Middleware', () => {
         (mockRequest as any).rawBody = Buffer.from(payload);
 
         await verifyRazorpayWebhook(
+            'auto'
+        )(
             mockRequest as Request,
             mockResponse as Response,
             nextFunction
@@ -57,6 +59,8 @@ describe('Razorpay Webhook Auth Middleware', () => {
         // No rawBody - this is now required for security
 
         await verifyRazorpayWebhook(
+            'auto'
+        )(
             mockRequest as Request,
             mockResponse as Response,
             nextFunction
@@ -76,6 +80,8 @@ describe('Razorpay Webhook Auth Middleware', () => {
         };
 
         await verifyRazorpayWebhook(
+            'auto'
+        )(
             mockRequest as Request,
             mockResponse as Response,
             nextFunction
@@ -98,6 +104,8 @@ describe('Razorpay Webhook Auth Middleware', () => {
         (mockRequest as any).rawBody = Buffer.from(JSON.stringify({ event: 'payment.captured' }));
 
         await verifyRazorpayWebhook(
+            'auto'
+        )(
             mockRequest as Request,
             mockResponse as Response,
             nextFunction
@@ -120,6 +128,8 @@ describe('Razorpay Webhook Auth Middleware', () => {
         };
 
         await verifyRazorpayWebhook(
+            'auto'
+        )(
             mockRequest as Request,
             mockResponse as Response,
             nextFunction
@@ -129,5 +139,34 @@ describe('Razorpay Webhook Auth Middleware', () => {
         expect(mockResponse.json).toHaveBeenCalledWith(
             expect.objectContaining({ error: 'Webhook secret not configured' })
         );
+    });
+
+    it('should use endpoint-specific secret when target is commission', async () => {
+        delete process.env.RAZORPAY_WEBHOOK_SECRET;
+        process.env.RAZORPAY_COMMISSION_WEBHOOK_SECRET = 'commission_secret';
+
+        const payload = JSON.stringify({ event: 'payout.processed' });
+        const signature = crypto
+            .createHmac('sha256', 'commission_secret')
+            .update(payload)
+            .digest('hex');
+
+        mockRequest = {
+            headers: {
+                'x-razorpay-signature': signature,
+            },
+            body: { event: 'payout.processed' },
+            originalUrl: '/api/v1/commission/payouts/webhook',
+        };
+        (mockRequest as any).rawBody = Buffer.from(payload);
+
+        await verifyRazorpayWebhook('commission')(
+            mockRequest as Request,
+            mockResponse as Response,
+            nextFunction
+        );
+
+        expect(nextFunction).toHaveBeenCalled();
+        delete process.env.RAZORPAY_COMMISSION_WEBHOOK_SECRET;
     });
 });
