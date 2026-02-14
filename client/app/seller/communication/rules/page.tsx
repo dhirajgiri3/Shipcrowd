@@ -1,13 +1,19 @@
 /**
  * Notification Rules Page
- * 
+ *
  * Configure automated notification rules with event triggers,
  * conditions, and actions (send template, webhook).
+ *
+ * Refactored per Frontend_Refactor.md:
+ * - PageHeader, Button, SearchInput, EmptyState, Card, Badge
+ * - Dialog for modals, Input/Select for forms
+ * - useDebouncedValue for search
+ * - Design system tokens throughout
  */
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     useRules,
     useCreateRule,
@@ -18,20 +24,37 @@ import {
 import {
     Plus,
     Zap,
-    Search,
     Edit,
     Trash2,
     Power,
     PowerOff,
     X,
     Check,
-    ChevronDown,
     RefreshCw,
     BarChart3,
 } from 'lucide-react';
-import { Loader, CardSkeleton } from '@/src/components/ui';
-import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
+import {
+    Button,
+    Card,
+    Badge,
+    Input,
+    SearchInput,
+    EmptyState,
+    ConfirmDialog,
+    Loader,
+    CardSkeleton,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    Select,
+    Checkbox,
+} from '@/src/components/ui';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { handleApiError } from '@/src/lib/error';
+import { cn } from '@/src/lib/utils';
 import type {
     NotificationRule,
     RuleTrigger,
@@ -70,126 +93,123 @@ const actionTypeOptions: { value: RuleActionType; label: string }[] = [
     { value: 'CREATE_TICKET', label: 'Create Ticket' },
 ];
 
-// ==================== Component ====================
+// ==================== Main Page ====================
 
 export default function NotificationRulesPage() {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearch = useDebouncedValue(searchQuery, 300);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingRule, setEditingRule] = useState<NotificationRule | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const { data: rules, isLoading, refetch } = useRules({
-        search: searchQuery || undefined,
+        search: debouncedSearch || undefined,
     });
 
-    const handleCreateRule = () => {
+    const handleCreateRule = useCallback(() => {
         setEditingRule(null);
         setIsCreateModalOpen(true);
-    };
+    }, []);
 
-    const handleEditRule = (rule: NotificationRule) => {
+    const handleEditRule = useCallback((rule: NotificationRule) => {
         setEditingRule(rule);
         setIsCreateModalOpen(true);
-    };
+    }, []);
 
-    const handleCloseModal = () => {
+    const handleCloseModal = useCallback(() => {
         setIsCreateModalOpen(false);
         setEditingRule(null);
-    };
+    }, []);
+
+    const handleRefresh = useCallback(async () => {
+        setIsRefreshing(true);
+        await refetch();
+        setIsRefreshing(false);
+    }, [refetch]);
+
+    const rulesList = rules ?? [];
 
     return (
-        <div className="min-h-screen">
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                            Notification Rules
-                        </h1>
-                        <p className="text-[var(--text-secondary)]">
-                            Automate customer notifications based on shipment events
-                        </p>
-                    </div>
-                    <button
-                        onClick={handleCreateRule}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white font-medium rounded-lg transition-colors"
-                    >
-                        <Plus className="w-5 h-5" />
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            <PageHeader
+                title="Notification Rules"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller/dashboard' },
+                    { label: 'Rules', active: true },
+                ]}
+                description="Automate customer notifications based on shipment events"
+                showBack={false}
+                actions={
+                    <Button onClick={handleCreateRule} size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
                         Create Rule
-                    </button>
-                </div>
+                    </Button>
+                }
+            />
 
-                {/* Search */}
-                <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-4 mb-6">
-                    <div className="flex gap-4">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search rules..."
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                            />
-                        </div>
-                        <button
-                            onClick={() => refetch()}
-                            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors"
-                        >
-                            {isLoading ? <Loader variant="spinner" size="sm" /> : <RefreshCw className="w-5 h-5" />}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Rules List */}
-                {isLoading ? (
-                    <div className="space-y-4">
-                        {Array.from({ length: 3 }).map((_, idx) => (
-                            <CardSkeleton key={idx} />
-                        ))}
-                    </div>
-                ) : (rules ?? []).length === 0 ? (
-                    <div className="text-center py-12 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)]">
-                        <Zap className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" />
-                        <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
-                            No Rules Configured
-                        </h3>
-                        <p className="text-[var(--text-secondary)] mb-4">
-                            Create your first automation rule to start sending automated notifications
-                        </p>
-                        <button
-                            onClick={handleCreateRule}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white rounded-lg transition-colors"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Create Rule
-                        </button>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {(rules ?? []).map(rule => (
-                            <RuleCard
-                                key={rule._id}
-                                rule={rule}
-                                onEdit={handleEditRule}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* Create/Edit Modal */}
-                {isCreateModalOpen && (
-                    <RuleBuilderModal
-                        isOpen={isCreateModalOpen}
-                        rule={editingRule}
-                        onClose={handleCloseModal}
-                    />
-                )}
+            {/* Search & Refresh */}
+            <div className="flex items-center gap-3">
+                <SearchInput
+                    placeholder="Search rules..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    widthClass="flex-1 max-w-md"
+                />
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleRefresh}
+                    disabled={isLoading}
+                    title="Refresh"
+                >
+                    {isRefreshing ? (
+                        <Loader variant="spinner" size="sm" />
+                    ) : (
+                        <RefreshCw className="w-5 h-5 text-[var(--text-secondary)]" />
+                    )}
+                </Button>
             </div>
+
+            {/* Rules List */}
+            {isLoading ? (
+                <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                        <CardSkeleton key={idx} />
+                    ))}
+                </div>
+            ) : rulesList.length === 0 ? (
+                <Card padding="lg">
+                    <EmptyState
+                        variant="noItems"
+                        title="No Rules Configured"
+                        description="Create your first automation rule to start sending automated notifications"
+                        action={{
+                            label: 'Create Rule',
+                            onClick: handleCreateRule,
+                            variant: 'primary',
+                            icon: <Plus className="w-4 h-4" />,
+                        }}
+                    />
+                </Card>
+            ) : (
+                <div className="space-y-4">
+                    {rulesList.map((rule) => (
+                        <RuleCard key={rule._id} rule={rule} onEdit={handleEditRule} />
+                    ))}
+                </div>
+            )}
+
+            {/* Create/Edit Modal */}
+            <RuleBuilderModal
+                isOpen={isCreateModalOpen}
+                rule={editingRule}
+                onClose={handleCloseModal}
+            />
         </div>
     );
 }
 
-// ==================== Rule Card Component ====================
+// ==================== Rule Card ====================
 
 interface RuleCardProps {
     rule: NotificationRule;
@@ -201,34 +221,32 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
     const { mutate: deleteRule, isPending: isDeleting } = useDeleteRule();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    const handleToggle = () => {
-        toggleRule({
-            ruleId: rule.ruleId,
-            isActive: !rule.isActive,
-        });
-    };
+    const handleToggle = useCallback(() => {
+        toggleRule({ ruleId: rule.ruleId, isActive: !rule.isActive });
+    }, [rule.ruleId, rule.isActive, toggleRule]);
 
-    const handleDelete = () => {
-        setShowDeleteDialog(true);
-    };
-
-    const trigger = triggerOptions.find(t => t.value === rule.trigger);
+    const trigger = triggerOptions.find((t) => t.value === rule.trigger);
 
     return (
-        <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-6 hover:shadow-lg transition-shadow">
+        <Card hover padding="md">
             <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                        <Zap className={`w-5 h-5 ${rule.isActive ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`} />
+                        <Zap
+                            className={cn(
+                                'w-5 h-5',
+                                rule.isActive ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
+                            )}
+                        />
                         <h3 className="text-lg font-semibold text-[var(--text-primary)]">
                             {rule.name}
                         </h3>
-                        <span className={`text-xs px-2 py-1 rounded-full ${rule.isActive
-                            ? 'bg-[var(--success)]/10 text-[var(--success)]'
-                            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
-                            }`}>
+                        <Badge
+                            variant={rule.isActive ? 'success' : 'neutral'}
+                            size="sm"
+                        >
                             {rule.isActive ? 'Active' : 'Inactive'}
-                        </span>
+                        </Badge>
                     </div>
                     {rule.description && (
                         <p className="text-sm text-[var(--text-secondary)] mb-3">
@@ -238,41 +256,48 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={handleToggle}
                         disabled={isToggling}
-                        className={`p-2 rounded-lg transition-colors ${rule.isActive
-                            ? 'text-[var(--success)] hover:bg-[var(--success)]/10'
-                            : 'text-[var(--text-muted)] hover:bg-[var(--bg-secondary)]'
-                            }`}
                         title={rule.isActive ? 'Disable' : 'Enable'}
                     >
                         {isToggling ? (
                             <Loader variant="spinner" size="sm" />
                         ) : rule.isActive ? (
-                            <Power className="w-5 h-5" />
+                            <Power className="w-5 h-5 text-[var(--success)]" />
                         ) : (
-                            <PowerOff className="w-5 h-5" />
+                            <PowerOff className="w-5 h-5 text-[var(--text-muted)]" />
                         )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => onEdit(rule)}
-                        className="p-2 text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors"
+                        title="Edit"
                     >
                         <Edit className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={handleDelete}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowDeleteDialog(true)}
                         disabled={isDeleting}
-                        className="p-2 text-[var(--error)] hover:bg-[var(--error)]/5 rounded-lg transition-colors disabled:opacity-50"
+                        className="text-[var(--error)] hover:bg-[var(--error-bg)]"
+                        title="Delete"
                     >
-                        {isDeleting ? <Loader variant="spinner" size="sm" /> : <Trash2 className="w-5 h-5" />}
-                    </button>
+                        {isDeleting ? (
+                            <Loader variant="spinner" size="sm" />
+                        ) : (
+                            <Trash2 className="w-5 h-5" />
+                        )}
+                    </Button>
                 </div>
             </div>
 
             {/* Trigger */}
-            <div className="bg-[var(--bg-secondary)] rounded-lg p-4 mb-4">
+            <div className="bg-[var(--bg-secondary)] rounded-[var(--radius-lg)] p-4 mb-4">
                 <p className="text-xs font-medium text-[var(--text-muted)] uppercase mb-2">
                     Trigger
                 </p>
@@ -294,8 +319,12 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                         {rule.conditions.map((condition, idx) => (
                             <div key={idx} className="flex items-center gap-2 text-sm">
                                 <span className="text-[var(--text-secondary)]">{condition.field}</span>
-                                <span className="text-[var(--text-muted)]">{condition.operator.toLowerCase()}</span>
-                                <span className="font-medium text-[var(--text-primary)]">"{condition.value}"</span>
+                                <span className="text-[var(--text-muted)]">
+                                    {condition.operator.toLowerCase()}
+                                </span>
+                                <span className="font-medium text-[var(--text-primary)]">
+                                    &quot;{condition.value}&quot;
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -327,16 +356,13 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                             {rule.stats.totalExecutions} executions
                         </span>
                     </div>
-                    <div className="text-[var(--success)]">
-                        {rule.stats.successCount} success
-                    </div>
+                    <div className="text-[var(--success)]">{rule.stats.successCount} success</div>
                     {rule.stats.failureCount > 0 && (
-                        <div className="text-[var(--error)]">
-                            {rule.stats.failureCount} failed
-                        </div>
+                        <div className="text-[var(--error)]">{rule.stats.failureCount} failed</div>
                     )}
                 </div>
             )}
+
             <ConfirmDialog
                 open={showDeleteDialog}
                 title="Delete rule"
@@ -349,11 +375,11 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                     setShowDeleteDialog(false);
                 }}
             />
-        </div>
+        </Card>
     );
 }
 
-// ==================== Rule Builder Modal Component ====================
+// ==================== Rule Builder Modal ====================
 
 interface RuleBuilderModalProps {
     isOpen: boolean;
@@ -378,47 +404,73 @@ function RuleBuilderModal({ isOpen, rule, onClose }: RuleBuilderModalProps) {
 
     const isSubmitting = isCreating || isUpdating;
 
+    // Sync form when editing rule changes
+    React.useEffect(() => {
+        if (rule) {
+            setFormData({
+                name: rule.name,
+                description: rule.description ?? '',
+                trigger: rule.trigger,
+                conditions: rule.conditions,
+                conditionLogic: rule.conditionLogic,
+                actions: rule.actions,
+                isActive: rule.isActive,
+                priority: rule.priority,
+            });
+        } else {
+            setFormData({
+                name: '',
+                description: '',
+                trigger: 'ORDER_CREATED',
+                conditions: [],
+                conditionLogic: 'AND',
+                actions: [],
+                isActive: true,
+                priority: 5,
+            });
+        }
+    }, [rule, isOpen]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         if (formData.actions.length === 0) {
-            handleApiError(new Error('Please add at least one action'), 'Please add at least one action');
+            handleApiError(
+                new Error('Please add at least one action'),
+                'Please add at least one action'
+            );
             return;
         }
 
         if (rule) {
-            updateRule({
-                ruleId: rule.ruleId,
-                ...formData,
-            }, {
-                onSuccess: onClose,
-            });
+            updateRule(
+                { ruleId: rule.ruleId, ...formData },
+                { onSuccess: onClose }
+            );
         } else {
-            createRule(formData, {
-                onSuccess: onClose,
-            });
+            createRule(formData, { onSuccess: onClose });
         }
     };
 
     const addCondition = () => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
             conditions: [
                 ...prev.conditions,
-                { field: 'status', operator: 'EQUALS', value: '' },
+                { field: 'status', operator: 'EQUALS' as const, value: '' },
             ],
         }));
     };
 
     const removeCondition = (index: number) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
             conditions: prev.conditions.filter((_, idx) => idx !== index),
         }));
     };
 
     const updateCondition = (index: number, updates: Partial<RuleCondition>) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
             conditions: prev.conditions.map((cond, idx) =>
                 idx === index ? { ...cond, ...updates } : cond
@@ -427,24 +479,21 @@ function RuleBuilderModal({ isOpen, rule, onClose }: RuleBuilderModalProps) {
     };
 
     const addAction = () => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            actions: [
-                ...prev.actions,
-                { type: 'SEND_TEMPLATE', templateId: '' },
-            ],
+            actions: [...prev.actions, { type: 'SEND_TEMPLATE' as const, templateId: '' }],
         }));
     };
 
     const removeAction = (index: number) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
             actions: prev.actions.filter((_, idx) => idx !== index),
         }));
     };
 
     const updateAction = (index: number, updates: Partial<RuleAction>) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
             actions: prev.actions.map((action, idx) =>
                 idx === index ? { ...action, ...updates } : action
@@ -452,266 +501,276 @@ function RuleBuilderModal({ isOpen, rule, onClose }: RuleBuilderModalProps) {
         }));
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-[var(--bg-primary)] rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-[var(--border-default)]">
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)]">
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent
+                className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0"
+                onPointerDownOutside={(e) => e.preventDefault()}
+            >
+                <DialogHeader className="p-6 border-b border-[var(--border-default)]">
+                    <DialogTitle className="text-xl">
                         {rule ? 'Edit Rule' : 'Create Notification Rule'}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
+                    </DialogTitle>
+                </DialogHeader>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {/* Name & Description */}
-                    <div>
-                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Rule Name *
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            placeholder="e.g., Notify on delivery"
-                            required
-                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Description
-                        </label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                            placeholder="Optional description"
-                            rows={2}
-                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                        />
-                    </div>
-
-                    {/* Trigger */}
-                    <div>
-                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Event Trigger *
-                        </label>
-                        <select
-                            value={formData.trigger}
-                            onChange={(e) => setFormData(prev => ({ ...prev, trigger: e.target.value as RuleTrigger }))}
-                            className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)]"
-                        >
-                            {triggerOptions.map(trigger => (
-                                <option key={trigger.value} value={trigger.value}>
-                                    {trigger.label} - {trigger.description}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Conditions */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <label className="text-sm font-medium text-[var(--text-secondary)]">
-                                Conditions (Optional)
-                            </label>
-                            <button
-                                type="button"
-                                onClick={addCondition}
-                                className="text-sm text-[var(--primary-blue)] hover:text-[var(--primary-blue)]/80 font-medium"
-                            >
-                                + Add Condition
-                            </button>
-                        </div>
-
-                        {formData.conditions.length > 0 && (
-                            <>
-                                <div className="mb-2">
-                                    <select
-                                        value={formData.conditionLogic}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, conditionLogic: e.target.value as 'AND' | 'OR' }))}
-                                        className="px-3 py-1 text-sm rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)]"
-                                    >
-                                        <option value="AND">Match ALL conditions</option>
-                                        <option value="OR">Match ANY condition</option>
-                                    </select>
-                                </div>
-
-                                <div className="space-y-3">
-                                    {formData.conditions.map((condition, idx) => (
-                                        <div key={idx} className="flex gap-2 p-3 bg-[var(--bg-secondary)] rounded-lg">
-                                            <input
-                                                type="text"
-                                                value={condition.field}
-                                                onChange={(e) => updateCondition(idx, { field: e.target.value })}
-                                                placeholder="Field name"
-                                                className="flex-1 px-3 py-2 text-sm rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]"
-                                            />
-                                            <select
-                                                value={condition.operator}
-                                                onChange={(e) => updateCondition(idx, { operator: e.target.value as RuleConditionOperator })}
-                                                className="px-3 py-2 text-sm rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]"
-                                            >
-                                                {operatorOptions.map(op => (
-                                                    <option key={op.value} value={op.value}>{op.label}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                value={condition.value}
-                                                onChange={(e) => updateCondition(idx, { value: e.target.value })}
-                                                placeholder="Value"
-                                                className="flex-1 px-3 py-2 text-sm rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeCondition(idx)}
-                                                className="p-2 text-[var(--error)] hover:bg-[var(--error)]/5 rounded"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Actions */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <label className="text-sm font-medium text-[var(--text-secondary)]">
-                                Actions *
-                            </label>
-                            <button
-                                type="button"
-                                onClick={addAction}
-                                className="text-sm text-[var(--primary-blue)] hover:text-[var(--primary-blue)]/80 font-medium"
-                            >
-                                + Add Action
-                            </button>
-                        </div>
-
-                        {formData.actions.length === 0 ? (
-                            <p className="text-sm text-[var(--text-muted)] italic">
-                                No actions configured. Click "+ Add Action" to get started.
-                            </p>
-                        ) : (
-                            <div className="space-y-3">
-                                {formData.actions.map((action, idx) => (
-                                    <div key={idx} className="flex gap-2 p-3 bg-[var(--bg-secondary)] rounded-lg">
-                                        <select
-                                            value={action.type}
-                                            onChange={(e) => updateAction(idx, { type: e.target.value as RuleActionType })}
-                                            className="px-3 py-2 text-sm rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]"
-                                        >
-                                            {actionTypeOptions.map(type => (
-                                                <option key={type.value} value={type.value}>{type.label}</option>
-                                            ))}
-                                        </select>
-
-                                        {action.type === 'SEND_TEMPLATE' && (
-                                            <input
-                                                type="text"
-                                                value={action.templateId || ''}
-                                                onChange={(e) => updateAction(idx, { templateId: e.target.value })}
-                                                placeholder="Template ID"
-                                                className="flex-1 px-3 py-2 text-sm rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]"
-                                            />
-                                        )}
-
-                                        {action.type === 'SEND_WEBHOOK' && (
-                                            <input
-                                                type="url"
-                                                value={action.webhookUrl || ''}
-                                                onChange={(e) => updateAction(idx, { webhookUrl: e.target.value })}
-                                                placeholder="Webhook URL"
-                                                className="flex-1 px-3 py-2 text-sm rounded border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]"
-                                            />
-                                        )}
-
-                                        <button
-                                            type="button"
-                                            onClick={() => removeAction(idx)}
-                                            className="p-2 text-[var(--error)] hover:bg-[var(--error)]/5 rounded"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Priority & Active */}
-                    <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+                    <div className="p-6 space-y-6">
+                        {/* Name & Description */}
                         <div>
                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                                Priority (1-10)
+                                Rule Name *
                             </label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="10"
-                                value={formData.priority}
-                                onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) }))}
-                                className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] text-[var(--text-primary)]"
+                            <Input
+                                value={formData.name}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                                }
+                                placeholder="e.g., Notify on delivery"
+                                required
                             />
                         </div>
 
-                        <div className="flex items-end">
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.isActive}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                                    className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
-                                />
-                                <span className="text-sm text-[var(--text-secondary)]">
-                                    Activate rule immediately
-                                </span>
+                        <div>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                Description
                             </label>
+                            <Input
+                                value={formData.description}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                                }
+                                placeholder="Optional description"
+                            />
+                        </div>
+
+                        {/* Trigger */}
+                        <div>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                Event Trigger *
+                            </label>
+                            <Select
+                                value={formData.trigger}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        trigger: e.target.value as RuleTrigger,
+                                    }))
+                                }
+                                options={triggerOptions.map((t) => ({
+                                    value: t.value,
+                                    label: `${t.label} - ${t.description}`,
+                                }))}
+                            />
+                        </div>
+
+                        {/* Conditions */}
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">
+                                    Conditions (Optional)
+                                </label>
+                                <Button type="button" variant="link" size="sm" onClick={addCondition}>
+                                    + Add Condition
+                                </Button>
+                            </div>
+
+                            {formData.conditions.length > 0 && (
+                                <>
+                                    <div className="mb-2">
+                                        <Select
+                                            value={formData.conditionLogic}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    conditionLogic: e.target.value as 'AND' | 'OR',
+                                                }))
+                                            }
+                                            options={[
+                                                { value: 'AND', label: 'Match ALL conditions' },
+                                                { value: 'OR', label: 'Match ANY condition' },
+                                            ]}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {formData.conditions.map((condition, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="flex gap-2 p-3 bg-[var(--bg-secondary)] rounded-[var(--radius-lg)]"
+                                            >
+                                                <Input
+                                                    value={condition.field}
+                                                    onChange={(e) =>
+                                                        updateCondition(idx, { field: e.target.value })
+                                                    }
+                                                    placeholder="Field name"
+                                                    size="sm"
+                                                    className="flex-1"
+                                                />
+                                                <Select
+                                                    value={condition.operator}
+                                                    onChange={(e) =>
+                                                        updateCondition(idx, {
+                                                            operator: e.target.value as RuleConditionOperator,
+                                                        })
+                                                    }
+                                                    options={operatorOptions}
+                                                    className="w-32"
+                                                />
+                                                <Input
+                                                    value={String(condition.value)}
+                                                    onChange={(e) =>
+                                                        updateCondition(idx, { value: e.target.value })
+                                                    }
+                                                    placeholder="Value"
+                                                    size="sm"
+                                                    className="flex-1"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => removeCondition(idx)}
+                                                    className="text-[var(--error)] hover:bg-[var(--error-bg)]"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">
+                                    Actions *
+                                </label>
+                                <Button type="button" variant="link" size="sm" onClick={addAction}>
+                                    + Add Action
+                                </Button>
+                            </div>
+
+                            {formData.actions.length === 0 ? (
+                                <p className="text-sm text-[var(--text-muted)] italic">
+                                    No actions configured. Click &quot;+ Add Action&quot; to get started.
+                                </p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {formData.actions.map((action, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="flex gap-2 p-3 bg-[var(--bg-secondary)] rounded-[var(--radius-lg)]"
+                                        >
+                                            <Select
+                                                value={action.type}
+                                                onChange={(e) =>
+                                                    updateAction(idx, {
+                                                        type: e.target.value as RuleActionType,
+                                                    })
+                                                }
+                                                options={actionTypeOptions}
+                                                className="w-40"
+                                            />
+
+                                            {action.type === 'SEND_TEMPLATE' && (
+                                                <Input
+                                                    value={action.templateId || ''}
+                                                    onChange={(e) =>
+                                                        updateAction(idx, {
+                                                            templateId: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="Template ID"
+                                                    size="sm"
+                                                    className="flex-1"
+                                                />
+                                            )}
+
+                                            {action.type === 'SEND_WEBHOOK' && (
+                                                <Input
+                                                    type="url"
+                                                    value={action.webhookUrl || ''}
+                                                    onChange={(e) =>
+                                                        updateAction(idx, {
+                                                            webhookUrl: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="Webhook URL"
+                                                    size="sm"
+                                                    className="flex-1"
+                                                />
+                                            )}
+
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => removeAction(idx)}
+                                                className="text-[var(--error)] hover:bg-[var(--error-bg)]"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Priority & Active */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                    Priority (1-10)
+                                </label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={formData.priority}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            priority: parseInt(e.target.value, 10) || 5,
+                                        }))
+                                    }
+                                />
+                            </div>
+
+                            <div className="flex items-end">
+                                <Checkbox
+                                    id="rule-active"
+                                    checked={formData.isActive}
+                                    onCheckedChange={(checked) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            isActive: checked === true,
+                                        }))
+                                    }
+                                />
+                                <label
+                                    htmlFor="rule-active"
+                                    className="ml-3 text-sm text-[var(--text-secondary)] cursor-pointer"
+                                >
+                                    Activate rule immediately
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </form>
 
-                {/* Footer */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--border-default)]">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <Loader variant="dots" size="sm" />
-                                {rule ? 'Updating...' : 'Creating...'}
-                            </>
-                        ) : (
-                            <>
-                                <Check className="w-4 h-4" />
-                                {rule ? 'Update Rule' : 'Create Rule'}
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-        </div>
+                    <DialogFooter className="p-6 border-t border-[var(--border-default)] gap-3">
+                        <Button type="button" variant="outline" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting} isLoading={isSubmitting}>
+                            {!isSubmitting && <Check className="w-4 h-4 mr-2" />}
+                            {rule ? 'Update Rule' : 'Create Rule'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }

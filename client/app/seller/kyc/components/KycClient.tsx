@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { showSuccessToast, showWarningToast, handleApiError } from '@/src/lib/error';
 import {
     User,
@@ -599,10 +601,10 @@ export function KycClient() {
         return (
             <div
                 className={cn(
-                    'flex items-center gap-2 p-3 rounded-lg mb-4',
+                    'flex items-center gap-2 p-3 rounded-[var(--radius-lg)] mb-4',
                     isUrgent
-                        ? 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800'
-                        : 'bg-yellow-50 text-yellow-800 border border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-800'
+                        ? 'bg-[var(--error-bg)] text-[var(--error)] border border-[var(--error)]/20'
+                        : 'bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning)]/20'
                 )}
             >
                 <AlertTriangle className="h-4 w-4 flex-shrink-0" />
@@ -615,7 +617,7 @@ export function KycClient() {
         );
     };
 
-    // Render verification badge - Updated design
+    // Render verification badge - uses Badge component for design system consistency
     const VerificationBadge = ({ status }: { status: VerificationStatus }) => {
         if (status.loading || status.state === 'pending_provider') {
             return (
@@ -627,34 +629,26 @@ export function KycClient() {
         }
         if (status.state === 'verified') {
             return (
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--success)] bg-[var(--success-bg)] px-2.5 py-1 rounded-full border border-[var(--success)]/20 shadow-sm">
+                <Badge variant="success" size="sm" className="gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Verified
-                </div>
+                </Badge>
             );
         }
         if (status.state === 'expired') {
             return (
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning-bg)] px-2.5 py-1 rounded-full border border-[var(--warning)]/20 shadow-sm">
+                <Badge variant="warning" size="sm" className="gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5" />
                     Expired
-                </div>
+                </Badge>
             );
         }
-        if (status.state === 'revoked') {
+        if (status.state === 'revoked' || status.state === 'soft_failed' || status.state === 'hard_failed') {
             return (
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--error)] bg-[var(--error-bg)] px-2.5 py-1 rounded-full border border-[var(--error)]/20 shadow-sm">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    Revoked
-                </div>
-            );
-        }
-        if (status.state === 'soft_failed' || status.state === 'hard_failed') {
-            return (
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--error)] bg-[var(--error-bg)] px-2.5 py-1 rounded-full border border-[var(--error)]/20 shadow-sm">
-                    <XCircle className="w-3.5 h-3.5" />
-                    Failed
-                </div>
+                <Badge variant="error" size="sm" className="gap-1.5">
+                    {status.state === 'revoked' ? <AlertTriangle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    {status.state === 'revoked' ? 'Revoked' : 'Failed'}
+                </Badge>
             );
         }
         return null;
@@ -663,8 +657,16 @@ export function KycClient() {
     // Loading state
     if (isLoading || authLoading) {
         return (
-            <div className="min-h-[600px] flex items-center justify-center">
-                <Loader variant="spinner" size="lg" />
+            <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+                <PageHeader
+                    title="Seller Onboarding"
+                    breadcrumbs={[{ label: 'Dashboard', href: '/seller/dashboard' }, { label: 'KYC', active: true }]}
+                    description="Complete your verification to unlock Shipcrowd"
+                    showBack={false}
+                />
+                <div className="max-w-5xl mx-auto flex items-center justify-center min-h-[400px]">
+                    <Loader variant="spinner" size="lg" />
+                </div>
             </div>
         );
     }
@@ -672,26 +674,40 @@ export function KycClient() {
     // Already verified
     if (existingKYC?.status === 'verified' || existingKYC?.state === 'verified') {
         return (
-            <div className="flex items-center justify-center min-h-[70vh]">
-                <Card className="max-w-md w-full bg-[var(--bg-primary)] border-[var(--border-subtle)] shadow-xl">
-                    <CardContent className="p-10 text-center flex flex-col items-center">
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                            className="w-20 h-20 bg-[var(--success-bg)] rounded-full flex items-center justify-center mb-6 shadow-[0_0_20px_var(--success)]"
-                        >
-                            <CheckCircle2 className="w-10 h-10 text-[var(--success)]" />
-                        </motion.div>
-                        <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-3">KYC Verified</h2>
-                        <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
-                            Your account is fully verified. You can now access all features and start shipping.
-                        </p>
-                        <Button onClick={() => router.push(getDefaultRedirectForUser(user) || '/seller')} className="w-full bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20">
-                            Go to Dashboard
-                        </Button>
-                    </CardContent>
-                </Card>
+            <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+                <PageHeader
+                    title="KYC Verification"
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: '/seller/dashboard' },
+                        { label: 'KYC', active: true },
+                    ]}
+                    description="Your identity verification status"
+                    showBack={false}
+                />
+                <div className="flex items-center justify-center min-h-[50vh]">
+                    <Card className="max-w-md w-full">
+                        <CardContent className="p-10 text-center flex flex-col items-center">
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                                className="w-20 h-20 bg-[var(--success-bg)] rounded-full flex items-center justify-center mb-6 border-2 border-[var(--success)]/20"
+                            >
+                                <CheckCircle2 className="w-10 h-10 text-[var(--success)]" />
+                            </motion.div>
+                            <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">KYC Verified</h2>
+                            <p className="text-[var(--text-secondary)] mb-8 leading-relaxed text-sm">
+                                Your account is fully verified. You can now access all features and start shipping.
+                            </p>
+                            <Button
+                                onClick={() => router.push(getDefaultRedirectForUser(user) || '/seller')}
+                                className="w-full"
+                            >
+                                Go to Dashboard
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         );
     }
@@ -709,51 +725,49 @@ export function KycClient() {
                         : overallStatus === 'rejected'
                             ? 'Rejected'
                             : 'Incomplete';
-    const statusTone =
-        overallStatus === 'action_required' || overallStatus === 'expired' || overallStatus === 'rejected'
-            ? "text-[var(--error)]"
-            : overallStatus === 'submitted' || overallStatus === 'under_review' || overallStatus === 'pending'
-                ? "text-[var(--warning)]"
-                : "text-[var(--text-primary)]";
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Seller Onboarding</h1>
-                        <p className="text-[var(--text-secondary)] mt-1 text-lg">
-                            Complete your verification to unlock Shipcrowd
-                        </p>
-                    </div>
-                    <div className="px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] backdrop-blur-md">
-                        <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Status: </span>
-                        <span className={cn(
-                            "text-xs font-bold uppercase tracking-wider ml-1",
-                            statusTone
-                        )}>
-                            {statusLabel}
-                        </span>
-                    </div>
-                </div>
+        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+            <PageHeader
+                title="Seller Onboarding"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller/dashboard' },
+                    { label: 'KYC', active: true },
+                ]}
+                description="Complete your verification to unlock Shipcrowd"
+                showBack={false}
+                actions={
+                    <Badge
+                        variant={
+                            overallStatus === 'action_required' || overallStatus === 'expired' || overallStatus === 'rejected'
+                                ? 'error'
+                                : overallStatus === 'submitted' || overallStatus === 'under_review' || overallStatus === 'pending'
+                                    ? 'warning'
+                                    : 'neutral'
+                        }
+                        size="md"
+                    >
+                        {statusLabel}
+                    </Badge>
+                }
+            />
+            <div className="max-w-5xl mx-auto space-y-6">
 
                 {/* Show progress banner if user has verified documents */}
                 {(panVerification.state === 'verified' || bankVerification.state === 'verified' || gstinVerification.state === 'verified') && (
-                    <Alert variant="info" className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 flex items-center justify-center">
+                    <Alert variant="info" className="flex items-center justify-center bg-[var(--info-bg)] border-[var(--info)]/20">
                         <AlertDescription className="flex items-center gap-2">
-                            <span className="text-sm text-blue-800 dark:text-blue-200">
+                            <span className="text-sm text-[var(--text-primary)]">
                                 <strong>Progress Saved!</strong> Your verified documents have been restored. Continue where you left off.
                             </span>
                         </AlertDescription>
                     </Alert>
                 )}
-            </div>
 
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Steps Sidebar / Progress */}
                 <div className="w-full lg:w-80 flex-shrink-0">
-                    <Card className="bg-[var(--bg-primary)] border-[var(--border-subtle)] sticky top-24 overflow-hidden">
+                    <Card className="sticky top-24 overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-1 bg-[var(--primary-blue-soft)]">
                             <motion.div
                                 className="h-full bg-[var(--primary-blue)]"
@@ -834,7 +848,7 @@ export function KycClient() {
                             animate="visible"
                             exit="exit"
                         >
-                            <Card className="bg-[var(--bg-primary)] border-[var(--border-subtle)] shadow-lg min-h-[400px] flex flex-col">
+                            <Card className="min-h-[400px] flex flex-col">
                                 <CardHeader className="border-b border-[var(--border-subtle)] pb-6">
                                     <div className="flex items-center gap-3 mb-2">
                                         <div className="p-2 rounded-lg bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]">
@@ -895,7 +909,7 @@ export function KycClient() {
                                                             isLoading={panVerification.loading}
                                                             loadingText="Verifying..."
                                                             disabled={formData.pan.length !== 10}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white h-9 px-4 text-sm"
+                                                            className="h-9 px-4 text-sm bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                                         >
                                                             Verify Now
                                                         </LoadingButton>
@@ -1026,7 +1040,7 @@ export function KycClient() {
                                                         isLoading={bankVerification.loading}
                                                         loadingText="Verifying..."
                                                         disabled={!formData.accountNumber || !formData.ifscCode}
-                                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white px-6 h-10"
+                                                        className="px-6 h-10 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                                     >
                                                         Verify Account
                                                     </LoadingButton>
@@ -1114,7 +1128,7 @@ export function KycClient() {
                                                             isLoading={gstinVerification.loading}
                                                             loadingText="Verifying..."
                                                             disabled={formData.gstin.length !== 15}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white h-9 px-4 text-sm"
+                                                            className="h-9 px-4 text-sm bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                                         >
                                                             Verify Now
                                                         </LoadingButton>
@@ -1183,23 +1197,21 @@ export function KycClient() {
                                             </div>
 
                                             <div className="space-y-4 pt-2">
-                                                <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                                <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-[var(--radius-lg)] hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
+                                                    <Checkbox
                                                         checked={formData.agreementAccepted}
-                                                        onChange={(e) => handleInputChange('agreementAccepted', e.target.checked)}
+                                                        onCheckedChange={(checked) => handleInputChange('agreementAccepted', checked === true)}
+                                                        className="mt-0.5"
                                                     />
                                                     <span className="text-sm text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
                                                         I have read and agree to the <strong>Shipcrowd Seller Agreement</strong>, <strong>Terms of Service</strong>, and <strong>Privacy Policy</strong>.
                                                     </span>
                                                 </label>
-                                                <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                                <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-[var(--radius-lg)] hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
+                                                    <Checkbox
                                                         checked={formData.confirmationAccepted}
-                                                        onChange={(e) => handleInputChange('confirmationAccepted', e.target.checked)}
+                                                        onCheckedChange={(checked) => handleInputChange('confirmationAccepted', checked === true)}
+                                                        className="mt-0.5"
                                                     />
                                                     <span className="text-sm text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
                                                         I confirm that all information provided is accurate and I am authorized to enter into this agreement on behalf of my business.
@@ -1224,7 +1236,7 @@ export function KycClient() {
                                     {currentStep < 4 ? (
                                         <Button
                                             onClick={nextStep}
-                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
+                                            className="gap-2"
                                         >
                                             {currentStep === 3 && !formData.gstin ? 'Skip & Continue' : 'Next Step'}
                                             <ChevronRight className="h-4 w-4" />
@@ -1235,7 +1247,7 @@ export function KycClient() {
                                             isLoading={isSubmitting}
                                             loadingText="Submitting..."
                                             disabled={!formData.agreementAccepted || !formData.confirmationAccepted}
-                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20 w-40"
+                                            className="gap-2 w-40 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                         >
                                             <CheckCircle2 className="h-4 w-4" />
                                             Submit KYC
@@ -1246,6 +1258,7 @@ export function KycClient() {
                         </motion.div>
                     </AnimatePresence>
                 </div>
+            </div>
             </div>
         </div>
     );
