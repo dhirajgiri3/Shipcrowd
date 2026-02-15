@@ -225,7 +225,8 @@ export const useSyncLogs = (
         queryKey: queryKeys.ecommerce.syncLogs(integrationId),
         queryFn: async () => {
             const response = await apiClient.get(`/integrations/${platform}/stores/${integrationId}/sync/logs`);
-            return response.data.data;
+            const data = response.data.data;
+            return Array.isArray(data) ? data : (data?.logs ?? []);
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,

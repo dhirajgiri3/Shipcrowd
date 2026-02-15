@@ -3,7 +3,7 @@ import ShopifyFulfillmentService from '../../../../core/application/services/sho
 import ShopifyOAuthService from '../../../../core/application/services/shopify/shopify-oauth.service';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
 import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../../core/mappers/store.mapper';
-import { ShopifyStore, SyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { Order, ShopifyStore, SyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
@@ -164,7 +164,13 @@ export class ShopifyController {
         .sort({ createdAt: -1 })
         .limit(10);
 
-      // Refresh stats if needed
+      // Calculate actual order count from Order collection
+      const totalOrdersSynced = await Order.countDocuments({
+        source: 'shopify',
+        shopifyStoreId: id,
+        companyId: auth.companyId,
+      });
+
       const stats = store.stats || {
         ordersSynced: 0,
         syncSuccessRate: 100,
@@ -187,6 +193,7 @@ export class ShopifyController {
           webhooks: store.webhooks,
           stats: {
             ...stats,
+            totalOrdersSynced,
             lastSyncAt: logs[0]?.startedAt || store.stats?.lastSyncAt
           },
         },

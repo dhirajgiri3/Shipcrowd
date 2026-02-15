@@ -29,7 +29,7 @@ export default function AmazonStorePage() {
     const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
     const { data: store, isLoading: isStoreLoading } = useIntegration(storeId, 'AMAZON');
-    const { data: logs, isLoading: isLogsLoading, refetch: refetchLogs } = useSyncLogs(storeId, 'AMAZON');
+    const { data: logs, isLoading: isLogsLoading, error: logsError, refetch: refetchLogs } = useSyncLogs(storeId, 'AMAZON');
     const { mutate: disconnectStore, isPending: isDisconnecting } = useDeleteIntegration();
     const { mutate: triggerSync, isPending: isSyncing } = useTriggerSync();
 
@@ -89,6 +89,7 @@ export default function AmazonStorePage() {
                 <IntegrationSyncActivity
                     logs={logs}
                     isLoading={isLogsLoading}
+                    error={logsError ?? undefined}
                     platform="amazon"
                     storeId={storeId}
                 />

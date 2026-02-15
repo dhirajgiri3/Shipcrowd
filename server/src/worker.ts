@@ -19,6 +19,7 @@ import ShopifyWebhookProcessorJob from './infrastructure/jobs/marketplaces/shopi
 import WooCommerceOrderSyncJob from './infrastructure/jobs/marketplaces/woocommerce/woocommerce-order-sync.job';
 import WooCommerceWebhookProcessorJob from './infrastructure/jobs/marketplaces/woocommerce/woocommerce-webhook-processor.job';
 import { SellerPolicyBootstrapJob } from './infrastructure/jobs/organization/seller-policy-bootstrap.job';
+import { SellerExportJobProcessor } from './infrastructure/jobs/system/seller-export.job';
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ const startWorkers = async (): Promise<void> => {
     await FlipkartOrderSyncJob.initialize();
     await FlipkartWebhookProcessorJob.initialize();
     await SellerPolicyBootstrapJob.initialize();
+    await SellerExportJobProcessor.initialize();
 
     logger.info('Ecommerce workers initialized');
   } catch (error) {

@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import FlipkartOAuthService from '../../../../core/application/services/flipkart/flipkart-oauth.service';
 import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../../core/mappers/store.mapper';
-import { FlipkartStore, FlipkartSyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { FlipkartStore, FlipkartSyncLog, Order } from '../../../../infrastructure/database/mongoose/models';
 import FlipkartOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/flipkart/flipkart-order-sync.job';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -143,6 +143,14 @@ export class FlipkartController {
         throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
+      const totalOrdersSynced = await Order.countDocuments({
+        source: 'flipkart',
+        flipkartStoreId: id,
+        companyId: auth.companyId,
+      });
+
+      const stats = { ...(store.stats || {}), totalOrdersSynced };
+
       sendSuccess(res, {
         store: {
           ...toEcommerceStoreDTO(store, 'flipkart'),
@@ -155,7 +163,7 @@ export class FlipkartController {
           syncConfig: store.syncConfig,
           settings: applyDefaultsToSettings(store.settings),
           webhooks: store.webhooks,
-          stats: store.stats,
+          stats,
         },
       }, 'Flipkart store details retrieved');
     } catch (error) {

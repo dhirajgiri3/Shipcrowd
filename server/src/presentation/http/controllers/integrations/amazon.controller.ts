@@ -18,7 +18,7 @@ import { NextFunction, Request, Response } from 'express';
 import AmazonOAuthService from '../../../../core/application/services/amazon/amazon-oauth.service';
 import AmazonOrderSyncService from '../../../../core/application/services/amazon/amazon-order-sync.service';
 import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../../core/mappers/store.mapper';
-import { AmazonStore, AmazonSyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { AmazonStore, AmazonSyncLog, Order } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
@@ -169,6 +169,14 @@ export class AmazonController {
                 throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
+            const totalOrdersSynced = await Order.countDocuments({
+                source: 'amazon',
+                amazonStoreId: id,
+                companyId: auth.companyId,
+            });
+
+            const stats = { ...(store.stats || {}), totalOrdersSynced };
+
             sendSuccess(res, {
                 store: {
                     ...toEcommerceStoreDTO(store, 'amazon'),
@@ -186,7 +194,7 @@ export class AmazonController {
                     syncConfig: store.syncConfig,
                     settings: applyDefaultsToSettings(store.settings),
                     webhooks: store.webhooks,
-                    stats: store.stats,
+                    stats,
                     errorCount: store.errorCount,
                     lastError: store.lastError,
                 },

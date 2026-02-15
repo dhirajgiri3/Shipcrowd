@@ -272,6 +272,17 @@ export class QueueManager {
       },
     });
 
+    // Create Seller Export queue
+    await this.createQueue({
+      name: 'seller-exports',
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: 500,
+        removeOnFail: false,
+      },
+    });
+
     // Create Lost Shipment Detection queue
     await this.createQueue({
       name: 'lost-shipment-detection',

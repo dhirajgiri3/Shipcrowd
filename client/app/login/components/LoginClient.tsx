@@ -35,9 +35,13 @@ import { getAuthErrorMessage } from '@/src/lib/error';
 export function LoginClient() {
     return (
         <Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
-                <Loader variant="spinner" size="lg" />
-            </div>
+            <Loader
+                variant="truck"
+                size="xl"
+                fullScreen
+                message="Preparing your login..."
+                subMessage="Loading the sign-in experience"
+            />
         }>
             <LoginForm />
         </Suspense>
@@ -75,9 +79,13 @@ function LoginForm() {
     // Don't render until auth is initialized
     if (!isInitialized) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
-                <Loader variant="spinner" size="lg" message="Loading..." />
-            </div>
+            <Loader
+                variant="truck"
+                size="xl"
+                fullScreen
+                message="Loading secure session..."
+                subMessage="Verifying your credentials"
+            />
         );
     }
 

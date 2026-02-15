@@ -30,7 +30,7 @@ export default function ShopifyStorePage() {
     const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
     const { data: store, isLoading: isStoreLoading } = useIntegration(storeId, 'SHOPIFY');
-    const { data: logs, isLoading: isLogsLoading, refetch: refetchLogs } = useSyncLogs(storeId, 'SHOPIFY');
+    const { data: logs, isLoading: isLogsLoading, error: logsError, refetch: refetchLogs } = useSyncLogs(storeId, 'SHOPIFY');
     const { mutate: disconnectStore, isPending: isDisconnecting } = useDeleteIntegration();
     const { mutate: triggerSync, isPending: isSyncing } = useTriggerSync();
 
@@ -106,6 +106,7 @@ export default function ShopifyStorePage() {
                 <IntegrationSyncActivity
                     logs={logs}
                     isLoading={isLogsLoading}
+                    error={logsError ?? undefined}
                     platform="shopify"
                     storeId={storeId}
                 />

@@ -29,7 +29,7 @@ export default function WooCommerceStorePage() {
     const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
     const { data: store, isLoading: isStoreLoading } = useIntegration(storeId, 'WOOCOMMERCE');
-    const { data: logs, isLoading: isLogsLoading, refetch: refetchLogs } = useSyncLogs(storeId, 'WOOCOMMERCE');
+    const { data: logs, isLoading: isLogsLoading, error: logsError, refetch: refetchLogs } = useSyncLogs(storeId, 'WOOCOMMERCE');
     const { mutate: disconnectStore, isPending: isDisconnecting } = useDeleteIntegration();
     const { mutate: triggerSync, isPending: isSyncing } = useTriggerSync();
 
@@ -89,6 +89,7 @@ export default function WooCommerceStorePage() {
                 <IntegrationSyncActivity
                     logs={logs}
                     isLoading={isLogsLoading}
+                    error={logsError ?? undefined}
                     platform="woocommerce"
                     storeId={storeId}
                 />

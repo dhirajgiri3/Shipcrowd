@@ -5,6 +5,10 @@ import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
+import {
+    getOperationalOrderAmount,
+    shouldPersistOperationalBaseTotals,
+} from '../../../../shared/utils/order-currency.util';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
@@ -515,6 +519,13 @@ export class ShipmentService {
             session.startTransaction();
 
             const { order, companyId, userId, payload, pricingDetails, idempotencyKey } = args;
+            const operationalOrderSubtotal = getOperationalOrderAmount(order, 'subtotal');
+            const operationalOrderTax = getOperationalOrderAmount(order, 'tax');
+            const operationalOrderDiscount = getOperationalOrderAmount(order, 'discount');
+            const operationalOrderTotal = getOperationalOrderAmount(order, 'total');
+            const canPersistBaseTotals = shouldPersistOperationalBaseTotals(order);
+            const orderCurrency = String(order.currency || 'INR').toUpperCase();
+            const isOperationalCurrencyOrder = orderCurrency === 'INR';
 
             // Idempotency Check (Compound Index: companyId + idempotencyKey)
             if (idempotencyKey) {
@@ -645,7 +656,7 @@ export class ShipmentService {
                     destinationPincode: order.customerInfo.address.postalCode,
                     serviceType,
                     paymentMode: order.paymentMethod,
-                    orderValue: Number(order.totals?.total || 0),
+                    orderValue: operationalOrderTotal,
                     carrierOverride: payload.carrierOverride,
                     dimensions: { length: 20, width: 15, height: 10 },
                     strict: enforcedStrict
@@ -713,7 +724,7 @@ export class ShipmentService {
                     dimensions: { length: 20, width: 15, height: 10 },
                     packageCount: 1,
                     packageType: 'box',
-                    declaredValue: order.totals.total,
+                    declaredValue: operationalOrderTotal,
                 },
                 pickupDetails: warehouseId ? { warehouseId } : undefined,
                 deliveryDetails: {
@@ -725,7 +736,7 @@ export class ShipmentService {
                 },
                 paymentDetails: {
                     type: order.paymentMethod || 'prepaid',
-                    codAmount: order.paymentMethod === 'cod' ? order.totals.total : undefined,
+                    codAmount: order.paymentMethod === 'cod' ? operationalOrderTotal : undefined,
                     shippingCost: selectedOption.rate,
                     currency: 'INR',
                 },
@@ -826,11 +837,11 @@ export class ShipmentService {
                             width: shipment.packageDetails.dimensions?.width || 15,
                             height: shipment.packageDetails.dimensions?.height || 10,
                             description: order.products?.[0]?.name || 'Product',
-                            declaredValue: order.totals.subtotal
+                            declaredValue: operationalOrderSubtotal,
                         },
                         orderNumber: order.orderNumber,
                         paymentMode: (order.paymentMethod === 'cod' ? 'cod' : 'prepaid') as 'prepaid' | 'cod',
-                        codAmount: order.paymentMethod === 'cod' ? order.totals.total : 0,
+                        codAmount: order.paymentMethod === 'cod' ? operationalOrderTotal : 0,
                         warehouseId: warehouseId?.toString(),
                         carrierOptions: ShipmentService.buildCarrierOptions(canonicalCarrier, warehouse),
                     };
@@ -918,6 +929,29 @@ export class ShipmentService {
 
             // Update order with optimistic locking
             const currentOrderVersion = order.__v;
+            const recalculatedOperationalTotal = operationalOrderSubtotal + selectedOption.rate + operationalOrderTax - operationalOrderDiscount;
+            const orderSetPatch: Record<string, unknown> = {
+                currentStatus: 'shipped',
+                'shippingDetails.provider': selectedOption.carrier,
+                'shippingDetails.method': serviceType,
+                'shippingDetails.trackingNumber': trackingNumber,
+                'shippingDetails.estimatedDelivery': estimatedDelivery,
+                'shippingDetails.shippingCost': selectedOption.rate,
+            };
+
+            if (isOperationalCurrencyOrder) {
+                orderSetPatch['totals.shipping'] = selectedOption.rate;
+                orderSetPatch['totals.total'] = recalculatedOperationalTotal;
+            }
+
+            if (canPersistBaseTotals) {
+                orderSetPatch['totals.baseCurrency'] = 'INR';
+                orderSetPatch['totals.baseCurrencySubtotal'] = operationalOrderSubtotal;
+                orderSetPatch['totals.baseCurrencyTax'] = operationalOrderTax;
+                orderSetPatch['totals.baseCurrencyShipping'] = selectedOption.rate;
+                orderSetPatch['totals.baseCurrencyTotal'] = recalculatedOperationalTotal;
+            }
+
             const shippedStatusEntry = {
                 status: 'shipped',
                 timestamp: new Date(),
@@ -931,16 +965,7 @@ export class ShipmentService {
                     __v: currentOrderVersion
                 },
                 {
-                    $set: {
-                        currentStatus: 'shipped',
-                        'shippingDetails.provider': selectedOption.carrier,
-                        'shippingDetails.method': serviceType,
-                        'shippingDetails.trackingNumber': trackingNumber,
-                        'shippingDetails.estimatedDelivery': estimatedDelivery,
-                        'shippingDetails.shippingCost': selectedOption.rate,
-                        'totals.shipping': selectedOption.rate,
-                        'totals.total': order.totals.subtotal + selectedOption.rate + order.totals.tax - order.totals.discount
-                    },
+                    $set: orderSetPatch,
                     $push: { statusHistory: shippedStatusEntry },
                     $inc: { __v: 1 }
                 },

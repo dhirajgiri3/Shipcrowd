@@ -276,7 +276,7 @@ export class ShopifyOrderSyncService {
       }
 
       // Update existing order
-      return this.updateExistingOrder(existingOrder, shopifyOrder);
+      return this.updateExistingOrder(existingOrder, shopifyOrder, store);
     }
 
     // Create new order
@@ -338,8 +338,14 @@ export class ShopifyOrderSyncService {
   /**
    * Update existing Shipcrowd order with Shopify data
    */
-  private static async updateExistingOrder(existingOrder: any, shopifyOrder: ShopifyOrder): Promise<any> {
+  private static async updateExistingOrder(existingOrder: any, shopifyOrder: ShopifyOrder, store: any): Promise<any> {
     let updated = false;
+
+    // Backfill shopifyStoreId for orders created before this field existed
+    if (!existingOrder.shopifyStoreId && store._id) {
+      existingOrder.shopifyStoreId = store._id;
+      updated = true;
+    }
 
     // Update payment status
     const paymentStatus = this.mapPaymentStatus(shopifyOrder.financial_status);
@@ -414,6 +420,7 @@ export class ShopifyOrderSyncService {
       companyId: store.companyId,
       source: 'shopify',
       sourceId: shopifyOrder.id.toString(),
+      shopifyStoreId: store._id,
 
       customerInfo: {
         name: customerName,

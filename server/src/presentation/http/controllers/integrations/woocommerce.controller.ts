@@ -14,7 +14,7 @@
 import { NextFunction, Request, Response } from 'express';
 import WooCommerceOAuthService from '../../../../core/application/services/woocommerce/woocommerce-oauth.service';
 import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../../core/mappers/store.mapper';
-import { WooCommerceStore, WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { Order, WooCommerceStore, WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/woocommerce/woocommerce-order-sync.job';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -134,6 +134,14 @@ export default class WooCommerceController {
         throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
+      const totalOrdersSynced = await Order.countDocuments({
+        source: 'woocommerce',
+        woocommerceStoreId: id,
+        companyId: auth.companyId,
+      });
+
+      const stats = { ...(store.stats || {}), totalOrdersSynced };
+
       sendSuccess(res, {
         store: {
           ...toEcommerceStoreDTO(store, 'woocommerce'),
@@ -147,7 +155,7 @@ export default class WooCommerceController {
           uninstalledAt: store.uninstalledAt,
           syncConfig: store.syncConfig,
           settings: applyDefaultsToSettings(store.settings),
-          stats: store.stats,
+          stats,
           webhooks: store.webhooks.map((webhook: any) => ({
             topic: webhook.topic,
             address: webhook.address,

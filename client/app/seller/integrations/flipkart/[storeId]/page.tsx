@@ -29,7 +29,7 @@ export default function FlipkartStorePage() {
     const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
     const { data: store, isLoading: isStoreLoading } = useIntegration(storeId, 'FLIPKART');
-    const { data: logs, isLoading: isLogsLoading, refetch: refetchLogs } = useSyncLogs(storeId, 'FLIPKART');
+    const { data: logs, isLoading: isLogsLoading, error: logsError, refetch: refetchLogs } = useSyncLogs(storeId, 'FLIPKART');
     const { mutate: disconnectStore, isPending: isDisconnecting } = useDeleteIntegration();
     const { mutate: triggerSync, isPending: isSyncing } = useTriggerSync();
 
@@ -89,6 +89,7 @@ export default function FlipkartStorePage() {
                 <IntegrationSyncActivity
                     logs={logs}
                     isLoading={isLogsLoading}
+                    error={logsError ?? undefined}
                     platform="flipkart"
                     storeId={storeId}
                 />

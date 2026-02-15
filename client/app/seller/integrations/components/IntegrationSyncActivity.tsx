@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/co
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { formatDate } from '@/src/lib/utils';
-import { RefreshCw, ChevronRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { RefreshCw, ChevronRight, CheckCircle2, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import type { SyncLog } from '@/src/types/api/integrations';
 
 interface IntegrationSyncActivityProps {
     logs: SyncLog[] | undefined;
     isLoading: boolean;
+    error?: Error | null;
     platform: string;
     storeId: string;
 }
@@ -20,21 +21,42 @@ interface IntegrationSyncActivityProps {
 function getStatusLabel(status: string) {
     switch (status) {
         case 'COMPLETED':
+        case 'SUCCESS':
             return 'Completed';
         case 'PARTIAL':
+        case 'PARTIAL_SUCCESS':
             return 'Partial';
         default:
-            return status.replace('_', ' ');
+            return status.replace(/_/g, ' ');
     }
 }
 
 function isSuccessStatus(status: string) {
-    return status === 'COMPLETED';
+    return status === 'COMPLETED' || status === 'SUCCESS';
+}
+
+function isPartialStatus(status: string) {
+    return status === 'PARTIAL' || status === 'PARTIAL_SUCCESS';
+}
+
+function ErrorState({ error }: { error: Error }) {
+    return (
+        <div className="text-center py-16 px-6">
+            <AlertTriangle className="w-12 h-12 mx-auto text-[var(--error)] mb-3" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+                Failed to load sync history
+            </h3>
+            <p className="text-sm text-[var(--text-muted)]">
+                {error?.message || 'An error occurred'}
+            </p>
+        </div>
+    );
 }
 
 export function IntegrationSyncActivity({
     logs,
     isLoading,
+    error,
     platform,
     storeId,
 }: IntegrationSyncActivityProps) {
@@ -65,6 +87,8 @@ export function IntegrationSyncActivity({
                             Loading activity logs...
                         </p>
                     </div>
+                ) : error ? (
+                    <ErrorState error={error} />
                 ) : logs && logs.length > 0 ? (
                     <div className="divide-y divide-[var(--border-subtle)]">
                         {logs.slice(0, 5).map((log) => (
@@ -78,7 +102,7 @@ export function IntegrationSyncActivity({
                                             'p-2 rounded-full shadow-sm',
                                             isSuccessStatus(log.status)
                                                 ? 'bg-[var(--success)]/10 text-[var(--success)]'
-                                                : log.status === 'PARTIAL'
+                                                : isPartialStatus(log.status)
                                                   ? 'bg-[var(--warning)]/10 text-[var(--warning)]'
                                                   : 'bg-[var(--error)]/10 text-[var(--error)]'
                                         )}
@@ -110,7 +134,7 @@ export function IntegrationSyncActivity({
                                         variant={
                                             isSuccessStatus(log.status)
                                                 ? 'success'
-                                                : log.status === 'PARTIAL'
+                                                : isPartialStatus(log.status)
                                                   ? 'warning'
                                                   : 'destructive'
                                         }

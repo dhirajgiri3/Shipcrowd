@@ -57,6 +57,7 @@ export interface IOrder extends Document {
   externalOrderNumber?: string; // Display order number from external platform (e.g., WooCommerce order #1234)
   warehouseId?: mongoose.Types.ObjectId;
   // E-commerce platform specific fields
+  shopifyStoreId?: mongoose.Types.ObjectId;
   woocommerceStoreId?: mongoose.Types.ObjectId;
   woocommerceOrderId?: number;
   flipkartStoreId?: mongoose.Types.ObjectId;
@@ -78,6 +79,13 @@ export interface IOrder extends Document {
     shipping: number;
     discount: number;
     total: number;
+    baseCurrencySubtotal?: number;
+    baseCurrencyTax?: number;
+    baseCurrencyShipping?: number;
+    baseCurrencyTotal?: number;
+    baseCurrency?: string;
+    exchangeRate?: number;
+    exchangeRateDate?: Date;
   };
   notes?: string;
   tags?: string[];
@@ -219,6 +227,10 @@ const OrderSchema = new Schema<IOrder>(
       ref: 'Warehouse',
     },
     // E-commerce platform specific fields
+    shopifyStoreId: {
+      type: Schema.Types.ObjectId,
+      ref: 'ShopifyStore',
+    },
     woocommerceStoreId: {
       type: Schema.Types.ObjectId,
       ref: 'WooCommerceStore',
@@ -292,6 +304,13 @@ const OrderSchema = new Schema<IOrder>(
         type: Number,
         required: true,
       },
+      baseCurrencySubtotal: Number,
+      baseCurrencyTax: Number,
+      baseCurrencyShipping: Number,
+      baseCurrencyTotal: Number,
+      baseCurrency: String,
+      exchangeRate: Number,
+      exchangeRateDate: Date,
     },
     notes: String,
     tags: [String],
@@ -356,6 +375,7 @@ OrderSchema.index({ flipkartOrderId: 1 }, { sparse: true, unique: true }); // Fl
 OrderSchema.index({ amazonOrderId: 1 }, { sparse: true, unique: true }); // Amazon order duplicate prevention
 // Non-unique indexes for filtering
 OrderSchema.index({ source: 1, companyId: 1 }); // Source filtering (allows multiple manual/API orders)
+OrderSchema.index({ shopifyStoreId: 1, currentStatus: 1 }); // Shopify store filtering with status
 OrderSchema.index({ flipkartStoreId: 1, currentStatus: 1 }); // Flipkart store filtering with status
 OrderSchema.index({ amazonStoreId: 1, currentStatus: 1 }); // Amazon store filtering with status
 OrderSchema.index({ fulfillmentType: 1 }); // For FBA/MFN filtering

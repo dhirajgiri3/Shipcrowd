@@ -71,8 +71,10 @@ export function SignupClient() {
     return (
       <Loader
         variant="truck"
+        size="xl"
         fullScreen
         message="Loading secure session..."
+        subMessage="Setting up your account experience"
       />
     );
   }

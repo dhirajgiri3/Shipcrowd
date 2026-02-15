@@ -23,7 +23,7 @@ You are an expert senior backend engineer tasked with implementing **Week [WEEK_
 ## EXECUTION CONTEXT
 
 ### Project Overview
-**Name:** Shipcrowd (formerly Uniqueship)
+**Name:** Shipcrowd (formerly Shipcrowd)
 **Type:** Multi-carrier shipping aggregator platform
 **Tech Stack:**
 - **Backend:** Node.js + TypeScript + Express.js

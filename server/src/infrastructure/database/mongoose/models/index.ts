@@ -186,6 +186,8 @@ export { default as FeatureFlag } from './system/feature-flag.model';
 // System - Job Tracking
 export * from './system/bulk-order-import-job.model';
 export { BulkOrderImportJob } from './system/bulk-order-import-job.model';
+export * from './system/seller-export-job.model';
+export { SellerExportJob } from './system/seller-export-job.model';
 
 // Onboarding & Gamification
 export * from './onboarding/achievement.model';

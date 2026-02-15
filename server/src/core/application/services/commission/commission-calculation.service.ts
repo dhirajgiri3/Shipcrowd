@@ -100,6 +100,7 @@ SalesRepresentative
 } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/index';
 import logger from '../../../../shared/logger/winston.logger';
+import { getOperationalOrderAmount } from '../../../../shared/utils/order-currency.util';
 
 // Event types
 export type OrderEvent = 'order.created' | 'order.cancelled' | 'order.updated';
@@ -234,7 +235,7 @@ export default class CommissionCalculationService {
             }
 
             // Calculate commission
-            const orderValue = order.totals.total;
+            const orderValue = getOperationalOrderAmount(order, 'total');
             const calculatedAmount = applicableRule.calculateCommission(orderValue, order);
 
             // Create transaction
@@ -385,7 +386,7 @@ export default class CommissionCalculationService {
             }
 
             // Recalculate
-            const orderValue = order.totals.total;
+            const orderValue = getOperationalOrderAmount(order, 'total');
             const newCalculatedAmount = rule.calculateCommission(orderValue, order);
 
             // Update transaction

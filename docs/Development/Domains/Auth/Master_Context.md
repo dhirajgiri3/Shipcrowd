@@ -31,7 +31,7 @@
 
 ### 1.1 What is Shipcrowd?
 
-**Shipcrowd** (formerly Uniqueship) is a **next-generation multi-carrier shipping aggregator platform** designed for the Indian e-commerce market. It serves as a unified API and dashboard for businesses to manage shipments across multiple courier partners without maintaining separate integrations.
+**Shipcrowd** (formerly Shipcrowd) is a **next-generation multi-carrier shipping aggregator platform** designed for the Indian e-commerce market. It serves as a unified API and dashboard for businesses to manage shipments across multiple courier partners without maintaining separate integrations.
 
 ### 1.2 Target Users
 

@@ -16,6 +16,7 @@ import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-r
 import { WarehouseSyncJob } from './infrastructure/jobs/logistics/warehouse-sync.job';
 import { SellerPolicyBootstrapJob } from './infrastructure/jobs/organization/seller-policy-bootstrap.job';
 import { BulkOrderImportJobProcessor } from './infrastructure/jobs/shipping/bulk-order-import.job';
+import { SellerExportJobProcessor } from './infrastructure/jobs/system/seller-export.job';
 import QueueManager from './infrastructure/utilities/queue-manager';
 import logger from './shared/logger/winston.logger';
 
@@ -131,6 +132,10 @@ const startServer = async (): Promise<void> => {
         // Initialize Bulk Order Import Job
         await BulkOrderImportJobProcessor.initialize();
         logger.info('Bulk order import job initialized');
+
+        // Initialize Seller Export Job
+        await SellerExportJobProcessor.initialize();
+        logger.info('Seller export job initialized');
 
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();

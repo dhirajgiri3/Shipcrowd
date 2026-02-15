@@ -16,6 +16,7 @@ validateObjectId,
 } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import { getOperationalOrderAmount } from '../../../../shared/utils/order-currency.util';
 import {
 calculatePagination,
 sendCreated,
@@ -95,7 +96,7 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
             customerEmail: order.customerInfo.email,
             destinationPincode: order.customerInfo.address.postalCode,
             paymentMode: order.paymentMethod === 'cod' ? 'cod' : 'prepaid',
-            orderValue: order.totals.total
+            orderValue: getOperationalOrderAmount(order, 'total'),
         });
 
         if (riskResult.status === 'BLOCKED') {

@@ -134,172 +134,164 @@ export class SellerExportService {
     };
   }
 
+  private static applyDateRange(query: Record<string, any>, field: string, filters: Record<string, unknown>): void {
+    const startDate = parseDate(filters.startDate);
+    const endDate = parseDate(filters.endDate);
+    if (!startDate && !endDate) return;
+
+    query[field] = {};
+    if (startDate) query[field].$gte = startDate;
+    if (endDate) query[field].$lte = endDate;
+  }
+
+  private static buildOrdersQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { companyId, isDeleted: false };
+    const status = filters.status as string | undefined;
+    if (status && status !== 'all') {
+      if (status === 'unshipped') query.currentStatus = { $in: ['pending', 'ready_to_ship', 'confirmed'] };
+      else if (status === 'shipped') query.currentStatus = { $in: ['shipped', 'in_transit', 'picked_up'] };
+      else query.currentStatus = status;
+    }
+
+    const paymentStatus = filters.paymentStatus as string | undefined;
+    if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
+
+    this.applyDateRange(query, 'createdAt', filters);
+
+    const searchRegex = regex(filters.search);
+    if (searchRegex) {
+      query.$or = [
+        { orderNumber: searchRegex },
+        { 'customerInfo.name': searchRegex },
+        { 'customerInfo.phone': searchRegex },
+      ];
+    }
+
+    return query;
+  }
+
+  private static buildShipmentsQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { companyId, isDeleted: false };
+    const status = filters.status as string | undefined;
+    if (status && status !== 'all') {
+      if (status === 'pending') query.currentStatus = { $in: ['created', 'ready_to_ship'] };
+      else if (status === 'in_transit') query.currentStatus = { $in: ['picked', 'picked_up', 'in_transit', 'out_for_delivery'] };
+      else if (status === 'rto') query.currentStatus = { $in: ['rto', 'returned', 'rto_delivered', 'return_initiated'] };
+      else query.currentStatus = status;
+    }
+
+    this.applyDateRange(query, 'createdAt', filters);
+
+    const searchRegex = regex(filters.search);
+    if (searchRegex) query.trackingNumber = searchRegex;
+
+    return query;
+  }
+
+  private static buildCodPendingQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = {
+      companyId,
+      isDeleted: false,
+      'paymentDetails.type': 'cod',
+      currentStatus: 'delivered',
+      $or: [{ 'remittance.included': { $ne: true } }, { remittance: { $exists: false } }],
+    };
+    const searchRegex = regex(filters.search);
+    if (searchRegex) query.trackingNumber = searchRegex;
+    return query;
+  }
+
+  private static buildCodHistoryQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { companyId, isDeleted: { $ne: true } };
+    const status = filters.status as string | undefined;
+    if (status && status !== 'all') query.status = status;
+
+    const searchRegex = regex(filters.search);
+    if (searchRegex) query.remittanceId = searchRegex;
+    this.applyDateRange(query, 'createdAt', filters);
+    return query;
+  }
+
+  private static buildWalletTransactionsQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { company: companyId, isDeleted: false };
+    if (filters.type && filters.type !== 'all') query.type = filters.type;
+    if (filters.reason && filters.reason !== 'all') query.reason = filters.reason;
+    this.applyDateRange(query, 'createdAt', filters);
+    return query;
+  }
+
+  private static buildReturnsQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { companyId, isDeleted: { $ne: true } };
+    if (filters.status && filters.status !== 'all') query.status = filters.status;
+    return query;
+  }
+
+  private static buildNdrQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { company: companyId };
+    if (filters.status && filters.status !== 'all') query.status = filters.status;
+    if (filters.ndrType) query.ndrType = filters.ndrType;
+    this.applyDateRange(query, 'detectedAt', filters);
+    return query;
+  }
+
+  private static buildRtoQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { company: companyId };
+    if (filters.returnStatus && filters.returnStatus !== 'all') query.returnStatus = filters.returnStatus;
+    if (filters.rtoReason) query.rtoReason = filters.rtoReason;
+    this.applyDateRange(query, 'triggeredAt', filters);
+    return query;
+  }
+
+  private static buildCodDiscrepanciesQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { companyId };
+    if (filters.status && filters.status !== 'all') query.status = filters.status;
+    if (filters.type) query.type = filters.type;
+    this.applyDateRange(query, 'createdAt', filters);
+    const searchRegex = regex(filters.search);
+    if (searchRegex) query.$or = [{ discrepancyNumber: searchRegex }, { awb: searchRegex }];
+    return query;
+  }
+
+  private static buildAuditLogsQuery(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const query: Record<string, any> = { companyId, isDeleted: false };
+    if (filters.action) query.action = filters.action;
+    if (filters.resource) query.resource = filters.resource;
+    this.applyDateRange(query, 'timestamp', filters);
+    const searchRegex = regex(filters.search);
+    if (searchRegex) query.$or = [{ resource: searchRegex }, { 'details.message': searchRegex }];
+    return query;
+  }
+
+  private static buildAnalyticsOrderMatch(filters: Record<string, unknown>, companyId: string): Record<string, any> {
+    const match: Record<string, any> = { companyId: new mongoose.Types.ObjectId(companyId), isDeleted: false };
+    this.applyDateRange(match, 'createdAt', filters);
+    return match;
+  }
+
   static async estimateRowCount(module: SellerExportModule, filters: Record<string, unknown>, context: ExportContext): Promise<number> {
     switch (module) {
-      case 'orders': {
-        const query: any = { companyId: context.companyId, isDeleted: false };
-        const status = filters.status as string | undefined;
-        if (status && status !== 'all') {
-          if (status === 'unshipped') query.currentStatus = { $in: ['pending', 'ready_to_ship', 'confirmed'] };
-          else if (status === 'shipped') query.currentStatus = { $in: ['shipped', 'in_transit', 'picked_up'] };
-          else query.currentStatus = status;
-        }
-
-        const paymentStatus = filters.paymentStatus as string | undefined;
-        if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
-
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.createdAt = {};
-          if (startDate) query.createdAt.$gte = startDate;
-          if (endDate) query.createdAt.$lte = endDate;
-        }
-
-        const searchRegex = regex(filters.search);
-        if (searchRegex) {
-          query.$or = [
-            { orderNumber: searchRegex },
-            { 'customerInfo.name': searchRegex },
-            { 'customerInfo.phone': searchRegex },
-          ];
-        }
-        return Order.countDocuments(query);
-      }
-      case 'shipments': {
-        const query: any = { companyId: context.companyId, isDeleted: false };
-        const status = filters.status as string | undefined;
-        if (status && status !== 'all') {
-          if (status === 'pending') query.currentStatus = { $in: ['created', 'ready_to_ship'] };
-          else if (status === 'in_transit') query.currentStatus = { $in: ['picked', 'picked_up', 'in_transit', 'out_for_delivery'] };
-          else if (status === 'rto') query.currentStatus = { $in: ['rto', 'returned', 'rto_delivered', 'return_initiated'] };
-          else query.currentStatus = status;
-        }
-
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.createdAt = {};
-          if (startDate) query.createdAt.$gte = startDate;
-          if (endDate) query.createdAt.$lte = endDate;
-        }
-
-        const searchRegex = regex(filters.search);
-        if (searchRegex) query.trackingNumber = searchRegex;
-        return Shipment.countDocuments(query);
-      }
-      case 'cod_remittance_pending': {
-        const query: any = {
-          companyId: context.companyId,
-          isDeleted: false,
-          'paymentDetails.type': 'cod',
-          currentStatus: 'delivered',
-          $or: [{ 'remittance.included': { $ne: true } }, { remittance: { $exists: false } }],
-        };
-        const searchRegex = regex(filters.search);
-        if (searchRegex) query.trackingNumber = searchRegex;
-        return Shipment.countDocuments(query);
-      }
-      case 'cod_remittance_history': {
-        const query: any = { companyId: context.companyId, isDeleted: { $ne: true } };
-        const status = filters.status as string | undefined;
-        if (status && status !== 'all') query.status = status;
-
-        const searchRegex = regex(filters.search);
-        if (searchRegex) query.remittanceId = searchRegex;
-
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.createdAt = {};
-          if (startDate) query.createdAt.$gte = startDate;
-          if (endDate) query.createdAt.$lte = endDate;
-        }
-        return CODRemittance.countDocuments(query);
-      }
-      case 'wallet_transactions': {
-        const query: any = { company: context.companyId, isDeleted: false };
-        if (filters.type && filters.type !== 'all') query.type = filters.type;
-        if (filters.reason && filters.reason !== 'all') query.reason = filters.reason;
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.createdAt = {};
-          if (startDate) query.createdAt.$gte = startDate;
-          if (endDate) query.createdAt.$lte = endDate;
-        }
-        return WalletTransaction.countDocuments(query);
-      }
-      case 'returns': {
-        const query: any = { companyId: context.companyId, isDeleted: { $ne: true } };
-        if (filters.status && filters.status !== 'all') query.status = filters.status;
-        return ReturnOrder.countDocuments(query);
-      }
-      case 'ndr': {
-        const query: any = { company: context.companyId };
-        if (filters.status && filters.status !== 'all') query.status = filters.status;
-        if (filters.ndrType) query.ndrType = filters.ndrType;
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.detectedAt = {};
-          if (startDate) query.detectedAt.$gte = startDate;
-          if (endDate) query.detectedAt.$lte = endDate;
-        }
-        return NDREvent.countDocuments(query);
-      }
-      case 'rto': {
-        const query: any = { company: context.companyId };
-        if (filters.returnStatus && filters.returnStatus !== 'all') query.returnStatus = filters.returnStatus;
-        if (filters.rtoReason) query.rtoReason = filters.rtoReason;
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.triggeredAt = {};
-          if (startDate) query.triggeredAt.$gte = startDate;
-          if (endDate) query.triggeredAt.$lte = endDate;
-        }
-        return RTOEvent.countDocuments(query);
-      }
-      case 'cod_discrepancies': {
-        const query: any = { companyId: context.companyId };
-        if (filters.status && filters.status !== 'all') query.status = filters.status;
-        if (filters.type) query.type = filters.type;
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.createdAt = {};
-          if (startDate) query.createdAt.$gte = startDate;
-          if (endDate) query.createdAt.$lte = endDate;
-        }
-        const searchRegex = regex(filters.search);
-        if (searchRegex) query.$or = [{ discrepancyNumber: searchRegex }, { awb: searchRegex }];
-        return CODDiscrepancy.countDocuments(query);
-      }
-      case 'audit_logs': {
-        const query: any = { companyId: context.companyId, isDeleted: false };
-        if (filters.action) query.action = filters.action;
-        if (filters.resource) query.resource = filters.resource;
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        if (startDate || endDate) {
-          query.timestamp = {};
-          if (startDate) query.timestamp.$gte = startDate;
-          if (endDate) query.timestamp.$lte = endDate;
-        }
-        const searchRegex = regex(filters.search);
-        if (searchRegex) query.$or = [{ resource: searchRegex }, { 'details.message': searchRegex }];
-        return AuditLog.countDocuments(query);
-      }
+      case 'orders':
+        return Order.countDocuments(this.buildOrdersQuery(filters, context.companyId));
+      case 'shipments':
+        return Shipment.countDocuments(this.buildShipmentsQuery(filters, context.companyId));
+      case 'cod_remittance_pending':
+        return Shipment.countDocuments(this.buildCodPendingQuery(filters, context.companyId));
+      case 'cod_remittance_history':
+        return CODRemittance.countDocuments(this.buildCodHistoryQuery(filters, context.companyId));
+      case 'wallet_transactions':
+        return WalletTransaction.countDocuments(this.buildWalletTransactionsQuery(filters, context.companyId));
+      case 'returns':
+        return ReturnOrder.countDocuments(this.buildReturnsQuery(filters, context.companyId));
+      case 'ndr':
+        return NDREvent.countDocuments(this.buildNdrQuery(filters, context.companyId));
+      case 'rto':
+        return RTOEvent.countDocuments(this.buildRtoQuery(filters, context.companyId));
+      case 'cod_discrepancies':
+        return CODDiscrepancy.countDocuments(this.buildCodDiscrepanciesQuery(filters, context.companyId));
+      case 'audit_logs':
+        return AuditLog.countDocuments(this.buildAuditLogsQuery(filters, context.companyId));
       case 'analytics_dashboard': {
-        const startDate = parseDate(filters.startDate);
-        const endDate = parseDate(filters.endDate);
-        const match: any = { companyId: new mongoose.Types.ObjectId(context.companyId), isDeleted: false };
-        if (startDate || endDate) {
-          match.createdAt = {};
-          if (startDate) match.createdAt.$gte = startDate;
-          if (endDate) match.createdAt.$lte = endDate;
-        }
+        const match = this.buildAnalyticsOrderMatch(filters, context.companyId);
         const bySource = await Order.aggregate([
           { $match: match },
           { $group: { _id: '$source' } },
@@ -315,34 +307,7 @@ export class SellerExportService {
   }
 
   private static async exportOrders(filters: Record<string, unknown>, context: ExportContext): Promise<Record<string, unknown>[]> {
-    const query: any = { companyId: context.companyId, isDeleted: false };
-
-    const status = filters.status as string | undefined;
-    if (status && status !== 'all') {
-      if (status === 'unshipped') query.currentStatus = { $in: ['pending', 'ready_to_ship', 'confirmed'] };
-      else if (status === 'shipped') query.currentStatus = { $in: ['shipped', 'in_transit', 'picked_up'] };
-      else query.currentStatus = status;
-    }
-
-    const paymentStatus = filters.paymentStatus as string | undefined;
-    if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = startDate;
-      if (endDate) query.createdAt.$lte = endDate;
-    }
-
-    const searchRegex = regex(filters.search);
-    if (searchRegex) {
-      query.$or = [
-        { orderNumber: searchRegex },
-        { 'customerInfo.name': searchRegex },
-        { 'customerInfo.phone': searchRegex },
-      ];
-    }
+    const query = this.buildOrdersQuery(filters, context.companyId);
 
     const data = await Order.find(query).sort({ createdAt: -1 }).limit(MAX_EXPORT_ROWS).lean();
 
@@ -366,26 +331,7 @@ export class SellerExportService {
   }
 
   private static async exportShipments(filters: Record<string, unknown>, companyId: string): Promise<Record<string, unknown>[]> {
-    const query: any = { companyId, isDeleted: false };
-
-    const status = filters.status as string | undefined;
-    if (status && status !== 'all') {
-      if (status === 'pending') query.currentStatus = { $in: ['created', 'ready_to_ship'] };
-      else if (status === 'in_transit') query.currentStatus = { $in: ['picked', 'picked_up', 'in_transit', 'out_for_delivery'] };
-      else if (status === 'rto') query.currentStatus = { $in: ['rto', 'returned', 'rto_delivered', 'return_initiated'] };
-      else query.currentStatus = status;
-    }
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = startDate;
-      if (endDate) query.createdAt.$lte = endDate;
-    }
-
-    const searchRegex = regex(filters.search);
-    if (searchRegex) query.trackingNumber = searchRegex;
+    const query = this.buildShipmentsQuery(filters, companyId);
 
     const rows = await Shipment.find(query)
       .populate('orderId', 'orderNumber source')
@@ -410,16 +356,7 @@ export class SellerExportService {
   }
 
   private static async exportCodPending(filters: Record<string, unknown>, companyId: string): Promise<Record<string, unknown>[]> {
-    const query: any = {
-      companyId,
-      isDeleted: false,
-      'paymentDetails.type': 'cod',
-      currentStatus: 'delivered',
-      $or: [{ 'remittance.included': { $ne: true } }, { remittance: { $exists: false } }],
-    };
-
-    const searchRegex = regex(filters.search);
-    if (searchRegex) query.trackingNumber = searchRegex;
+    const query = this.buildCodPendingQuery(filters, companyId);
 
     const rows = await Shipment.find(query)
       .populate('orderId', 'orderNumber')
@@ -440,20 +377,7 @@ export class SellerExportService {
   }
 
   private static async exportCodHistory(filters: Record<string, unknown>, companyId: string): Promise<Record<string, unknown>[]> {
-    const query: any = { companyId, isDeleted: { $ne: true } };
-    const status = filters.status as string | undefined;
-    if (status && status !== 'all') query.status = status;
-
-    const searchRegex = regex(filters.search);
-    if (searchRegex) query.remittanceId = searchRegex;
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = startDate;
-      if (endDate) query.createdAt.$lte = endDate;
-    }
+    const query = this.buildCodHistoryQuery(filters, companyId);
 
     const rows = await CODRemittance.find(query).sort({ createdAt: -1 }).limit(MAX_EXPORT_ROWS).lean();
     return rows.map((item: any) => ({
@@ -471,17 +395,7 @@ export class SellerExportService {
   }
 
   private static async exportWalletTransactions(filters: Record<string, unknown>, companyId: string): Promise<Record<string, unknown>[]> {
-    const query: any = { company: companyId, isDeleted: false };
-    if (filters.type && filters.type !== 'all') query.type = filters.type;
-    if (filters.reason && filters.reason !== 'all') query.reason = filters.reason;
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = startDate;
-      if (endDate) query.createdAt.$lte = endDate;
-    }
+    const query = this.buildWalletTransactionsQuery(filters, companyId);
 
     const rows = await WalletTransaction.find(query).sort({ createdAt: -1 }).limit(MAX_EXPORT_ROWS).lean();
     return rows.map((tx: any) => ({
@@ -500,8 +414,7 @@ export class SellerExportService {
   }
 
   private static async exportReturns(filters: Record<string, unknown>, context: ExportContext): Promise<Record<string, unknown>[]> {
-    const query: any = { companyId: context.companyId, isDeleted: { $ne: true } };
-    if (filters.status && filters.status !== 'all') query.status = filters.status;
+    const query = this.buildReturnsQuery(filters, context.companyId);
 
     const rows = await ReturnOrder.find(query)
       .populate('orderId', 'orderNumber source')
@@ -530,17 +443,7 @@ export class SellerExportService {
   }
 
   private static async exportNdr(filters: Record<string, unknown>, context: ExportContext): Promise<Record<string, unknown>[]> {
-    const query: any = { company: context.companyId };
-    if (filters.status && filters.status !== 'all') query.status = filters.status;
-    if (filters.ndrType) query.ndrType = filters.ndrType;
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.detectedAt = {};
-      if (startDate) query.detectedAt.$gte = startDate;
-      if (endDate) query.detectedAt.$lte = endDate;
-    }
+    const query = this.buildNdrQuery(filters, context.companyId);
 
     const rows = await NDREvent.find(query)
       .populate('shipment', 'trackingNumber')
@@ -567,17 +470,7 @@ export class SellerExportService {
   }
 
   private static async exportRto(filters: Record<string, unknown>, companyId: string): Promise<Record<string, unknown>[]> {
-    const query: any = { company: companyId };
-    if (filters.returnStatus && filters.returnStatus !== 'all') query.returnStatus = filters.returnStatus;
-    if (filters.rtoReason) query.rtoReason = filters.rtoReason;
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.triggeredAt = {};
-      if (startDate) query.triggeredAt.$gte = startDate;
-      if (endDate) query.triggeredAt.$lte = endDate;
-    }
+    const query = this.buildRtoQuery(filters, companyId);
 
     const rows = await RTOEvent.find(query)
       .populate('shipment', 'trackingNumber')
@@ -603,25 +496,7 @@ export class SellerExportService {
   }
 
   private static async exportCodDiscrepancies(filters: Record<string, unknown>, companyId: string): Promise<Record<string, unknown>[]> {
-    const query: any = { companyId };
-    if (filters.status && filters.status !== 'all') query.status = filters.status;
-    if (filters.type) query.type = filters.type;
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = startDate;
-      if (endDate) query.createdAt.$lte = endDate;
-    }
-
-    const searchRegex = regex(filters.search);
-    if (searchRegex) {
-      query.$or = [
-        { discrepancyNumber: searchRegex },
-        { awb: searchRegex },
-      ];
-    }
+    const query = this.buildCodDiscrepanciesQuery(filters, companyId);
 
     const rows = await CODDiscrepancy.find(query).sort({ createdAt: -1 }).limit(MAX_EXPORT_ROWS).lean();
 
@@ -641,25 +516,7 @@ export class SellerExportService {
   }
 
   private static async exportAuditLogs(filters: Record<string, unknown>, context: ExportContext): Promise<Record<string, unknown>[]> {
-    const query: any = { companyId: context.companyId, isDeleted: false };
-    if (filters.action) query.action = filters.action;
-    if (filters.resource) query.resource = filters.resource;
-
-    const startDate = parseDate(filters.startDate);
-    const endDate = parseDate(filters.endDate);
-    if (startDate || endDate) {
-      query.timestamp = {};
-      if (startDate) query.timestamp.$gte = startDate;
-      if (endDate) query.timestamp.$lte = endDate;
-    }
-
-    const searchRegex = regex(filters.search);
-    if (searchRegex) {
-      query.$or = [
-        { resource: searchRegex },
-        { 'details.message': searchRegex },
-      ];
-    }
+    const query = this.buildAuditLogsQuery(filters, context.companyId);
 
     const rows = await AuditLog.find(query).populate('userId', 'name email').sort({ timestamp: -1 }).limit(MAX_EXPORT_ROWS).lean();
 
@@ -682,12 +539,7 @@ export class SellerExportService {
   private static async exportAnalytics(filters: Record<string, unknown>, companyId: string): Promise<Record<string, unknown>[]> {
     const startDate = parseDate(filters.startDate);
     const endDate = parseDate(filters.endDate);
-    const match: any = { companyId: new mongoose.Types.ObjectId(companyId), isDeleted: false };
-    if (startDate || endDate) {
-      match.createdAt = {};
-      if (startDate) match.createdAt.$gte = startDate;
-      if (endDate) match.createdAt.$lte = endDate;
-    }
+    const match = this.buildAnalyticsOrderMatch(filters, companyId);
 
     const bySource = await Order.aggregate([
       { $match: match },
