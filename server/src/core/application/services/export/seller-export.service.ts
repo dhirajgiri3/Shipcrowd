@@ -23,7 +23,9 @@ export type SellerExportModule =
   | 'rto'
   | 'cod_discrepancies'
   | 'audit_logs'
-  | 'analytics_dashboard';
+  | 'analytics_dashboard'
+  | 'pincode_checker'
+  | 'bulk_address_validation';
 
 interface ExportContext {
   companyId: string;
@@ -112,6 +114,12 @@ export class SellerExportService {
       case 'analytics_dashboard':
         rows = await this.exportAnalytics(filters, context.companyId);
         break;
+      case 'pincode_checker':
+        rows = await this.exportPincodeChecker(filters);
+        break;
+      case 'bulk_address_validation':
+        rows = await this.exportBulkAddressValidation(filters, context.canViewPii);
+        break;
       default:
         rows = [];
     }
@@ -124,6 +132,186 @@ export class SellerExportService {
       csv,
       rowCount: safeRows.length,
     };
+  }
+
+  static async estimateRowCount(module: SellerExportModule, filters: Record<string, unknown>, context: ExportContext): Promise<number> {
+    switch (module) {
+      case 'orders': {
+        const query: any = { companyId: context.companyId, isDeleted: false };
+        const status = filters.status as string | undefined;
+        if (status && status !== 'all') {
+          if (status === 'unshipped') query.currentStatus = { $in: ['pending', 'ready_to_ship', 'confirmed'] };
+          else if (status === 'shipped') query.currentStatus = { $in: ['shipped', 'in_transit', 'picked_up'] };
+          else query.currentStatus = status;
+        }
+
+        const paymentStatus = filters.paymentStatus as string | undefined;
+        if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
+
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.createdAt = {};
+          if (startDate) query.createdAt.$gte = startDate;
+          if (endDate) query.createdAt.$lte = endDate;
+        }
+
+        const searchRegex = regex(filters.search);
+        if (searchRegex) {
+          query.$or = [
+            { orderNumber: searchRegex },
+            { 'customerInfo.name': searchRegex },
+            { 'customerInfo.phone': searchRegex },
+          ];
+        }
+        return Order.countDocuments(query);
+      }
+      case 'shipments': {
+        const query: any = { companyId: context.companyId, isDeleted: false };
+        const status = filters.status as string | undefined;
+        if (status && status !== 'all') {
+          if (status === 'pending') query.currentStatus = { $in: ['created', 'ready_to_ship'] };
+          else if (status === 'in_transit') query.currentStatus = { $in: ['picked', 'picked_up', 'in_transit', 'out_for_delivery'] };
+          else if (status === 'rto') query.currentStatus = { $in: ['rto', 'returned', 'rto_delivered', 'return_initiated'] };
+          else query.currentStatus = status;
+        }
+
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.createdAt = {};
+          if (startDate) query.createdAt.$gte = startDate;
+          if (endDate) query.createdAt.$lte = endDate;
+        }
+
+        const searchRegex = regex(filters.search);
+        if (searchRegex) query.trackingNumber = searchRegex;
+        return Shipment.countDocuments(query);
+      }
+      case 'cod_remittance_pending': {
+        const query: any = {
+          companyId: context.companyId,
+          isDeleted: false,
+          'paymentDetails.type': 'cod',
+          currentStatus: 'delivered',
+          $or: [{ 'remittance.included': { $ne: true } }, { remittance: { $exists: false } }],
+        };
+        const searchRegex = regex(filters.search);
+        if (searchRegex) query.trackingNumber = searchRegex;
+        return Shipment.countDocuments(query);
+      }
+      case 'cod_remittance_history': {
+        const query: any = { companyId: context.companyId, isDeleted: { $ne: true } };
+        const status = filters.status as string | undefined;
+        if (status && status !== 'all') query.status = status;
+
+        const searchRegex = regex(filters.search);
+        if (searchRegex) query.remittanceId = searchRegex;
+
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.createdAt = {};
+          if (startDate) query.createdAt.$gte = startDate;
+          if (endDate) query.createdAt.$lte = endDate;
+        }
+        return CODRemittance.countDocuments(query);
+      }
+      case 'wallet_transactions': {
+        const query: any = { company: context.companyId, isDeleted: false };
+        if (filters.type && filters.type !== 'all') query.type = filters.type;
+        if (filters.reason && filters.reason !== 'all') query.reason = filters.reason;
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.createdAt = {};
+          if (startDate) query.createdAt.$gte = startDate;
+          if (endDate) query.createdAt.$lte = endDate;
+        }
+        return WalletTransaction.countDocuments(query);
+      }
+      case 'returns': {
+        const query: any = { companyId: context.companyId, isDeleted: { $ne: true } };
+        if (filters.status && filters.status !== 'all') query.status = filters.status;
+        return ReturnOrder.countDocuments(query);
+      }
+      case 'ndr': {
+        const query: any = { company: context.companyId };
+        if (filters.status && filters.status !== 'all') query.status = filters.status;
+        if (filters.ndrType) query.ndrType = filters.ndrType;
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.detectedAt = {};
+          if (startDate) query.detectedAt.$gte = startDate;
+          if (endDate) query.detectedAt.$lte = endDate;
+        }
+        return NDREvent.countDocuments(query);
+      }
+      case 'rto': {
+        const query: any = { company: context.companyId };
+        if (filters.returnStatus && filters.returnStatus !== 'all') query.returnStatus = filters.returnStatus;
+        if (filters.rtoReason) query.rtoReason = filters.rtoReason;
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.triggeredAt = {};
+          if (startDate) query.triggeredAt.$gte = startDate;
+          if (endDate) query.triggeredAt.$lte = endDate;
+        }
+        return RTOEvent.countDocuments(query);
+      }
+      case 'cod_discrepancies': {
+        const query: any = { companyId: context.companyId };
+        if (filters.status && filters.status !== 'all') query.status = filters.status;
+        if (filters.type) query.type = filters.type;
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.createdAt = {};
+          if (startDate) query.createdAt.$gte = startDate;
+          if (endDate) query.createdAt.$lte = endDate;
+        }
+        const searchRegex = regex(filters.search);
+        if (searchRegex) query.$or = [{ discrepancyNumber: searchRegex }, { awb: searchRegex }];
+        return CODDiscrepancy.countDocuments(query);
+      }
+      case 'audit_logs': {
+        const query: any = { companyId: context.companyId, isDeleted: false };
+        if (filters.action) query.action = filters.action;
+        if (filters.resource) query.resource = filters.resource;
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        if (startDate || endDate) {
+          query.timestamp = {};
+          if (startDate) query.timestamp.$gte = startDate;
+          if (endDate) query.timestamp.$lte = endDate;
+        }
+        const searchRegex = regex(filters.search);
+        if (searchRegex) query.$or = [{ resource: searchRegex }, { 'details.message': searchRegex }];
+        return AuditLog.countDocuments(query);
+      }
+      case 'analytics_dashboard': {
+        const startDate = parseDate(filters.startDate);
+        const endDate = parseDate(filters.endDate);
+        const match: any = { companyId: new mongoose.Types.ObjectId(context.companyId), isDeleted: false };
+        if (startDate || endDate) {
+          match.createdAt = {};
+          if (startDate) match.createdAt.$gte = startDate;
+          if (endDate) match.createdAt.$lte = endDate;
+        }
+        const bySource = await Order.aggregate([
+          { $match: match },
+          { $group: { _id: '$source' } },
+        ]);
+        return bySource.length + 1; // +1 for total_shipments row
+      }
+      case 'pincode_checker':
+      case 'bulk_address_validation':
+        return Array.isArray(filters.rows) ? filters.rows.length : 0;
+      default:
+        return 0;
+    }
   }
 
   private static async exportOrders(filters: Record<string, unknown>, context: ExportContext): Promise<Record<string, unknown>[]> {
@@ -535,6 +723,42 @@ export class SellerExportService {
     });
 
     return rows;
+  }
+
+  private static async exportPincodeChecker(filters: Record<string, unknown>): Promise<Record<string, unknown>[]> {
+    const mode = (filters.mode as string) || 'single';
+    const originPincode = (filters.originPincode as string) || '';
+    const destinationPincode = (filters.destinationPincode as string) || '';
+    const generatedAt = (filters.generatedAt as string) || new Date().toISOString();
+    const inputRows = Array.isArray(filters.rows) ? filters.rows as Array<Record<string, unknown>> : [];
+
+    return inputRows.map((row) => ({
+      generated_at: generatedAt,
+      mode,
+      pickup_pincode: mode === 'route' ? originPincode : '',
+      delivery_pincode: mode === 'route' ? destinationPincode : ((filters.pincode as string) || destinationPincode || ''),
+      courier_name: String(row.courierDisplayName || row.courier_name || ''),
+      serviceable: Boolean(row.serviceable),
+      cod_available: Boolean(row.codAvailable ?? row.cod_available),
+      prepaid_available: Boolean(row.prepaidAvailable ?? row.prepaid_available),
+      estimated_days: Number(row.estimatedDays ?? row.estimated_days ?? 0),
+      zone: String(row.zone || ''),
+    }));
+  }
+
+  private static async exportBulkAddressValidation(filters: Record<string, unknown>, canViewPii: boolean): Promise<Record<string, unknown>[]> {
+    const inputRows = Array.isArray(filters.rows) ? filters.rows as Array<Record<string, unknown>> : [];
+    return inputRows.map((row, index) => ({
+      row_number: Number(row.row_number || index + 1),
+      contact_name: maybeMask(String(row.contact_name || ''), 'name', canViewPii),
+      contact_phone: maybeMask(String(row.contact_phone || ''), 'phone', canViewPii),
+      address_line_1: String(row.address_line_1 || ''),
+      address_line_2: String(row.address_line_2 || ''),
+      city: String(row.city || ''),
+      state: String(row.state || ''),
+      pincode: String(row.pincode || ''),
+      errors: String(row.errors || ''),
+    }));
   }
 }
 

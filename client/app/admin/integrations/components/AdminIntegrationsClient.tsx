@@ -186,7 +186,7 @@ export function AdminIntegrationsClient() {
                         </div>
                     ) : (
                         <div className="divide-y divide-[var(--border-subtle)]">
-                            {stores.map((store: { platform: string; storeId: string; storeName: string; isActive: boolean; errorCount24h: number; syncSuccessRate: number; lastSyncAt?: string; webhooksActive: number; webhooksTotal: number }) => {
+                            {stores.map((store) => {
                                 const platformId = store.platform?.toLowerCase() as keyof typeof PLATFORM_META;
                                 const meta = PLATFORM_META[platformId] ?? PLATFORM_META.shopify;
                                 const isSyncing = syncingStores.has(store.storeId);

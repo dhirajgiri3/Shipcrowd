@@ -19,9 +19,9 @@ interface IntegrationSyncActivityProps {
 
 function getStatusLabel(status: string) {
     switch (status) {
-        case 'SUCCESS':
+        case 'COMPLETED':
             return 'Completed';
-        case 'PARTIAL_SUCCESS':
+        case 'PARTIAL':
             return 'Partial';
         default:
             return status.replace('_', ' ');
@@ -29,7 +29,7 @@ function getStatusLabel(status: string) {
 }
 
 function isSuccessStatus(status: string) {
-    return status === 'COMPLETED' || status === 'SUCCESS';
+    return status === 'COMPLETED';
 }
 
 export function IntegrationSyncActivity({
@@ -78,7 +78,7 @@ export function IntegrationSyncActivity({
                                             'p-2 rounded-full shadow-sm',
                                             isSuccessStatus(log.status)
                                                 ? 'bg-[var(--success)]/10 text-[var(--success)]'
-                                                : log.status === 'PARTIAL_SUCCESS'
+                                                : log.status === 'PARTIAL'
                                                   ? 'bg-[var(--warning)]/10 text-[var(--warning)]'
                                                   : 'bg-[var(--error)]/10 text-[var(--error)]'
                                         )}
@@ -110,7 +110,7 @@ export function IntegrationSyncActivity({
                                         variant={
                                             isSuccessStatus(log.status)
                                                 ? 'success'
-                                                : log.status === 'PARTIAL_SUCCESS'
+                                                : log.status === 'PARTIAL'
                                                   ? 'warning'
                                                   : 'destructive'
                                         }

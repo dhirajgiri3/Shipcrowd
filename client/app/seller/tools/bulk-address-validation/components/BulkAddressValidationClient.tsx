@@ -14,6 +14,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import { useBulkValidateAddresses } from '@/src/core/api/hooks/logistics/useAddress';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import {
   Upload,
@@ -45,6 +46,7 @@ export function BulkAddressValidationClient() {
     const [status, setStatus] = useState<ValidationStatus>('idle');
     const [results, setResults] = useState<BulkAddressValidationResult | null>(null);
     const [parseError, setParseError] = useState<string | null>(null);
+    const exportSellerData = useSellerExport();
 
     const { mutate: validateAddresses, isPending } = useBulkValidateAddresses();
 
@@ -185,29 +187,23 @@ export function BulkAddressValidationClient() {
         if (!results) return;
 
         const invalidResults = results.results.filter(r => !r.isValid);
-        const escapeCsv = (value: string | number) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-        const csv = [
-            ['Row Number', 'Contact Name', 'Contact Phone', 'Address Line 1', 'Address Line 2', 'City', 'State', 'Pincode', 'Errors'].join(','),
-            ...invalidResults.map((r, index) => [
-                index + 1,
-                r.originalAddress.contactName || '',
-                r.originalAddress.contactPhone || '',
-                r.originalAddress.line1,
-                r.originalAddress.line2 || '',
-                r.originalAddress.city,
-                r.originalAddress.state,
-                r.originalAddress.pincode,
-                r.errors.map(e => e.message).join('; '),
-            ].map(escapeCsv).join(','))
-        ].join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'invalid-addresses.csv';
-        a.click();
-        URL.revokeObjectURL(url);
+        exportSellerData.mutate({
+            module: 'bulk_address_validation',
+            filters: {
+                rows: invalidResults.map((r, index) => ({
+                    row_number: index + 1,
+                    contact_name: r.originalAddress.contactName || '',
+                    contact_phone: r.originalAddress.contactPhone || '',
+                    address_line_1: r.originalAddress.line1 || '',
+                    address_line_2: r.originalAddress.line2 || '',
+                    city: r.originalAddress.city || '',
+                    state: r.originalAddress.state || '',
+                    pincode: r.originalAddress.pincode || '',
+                    errors: r.errors.map(e => e.message).join('; '),
+                })),
+            },
+            filename: 'invalid-addresses.csv',
+        });
     };
 
     // Reset state

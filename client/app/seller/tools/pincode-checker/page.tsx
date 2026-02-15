@@ -31,6 +31,7 @@ import { Input } from '@/src/components/ui/core/Input';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { handleApiError } from '@/src/lib/error';
 import type { CourierCoverage, ServiceabilityCheckRequest } from '@/src/types/api/logistics';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 const MODE_TABS = [
   { key: 'single', label: 'Single Pincode' },
@@ -46,6 +47,7 @@ export default function PincodeCheckerPage() {
     isServiceable: boolean;
     couriers: CourierCoverage[];
   } | null>(null);
+  const exportSellerData = useSellerExport();
 
   // Route serviceability query
   const routeRequest: ServiceabilityCheckRequest = {
@@ -70,49 +72,18 @@ export default function PincodeCheckerPage() {
   const handleExport = () => {
     const data = mode === 'single' ? singleResult?.couriers : routeResult?.availableCouriers;
     if (!data) return;
-
-    const generatedAt = new Date().toISOString();
-    const escapeCsv = (value: string | number | boolean) => {
-      const stringValue = String(value ?? '');
-      return `"${stringValue.replace(/"/g, '""')}"`;
-    };
-
-    const csv = [
-      [
-        'generated_at',
-        'mode',
-        'pickup_pincode',
-        'delivery_pincode',
-        'courier_name',
-        'serviceable',
-        'cod_available',
-        'prepaid_available',
-        'estimated_days',
-        'zone',
-      ].join(','),
-      ...data.map((c) =>
-        [
-          generatedAt,
-          mode,
-          mode === 'single' ? '' : originPincode,
-          mode === 'single' ? (singleResult?.pincode || '') : destinationPincode,
-          c.courierDisplayName,
-          c.serviceable,
-          c.codAvailable,
-          c.prepaidAvailable,
-          c.estimatedDays ?? '',
-          c.zone ?? '',
-        ].map(escapeCsv).join(',')
-      ),
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `serviceability-${mode === 'single' ? singleResult?.pincode : `${originPincode}-${destinationPincode}`}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportSellerData.mutate({
+      module: 'pincode_checker',
+      filters: {
+        mode,
+        pincode: singleResult?.pincode || '',
+        originPincode: originPincode || '',
+        destinationPincode: destinationPincode || '',
+        generatedAt: new Date().toISOString(),
+        rows: data,
+      },
+      filename: `serviceability-${mode === 'single' ? singleResult?.pincode : `${originPincode}-${destinationPincode}`}.csv`,
+    });
   };
 
   const handleRetryRoute = () => {

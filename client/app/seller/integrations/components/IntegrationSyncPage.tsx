@@ -27,7 +27,7 @@ import type { IntegrationType } from '@/src/types/api/integrations';
 import { PLATFORM_META } from './platformConfig';
 import type { PlatformId } from './platformConfig';
 
-type SyncStatus = 'ALL' | 'SUCCESS' | 'COMPLETED' | 'FAILED' | 'IN_PROGRESS' | 'PARTIAL_SUCCESS';
+type SyncStatus = 'ALL' | 'COMPLETED' | 'FAILED' | 'IN_PROGRESS' | 'PARTIAL';
 
 interface Props {
     platform: PlatformId;
@@ -37,10 +37,9 @@ interface Props {
 
 function getStatusLabel(status: string) {
     switch (status) {
-        case 'SUCCESS':
         case 'COMPLETED':
             return 'Completed';
-        case 'PARTIAL_SUCCESS':
+        case 'PARTIAL':
             return 'Partial';
         default:
             return status.replace('_', ' ');
@@ -49,14 +48,13 @@ function getStatusLabel(status: string) {
 
 function getStatusColor(status: string) {
     switch (status) {
-        case 'SUCCESS':
         case 'COMPLETED':
             return 'success';
         case 'FAILED':
             return 'destructive';
         case 'IN_PROGRESS':
             return 'default';
-        case 'PARTIAL_SUCCESS':
+        case 'PARTIAL':
             return 'warning';
         default:
             return 'secondary';
@@ -103,29 +101,25 @@ export default function IntegrationSyncPage({ platform, type, storeId }: Props) 
     const filteredLogs =
         logs?.filter((log) => {
             if (statusFilter === 'ALL') return true;
-            if (statusFilter === 'SUCCESS' || statusFilter === 'COMPLETED') {
-                return log.status === 'SUCCESS' || log.status === 'COMPLETED';
-            }
             return log.status === statusFilter;
         }) || [];
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'SUCCESS':
             case 'COMPLETED':
                 return <CheckCircle2 className="w-5 h-5 text-[var(--success)]" />;
             case 'FAILED':
                 return <AlertCircle className="w-5 h-5 text-[var(--error)]" />;
             case 'IN_PROGRESS':
                 return <Loader2 className="w-5 h-5 text-[var(--primary-blue)] animate-spin" />;
-            case 'PARTIAL_SUCCESS':
+            case 'PARTIAL':
                 return <AlertCircle className="w-5 h-5 text-[var(--warning)]" />;
             default:
                 return <Clock className="w-5 h-5 text-[var(--text-muted)]" />;
         }
     };
 
-    const filterOptions: SyncStatus[] = ['ALL', 'SUCCESS', 'FAILED', 'IN_PROGRESS', 'PARTIAL_SUCCESS'];
+    const filterOptions: SyncStatus[] = ['ALL', 'COMPLETED', 'FAILED', 'IN_PROGRESS', 'PARTIAL'];
 
     if (isStoreLoading) {
         return (

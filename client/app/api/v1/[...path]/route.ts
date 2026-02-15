@@ -100,9 +100,10 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     // Add forwarded headers for proper origin tracking
     forwardHeaders['x-forwarded-proto'] = url.protocol.replace(':', '');
     forwardHeaders['x-forwarded-host'] = url.host;
-    forwardHeaders['x-forwarded-for'] = request.headers.get('x-forwarded-for') ||
-                                        request.ip ||
-                                        'unknown';
+    const forwardedForHeader = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    forwardHeaders['x-forwarded-for'] =
+      forwardedForHeader?.split(',')[0]?.trim() || realIp || 'unknown';
 
     // Get request body if present
     let body: string | undefined;

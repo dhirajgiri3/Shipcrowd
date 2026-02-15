@@ -13,7 +13,9 @@ export type SellerExportModule =
   | 'rto'
   | 'cod_discrepancies'
   | 'audit_logs'
-  | 'analytics_dashboard';
+  | 'analytics_dashboard'
+  | 'pincode_checker'
+  | 'bulk_address_validation';
 
 export interface SellerExportRequest {
   module: SellerExportModule;
