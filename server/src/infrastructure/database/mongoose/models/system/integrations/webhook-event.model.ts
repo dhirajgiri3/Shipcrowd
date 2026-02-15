@@ -3,11 +3,12 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 /**
  * WebhookEvent Model
  *
- * Logs all incoming webhook events from Shopify for debugging,
- * replay, and audit purposes.
+ * Logs all incoming webhook events from all platforms (Shopify, WooCommerce, Flipkart)
+ * for debugging, replay, and audit purposes.
  *
  * Features:
- * - Duplicate prevention via shopifyId unique index
+ * - Multi-platform support via platform field
+ * - Duplicate prevention via platform-specific event ID
  * - Retry tracking with exponential backoff
  * - Processing status and error logging
  * - Automatic cleanup of old events (90 days)
@@ -17,10 +18,17 @@ export interface IWebhookEvent extends Document {
   storeId: Schema.Types.ObjectId;
   companyId: Schema.Types.ObjectId;
 
+  // Platform identification
+  platform: 'shopify' | 'woocommerce' | 'flipkart';
+
   // Webhook identification
   topic: string;
-  shopifyId: string; // X-Shopify-Webhook-Id header
-  shopifyDomain: string; // X-Shopify-Shop-Domain header
+  eventId: string; // Platform-specific webhook ID (unique per platform)
+  platformDomain?: string; // X-Shopify-Shop-Domain, WooCommerce site URL, etc.
+
+  // Legacy fields (for backward compatibility)
+  shopifyId?: string; // @deprecated - use eventId
+  shopifyDomain?: string; // @deprecated - use platformDomain
 
   // Payload and headers
   payload: any;
@@ -56,29 +64,32 @@ export interface IWebhookEventModel extends Model<IWebhookEvent> {
   createEvent(data: {
     storeId: string;
     companyId: string;
+    platform: 'shopify' | 'woocommerce' | 'flipkart';
     topic: string;
-    shopifyId: string;
-    shopifyDomain: string;
+    eventId: string; // Platform-specific event ID
+    platformDomain?: string;
     payload: any;
     headers: Record<string, string>;
     verified: boolean;
     hmacValid: boolean;
+    // Legacy support
+    shopifyId?: string;
+    shopifyDomain?: string;
   }): Promise<{ event: IWebhookEvent; isDuplicate: boolean }>;
 
-  getUnprocessed(limit?: number): Promise<IWebhookEvent[]>;
-  getFailedEvents(limit?: number): Promise<IWebhookEvent[]>;
+  getUnprocessed(limit?: number, platform?: string): Promise<IWebhookEvent[]>;
+  getFailedEvents(limit?: number, platform?: string): Promise<IWebhookEvent[]>;
   getByTopic(storeId: string, topic: string, limit?: number): Promise<IWebhookEvent[]>;
   getStats(storeId: string, days?: number): Promise<any>;
   cleanupOldEvents(retentionDays?: number): Promise<number>;
   retryEvent(eventId: string): Promise<IWebhookEvent>;
-  getQueueSize(): Promise<{ unprocessed: number; failed: number; total: number }>;
+  getQueueSize(platform?: string): Promise<{ unprocessed: number; failed: number; total: number }>;
 }
 
 const WebhookEventSchema = new Schema<IWebhookEvent>(
   {
     storeId: {
       type: Schema.Types.ObjectId,
-      ref: 'ShopifyStore',
       required: true,
       index: true,
     },
@@ -89,12 +100,21 @@ const WebhookEventSchema = new Schema<IWebhookEvent>(
       index: true,
     },
 
+    // Platform identification
+    platform: {
+      type: String,
+      required: true,
+      enum: ['shopify', 'woocommerce', 'flipkart'],
+      index: true,
+    },
+
     // Webhook identification
     topic: {
       type: String,
       required: true,
       index: true,
       enum: [
+        // Shopify topics
         'orders/create',
         'orders/updated',
         'orders/cancelled',
@@ -103,6 +123,16 @@ const WebhookEventSchema = new Schema<IWebhookEvent>(
         'inventory_levels/update',
         'app/uninstalled',
         'shop/update',
+        // WooCommerce topics
+        'order.created',
+        'order.updated',
+        'order.deleted',
+        'product.created',
+        'product.updated',
+        'product.deleted',
+        'customer.created',
+        'customer.updated',
+        // Flipkart topics
         'order/create',
         'order/approve',
         'order/ready-to-dispatch',
@@ -113,15 +143,23 @@ const WebhookEventSchema = new Schema<IWebhookEvent>(
         'inventory/update',
       ],
     },
-    shopifyId: {
+    eventId: {
       type: String,
       required: true,
-      unique: true, // Prevent duplicate processing
       index: true,
+    },
+    platformDomain: {
+      type: String,
+    },
+
+    // Legacy fields (backward compatibility)
+    shopifyId: {
+      type: String,
+      sparse: true, // Allow null for non-Shopify webhooks
     },
     shopifyDomain: {
       type: String,
-      required: true,
+      sparse: true,
     },
 
     // Payload and headers
@@ -184,6 +222,8 @@ const WebhookEventSchema = new Schema<IWebhookEvent>(
 WebhookEventSchema.index({ storeId: 1, topic: 1, createdAt: -1 });
 WebhookEventSchema.index({ processed: 1, retryCount: 1 }); // For retry queries
 WebhookEventSchema.index({ createdAt: 1 }); // For cleanup queries
+WebhookEventSchema.index({ platform: 1, eventId: 1 }, { unique: true }); // Prevent duplicates per platform
+WebhookEventSchema.index({ platform: 1, processed: 1 }); // Platform-specific queries
 
 // Virtual: Can retry?
 WebhookEventSchema.virtual('canRetry').get(function () {
@@ -205,23 +245,30 @@ WebhookEventSchema.virtual('processingDuration').get(function () {
 WebhookEventSchema.statics.createEvent = async function (data: {
   storeId: string;
   companyId: string;
+  platform: 'shopify' | 'woocommerce' | 'flipkart';
   topic: string;
-  shopifyId: string;
-  shopifyDomain: string;
+  eventId: string;
+  platformDomain?: string;
   payload: any;
   headers: Record<string, string>;
   verified: boolean;
   hmacValid: boolean;
+  shopifyId?: string;
+  shopifyDomain?: string;
 }) {
-  // Check for duplicate
-  const existing = await this.findOne({ shopifyId: data.shopifyId });
+  // Check for duplicate using platform + eventId composite key
+  const existing = await this.findOne({
+    platform: data.platform,
+    eventId: data.eventId,
+  });
+
   if (existing) {
     return { event: existing, isDuplicate: true };
   }
 
   const event = await this.create({
     ...data,
-    apiVersion: data.headers['x-shopify-api-version'],
+    apiVersion: data.headers['x-shopify-api-version'] || data.headers['x-wc-webhook-id'],
     receivedAt: new Date(),
   });
 
@@ -256,20 +303,32 @@ WebhookEventSchema.methods.incrementRetry = async function () {
 };
 
 // Static method: Get unprocessed events
-WebhookEventSchema.statics.getUnprocessed = function (limit: number = 100) {
-  return this.find({
+WebhookEventSchema.statics.getUnprocessed = function (limit: number = 100, platform?: string) {
+  const query: any = {
     processed: false,
     retryCount: { $lt: this.schema.path('maxRetries').options.default || 5 },
-  })
+  };
+
+  if (platform) {
+    query.platform = platform;
+  }
+
+  return this.find(query)
     .sort({ receivedAt: 1 }) // Process oldest first
     .limit(limit);
 };
 
 // Static method: Get failed events (dead letter queue)
-WebhookEventSchema.statics.getFailedEvents = function (limit: number = 50) {
-  return this.find({
+WebhookEventSchema.statics.getFailedEvents = function (limit: number = 50, platform?: string) {
+  const query: any = {
     retryCount: { $gte: this.schema.path('maxRetries').options.default || 5 },
-  })
+  };
+
+  if (platform) {
+    query.platform = platform;
+  }
+
+  return this.find(query)
     .sort({ createdAt: -1 })
     .limit(limit);
 };
@@ -357,13 +416,20 @@ WebhookEventSchema.statics.retryEvent = async function (eventId: string) {
 };
 
 // Static method: Get processing queue size
-WebhookEventSchema.statics.getQueueSize = async function () {
+WebhookEventSchema.statics.getQueueSize = async function (platform?: string) {
+  const query: any = {};
+  if (platform) {
+    query.platform = platform;
+  }
+
   const [unprocessed, failed] = await Promise.all([
     this.countDocuments({
+      ...query,
       processed: false,
       retryCount: { $lt: this.schema.path('maxRetries').options.default || 5 },
     }),
     this.countDocuments({
+      ...query,
       processed: false,
       retryCount: { $gte: this.schema.path('maxRetries').options.default || 5 },
     }),

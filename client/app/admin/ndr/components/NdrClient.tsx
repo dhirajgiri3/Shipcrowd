@@ -22,7 +22,7 @@ import { Badge } from '@/src/components/ui/core/Badge';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { formatCurrency, cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import {
     PackageX,
     Search,
@@ -58,10 +58,7 @@ export function NdrClient() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
-    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
-    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
-    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
+    const { page, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [activeTab, setActiveTab] = useState('all');
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 500);
@@ -99,16 +96,7 @@ export function NdrClient() {
         } else {
             params.delete('search');
         }
-        if (page > 1) {
-            params.set('page', String(page));
-        } else {
-            params.delete('page');
-        }
-        if (limit !== DEFAULT_LIMIT) {
-            params.set('limit', String(limit));
-        } else {
-            params.delete('limit');
-        }
+        syncPaginationQuery(params, { page, limit }, { defaultLimit: DEFAULT_LIMIT });
 
         const nextQuery = params.toString();
         const currentQuery = searchParams.toString();

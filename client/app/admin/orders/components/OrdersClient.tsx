@@ -17,7 +17,7 @@ import { useAdminOrders, useGetCourierRates, useShipOrder, useAdminDeleteOrder, 
 import { useWarehouses } from '@/src/core/api/hooks/logistics';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
 import { showSuccessToast, showErrorToast } from '@/src/lib/error';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { formatCurrency, cn, parsePaginationQuery } from '@/src/lib/utils';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
@@ -40,9 +40,7 @@ export default function OrdersClient() {
     const searchParams = useSearchParams();
 
     // -- State from URL & Local --
-    const page = Number(searchParams.get('page')) || 1;
-    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
-    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
+    const { page, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const status = searchParams.get('status') || 'all';
     const sort = searchParams.get('sort') || 'createdAt';
     const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';

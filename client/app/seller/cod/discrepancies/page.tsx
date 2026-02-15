@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { formatCurrency, cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { useUrlDateRange } from '@/src/hooks';
 import type { DateRange } from '@/src/lib/data';
@@ -49,8 +49,7 @@ export default function CODDiscrepancyPage() {
     const searchParams = useSearchParams();
     const { addToast } = useToast();
     const [page, setPage] = useState(1);
-    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
-    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
+    const { limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('');
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 300);
@@ -96,8 +95,7 @@ export default function CODDiscrepancyPage() {
         const nextSearch = searchParams.get('search') || '';
         setSearch((currentSearch) => (currentSearch === nextSearch ? currentSearch : nextSearch));
 
-        const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
-        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        const { page: nextPage } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
         setPage((currentPage) => (currentPage === nextPage ? currentPage : nextPage));
         setIsUrlHydrated(true);
     }, [searchParams]);
@@ -121,16 +119,7 @@ export default function CODDiscrepancyPage() {
         } else {
             params.delete('search');
         }
-        if (page > 1) {
-            params.set('page', String(page));
-        } else {
-            params.delete('page');
-        }
-        if (limit !== DEFAULT_LIMIT) {
-            params.set('limit', String(limit));
-        } else {
-            params.delete('limit');
-        }
+        syncPaginationQuery(params, { page, limit }, { defaultLimit: DEFAULT_LIMIT });
 
         const nextQuery = params.toString();
         const currentQuery = searchParams.toString();

@@ -11,29 +11,37 @@ import { sendSuccess } from '../../../../../shared/utils/responseHelper';
  * Handles incoming Flipkart webhooks.
  *
  * Pattern:
- * 1. Log webhook event
+ * 1. Persist webhook event for duplicate prevention
  * 2. Queue async processing
  * 3. Return 200 immediately (within 5 seconds)
  *
  * All endpoints are public but HMAC-verified via middleware.
  *
- * Note: We use the existing WebhookEvent model which has shopifyId/shopifyDomain fields.
- * For Flipkart webhooks, we repurpose these as:
- * - shopifyId -> Unique webhook event ID (generated from payload hash)
- * - shopifyDomain -> Flipkart seller ID
+ * Duplicate Prevention:
+ * - Uses deterministic event ID based on topic + orderId (not time-based)
+ * - platform + eventId composite unique index prevents duplicate processing
  */
 
 export class FlipkartWebhookController {
 
   /**
-   * Generate a unique webhook ID from the payload
+   * Generate deterministic webhook ID from payload (NO timestamp)
+   * This ensures the same payload produces the same ID for duplicate detection
    */
   private static generateWebhookId(topic: string, payload: any): string {
+    // Extract order ID or resource ID from payload
+    const resourceId = payload.orderId || payload.order_id || payload.id || 'unknown';
+
+    // Create deterministic hash (NO Date.now())
     const hash = crypto.createHash('sha256');
     hash.update(topic);
-    hash.update(JSON.stringify(payload));
-    hash.update(Date.now().toString());
-    return `flipkart_${hash.digest('hex').substring(0, 32)}`;
+    hash.update(String(resourceId));
+    // Optionally include order status to allow multiple webhooks for same order
+    if (payload.status) {
+      hash.update(String(payload.status));
+    }
+
+    return `flipkart-${topic.replace(/\//g, '-')}-${resourceId}-${hash.digest('hex').substring(0, 16)}`;
   }
 
   /**
@@ -48,13 +56,14 @@ export class FlipkartWebhookController {
       // Generate unique webhook ID for duplicate prevention
       const webhookId = FlipkartWebhookController.generateWebhookId('order/create', payload);
 
-      // Log webhook event using existing model fields
+      // Persist webhook event with platform field
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'order/create',
-        shopifyId: webhookId, // Repurposed as unique event ID
-        shopifyDomain: store.sellerId, // Repurposed as Flipkart seller ID
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,
@@ -106,9 +115,10 @@ export class FlipkartWebhookController {
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'order/approve',
-        shopifyId: webhookId,
-        shopifyDomain: store.sellerId,
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,
@@ -152,9 +162,10 @@ export class FlipkartWebhookController {
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'order/ready-to-dispatch',
-        shopifyId: webhookId,
-        shopifyDomain: store.sellerId,
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,
@@ -198,9 +209,10 @@ export class FlipkartWebhookController {
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'order/dispatch',
-        shopifyId: webhookId,
-        shopifyDomain: store.sellerId,
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,
@@ -245,9 +257,10 @@ export class FlipkartWebhookController {
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'order/deliver',
-        shopifyId: webhookId,
-        shopifyDomain: store.sellerId,
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,
@@ -291,9 +304,10 @@ export class FlipkartWebhookController {
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'order/cancel',
-        shopifyId: webhookId,
-        shopifyDomain: store.sellerId,
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,
@@ -338,9 +352,10 @@ export class FlipkartWebhookController {
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'order/return',
-        shopifyId: webhookId,
-        shopifyDomain: store.sellerId,
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,
@@ -385,9 +400,10 @@ export class FlipkartWebhookController {
       const { event, isDuplicate } = await WebhookEvent.createEvent({
         storeId: store._id,
         companyId: store.companyId,
+        platform: 'flipkart',
         topic: 'inventory/update',
-        shopifyId: webhookId,
-        shopifyDomain: store.sellerId,
+        eventId: webhookId,
+        platformDomain: store.sellerId,
         payload,
         headers: req.headers as Record<string, string>,
         verified: webhookMeta?.verified ?? true,

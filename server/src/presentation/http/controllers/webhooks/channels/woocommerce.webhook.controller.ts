@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import QueueManager from '../../../../../infrastructure/utilities/queue-manager';
+import WebhookEvent from '../../../../../infrastructure/database/mongoose/models/system/integrations/webhook-event.model';
 import logger from '../../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../../shared/utils/responseHelper';
 
@@ -12,15 +13,41 @@ export default class WooCommerceWebhookController {
   ): Promise<void> {
     const store = (req as any).woocommerceStore;
     const payload = req.body;
+    const headers = req.headers as Record<string, string>;
+
+    // Generate deterministic event ID (not time-based to prevent duplicates)
+    const eventId = `woo-${topic}-${store._id}-${payload.id}`;
 
     logger.info(`Received ${topic} webhook`, {
       storeId: store._id,
+      eventId,
       [idField]: payload.id,
     });
 
+    // Persist webhook event for audit trail and duplicate prevention
+    const { event, isDuplicate } = await WebhookEvent.createEvent({
+      storeId: String(store._id),
+      companyId: String(store.companyId),
+      platform: 'woocommerce',
+      topic,
+      eventId,
+      platformDomain: store.storeUrl,
+      payload,
+      headers,
+      verified: true,
+      hmacValid: req.get('x-wc-webhook-signature') ? true : false,
+    });
+
+    if (isDuplicate) {
+      logger.info('Duplicate webhook event detected, skipping processing', { eventId });
+      sendSuccess(res, { received: true, duplicate: true });
+      return;
+    }
+
+    // Enqueue for async processing
     await QueueManager.addJob(
       'woocommerce-webhook-process',
-      `${topic}-${store._id}-${Date.now()}`,
+      `woo-${topic}-${event._id}`,
       {
         storeId: String(store._id),
         topic,

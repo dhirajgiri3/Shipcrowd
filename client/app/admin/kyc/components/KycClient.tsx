@@ -19,7 +19,7 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
-import { formatDate, cn } from '@/src/lib/utils';
+import { formatDate, cn, parsePaginationQuery } from '@/src/lib/utils';
 import { useAllKYCs, useVerifyKYC, useRejectKYC, KYCFilters } from '@/src/core/api/hooks/security/useKYC';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 
@@ -38,9 +38,7 @@ export function KycClient() {
     const { addToast } = useToast();
 
     // -- State from URL & Local --
-    const page = Number(searchParams.get('page')) || 1;
-    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
-    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
+    const { page, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const status = (searchParams.get('status') as KYCFilters['status']) || 'all';
     const search = searchParams.get('search') || '';
     const {

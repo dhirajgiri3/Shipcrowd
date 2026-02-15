@@ -25,7 +25,7 @@ import { useToast } from '@/src/components/ui/feedback/Toast';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
-import { cn, downloadCsv } from '@/src/lib/utils';
+import { cn, downloadCsv, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useUrlDateRange } from '@/src/hooks';
 
 const SHIPMENT_TABS = [
@@ -46,8 +46,7 @@ export function ShipmentsClient() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [page, setPage] = useState(1);
-    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
-    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
+    const { limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 500);
     const [statusFilter, setStatusFilter] = useState<ShipmentStatusFilter>('all');
@@ -82,8 +81,7 @@ export function ShipmentsClient() {
         const searchParam = searchParams.get('search') || '';
         setSearch((currentSearch) => (currentSearch === searchParam ? currentSearch : searchParam));
 
-        const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
-        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        const { page: nextPage } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
         setPage((currentPage) => (currentPage === nextPage ? currentPage : nextPage));
 
         setIsUrlHydrated(true);
@@ -110,16 +108,7 @@ export function ShipmentsClient() {
             params.delete('search');
         }
 
-        if (page > 1) {
-            params.set('page', String(page));
-        } else {
-            params.delete('page');
-        }
-        if (limit !== DEFAULT_LIMIT) {
-            params.set('limit', String(limit));
-        } else {
-            params.delete('limit');
-        }
+        syncPaginationQuery(params, { page, limit }, { defaultLimit: DEFAULT_LIMIT });
 
         const currentQuery = searchParams.toString();
         const nextQuery = params.toString();

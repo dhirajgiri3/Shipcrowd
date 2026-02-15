@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn, formatPaginationRange, downloadCsv } from '@/src/lib/utils';
+import { formatCurrency, cn, formatPaginationRange, downloadCsv, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/orders/OrderDetailsPanel';
 import {
@@ -66,8 +66,7 @@ export function OrdersClient() {
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const hasInitializedFilterReset = useRef(false);
     const { addToast } = useToast();
-    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
-    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
+    const { limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const { range: dateRange, startDateIso, endDateIso, setRange } = useUrlDateRange();
 
     useEffect(() => {
@@ -89,8 +88,7 @@ export function OrdersClient() {
         const nextSmartFilter = smartParam && SMART_FILTERS.includes(smartParam) ? smartParam : 'all';
         setSmartFilter((currentSmartFilter) => (currentSmartFilter === nextSmartFilter ? currentSmartFilter : nextSmartFilter));
 
-        const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
-        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        const { page: nextPage } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
         setPage((currentPage) => (currentPage === nextPage ? currentPage : nextPage));
 
         setIsUrlHydrated(true);
@@ -129,16 +127,7 @@ export function OrdersClient() {
             params.delete('smartFilter');
         }
 
-        if (page > 1) {
-            params.set('page', String(page));
-        } else {
-            params.delete('page');
-        }
-        if (limit !== DEFAULT_LIMIT) {
-            params.set('limit', String(limit));
-        } else {
-            params.delete('limit');
-        }
+        syncPaginationQuery(params, { page, limit }, { defaultLimit: DEFAULT_LIMIT });
 
         const currentQuery = searchParams.toString();
         const nextQuery = params.toString();
