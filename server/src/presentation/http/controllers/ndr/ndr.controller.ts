@@ -25,6 +25,7 @@ import {
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -36,9 +37,15 @@ export class NDRController {
      */
     static async listNDREvents(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const auth = guardChecks(req);
-            requireCompanyContext(auth);
-            const companyId = auth.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const isAdmin = isPlatformAdmin(req.user ?? {});
+            const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId : undefined;
+            const effectiveCompanyId = isAdmin ? requestedCompanyId : auth.companyId;
+            if (!isAdmin) {
+                requireCompanyContext(auth);
+            } else if (effectiveCompanyId && !mongoose.isValidObjectId(effectiveCompanyId)) {
+                throw new ValidationError('Validation failed', [{ field: 'companyId', message: 'Invalid companyId' }]);
+            }
 
             // Validate query parameters
             const validation = listNDREventsQuerySchema.safeParse(req.query);
@@ -62,12 +69,15 @@ export class NDRController {
                 sortOrder,
             } = validation.data;
 
-            const companyObjectId = new mongoose.Types.ObjectId(companyId);
-            const filter: any = { company: companyObjectId };
+            const companyObjectId = effectiveCompanyId ? new mongoose.Types.ObjectId(effectiveCompanyId) : undefined;
+            const filter: any = {};
+            if (companyObjectId) {
+                filter.company = companyObjectId;
+            }
 
             logger.info('NDR listNDREvents - Query Debug', {
-                companyId,
-                companyIdType: typeof companyId,
+                companyId: effectiveCompanyId || null,
+                companyIdType: typeof effectiveCompanyId,
                 objectId: companyObjectId,
                 filter,
                 status,
@@ -137,21 +147,28 @@ export class NDRController {
                     );
                 }
 
+                const shipmentQuery: any = {
+                    trackingNumber: searchRegex,
+                };
+                if (companyObjectId) shipmentQuery.companyId = companyObjectId;
+                const orderQuery: any = {
+                    $or: [
+                        { orderNumber: searchRegex },
+                        { 'customerInfo.name': searchRegex },
+                        { 'customerInfo.phone': searchRegex },
+                    ],
+                };
+                if (companyObjectId) orderQuery.companyId = companyObjectId;
+
                 const [shipmentMatches, orderMatches] = await Promise.all([
                     Shipment.find({
-                        companyId: companyObjectId,
-                        trackingNumber: searchRegex,
+                        ...shipmentQuery,
                     })
                         .select('_id')
                         .limit(200)
                         .lean(),
                     Order.find({
-                        companyId: companyObjectId,
-                        $or: [
-                            { orderNumber: searchRegex },
-                            { 'customerInfo.name': searchRegex },
-                            { 'customerInfo.phone': searchRegex },
-                        ],
+                        ...orderQuery,
                     })
                         .select('_id')
                         .limit(200)
@@ -427,9 +444,13 @@ export class NDRController {
      */
     static async getByType(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const auth = guardChecks(req);
-            requireCompanyContext(auth);
-            const companyId = auth.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const isAdmin = isPlatformAdmin(req.user ?? {});
+            const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId : undefined;
+            const companyId = isAdmin ? requestedCompanyId : auth.companyId;
+            if (!isAdmin) {
+                requireCompanyContext(auth);
+            }
 
             const byType = await NDRAnalyticsService.getNDRByType(companyId);
 
@@ -445,9 +466,13 @@ export class NDRController {
      */
     static async getTrends(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const auth = guardChecks(req);
-            requireCompanyContext(auth);
-            const companyId = auth.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const isAdmin = isPlatformAdmin(req.user ?? {});
+            const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId : undefined;
+            const companyId = isAdmin ? requestedCompanyId : auth.companyId;
+            if (!isAdmin) {
+                requireCompanyContext(auth);
+            }
 
             // Validate query parameters
             const validation = getNDRTrendsQuerySchema.safeParse(req.query);

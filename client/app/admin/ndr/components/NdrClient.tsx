@@ -1,7 +1,8 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LazyBarChart as BarChart,
@@ -41,6 +42,8 @@ import {
 import { useAdminNDRList, useNdrFunnel } from '@/src/core/api/hooks/admin/useAdminNDR';
 import { useDebouncedValue } from '@/src/hooks/data';
 import { Loader2 } from 'lucide-react';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
+const DEFAULT_LIMIT = 10;
 
 // Status mapping helper
 const getStatusColor = (status: string) => {
@@ -52,21 +55,91 @@ const getStatusColor = (status: string) => {
 };
 
 export function NdrClient() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
     const [activeTab, setActiveTab] = useState('all');
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 500);
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const { addToast } = useToast();
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
+    const companyId = searchParams.get('companyId') || undefined;
+
+    const statusFilter = activeTab === 'all' ? undefined : activeTab;
+
+    useEffect(() => {
+        const nextStatus = searchParams.get('status') || 'all';
+        setActiveTab((current) => (current === nextStatus ? current : nextStatus));
+
+        const nextSearch = searchParams.get('search') || '';
+        setSearch((current) => (current === nextSearch ? current : nextSearch));
+        setIsUrlHydrated(true);
+    }, [searchParams]);
+
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+        const params = new URLSearchParams(searchParams.toString());
+        if (activeTab !== 'all') {
+            params.set('status', activeTab);
+        } else {
+            params.delete('status');
+        }
+        if (debouncedSearch) {
+            params.set('search', debouncedSearch);
+        } else {
+            params.delete('search');
+        }
+        if (page > 1) {
+            params.set('page', String(page));
+        } else {
+            params.delete('page');
+        }
+        if (limit !== DEFAULT_LIMIT) {
+            params.set('limit', String(limit));
+        } else {
+            params.delete('limit');
+        }
+
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [activeTab, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
 
     // API Hooks
     const { data: ndrResponse, isLoading: isLoadingList } = useAdminNDRList({
-        status: activeTab === 'all' ? undefined : activeTab,
-        search: debouncedSearch
+        status: statusFilter,
+        search: debouncedSearch,
+        startDate: startDateIso,
+        endDate: endDateIso,
+        companyId,
+        page,
+        limit,
     });
 
-    const { data: funnelDataResponse, isLoading: isLoadingFunnel } = useNdrFunnel();
+    const { data: funnelDataResponse, isLoading: isLoadingFunnel } = useNdrFunnel({
+        startDate: startDateIso,
+        endDate: endDateIso,
+        companyId,
+    });
 
     const ndrList = ndrResponse?.data || [];
-    const funnelData = funnelDataResponse || [];
+    const funnelData = (funnelDataResponse || []).map((item: any) => ({
+        name: item.stage,
+        value: item.count,
+        fill: item.fill,
+    }));
     const stats = ndrResponse?.stats || { resolutionRate: 0, actionRequired: 0, total: 0, pendingSeller: 0, rtoInitiated: 0 };
 
     return (
@@ -83,7 +156,7 @@ export function NdrClient() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <DateRangePicker />
+                    <DateRangePicker value={dateRange} onRangeChange={setRange} />
                     <Button variant="outline" className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)] hover:text-[var(--error)]">
                         <AlertTriangle className="h-4 w-4 mr-2" />
                         View High Risk ({stats.actionRequired})
@@ -132,7 +205,7 @@ export function NdrClient() {
                             </div>
                             <span className="text-xs font-bold text-[var(--error)] bg-white/50 px-2 py-1 rounded-full">+12 Today</span>
                         </div>
-                        <p className="text-3xl font-bold text-[var(--text-primary)]">42</p>
+                        <p className="text-3xl font-bold text-[var(--text-primary)]">{stats.actionRequired}</p>
                         <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Action Required</p>
                     </div>
 
@@ -142,7 +215,7 @@ export function NdrClient() {
                                 <RefreshCw className="w-5 h-5" />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-[var(--text-primary)]">85</p>
+                        <p className="text-3xl font-bold text-[var(--text-primary)]">{stats.pendingSeller}</p>
                         <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Reattempts Scheduled</p>
                     </div>
 
@@ -152,7 +225,7 @@ export function NdrClient() {
                                 <RotateCcw className="w-5 h-5" />
                             </div>
                         </div>
-                        <p className="text-3xl font-bold text-[var(--text-primary)]">24</p>
+                        <p className="text-3xl font-bold text-[var(--text-primary)]">{stats.rtoInitiated}</p>
                         <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">RTO Initiated</p>
                     </div>
                 </div>
@@ -164,7 +237,7 @@ export function NdrClient() {
                 {/* Toolbar */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-2xl border border-[var(--border-subtle)]">
                     <div className="flex gap-1 bg-[var(--bg-secondary)] p-1 rounded-xl">
-                        {['all', 'action', 'pending', 'rto'].map(tab => (
+                        {['all', 'detected', 'in_progress', 'rto_triggered', 'resolved'].map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}

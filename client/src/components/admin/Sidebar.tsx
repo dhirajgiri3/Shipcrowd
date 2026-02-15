@@ -32,6 +32,7 @@ import {
     Shield,
     Activity,
     RotateCcw,
+    Plug,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
@@ -79,6 +80,7 @@ export const adminNavSections: AdminNavSection[] = [
             { label: 'Courier Services', href: '/admin/couriers/services', icon: Settings },
             { label: 'Rate Cards', href: '/admin/rate-cards', icon: CreditCard },
             { label: 'Courier Policies', href: '/admin/courier-policies', icon: UserCog },
+            { label: 'Integrations', href: '/admin/integrations', icon: Plug },
         ],
     },
     {

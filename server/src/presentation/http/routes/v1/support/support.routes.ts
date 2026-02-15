@@ -1,9 +1,27 @@
 import express from 'express';
+import multer from 'multer';
 import { authenticate } from '../../../middleware/auth/auth';
 import supportController from '../../../controllers/support/support.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = express.Router();
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+});
+
+/**
+ * @route POST /support/upload
+ * @desc Upload attachments for support tickets (returns URLs)
+ * @access Private
+ */
+router.post(
+    '/upload',
+    authenticate,
+    upload.array('files', 5),
+    asyncHandler(supportController.uploadAttachments)
+);
 
 /**
  * @route GET /support/tickets

@@ -5,6 +5,8 @@ import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
 import { z } from 'zod';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import mongoose from 'mongoose';
 
 export class NDRAnalyticsController {
 
@@ -14,13 +16,20 @@ export class NDRAnalyticsController {
      */
     static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const auth = guardChecks(req);
-            requireCompanyContext(auth);
-            const companyId = auth.companyId;
+            const auth = guardChecks(req, { requireCompany: false });
+            const isAdmin = isPlatformAdmin(req.user ?? {});
+            const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId : undefined;
+            if (!isAdmin) {
+                requireCompanyContext(auth);
+            } else if (requestedCompanyId && !mongoose.isValidObjectId(requestedCompanyId)) {
+                throw new ValidationError('Invalid query parameters');
+            }
+            const companyId = isAdmin ? requestedCompanyId : auth.companyId;
 
             const schema = z.object({
                 startDate: z.string().optional(),
                 endDate: z.string().optional(),
+                companyId: z.string().optional(),
             });
 
             const validation = schema.safeParse(req.query);

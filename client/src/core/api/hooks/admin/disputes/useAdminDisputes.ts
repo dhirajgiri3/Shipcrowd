@@ -80,11 +80,17 @@ export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate
  * Get platform-wide weight dispute metrics (admin dashboard). No company filter.
  * Use for "Needs attention" strip on admin dashboard.
  */
-export const useAdminPlatformDisputeMetrics = () => {
+export const useAdminPlatformDisputeMetrics = (filters?: { startDate?: string; endDate?: string }) => {
     return useQuery<DisputeMetrics, ApiError>({
-        queryKey: queryKeys.disputes.platformMetrics(),
+        queryKey: queryKeys.disputes.platformMetrics(filters),
         queryFn: async () => {
-            const response = await apiClient.get('/admin/disputes/weight/metrics');
+            const params = new URLSearchParams();
+            if (filters?.startDate) params.append('startDate', filters.startDate);
+            if (filters?.endDate) params.append('endDate', filters.endDate);
+            const query = params.toString();
+            const response = await apiClient.get(
+                `/admin/disputes/weight/metrics${query ? `?${query}` : ''}`
+            );
             return response.data.data.metrics;
         },
         ...CACHE_TIMES.MEDIUM,

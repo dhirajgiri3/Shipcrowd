@@ -7,6 +7,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
     LayoutDashboard,
     Package,
+    Truck,
     ShoppingCart,
     Building2,
     Wallet,
@@ -64,6 +65,7 @@ export const sellerNavSections: SellerNavSection[] = [
         items: [
             { label: 'Dashboard', href: '/seller', icon: LayoutDashboard },
             { label: 'Orders', href: '/seller/orders', icon: ShoppingCart, badgeKey: 'orders_ready' },
+            { label: 'Ship Now', href: '/seller/ship-now', icon: Truck, badgeKey: 'orders_ready' },
             { label: 'Shipments', href: '/seller/shipments', icon: Package },
             { label: 'Track & Trace', href: '/seller/tracking', icon: MapPin },
         ],
@@ -371,9 +373,9 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                                     {isExpanded && (
                                         <motion.div
                                             id={`seller-nav-${section.id}`}
-                                            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+                                            initial={prefersReducedMotion ? undefined : { height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
-                                            exit={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+                                            exit={prefersReducedMotion ? undefined : { height: 0, opacity: 0 }}
                                             transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: 'easeInOut' }}
                                             className="overflow-hidden"
                                         >

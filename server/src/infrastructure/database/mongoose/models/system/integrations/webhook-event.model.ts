@@ -103,6 +103,14 @@ const WebhookEventSchema = new Schema<IWebhookEvent>(
         'inventory_levels/update',
         'app/uninstalled',
         'shop/update',
+        'order/create',
+        'order/approve',
+        'order/ready-to-dispatch',
+        'order/dispatch',
+        'order/deliver',
+        'order/cancel',
+        'order/return',
+        'inventory/update',
       ],
     },
     shopifyId: {
@@ -260,7 +268,6 @@ WebhookEventSchema.statics.getUnprocessed = function (limit: number = 100) {
 // Static method: Get failed events (dead letter queue)
 WebhookEventSchema.statics.getFailedEvents = function (limit: number = 50) {
   return this.find({
-    processed: false,
     retryCount: { $gte: this.schema.path('maxRetries').options.default || 5 },
   })
     .sort({ createdAt: -1 })

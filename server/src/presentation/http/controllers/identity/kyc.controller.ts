@@ -32,6 +32,7 @@ import {
   syncRazorpayFundAccountForSellerBankAccount,
 } from '../../../../core/application/services/finance/sync-razorpay-fund-account.service';
 import { computeFingerprint, normalizeAccount, normalizeIfsc } from '../../../../infrastructure/database/mongoose/models/finance/payouts/seller-bank-account.model';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 
 /**
@@ -622,8 +623,10 @@ export const getAllKYCs = async (req: Request, res: Response, next: NextFunction
     // Filters
     const status = req.query.status as string;
     const search = req.query.search as string;
-    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : null;
-    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : null;
+    const { startDate, endDate } = parseQueryDateRange(
+      req.query.startDate as string | undefined,
+      req.query.endDate as string | undefined
+    );
 
     // Base Match Stage
     const matchStage: any = {};

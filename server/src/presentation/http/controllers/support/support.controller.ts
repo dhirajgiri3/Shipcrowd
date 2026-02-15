@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import SupportTicketService from '@/core/application/services/crm/support/SupportTicketService';
+import StorageService from '@/core/application/services/storage/storage.service';
 import logger from '@/shared/logger/winston.logger';
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
@@ -9,8 +10,7 @@ import {
     sendCreated,
     calculatePagination
 } from '@/shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, NotFoundError } from '@/shared/errors/app.error';
-import { ErrorCode } from '@/shared/errors/errorCodes';
+import { ValidationError } from '@/shared/errors/app.error';
 
 // Validation schemas
 const createTicketSchema = z.object({
@@ -38,6 +38,69 @@ const addNoteSchema = z.object({
 });
 
 const service = SupportTicketService.getInstance();
+
+/** Allowed MIME types for support ticket attachments */
+const ALLOWED_ATTACHMENT_TYPES = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'text/csv',
+];
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILES = 5;
+
+/**
+ * Upload attachments for support tickets
+ * POST /support/upload
+ * Expects multipart/form-data with field "files" (array of files)
+ * Returns { urls: string[] }
+ */
+export const uploadAttachments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId.toString();
+
+        const files = req.files as Express.Multer.File[];
+        if (!files?.length) {
+            throw new ValidationError('No files uploaded', [{ field: 'files', message: 'At least one file is required' }]);
+        }
+
+        if (files.length > MAX_FILES) {
+            throw new ValidationError(`Maximum ${MAX_FILES} files allowed`, [{ field: 'files', message: `You can upload up to ${MAX_FILES} files` }]);
+        }
+
+        const urls: string[] = [];
+        for (const file of files) {
+            if (file.size > MAX_FILE_SIZE) {
+                throw new ValidationError(`File "${file.originalname}" exceeds 5MB limit`, [{ field: 'files', message: 'Max 5MB per file' }]);
+            }
+            if (!ALLOWED_ATTACHMENT_TYPES.includes(file.mimetype)) {
+                throw new ValidationError(`File type "${file.mimetype}" not allowed for "${file.originalname}"`, [{ field: 'files', message: 'Invalid file type' }]);
+            }
+
+            const result = await StorageService.upload(file.buffer, {
+                folder: `support/attachments/${companyId}`,
+                contentType: file.mimetype,
+                fileName: `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`,
+            });
+            urls.push(result.url);
+        }
+
+        sendSuccess(res, { urls }, 'Files uploaded successfully');
+    } catch (error) {
+        logger.error('Error uploading support attachments:', error);
+        next(error);
+    }
+};
 
 export const createTicket = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -184,6 +247,7 @@ export const getMetrics = async (req: Request, res: Response, next: NextFunction
 };
 
 export default {
+    uploadAttachments,
     createTicket,
     getTickets,
     getTicketById,

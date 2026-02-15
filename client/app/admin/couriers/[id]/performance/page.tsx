@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { use, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import {
     Card,
@@ -39,6 +39,7 @@ import {
     TableRow,
 } from '@/src/components/ui/core/Table';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 
 export default function CourierPerformancePage({
     params,
@@ -47,10 +48,36 @@ export default function CourierPerformancePage({
 }) {
     const { id } = use(params);
     const router = useRouter();
-    const [filters, setFilters] = useState<PerformanceFilters>({
-        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
-    });
+    const searchParams = useSearchParams();
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
+    const zone = searchParams.get('zone') || 'all';
+    const serviceType = searchParams.get('serviceType') || 'all';
+
+    const updateUrl = (updates: Record<string, string | null>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        Object.entries(updates).forEach(([key, value]) => {
+            if (!value || value === 'all') {
+                params.delete(key);
+            } else {
+                params.set(key, value);
+            }
+        });
+        router.replace(`?${params.toString()}`, { scroll: false });
+    };
+    const filters = useMemo<PerformanceFilters>(
+        () => ({
+            startDate: startDateIso,
+            endDate: endDateIso,
+            zone: zone === 'all' ? undefined : zone,
+            serviceType: serviceType === 'all' ? undefined : (serviceType as PerformanceFilters['serviceType']),
+        }),
+        [endDateIso, serviceType, startDateIso, zone]
+    );
 
     const { data: courier } = useCourier(id);
     const { data: performance, isLoading } = useCourierPerformance(id, filters);
@@ -95,25 +122,15 @@ export default function CourierPerformancePage({
                             <Label className="text-xs text-muted-foreground ml-1">Date Range</Label>
                             <DateRangePicker
                                 className="w-full"
-                                onRangeChange={(range) =>
-                                    setFilters((prev) => ({
-                                        ...prev,
-                                        startDate: range.from.toISOString().split('T')[0],
-                                        endDate: range.to.toISOString().split('T')[0],
-                                    }))
-                                }
+                                value={dateRange}
+                                onRangeChange={setRange}
                             />
                         </div>
                         <div className="w-full lg:w-auto flex-1 space-y-1">
                             <Label className="text-xs text-muted-foreground ml-1">Zone</Label>
                             <Select
-                                value={filters.zone || 'all'}
-                                onChange={(e) =>
-                                    setFilters((prev) => ({
-                                        ...prev,
-                                        zone: e.target.value === 'all' ? undefined : e.target.value,
-                                    }))
-                                }
+                                value={zone}
+                                onChange={(e) => updateUrl({ zone: e.target.value, page: '1' })}
                                 options={[
                                     { label: 'All Zones', value: 'all' },
                                     { label: 'Local', value: 'LOCAL' },
@@ -125,16 +142,8 @@ export default function CourierPerformancePage({
                         <div className="w-full lg:w-auto flex-1 space-y-1">
                             <Label className="text-xs text-muted-foreground ml-1">Service Type</Label>
                             <Select
-                                value={filters.serviceType || 'all'}
-                                onChange={(e) =>
-                                    setFilters((prev) => ({
-                                        ...prev,
-                                        serviceType:
-                                            e.target.value === 'all'
-                                                ? undefined
-                                                : (e.target.value as any),
-                                    }))
-                                }
+                                value={serviceType}
+                                onChange={(e) => updateUrl({ serviceType: e.target.value, page: '1' })}
                                 options={[
                                     { label: 'All Services', value: 'all' },
                                     ...(serviceTypeOptions.length

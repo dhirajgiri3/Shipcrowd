@@ -90,4 +90,19 @@ router.post(
   FlipkartController.resumeSync
 );
 
+// Manual order sync
+router.post(
+  '/stores/:id/sync/orders',
+  authenticate,
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
+  FlipkartController.syncOrders
+);
+
+// Sync logs
+router.get(
+  '/stores/:id/sync/logs',
+  authenticate,
+  FlipkartController.getSyncLogs
+);
+
 export default router;

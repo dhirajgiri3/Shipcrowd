@@ -14,7 +14,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import WooCommerceOAuthService from '../../../../core/application/services/woocommerce/woocommerce-oauth.service';
-import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
+import { WooCommerceStore, WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/woocommerce/woocommerce-order-sync.job';
 import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -39,7 +39,9 @@ export default class WooCommerceController {
     try {
       const auth = guardChecks(req);
       requireCompanyContext(auth);
-      const { storeUrl, consumerKey, consumerSecret, storeName } = req.body;
+      const credentials = req.body.credentials || req.body;
+      const storeUrl = credentials.storeUrl || credentials.siteUrl;
+      const { consumerKey, consumerSecret, storeName } = credentials;
 
       // Validation
       if (!storeUrl || !consumerKey || !consumerSecret) {
@@ -200,7 +202,9 @@ export default class WooCommerceController {
    */
   static async testConnectionCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { storeUrl, consumerKey, consumerSecret } = req.body;
+      const credentials = req.body.credentials || req.body;
+      const storeUrl = credentials.storeUrl || credentials.siteUrl;
+      const { consumerKey, consumerSecret } = credentials;
 
       if (!storeUrl || !consumerKey || !consumerSecret) {
         throw new ValidationError('Store URL, consumer key, and consumer secret are required');
@@ -515,6 +519,54 @@ export default class WooCommerceController {
       });
 
       sendSuccess(res, { jobId }, 'Order sync queued successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get recent sync logs
+   * GET /api/v1/integrations/woocommerce/stores/:id/sync/logs
+   */
+  static async getSyncLogs(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
+      const { id } = req.params;
+      const limit = Number(req.query.limit) || 50;
+
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId: auth.companyId,
+      }).select('_id');
+
+      if (!store) {
+        throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+      }
+
+      const logs = await (WooCommerceSyncLog as any).getRecentLogs(id, undefined, limit);
+
+      sendSuccess(
+        res,
+        logs.map((log: any) => ({
+          _id: String(log._id),
+          integrationId: id,
+          syncId: String(log._id),
+          triggerType: log.metadata?.triggerType || (log.syncType === 'webhook' ? 'WEBHOOK' : 'SCHEDULED'),
+          status: log.status,
+          startedAt: log.startTime,
+          completedAt: log.endTime,
+          durationMs: log.duration,
+          ordersProcessed: log.itemsProcessed || 0,
+          ordersSuccess: log.itemsSynced || 0,
+          ordersFailed: log.itemsFailed || 0,
+          details: {
+            message: log.metadata?.message,
+            errors: log.syncErrors || [],
+          },
+        })),
+        'WooCommerce sync logs retrieved successfully'
+      );
     } catch (error) {
       next(error);
     }

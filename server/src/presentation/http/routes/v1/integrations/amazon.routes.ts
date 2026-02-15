@@ -93,10 +93,25 @@ router.post(
 
 // Manual order sync
 router.post(
+    '/stores/:id/sync/orders',
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
+    AmazonController.syncOrders
+);
+
+// Backward-compatible alias (to be removed after clients migrate)
+router.post(
     '/stores/:id/sync-orders',
     authenticate,
     requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.syncOrders
+);
+
+// Sync logs
+router.get(
+    '/stores/:id/sync/logs',
+    authenticate,
+    AmazonController.getSyncLogs
 );
 
 // Refresh credentials

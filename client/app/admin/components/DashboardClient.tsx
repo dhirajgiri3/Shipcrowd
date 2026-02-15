@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { endOfDay, startOfDay, startOfMonth, subDays, isSameDay } from 'date-fns';
 
 import { motion } from 'framer-motion';
 import { Button } from '@/src/components/ui/core/Button';
@@ -50,10 +51,12 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { TopSellers } from '@/src/components/admin/TopSellers';
 import { useAdminDashboard, useAdminInsights } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { useAdminPlatformDisputeMetrics } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
-import { useDateRange } from '@/src/lib/data';
+import { type DateRange } from '@/src/lib/data';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import type { SmartInsight } from '@/src/core/api/hooks/analytics/useSmartInsights';
 import type { AdminDashboard } from '@/src/types/api/analytics';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
+import { toEndOfDayIso, toStartOfDayIso } from '@/src/lib/utils/date';
 
 // --- ADMIN INSIGHTS CONFIG (stable across renders) ---
 const ADMIN_INSIGHTS_TYPE_CONFIG: Record<
@@ -90,6 +93,21 @@ const itemVariants = {
 const ORDER_PIPELINE_DONUT_PALETTE = ['#6366f1', '#0d9488', '#64748b', '#a78bfa'];
 
 // --- COMPONENTS ---
+
+const buildPresetRange = (type: '7d' | '30d' | '90d' | 'mtd'): DateRange => {
+    const now = new Date();
+    const to = endOfDay(now);
+    if (type === 'mtd') {
+        return { from: startOfMonth(now), to, label: 'This Month' };
+    }
+
+    const days = type === '7d' ? 7 : type === '30d' ? 30 : 90;
+    return {
+        from: startOfDay(subDays(to, days - 1)),
+        to,
+        label: `Last ${days} Days`,
+    };
+};
 
 const CSV_QUOTE = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 
@@ -224,7 +242,12 @@ export function DashboardClient() {
         if (typeof window === 'undefined') return false;
         return sessionStorage.getItem('admin_dashboard_alert_dismissed') === '1';
     });
-    const { dateRange, setDateRange, presets } = useDateRange();
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange: setDateRange,
+    } = useUrlDateRange();
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -232,15 +255,18 @@ export function DashboardClient() {
     }, []);
 
     // Date range for admin dashboard API (ISO date strings)
-    const adminFilters = useMemo(() => ({
-        startDate: dateRange.from.toISOString().split('T')[0],
-        endDate: dateRange.to.toISOString().split('T')[0],
-    }), [dateRange.from, dateRange.to]);
+    const adminFilters = useMemo(
+        () => ({
+            startDate: startDateIso,
+            endDate: endDateIso,
+        }),
+        [endDateIso, startDateIso]
+    );
 
     // --- API HOOKS ---
     const { data: adminData, isLoading: adminLoading, error: adminError, refetch: refetchAdmin } = useAdminDashboard(adminFilters);
     const { data: adminInsights = [], isLoading: insightsLoading } = useAdminInsights();
-    const { data: disputeMetrics } = useAdminPlatformDisputeMetrics();
+    const { data: disputeMetrics } = useAdminPlatformDisputeMetrics(adminFilters);
 
     useEffect(() => {
         if (adminData && !adminLoading) setLastRefreshedAt(new Date());
@@ -261,7 +287,11 @@ export function DashboardClient() {
     const handleRevenuePointClick = useCallback(
         (payload?: { fullDate?: string }) => {
             if (!payload?.fullDate) return;
-            router.push(`/admin/orders?startDate=${payload.fullDate}&endDate=${payload.fullDate}&page=1`);
+            const pointDate = new Date(payload.fullDate);
+            if (Number.isNaN(pointDate.getTime())) return;
+            router.push(
+                `/admin/orders?startDate=${encodeURIComponent(toStartOfDayIso(pointDate))}&endDate=${encodeURIComponent(toEndOfDayIso(pointDate))}&page=1`
+            );
         },
         [router]
     );
@@ -370,6 +400,15 @@ export function DashboardClient() {
     const dateLabel = useMemo(
         () => `${dateRange.from.toLocaleDateString()} – ${dateRange.to.toLocaleDateString()}`,
         [dateRange.from, dateRange.to]
+    );
+    const presetChips = useMemo(
+        () => [
+            { short: '7D', range: buildPresetRange('7d') },
+            { short: '30D', range: buildPresetRange('30d') },
+            { short: '90D', range: buildPresetRange('90d') },
+            { short: 'MTD', range: buildPresetRange('mtd') },
+        ],
+        []
     );
 
     const handleExportDashboard = useCallback(() => {
@@ -491,16 +530,15 @@ export function DashboardClient() {
 
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                        {presets.slice(1, 5).map((preset) => {
-                            const label = preset.label;
-                            const short =
-                                label === 'Last 7 Days' ? '7D' : label === 'Last 30 Days' ? '30D' : label === 'Last 90 Days' ? '90D' : label === 'This Month' ? 'MTD' : label;
-                            const isActive = dateRange.label === label;
+                        {presetChips.map((preset) => {
+                            const isActive =
+                                isSameDay(preset.range.from, dateRange.from) &&
+                                isSameDay(preset.range.to, dateRange.to);
                             return (
                                 <button
-                                    key={label}
+                                    key={preset.short}
                                     type="button"
-                                    onClick={() => setDateRange(preset)}
+                                    onClick={() => setDateRange(preset.range)}
                                     className={cn(
                                         'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                                         isActive
@@ -508,14 +546,14 @@ export function DashboardClient() {
                                             : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'
                                     )}
                                     aria-pressed={isActive}
-                                    aria-label={`Set period to ${label}`}
+                                    aria-label={`Set period to ${preset.range.label}`}
                                 >
-                                    {short}
+                                    {preset.short}
                                 </button>
                             );
                         })}
                     </div>
-                    <DateRangePicker />
+                    <DateRangePicker value={dateRange} onRangeChange={setDateRange} />
                     <Button
                         variant="outline"
                         size="icon"

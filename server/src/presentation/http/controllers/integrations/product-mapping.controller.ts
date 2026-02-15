@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import ProductMappingService from '../../../../core/application/services/shopify/product-mapping.service';
 import { ShopifyInventorySyncService } from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
+import { ShopifyStore, ShopifyProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import { ValidationError, NotFoundError, AuthenticationError, AuthorizationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
@@ -38,7 +39,6 @@ export class ProductMappingController {
       const { id: storeId } = req.params;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
@@ -75,7 +75,6 @@ export class ProductMappingController {
       const { id: storeId } = req.params;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
@@ -119,7 +118,6 @@ export class ProductMappingController {
       const { id: storeId } = req.params;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
@@ -156,8 +154,7 @@ export class ProductMappingController {
       const { id: mappingId } = req.params;
 
       // Verify ownership via ProductMapping
-      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
-      const mapping = await ProductMapping.findById(mappingId);
+      const mapping = await ShopifyProductMapping.findById(mappingId);
 
       if (!mapping) {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
@@ -193,7 +190,6 @@ export class ProductMappingController {
       const { id: storeId } = req.params;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
@@ -237,7 +233,6 @@ export class ProductMappingController {
       const { id: storeId } = req.params;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
@@ -272,7 +267,6 @@ export class ProductMappingController {
       const { id: storeId } = req.params;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId: auth.companyId });
 
       if (!store) {
@@ -300,8 +294,7 @@ export class ProductMappingController {
       const { isActive } = req.body;
 
       // Verify ownership
-      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
-      const mapping = await ProductMapping.findById(mappingId);
+      const mapping = await ShopifyProductMapping.findById(mappingId);
 
       if (!mapping) {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
@@ -338,8 +331,7 @@ export class ProductMappingController {
       const { quantity } = req.body;
 
       // Verify ownership
-      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
-      const mapping = await ProductMapping.findById(mappingId);
+      const mapping = await ShopifyProductMapping.findById(mappingId);
 
       if (!mapping) {
         throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);

@@ -33,6 +33,7 @@ import {
 import { NotFoundError, ValidationError, AppError, AuthorizationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 /**
  * GET /api/v1/disputes/weight
@@ -66,12 +67,16 @@ export const listDisputes = async (
 
         // Date range filter
         if (req.query.startDate || req.query.endDate) {
+            const parsedRange = parseQueryDateRange(
+                req.query.startDate as string | undefined,
+                req.query.endDate as string | undefined
+            );
             filter.createdAt = {};
-            if (req.query.startDate) {
-                filter.createdAt.$gte = new Date(req.query.startDate as string);
+            if (parsedRange.startDate) {
+                filter.createdAt.$gte = parsedRange.startDate;
             }
-            if (req.query.endDate) {
-                filter.createdAt.$lte = new Date(req.query.endDate as string);
+            if (parsedRange.endDate) {
+                filter.createdAt.$lte = parsedRange.endDate;
             }
         }
 
@@ -297,10 +302,14 @@ export const getAnalytics = async (
             throw new AppError('Only admins can view dispute analytics', 'FORBIDDEN', 403);
         }
 
-        const dateRange = req.query.startDate && req.query.endDate
+        const parsedRange = parseQueryDateRange(
+            req.query.startDate as string | undefined,
+            req.query.endDate as string | undefined
+        );
+        const dateRange = parsedRange.startDate || parsedRange.endDate
             ? {
-                start: new Date(req.query.startDate as string),
-                end: new Date(req.query.endDate as string),
+                start: parsedRange.startDate || new Date(0),
+                end: parsedRange.endDate || new Date(),
             }
             : undefined;
 
@@ -400,7 +409,17 @@ export const getAdminPlatformMetrics = async (
         if (!req.user || !isPlatformAdmin(req.user)) {
             throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
-        const metrics = await WeightDisputeResolutionService.getDisputeMetrics(undefined);
+        const parsedRange = parseQueryDateRange(
+            req.query.startDate as string | undefined,
+            req.query.endDate as string | undefined
+        );
+        const dateRange = parsedRange.startDate || parsedRange.endDate
+            ? {
+                start: parsedRange.startDate || new Date(0),
+                end: parsedRange.endDate || new Date(),
+            }
+            : undefined;
+        const metrics = await WeightDisputeResolutionService.getDisputeMetrics(undefined, dateRange);
         sendSuccess(res, { metrics }, 'Platform dispute metrics retrieved successfully');
     } catch (error) {
         logger.error('Error fetching admin platform dispute metrics:', error);

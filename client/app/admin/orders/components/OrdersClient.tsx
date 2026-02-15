@@ -21,8 +21,8 @@ import { formatCurrency, cn } from '@/src/lib/utils';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { DateRange } from '@/src/lib/data';
 import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 
 // Tabs configuration
 const ORDER_TABS = [
@@ -33,6 +33,7 @@ const ORDER_TABS = [
     { id: 'rto', label: 'RTO' },
     { id: 'cancelled', label: 'Cancelled' },
 ];
+const DEFAULT_LIMIT = 10;
 
 export default function OrdersClient() {
     const router = useRouter();
@@ -40,18 +41,22 @@ export default function OrdersClient() {
 
     // -- State from URL & Local --
     const page = Number(searchParams.get('page')) || 1;
-    const limit = Number(searchParams.get('limit')) || 10;
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
     const status = searchParams.get('status') || 'all';
     const sort = searchParams.get('sort') || 'createdAt';
     const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
     const search = searchParams.get('search') || '';
-    const startDate = searchParams.get('startDate') || '';
-    const endDate = searchParams.get('endDate') || '';
-
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
 
     const [searchTerm, setSearchTerm] = useState(search);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
-    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('all');
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(searchParams.get('warehouse') || 'all');
 
     // -- Hooks --
     const { data: warehouses = [] } = useWarehouses();
@@ -72,6 +77,16 @@ export default function OrdersClient() {
         }, 500);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Keep local controls in sync with URL (back/forward/share links)
+    useEffect(() => {
+        const nextSearch = searchParams.get('search') || '';
+        setSearchTerm((current) => (current === nextSearch ? current : nextSearch));
+        setDebouncedSearch((current) => (current === nextSearch ? current : nextSearch));
+
+        const nextWarehouse = searchParams.get('warehouse') || 'all';
+        setSelectedWarehouseId((current) => (current === nextWarehouse ? current : nextWarehouse));
+    }, [searchParams]);
 
     // -- Update URL Helper --
     const updateUrl = (updates: Record<string, string | number | null>) => {
@@ -102,9 +117,9 @@ export default function OrdersClient() {
         sortOrder: order,
         search: debouncedSearch || undefined,
         warehouse: selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-    }), [page, limit, status, sort, order, debouncedSearch, selectedWarehouseId, startDate, endDate]);
+        startDate: startDateIso,
+        endDate: endDateIso,
+    }), [page, limit, status, sort, order, debouncedSearch, selectedWarehouseId, startDateIso, endDateIso]);
 
     // -- Fetch Data --
     const {
@@ -154,13 +169,7 @@ export default function OrdersClient() {
         updateUrl({ page: newPage });
     };
 
-    const handleDateRangeChange = (range: DateRange) => {
-        updateUrl({
-            startDate: range.from.toISOString(),
-            endDate: range.to.toISOString(),
-            page: 1
-        });
-    };
+    const handleDateRangeChange = setRange;
 
     const handleRefresh = () => {
         refetch();
@@ -295,7 +304,8 @@ export default function OrdersClient() {
                 search: debouncedSearch || undefined,
                 status: status === 'all' ? undefined : [status],
                 warehouse: selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
-                // startDate, endDate from state if available
+                startDate: startDateIso,
+                endDate: endDateIso,
             }
         });
     };
@@ -386,7 +396,7 @@ export default function OrdersClient() {
                             value={selectedWarehouseId}
                             onChange={(e) => {
                                 setSelectedWarehouseId(e.target.value);
-                                updateUrl({ page: 1 });
+                                updateUrl({ warehouse: e.target.value === 'all' ? null : e.target.value, page: 1 });
                             }}
                             className="h-10 pl-3 pr-10 rounded-lg bg-transparent hover:bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] font-medium focus:outline-none transition-all cursor-pointer appearance-none border border-transparent hover:border-[var(--border-subtle)]"
                         >
@@ -402,7 +412,7 @@ export default function OrdersClient() {
 
                     {/* Date Picker Integrated */}
                     <div className="hidden md:block">
-                        <DateRangePicker onRangeChange={handleDateRangeChange} />
+                            <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
                     </div>
 
                     {/* Filter Tabs */}

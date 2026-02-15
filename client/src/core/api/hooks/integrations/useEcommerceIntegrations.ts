@@ -16,13 +16,13 @@
  * | Get Store Details    | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
  * | Test Connection      | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
  * | Disconnect Store     | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
- * | Update Settings      | ✅ Yes  | ❌ No       | ❌ No       | ❌ No       |
- * | Sync Logs            | ✅ Yes  | ❌ No       | ❌ No       | ❌ No       |
- * | Manual Sync          | ✅ Yes  | ✅ Yes      | ✅ Yes*     | ❌ No       |
+ * | Update Settings      | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
+ * | Sync Logs            | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
+ * | Manual Sync          | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
  * | Pause/Resume Sync    | ✅ Yes  | ✅ Yes      | ✅ Yes      | ✅ Yes      |
  * | Refresh Credentials  | ❌ OAuth| ✅ Yes      | ✅ Yes      | ⚠️ Limited  |
  *
- * * Amazon uses `/sync-orders` endpoint (hyphenated)
+ * * All platforms use `/sync/orders` endpoint
  *
  * Connection Methods:
  * - Shopify: OAuth (useInitiateOAuth → OAuth callback)
@@ -53,6 +53,55 @@ import type {
     OAuthCompleteResponse,
     IntegrationType,
 } from '@/src/types/api/integrations';
+
+const normalizePlatformPayload = (payload: CreateIntegrationPayload | TestConnectionPayload) => {
+    switch (payload.type) {
+        case 'WOOCOMMERCE': {
+            const credentials = payload.credentials as any;
+            return {
+                storeUrl: credentials.storeUrl || credentials.siteUrl,
+                consumerKey: credentials.consumerKey,
+                consumerSecret: credentials.consumerSecret,
+                storeName: (payload as any).storeName,
+                settings: (payload as any).settings,
+                fieldMapping: (payload as any).fieldMapping,
+            };
+        }
+        case 'AMAZON': {
+            const credentials = payload.credentials as any;
+            return {
+                sellerId: credentials.sellerId,
+                marketplaceId: credentials.marketplaceId,
+                sellerName: (payload as any).storeName || credentials.sellerName,
+                sellerEmail: credentials.sellerEmail,
+                lwaClientId: credentials.lwaClientId,
+                lwaClientSecret: credentials.lwaClientSecret,
+                lwaRefreshToken: credentials.lwaRefreshToken,
+                awsAccessKeyId: credentials.awsAccessKeyId,
+                awsSecretAccessKey: credentials.awsSecretAccessKey,
+                roleArn: credentials.roleArn,
+                region: credentials.region,
+                settings: (payload as any).settings,
+                fieldMapping: (payload as any).fieldMapping,
+            };
+        }
+        case 'FLIPKART': {
+            const credentials = payload.credentials as any;
+            return {
+                sellerId: credentials.sellerId || credentials.accessToken,
+                sellerName: (payload as any).storeName,
+                sellerEmail: credentials.sellerEmail,
+                apiKey: credentials.apiKey || credentials.appId,
+                apiSecret: credentials.apiSecret || credentials.appSecret,
+                settings: (payload as any).settings,
+                fieldMapping: (payload as any).fieldMapping,
+            };
+        }
+        case 'SHOPIFY':
+        default:
+            return payload;
+    }
+};
 
 // ==================== Query Hooks ====================
 
@@ -162,8 +211,7 @@ export const useIntegration = (
 /**
  * Get sync logs for an integration
  *
- * Note: Only Shopify has a dedicated /sync/logs endpoint.
- * Other platforms may not have sync log history available via API.
+ * All platforms now expose /sync/logs with platform-specific adapters.
  */
 export const useSyncLogs = (
     integrationId: string,
@@ -174,23 +222,16 @@ export const useSyncLogs = (
     const isValidId = Boolean(integrationId && integrationId !== 'new' && integrationId.length === 24);
     const platform = type ? type.toLowerCase() : 'shopify';
 
-    // Only enable for Shopify - other platforms don't have this endpoint
-    const isSupportedPlatform = !type || type === 'SHOPIFY';
-
     return useQuery<SyncLog[]>({
         queryKey: queryKeys.ecommerce.syncLogs(integrationId),
         queryFn: async () => {
-            if (!isSupportedPlatform) {
-                // Return empty array for unsupported platforms
-                return [];
-            }
             const response = await apiClient.get(`/integrations/${platform}/stores/${integrationId}/sync/logs`);
             return response.data.data;
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
-        enabled: isValidId && isSupportedPlatform && (options?.enabled !== false),
+        enabled: isValidId && (options?.enabled !== false),
     });
 };
 
@@ -231,7 +272,7 @@ export const useCreateIntegration = (options?: UseMutationOptions<EcommerceInteg
                     throw new Error(`Unsupported integration type: ${payload.type}`);
             }
 
-            const response = await apiClient.post(endpoint, payload);
+            const response = await apiClient.post(endpoint, normalizePlatformPayload(payload));
             return response.data.data;
         },
         onSuccess: () => {
@@ -334,7 +375,7 @@ export const useTestConnection = () => {
 
                     // Fallback to generic test endpoint (if it exists for the platform)
                     // This would be used for testing credentials before creating the integration
-                    const response = await apiClient.post(`/integrations/${platform}/test`, payload.credentials);
+                    const response = await apiClient.post(`/integrations/${platform}/test`, normalizePlatformPayload(payload));
                     return response.data.data;
                 },
                 {
@@ -389,8 +430,8 @@ export const useTestConnection = () => {
  * Endpoint variations by platform:
  * - Shopify: POST /integrations/shopify/stores/:id/sync/orders
  * - WooCommerce: POST /integrations/woocommerce/stores/:id/sync/orders
- * - Amazon: POST /integrations/amazon/stores/:id/sync-orders (note: hyphenated)
- * - Flipkart: Not supported
+ * - Amazon: POST /integrations/amazon/stores/:id/sync/orders
+ * - Flipkart: POST /integrations/flipkart/stores/:id/sync/orders
  */
 export const useTriggerSync = () => {
     const queryClient = useQueryClient();
@@ -399,21 +440,7 @@ export const useTriggerSync = () => {
         mutationFn: async (payload) => {
             const platform = payload.type ? payload.type.toLowerCase() : 'shopify';
 
-            // Handle platform-specific endpoint variations
-            let endpoint: string;
-            switch (payload.type) {
-                case 'SHOPIFY':
-                case 'WOOCOMMERCE':
-                    endpoint = `/integrations/${platform}/stores/${payload.integrationId}/sync/orders`;
-                    break;
-                case 'AMAZON':
-                    endpoint = `/integrations/amazon/stores/${payload.integrationId}/sync-orders`;
-                    break;
-                case 'FLIPKART':
-                    throw new Error('Manual sync not supported for Flipkart. Orders are synced automatically.');
-                default:
-                    endpoint = `/integrations/${platform}/stores/${payload.integrationId}/sync/orders`;
-            }
+            const endpoint = `/integrations/${platform}/stores/${payload.integrationId}/sync/orders`;
 
             const response = await apiClient.post(endpoint, payload);
             return response.data.data;

@@ -652,7 +652,7 @@ export function DashboardClient() {
                             periodLabel={selectedPeriodLabel}
                             onRevenueClick={() => router.push('/seller/analytics/revenue')}
                             onProfitClick={() => router.push('/seller/analytics/profit')}
-                            onOrdersClick={() => router.push('/seller/orders')}
+                            onOrdersClick={() => router.push('/seller/ship-now')}
                         />
                     </motion.section>
                 ) : null}

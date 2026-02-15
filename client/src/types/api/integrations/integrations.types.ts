@@ -112,7 +112,8 @@ export interface ShopifyCredentials {
 
 export interface WooCommerceCredentials {
     type: 'WOOCOMMERCE';
-    siteUrl: string;
+    storeUrl?: string;
+    siteUrl?: string; // backward compatibility
     consumerKey: string;
     consumerSecret: string;
 }
@@ -120,15 +121,28 @@ export interface WooCommerceCredentials {
 export interface AmazonCredentials {
     type: 'AMAZON';
     sellerId?: string;
-    mwsAuthToken?: string;
-    region?: 'IN' | 'US' | 'EU' | 'JP';
+    marketplaceId?: string;
+    lwaClientId?: string;
+    lwaClientSecret?: string;
+    lwaRefreshToken?: string;
+    awsAccessKeyId?: string;
+    awsSecretAccessKey?: string;
+    roleArn?: string;
+    region?: string;
+    sellerName?: string;
+    sellerEmail?: string;
+    mwsAuthToken?: string; // backward compatibility (legacy)
 }
 
 export interface FlipkartCredentials {
     type: 'FLIPKART';
-    appId?: string;
-    appSecret?: string;
-    accessToken?: string;
+    sellerId?: string;
+    apiKey?: string;
+    apiSecret?: string;
+    sellerEmail?: string;
+    appId?: string; // backward compatibility
+    appSecret?: string; // backward compatibility
+    accessToken?: string; // backward compatibility
 }
 
 export interface CustomApiCredentials {

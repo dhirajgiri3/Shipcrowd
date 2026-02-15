@@ -50,10 +50,13 @@ export default class NDRAnalyticsService {
      * Get overall NDR statistics
      */
     static async getNDRStats(
-        companyId: string,
+        companyId?: string,
         dateRange?: DateRange
     ): Promise<NDRStats> {
-        const matchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
+        const matchFilter: any = {};
+        if (companyId) {
+            matchFilter.company = new mongoose.Types.ObjectId(companyId);
+        }
 
         if (dateRange) {
             matchFilter.detectedAt = {
@@ -132,10 +135,13 @@ export default class NDRAnalyticsService {
      * Get NDR breakdown by type
      */
     static async getNDRByType(
-        companyId: string,
+        companyId?: string,
         dateRange?: DateRange
     ): Promise<Record<string, number>> {
-        const matchFilter: any = { company: new mongoose.Types.ObjectId(companyId) };
+        const matchFilter: any = {};
+        if (companyId) {
+            matchFilter.company = new mongoose.Types.ObjectId(companyId);
+        }
 
         if (dateRange) {
             matchFilter.detectedAt = {
@@ -161,21 +167,24 @@ export default class NDRAnalyticsService {
      * Get NDR trends over time
      */
     static async getNDRTrends(
-        companyId: string,
+        companyId: string | undefined,
         dateRange: DateRange,
         groupBy: 'day' | 'week' | 'month' = 'day'
     ): Promise<NDRTrend[]> {
         const dateFormat = groupBy === 'day' ? '%Y-%m-%d' : groupBy === 'week' ? '%Y-W%V' : '%Y-%m';
+        const match: Record<string, unknown> = {
+            detectedAt: {
+                $gte: dateRange.start,
+                $lte: dateRange.end,
+            },
+        };
+        if (companyId) {
+            match.company = new mongoose.Types.ObjectId(companyId);
+        }
 
         const result = await NDREvent.aggregate([
             {
-                $match: {
-                    company: new mongoose.Types.ObjectId(companyId),
-                    detectedAt: {
-                        $gte: dateRange.start,
-                        $lte: dateRange.end,
-                    },
-                },
+                $match: match,
             },
             {
                 $group: {

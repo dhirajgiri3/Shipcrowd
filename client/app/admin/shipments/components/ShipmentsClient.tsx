@@ -27,8 +27,9 @@ import {
 } from 'lucide-react';
 
 import { useShipments, useShipmentStats, Shipment as ApiShipment } from '@/src/core/api/hooks/orders/useShipments';
-import { DateRange } from '@/src/lib/data';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
+const DEFAULT_LIMIT = 10;
 
 export function ShipmentsClient() {
     const router = useRouter();
@@ -37,11 +38,16 @@ export function ShipmentsClient() {
 
     // -- State from URL & Local --
     const page = Number(searchParams.get('page')) || 1;
-    const limit = Number(searchParams.get('limit')) || 10;
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
     const status = searchParams.get('status') || 'all';
     const search = searchParams.get('search') || '';
-    const startDate = searchParams.get('startDate') || '';
-    const endDate = searchParams.get('endDate') || '';
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
 
     const [searchTerm, setSearchTerm] = useState(search);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -54,6 +60,19 @@ export function ShipmentsClient() {
         }, 500);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Keep local search in sync with URL (back/forward/share links)
+    useEffect(() => {
+        setSearchTerm((current) => (current === search ? current : search));
+        setDebouncedSearch((current) => (current === search ? current : search));
+    }, [search]);
+
+    // Sync debounced search to URL
+    useEffect(() => {
+        if (debouncedSearch !== search) {
+            updateUrl({ search: debouncedSearch, page: 1 });
+        }
+    }, [debouncedSearch]);
 
     // -- Update URL Helper --
     const updateUrl = (updates: Record<string, string | number | null>) => {
@@ -80,13 +99,7 @@ export function ShipmentsClient() {
         updateUrl({ page: newPage });
     };
 
-    const handleDateRangeChange = (range: DateRange) => {
-        updateUrl({
-            startDate: range.from.toISOString(),
-            endDate: range.to.toISOString(),
-            page: 1
-        });
-    };
+    const handleDateRangeChange = setRange;
 
     const handleRefresh = () => {
         refetch();
@@ -97,14 +110,14 @@ export function ShipmentsClient() {
     const { data: shipmentsResponse, isLoading, refetch, isFetching } = useShipments({
         status: status !== 'all' ? status : undefined,
         search: debouncedSearch || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
+        startDate: startDateIso,
+        endDate: endDateIso,
         page,
         limit
     });
 
     // Fetch stats
-    const { data: stats } = useShipmentStats();
+    const { data: stats } = useShipmentStats({ startDate: startDateIso, endDate: endDateIso });
 
     const shipmentsData = shipmentsResponse?.shipments || [];
     const pagination = shipmentsResponse?.pagination;
@@ -295,7 +308,7 @@ export function ShipmentsClient() {
                     <div className="flex items-center gap-4">
                         {/* Date Picker */}
                         <div className="hidden md:block">
-                            <DateRangePicker onRangeChange={handleDateRangeChange} />
+                            <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
                         </div>
 
                         {/* Filter Tabs */}

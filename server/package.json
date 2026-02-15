@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc && tsc-alias",
     "start": "node dist/index.js",
+    "start:worker": "node dist/worker.js",
     "test": "jest",
     "test:service-level-pricing:gate": "jest tests/unit/services/pricing/service-rate-card-formula.service.test.ts tests/unit/services/organization/seller-policy-bootstrap.service.test.ts tests/unit/controllers/organization/company.bootstrap.test.ts tests/integration/services/shipping/booking-fallback.integration.test.ts tests/integration/services/pricing/service-level-pricing-flow.integration.test.ts tests/integration/services/pricing/service-level-pricing-api.integration.test.ts",
     "test:courier:core": "jest tests/unit/velocity tests/unit/ekart tests/integration/velocity tests/integration/ekart tests/integration/delhivery",

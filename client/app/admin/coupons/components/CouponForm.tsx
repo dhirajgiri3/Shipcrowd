@@ -4,6 +4,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { PromoCode } from '@/src/types/domain/promotion';
 import { Percent, IndianRupee } from 'lucide-react';
+import { toEndOfDayIso, toStartOfDayIso } from '@/src/lib/utils/date';
 
 interface CouponFormProps {
     initialData?: PromoCode | null;
@@ -49,8 +50,8 @@ export function CouponForm({ initialData, onClose, onSubmit, isSubmitting }: Cou
                 maxDiscount: Number(formData.maxDiscount) || undefined,
                 usageLimit: Number(formData.usageLimit) || undefined,
             },
-            validFrom: new Date(formData.validFrom).toISOString(),
-            validUntil: new Date(formData.validUntil).toISOString(),
+            validFrom: toStartOfDayIso(formData.validFrom),
+            validUntil: formData.validUntil ? toEndOfDayIso(formData.validUntil) : undefined,
             isActive: formData.isActive,
         };
         onSubmit(payload);

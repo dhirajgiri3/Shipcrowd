@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import {
     FileOutput,
@@ -46,6 +46,7 @@ const REMITTANCE_TABS = [
     { key: 'failed', label: 'Failed' },
     { key: 'pending', label: 'Pending COD' }, // For eligible shipments tab (not a backend status)
 ] as const;
+const DEFAULT_LIMIT = 20;
 
 type RemittanceTabKey = (typeof REMITTANCE_TABS)[number]['key'];
 
@@ -62,6 +63,7 @@ const statusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info' 
 
 export function CodClient() {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const { addToast } = useToast();
 
@@ -72,13 +74,16 @@ export function CodClient() {
     const debouncedSearch = useDebouncedValue(search, 300);
     const [page, setPage] = useState(1);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
+    const hasInitializedFilterReset = useRef(false);
     const {
         range: selectedDateRange,
         startDateIso,
         endDateIso,
         setRange,
     } = useUrlDateRange();
-    const limit = 20;
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
 
     // Sync from URL params (for deep linking)
     useEffect(() => {
@@ -89,12 +94,53 @@ export function CodClient() {
             : 'all';
         setActiveTab(nextTab);
         setStatusFilter(nextTab === 'all' || nextTab === 'pending' ? 'all' : nextTab);
+        const nextSearch = searchParams.get('search') || '';
+        setSearch((currentSearch) => (currentSearch === nextSearch ? currentSearch : nextSearch));
+
+        const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
+        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        setPage((currentPage) => (currentPage === nextPage ? currentPage : nextPage));
+
+        setIsUrlHydrated(true);
     }, [searchParams]);
 
     // Reset page on filter change
     useEffect(() => {
+        if (!isUrlHydrated) return;
+        if (!hasInitializedFilterReset.current) {
+            hasInitializedFilterReset.current = true;
+            return;
+        }
         setPage(1);
-    }, [debouncedSearch, statusFilter, startDateIso, endDateIso]);
+    }, [debouncedSearch, statusFilter, startDateIso, endDateIso, isUrlHydrated]);
+
+    // Sync URL from local filters
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('status', activeTab);
+        if (debouncedSearch) {
+            params.set('search', debouncedSearch);
+        } else {
+            params.delete('search');
+        }
+        if (page > 1) {
+            params.set('page', String(page));
+        } else {
+            params.delete('page');
+        }
+        if (limit !== DEFAULT_LIMIT) {
+            params.set('limit', String(limit));
+        } else {
+            params.delete('limit');
+        }
+
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [activeTab, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
 
     // API Hooks - Real data only, no mock fallbacks
     const {
@@ -148,10 +194,7 @@ export function CodClient() {
     const handleTabChange = (tabKey: RemittanceTabKey) => {
         setActiveTab(tabKey);
         setStatusFilter(tabKey === 'all' || tabKey === 'pending' ? 'all' : tabKey);
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('status', tabKey);
-        params.set('page', '1');
-        router.push(`?${params.toString()}`, { scroll: false });
+        setPage(1);
     };
 
     const handleViewRemittance = (id: string) => {

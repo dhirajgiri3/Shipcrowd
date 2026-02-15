@@ -12,6 +12,7 @@ import { CourierFactory } from '../../../../core/application/services/courier/co
 import CourierProviderRegistry, {
     CanonicalCourierProvider,
 } from '../../../../core/application/services/courier/courier-provider-registry';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 const SUPPORTED_PROVIDERS = CourierProviderRegistry.getSupportedProviders();
 type SupportedProvider = CanonicalCourierProvider;
@@ -173,12 +174,6 @@ async function getSlaCompliance(companyId: string, provider: SupportedProvider):
     return { today, week, month };
 }
 
-function parseDateInput(value?: string): Date | null {
-    if (!value) return null;
-    const parsed = new Date(value);
-    return Number.isFinite(parsed.getTime()) ? parsed : null;
-}
-
 function normalizeServiceType(value?: string): string | null {
     if (!value) return null;
     const normalized = String(value).trim().toLowerCase();
@@ -220,8 +215,9 @@ async function buildPerformanceFromShipments(params: {
     zone?: string;
     serviceType?: string;
 }) {
-    const startDate = parseDateInput(params.startDate || '');
-    const endDate = parseDateInput(params.endDate || '');
+    const parsedRange = parseQueryDateRange(params.startDate, params.endDate);
+    const startDate = parsedRange.startDate;
+    const endDate = parsedRange.endDate;
     const normalizedZone = params.zone ? String(params.zone).toUpperCase() : null;
     const normalizedServiceType = normalizeServiceType(params.serviceType || '');
 

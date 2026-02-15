@@ -205,21 +205,21 @@ export default function FlipkartIntegrationPage() {
 
     const appIdError = useMemo(() => {
         if (!appId) {
-            return touched.appId || testAttempted ? 'App ID is required' : '';
+            return touched.appId || testAttempted ? 'API Key is required' : '';
         }
         return '';
     }, [appId, touched.appId, testAttempted]);
 
     const appSecretError = useMemo(() => {
         if (!appSecret) {
-            return touched.appSecret || testAttempted ? 'App Secret is required' : '';
+            return touched.appSecret || testAttempted ? 'API Secret is required' : '';
         }
         return '';
     }, [appSecret, touched.appSecret, testAttempted]);
 
     const accessTokenError = useMemo(() => {
         if (!accessToken) {
-            return touched.accessToken || testAttempted ? 'Access Token is required' : '';
+            return touched.accessToken || testAttempted ? 'Seller ID is required' : '';
         }
         return '';
     }, [accessToken, touched.accessToken, testAttempted]);
@@ -401,11 +401,11 @@ export default function FlipkartIntegrationPage() {
                         <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
                             <div className="flex items-start gap-2">
                                 <Check className="w-4 h-4 text-[var(--success)] mt-0.5" />
-                                Flipkart app ID and app secret
+                                Flipkart API key and API secret
                             </div>
                             <div className="flex items-start gap-2">
                                 <Check className="w-4 h-4 text-[var(--success)] mt-0.5" />
-                                Seller Hub access token
+                                Flipkart seller ID
                             </div>
                         </div>
                     </div>
@@ -419,7 +419,7 @@ export default function FlipkartIntegrationPage() {
                             <div className="space-y-2.5">
                                 <div className="flex items-center gap-2">
                                     <label className="block text-sm font-medium text-[var(--text-primary)]">
-                                        App ID
+                                        API Key
                                     </label>
                                     <Tooltip content="Your Flipkart Application ID" side="right">
                                         <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
@@ -468,7 +468,7 @@ export default function FlipkartIntegrationPage() {
                             <div className="space-y-2.5">
                                 <div className="flex items-center gap-2">
                                     <label className="block text-sm font-medium text-[var(--text-primary)]">
-                                        App Secret
+                                        API Secret
                                     </label>
                                     <Tooltip content="Your secret key for API authentication" side="right">
                                         <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
@@ -527,7 +527,7 @@ export default function FlipkartIntegrationPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <label className="block text-sm font-medium text-[var(--text-primary)]">
-                                            Access Token
+                                            Seller ID
                                         </label>
                                         <Tooltip content="Long-lived token for API access" side="right">
                                             <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
@@ -538,7 +538,7 @@ export default function FlipkartIntegrationPage() {
                                             type="button"
                                             onClick={() => setShowAccessToken(prev => !prev)}
                                             className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
-                                            aria-label={showAccessToken ? 'Hide access token' : 'Show access token'}
+                                            aria-label={showAccessToken ? 'Hide seller ID' : 'Show seller ID'}
                                             aria-pressed={showAccessToken}
                                         >
                                             {showAccessToken ? (
@@ -552,7 +552,7 @@ export default function FlipkartIntegrationPage() {
                                             type="button"
                                             onClick={() => pasteFromClipboard(setAccessToken, 'accessToken')}
                                             className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
-                                            aria-label="Paste access token"
+                                            aria-label="Paste seller ID"
                                         >
                                             {clipboardSuccess === 'accessToken' ? (
                                                 <><Check className="w-3.5 h-3.5 text-[var(--success)]" /> Copied</>
@@ -570,7 +570,7 @@ export default function FlipkartIntegrationPage() {
                                             setTouched(prev => ({ ...prev, accessToken: true }));
                                         }}
                                         onBlur={() => setTouched(prev => ({ ...prev, accessToken: true }))}
-                                        placeholder="Paste your access token here"
+                                        placeholder="Paste your seller ID here"
                                         className={`font-mono text-xs resize-none transition-all duration-200 ${validationStatus.accessToken === 'valid' ? 'focus:ring-2 focus:ring-[var(--success)]/20' : validationStatus.accessToken === 'invalid' ? 'focus:ring-2 focus:ring-[var(--error)]/20' : ''} ${accessTokenError ? 'border-[var(--border-error)] focus-visible:ring-[var(--error-light)]' : ''}`}
                                         rows={3}
                                         style={{ WebkitTextSecurity: showAccessToken ? 'none' : 'disc' } as React.CSSProperties}

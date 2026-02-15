@@ -4,6 +4,7 @@ import PromoCodeService from '../../../../core/application/services/marketing/pr
 import { ValidationError } from '../../../../shared/errors/app.error';
 
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { parseQueryDate } from '../../../../shared/utils/dateRange';
 
 /**
  * Promo Code Controller
@@ -27,6 +28,7 @@ class PromoCodeController {
                 code,
                 discountType,
                 discountValue,
+                validFrom,
                 validUntil,
                 minOrderValue,
                 maxDiscount,
@@ -42,7 +44,8 @@ class PromoCodeController {
                 companyId: auth.companyId,
                 discountType,
                 discountValue,
-                validUntil: new Date(validUntil),
+                validFrom: parseQueryDate(validFrom as string | undefined),
+                validUntil: parseQueryDate(validUntil as string | undefined, { endOfDayIfDateOnly: true }) || new Date(),
                 minOrderValue,
                 maxDiscount,
                 usageLimit,
@@ -120,10 +123,18 @@ class PromoCodeController {
             const auth = guardChecks(req);
             requireCompanyContext(auth);
 
+            const normalizedData = { ...data };
+            if (typeof normalizedData.validFrom === 'string') {
+                normalizedData.validFrom = parseQueryDate(normalizedData.validFrom);
+            }
+            if (typeof normalizedData.validUntil === 'string') {
+                normalizedData.validUntil = parseQueryDate(normalizedData.validUntil, { endOfDayIfDateOnly: true });
+            }
+
             const promo = await PromoCodeService.updatePromo(
                 id,
                 auth.companyId,
-                data
+                normalizedData
             );
 
             sendSuccess(res, { promo }, 'Promo code updated successfully');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
     useCodDiscrepancies,
     useCodDiscrepancyStats,
@@ -39,20 +39,25 @@ const DISCREPANCY_TABS = [
     { key: 'under_review', label: 'Under Review' },
     { key: 'resolved', label: 'Resolved' },
 ] as const;
+const DEFAULT_LIMIT = 20;
 
 type StatusFilterKey = (typeof DISCREPANCY_TABS)[number]['key'];
 
 export default function CODDiscrepancyPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const { addToast } = useToast();
     const [page, setPage] = useState(1);
-    const limit = 10;
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
     const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('');
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 300);
     const [resolveTarget, setResolveTarget] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
+    const [hasInitializedFilterReset, setHasInitializedFilterReset] = useState(false);
     const {
         range: dateRange,
         startDateIso,
@@ -81,18 +86,58 @@ export default function CODDiscrepancyPage() {
     const discrepancies: CODDiscrepancy[] = response?.data || [];
     const pagination = response?.pagination || { total: 0, pages: 1, page: 1, limit };
 
-    // Sync status filter from URL
+    // Sync filters from URL
     useEffect(() => {
         const statusParam = searchParams.get('status');
         const validKeys = DISCREPANCY_TABS.map((t) => t.key);
         const nextStatus: StatusFilterKey =
             !statusParam || statusParam === 'all' ? '' : validKeys.includes(statusParam as StatusFilterKey) ? (statusParam as StatusFilterKey) : '';
         setStatusFilter((prev) => (prev === nextStatus ? prev : nextStatus));
+        const nextSearch = searchParams.get('search') || '';
+        setSearch((currentSearch) => (currentSearch === nextSearch ? currentSearch : nextSearch));
+
+        const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
+        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        setPage((currentPage) => (currentPage === nextPage ? currentPage : nextPage));
+        setIsUrlHydrated(true);
     }, [searchParams]);
 
     useEffect(() => {
+        if (!isUrlHydrated) return;
+        if (!hasInitializedFilterReset) {
+            setHasInitializedFilterReset(true);
+            return;
+        }
         setPage(1);
-    }, [statusFilter, debouncedSearch, startDateIso, endDateIso]);
+    }, [statusFilter, debouncedSearch, startDateIso, endDateIso, isUrlHydrated, hasInitializedFilterReset]);
+
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('status', statusFilter || 'all');
+        if (debouncedSearch) {
+            params.set('search', debouncedSearch);
+        } else {
+            params.delete('search');
+        }
+        if (page > 1) {
+            params.set('page', String(page));
+        } else {
+            params.delete('page');
+        }
+        if (limit !== DEFAULT_LIMIT) {
+            params.set('limit', String(limit));
+        } else {
+            params.delete('limit');
+        }
+
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [statusFilter, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
 
     // Reset to page 1 when current page is out of range
     useEffect(() => {
@@ -112,12 +157,9 @@ export default function CODDiscrepancyPage() {
     const handleStatusChange = useCallback(
         (status: StatusFilterKey) => {
             setStatusFilter(status);
-            const params = new URLSearchParams(searchParams.toString());
-            params.set('status', status || 'all');
-            params.set('page', '1');
-            router.push(`?${params.toString()}`, { scroll: false });
+            setPage(1);
         },
-        [router, searchParams]
+        []
     );
 
     const handleQuickResolve = useCallback((id: string) => setResolveTarget(id), []);

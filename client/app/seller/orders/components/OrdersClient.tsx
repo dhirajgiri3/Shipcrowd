@@ -1,26 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn, formatPaginationRange } from '@/src/lib/utils';
+import { formatCurrency, cn, formatPaginationRange, downloadCsv } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/orders/OrderDetailsPanel';
 import {
-    Filter,
-    FileOutput,
     Package,
     ArrowUpRight,
     AlertCircle,
     RefreshCw,
-    CheckCircle2,
-    ChevronDown,
-    FileText,
     TrendingUp,
     Clock,
-    AlertTriangle
+    AlertTriangle,
+    Truck,
+    FileOutput,
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { Order } from '@/src/types/domain/order';
@@ -35,6 +31,7 @@ import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { OrderQuoteShipModal } from '@/src/components/seller/shipping/OrderQuoteShipModal';
 import { getShipDisabledReason } from '@/src/lib/utils/order-shipping-eligibility';
+import { Select } from '@/src/components/ui/form/Select';
 
 const ORDER_TABS = [
     { key: 'all', label: 'All' },
@@ -44,43 +41,123 @@ const ORDER_TABS = [
     { key: 'rto', label: 'RTO' },
     { key: 'cancelled', label: 'Cancelled' },
 ] as const;
+const DEFAULT_LIMIT = 20;
+
+const PAYMENT_FILTERS = ['all', 'paid', 'pending', 'failed'] as const;
+const SMART_FILTERS: FilterPreset[] = ['all', 'needs_attention', 'today', 'cod_pending', 'last_7_days', 'zone_b'];
 
 type OrderTabKey = (typeof ORDER_TABS)[number]['key'];
+type PaymentFilter = (typeof PAYMENT_FILTERS)[number];
 
 export function OrdersClient() {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const isMobile = useIsMobile();
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 300);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [activeTab, setActiveTab] = useState<OrderTabKey>('unshipped');
-    const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
+    const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
     const [smartFilter, setSmartFilter] = useState<FilterPreset>('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const [shipTargetOrder, setShipTargetOrder] = useState<Order | null>(null);
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
+    const hasInitializedFilterReset = useRef(false);
     const { addToast } = useToast();
-    const limit = 20;
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
     const { range: dateRange, startDateIso, endDateIso, setRange } = useUrlDateRange();
 
-    // Hydrate/sync tab from URL for deep links (e.g. dashboard CTAs)
     useEffect(() => {
         const statusParam = searchParams.get('status');
         const validTabs: OrderTabKey[] = ['all', 'unshipped', 'shipped', 'delivered', 'rto', 'cancelled'];
         const nextTab = statusParam && validTabs.includes(statusParam as OrderTabKey)
             ? (statusParam as OrderTabKey)
             : 'unshipped';
-
         setActiveTab((currentTab) => (currentTab === nextTab ? currentTab : nextTab));
+
+        const searchParam = searchParams.get('search') || '';
+        setSearch((currentSearch) => (currentSearch === searchParam ? currentSearch : searchParam));
+
+        const paymentParam = searchParams.get('paymentStatus') as PaymentFilter | null;
+        const nextPayment = paymentParam && PAYMENT_FILTERS.includes(paymentParam) ? paymentParam : 'all';
+        setPaymentFilter((currentPayment) => (currentPayment === nextPayment ? currentPayment : nextPayment));
+
+        const smartParam = searchParams.get('smartFilter') as FilterPreset | null;
+        const nextSmartFilter = smartParam && SMART_FILTERS.includes(smartParam) ? smartParam : 'all';
+        setSmartFilter((currentSmartFilter) => (currentSmartFilter === nextSmartFilter ? currentSmartFilter : nextSmartFilter));
+
+        const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
+        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        setPage((currentPage) => (currentPage === nextPage ? currentPage : nextPage));
+
+        setIsUrlHydrated(true);
     }, [searchParams]);
 
-    // Reset page when any filter changes
     useEffect(() => {
+        if (!isUrlHydrated) return;
+        if (!hasInitializedFilterReset.current) {
+            hasInitializedFilterReset.current = true;
+            return;
+        }
         setPage(1);
-    }, [debouncedSearch, activeTab, smartFilter, paymentFilter, startDateIso, endDateIso]);
+    }, [debouncedSearch, activeTab, smartFilter, paymentFilter, startDateIso, endDateIso, isUrlHydrated]);
 
-    // --- REAL API INTEGRATION ---
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('status', activeTab);
+
+        if (debouncedSearch) {
+            params.set('search', debouncedSearch);
+        } else {
+            params.delete('search');
+        }
+
+        if (paymentFilter !== 'all') {
+            params.set('paymentStatus', paymentFilter);
+        } else {
+            params.delete('paymentStatus');
+        }
+
+        if (smartFilter !== 'all') {
+            params.set('smartFilter', smartFilter);
+        } else {
+            params.delete('smartFilter');
+        }
+
+        if (page > 1) {
+            params.set('page', String(page));
+        } else {
+            params.delete('page');
+        }
+        if (limit !== DEFAULT_LIMIT) {
+            params.set('limit', String(limit));
+        } else {
+            params.delete('limit');
+        }
+
+        const currentQuery = searchParams.toString();
+        const nextQuery = params.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [
+        activeTab,
+        debouncedSearch,
+        paymentFilter,
+        smartFilter,
+        page,
+        limit,
+        isUrlHydrated,
+        searchParams,
+        pathname,
+        router,
+    ]);
+
     const {
         data: ordersResponse,
         isLoading,
@@ -97,12 +174,10 @@ export function OrdersClient() {
         endDate: endDateIso,
     });
 
-    // Use real data from API directly
     const ordersData: Order[] = ordersResponse?.data || [];
     const pagination = ordersResponse?.pagination;
     const globalStats = ordersResponse?.globalStats;
 
-    // Reset to page 1 when current page is out of range (e.g. after filters reduce total)
     useEffect(() => {
         const total = pagination?.total ?? 0;
         const pages = pagination?.pages ?? 1;
@@ -117,10 +192,31 @@ export function OrdersClient() {
         setIsRefreshing(false);
     };
 
-    // No client-side filtering needed - all filtering is done server-side for better performance
+    const handleExportCsv = () => {
+        if (ordersData.length === 0) {
+            addToast('No orders available to export for current filters', 'info');
+            return;
+        }
+
+        downloadCsv({
+            filename: `orders-${new Date().toISOString().slice(0, 10)}.csv`,
+            header: ['Order Number', 'Created At', 'Customer', 'Phone', 'Status', 'Payment', 'Total'],
+            rows: ordersData.map((order) => [
+                order.orderNumber,
+                order.createdAt,
+                order.customerInfo?.name || '',
+                order.customerInfo?.phone || '',
+                order.currentStatus,
+                order.paymentStatus,
+                order.totals?.total ?? 0,
+            ]),
+        });
+
+        addToast('Orders exported as CSV', 'success');
+    };
+
     const filteredOrders = ordersData;
 
-    // Stats cards always use global (unfiltered) stats for consistent UX
     const metrics = useMemo(() => {
         if (globalStats) {
             return {
@@ -140,7 +236,7 @@ export function OrdersClient() {
 
 
     return (
-        <div className="min-h-screen space-y-8 pb-20 animate-fade-in">
+        <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
             <OrderDetailsPanel
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
@@ -162,7 +258,6 @@ export function OrdersClient() {
                 }}
             />
 
-            {/* --- HEADER --- */}
             <PageHeader
                 title="Orders"
                 breadcrumbs={[
@@ -170,33 +265,39 @@ export function OrdersClient() {
                     { label: 'Orders', active: true }
                 ]}
                 actions={
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <DateRangePicker value={dateRange} onRangeChange={setRange} />
                         <Button
                             onClick={refetch}
                             variant="ghost"
                             size="sm"
                             className={cn("h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm", isRefreshing && "animate-spin")}
+                            aria-label="Refresh orders"
                         >
                             <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Manifest feature coming soon', 'info')}>
-                            <FileText className="w-4 h-4 mr-2" />
-                            Bulk Manifest
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Label feature coming soon', 'info')}>
-                            <Package className="w-4 h-4 mr-2" />
-                            Bulk Label
-                        </Button>
-                        <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
-                            <FileOutput className="w-4 h-4 mr-2" />
-                            Export CSV
                         </Button>
                         <Button
                             size="sm"
                             variant="outline"
                             className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
-                            onClick={() => window.location.assign('/seller/shipments')}
+                            onClick={handleExportCsv}
+                        >
+                            <FileOutput className="w-4 h-4 mr-2" />
+                            Export CSV
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="h-10 px-4 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all"
+                            onClick={() => router.push('/seller/ship-now')}
+                        >
+                            <Truck className="w-4 h-4 mr-2" />
+                            Ship Queue
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
+                            onClick={() => router.push('/seller/shipments')}
                             aria-label="Go to shipments page to track orders"
                         >
                             <ArrowUpRight className="w-4 h-4 mr-2" />
@@ -206,7 +307,6 @@ export function OrdersClient() {
                 }
             />
 
-            {/* --- METRICS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                     title="Total Orders"
@@ -232,13 +332,8 @@ export function OrdersClient() {
                     description="Orders waiting to be shipped"
                     delay={2}
                     onClick={() => {
-                        setActiveTab('unshipped');
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.set('status', 'unshipped');
-                        params.set('page', '1');
-                        router.push(`?${params.toString()}`, { scroll: false });
+                        router.push('/seller/ship-now');
                     }}
-                    isActive={activeTab === 'unshipped'}
                 />
                 <StatsCard
                     title="Pending Payments"
@@ -249,60 +344,52 @@ export function OrdersClient() {
                 />
             </div>
 
-            {/* --- TABLE & CONTROLS --- */}
             <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div className="flex flex-col lg:flex-row justify-between gap-4">
                     <PillTabs
                         tabs={ORDER_TABS}
                         activeTab={activeTab}
                         onTabChange={(key) => {
                             setActiveTab(key);
-                            const params = new URLSearchParams(searchParams.toString());
-                            params.set('status', key);
-                            params.set('page', '1');
-                            router.push(`?${params.toString()}`, { scroll: false });
+                            setPage(1);
                         }}
                     />
 
-                    {/* Filters */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <SearchInput
+                            widthClass="w-full sm:w-72"
                             placeholder="Search orders..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
-                        <div className="relative group">
-                            <button className="h-11 px-4 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] text-sm font-medium flex items-center gap-2 hover:bg-[var(--bg-secondary)] transition-colors shadow-sm">
-                                <Filter className="w-4 h-4" />
-                                <span className="capitalize">{paymentFilter === 'all' ? 'All Payments' : paymentFilter}</span>
-                                <ChevronDown className="w-4 h-4 opacity-50" />
-                            </button>
-                            {/* Filter Dropdown */}
-                            <div className="absolute top-full right-0 mt-2 w-48 p-1.5 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-                                {['all', 'paid', 'pending', 'failed'].map(opt => (
-                                    <button
-                                        key={opt}
-                                        onClick={() => setPaymentFilter(opt as 'all' | 'paid' | 'pending' | 'failed')}
-                                        className={cn(
-                                            "w-full text-left px-3 py-2 text-sm rounded-lg capitalize transition-colors flex items-center justify-between",
-                                            paymentFilter === opt ? "bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                                        )}
-                                    >
-                                        {opt}
-                                        {paymentFilter === opt && <CheckCircle2 className="w-3.5 h-3.5 text-[var(--primary-blue)]" />}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="w-full sm:w-auto sm:min-w-[170px]">
+                            <label htmlFor="orders-payment-filter" className="sr-only">
+                                Payment status filter
+                            </label>
+                            <Select
+                                id="orders-payment-filter"
+                                value={paymentFilter}
+                                onChange={(event) => {
+                                    setPaymentFilter(event.target.value as PaymentFilter);
+                                    setPage(1);
+                                }}
+                                options={[
+                                    { value: 'all', label: 'All Payments' },
+                                    { value: 'paid', label: 'Paid' },
+                                    { value: 'pending', label: 'Pending' },
+                                    { value: 'failed', label: 'Failed' },
+                                ]}
+                                className="h-11 rounded-xl border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Smart Filter Chips */}
                 <SmartFilterChips
                     activeFilter={smartFilter}
                     onFilterChange={(filter) => {
                         setSmartFilter(filter);
-                        setPage(1); // Reset pagination
+                        setPage(1);
                     }}
                     counts={ordersResponse?.filterCounts || {
                         all: pagination?.total || 0,
@@ -314,7 +401,6 @@ export function OrdersClient() {
                     }}
                 />
 
-                {/* Error State */}
                 {error && (
                     <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm py-20 text-center">
                         <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
@@ -332,7 +418,6 @@ export function OrdersClient() {
                     </div>
                 )}
 
-                {/* Responsive Order List */}
                 {!error && (
                     <ResponsiveOrderList
                         orders={filteredOrders}
@@ -350,7 +435,6 @@ export function OrdersClient() {
                     />
                 )}
 
-                {/* Empty State - consolidated (no duplicate from ResponsiveOrderList) */}
                 {!isLoading && !error && filteredOrders.length === 0 && (
                     <div className="py-24 text-center bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]">
                         <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
@@ -371,7 +455,6 @@ export function OrdersClient() {
                                     setPaymentFilter('all');
                                     setSmartFilter('all');
                                     setPage(1);
-                                    router.push('/seller/orders?status=all&page=1', { scroll: false });
                                 }}
                                 className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
                             >
@@ -381,7 +464,6 @@ export function OrdersClient() {
                     </div>
                 )}
 
-                {/* Pagination Controls */}
                 {pagination && pagination.pages > 1 && (
                     <div className="flex items-center justify-between px-2 pt-4">
                         <p className="text-sm text-[var(--text-muted)]">
@@ -391,7 +473,7 @@ export function OrdersClient() {
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
                                 disabled={page === 1}
                                 className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
                             >
@@ -403,7 +485,7 @@ export function OrdersClient() {
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                                 disabled={page === pagination.pages}
                                 className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
                             >
@@ -412,6 +494,28 @@ export function OrdersClient() {
                         </div>
                     </div>
                 )}
+            </div>
+
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--bg-primary)]/90 p-3 md:hidden">
+                <div className="grid grid-cols-2 gap-2">
+                    <Button
+                        size="md"
+                        className="h-11 rounded-xl"
+                        onClick={() => router.push('/seller/ship-now')}
+                    >
+                        <Truck className="w-4 h-4 mr-2" />
+                        Ship Queue
+                    </Button>
+                    <Button
+                        size="md"
+                        variant="outline"
+                        className="h-11 rounded-xl"
+                        onClick={handleExportCsv}
+                    >
+                        <FileOutput className="w-4 h-4 mr-2" />
+                        Export
+                    </Button>
+                </div>
             </div>
         </div>
     );

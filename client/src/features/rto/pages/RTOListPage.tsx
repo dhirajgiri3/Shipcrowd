@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { RotateCcw, TrendingUp, RefreshCw, Filter, FileOutput, Package, AlertTriangle, CheckCircle2, Truck, ClipboardCheck } from 'lucide-react';
 import { useRTOAnalytics } from '@/src/core/api/hooks/rto/useRTOAnalytics';
 import { useRTOEvents, type RTOFilters } from '@/src/core/api/hooks/rto/useRTOManagement';
@@ -33,9 +33,11 @@ const STATUS_TABS = [
     { key: 'restocked', label: 'Restocked' },
     { key: 'disposed', label: 'Disposed' },
 ] as const;
+const DEFAULT_LIMIT = 20;
 
 export function RTOListPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     type RTOTabKey = (typeof STATUS_TABS)[number]['key'];
     const [statusFilter, setStatusFilter] = useState<RTOTabKey>('all');
@@ -43,10 +45,13 @@ export function RTOListPage() {
     const debouncedSearch = useDebouncedValue(searchTerm, 500);
     const [analyticsOpen, setAnalyticsOpen] = useState(false);
     const [selectedRTO, setSelectedRTO] = useState<RTOEventDetail | null>(null);
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
+    const hasInitializedFilterReset = useRef(false);
 
     // Pagination state
     const [page, setPage] = useState(1);
-    const limit = 20;
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
     const {
         range: dateRange,
         startDateIso: startDate,
@@ -54,18 +59,69 @@ export function RTOListPage() {
         setRange,
     } = useUrlDateRange();
 
-    // Deep link from dashboard: /seller/rto?returnStatus=qc_pending
+    // Hydrate/sync filters from URL
     useEffect(() => {
-        const status = searchParams.get('returnStatus');
-        if (status && STATUS_TABS.some((o) => o.key === status)) {
-            setStatusFilter(status as RTOTabKey);
+        const statusParam = searchParams.get('status');
+        if (statusParam && STATUS_TABS.some((o) => o.key === statusParam)) {
+            setStatusFilter(statusParam as RTOTabKey);
+        } else {
+            setStatusFilter('all');
         }
+
+        const searchParam = searchParams.get('search') || '';
+        setSearchTerm((current) => (current === searchParam ? current : searchParam));
+
+        const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
+        const nextPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+        setPage((currentPage) => (currentPage === nextPage ? currentPage : nextPage));
+
+        setIsUrlHydrated(true);
     }, [searchParams]);
 
-    // Reset page when filters change
+    // Reset page when filters change (but not on first hydration pass)
     useEffect(() => {
+        if (!isUrlHydrated) return;
+        if (!hasInitializedFilterReset.current) {
+            hasInitializedFilterReset.current = true;
+            return;
+        }
         setPage(1);
-    }, [statusFilter, debouncedSearch, startDate, endDate]);
+    }, [statusFilter, debouncedSearch, startDate, endDate, isUrlHydrated]);
+
+    // Sync URL from local filters
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+
+        const params = new URLSearchParams(searchParams.toString());
+        if (statusFilter !== 'all') {
+            params.set('status', statusFilter);
+        } else {
+            params.delete('status');
+        }
+
+        if (debouncedSearch) {
+            params.set('search', debouncedSearch);
+        } else {
+            params.delete('search');
+        }
+
+        if (page > 1) {
+            params.set('page', String(page));
+        } else {
+            params.delete('page');
+        }
+        if (limit !== DEFAULT_LIMIT) {
+            params.set('limit', String(limit));
+        } else {
+            params.delete('limit');
+        }
+
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [statusFilter, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
 
     const { data: listData, isLoading, refetch, error } = useRTOEvents({
         page,

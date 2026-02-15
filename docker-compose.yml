@@ -18,6 +18,20 @@ services:
     depends_on:
       - redis
 
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: shipcrowd-worker
+    restart: always
+    command: ["npm", "run", "start:worker"]
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGODB_URI}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - redis
+
   client:
     build:
       context: ./client

@@ -1,114 +1,49 @@
-/**
- * Analytics Domain Hooks
- * Contains both data fetching and page controller logic.
- */
-
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { analyticsApi, DateRange } from '../../../clients/analytics/analyticsApi';
-import { profitApi } from '../../../clients/finance/profitApi';
-import { queryKeys } from '../../../config/query-keys';
-import { QUERY_CONFIG } from '../../../config/query-client';
-import { RETRY_CONFIG } from '../../../config/cache.config';
-
-// ==========================================
-// DATA LAYER (API Hooks)
-// ==========================================
-
-/**
- * Hook to fetch delivery performance metrics
- */
-export const useDeliveryPerformance = (dateRange: DateRange) => {
-    return useQuery({
-        queryKey: queryKeys.analytics.dashboard(dateRange),
-        queryFn: () => analyticsApi.getDeliveryPerformance(dateRange),
-        staleTime: QUERY_CONFIG.staleTime.analytics,
-        retry: RETRY_CONFIG.DEFAULT,
-    });
-};
-
-/**
- * Hook to fetch zone-wise distribution
- */
-export const useZoneDistribution = () => {
-    return useQuery({
-        queryKey: queryKeys.analytics.geographic(),
-        queryFn: () => analyticsApi.getZoneDistribution(),
-        staleTime: QUERY_CONFIG.staleTime.analytics,
-        retry: RETRY_CONFIG.DEFAULT,
-    });
-};
-
-/**
- * Hook to fetch profit stats
- */
-export const useProfitStats = (startDate: string, endDate: string) => {
-    return useQuery({
-        queryKey: ['admin', 'profit', 'stats', startDate, endDate],
-        queryFn: () => profitApi.getProfitData({ dateFrom: startDate, dateTo: endDate }),
-        staleTime: QUERY_CONFIG.staleTime.analytics,
-        retry: RETRY_CONFIG.DEFAULT,
-    });
-};
-
-// ==========================================
-// CONTROL LAYER (Page Controller)
-// ==========================================
-
-export type DateRangeOption = '7d' | '30d' | 'month';
+import { useMemo } from 'react';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
+import { useAdminDashboard } from '@/src/core/api/hooks/analytics/useAnalytics';
 
 export function useAnalyticsPage() {
-    const [dateRange, setDateRange] = useState<string>('7d');
+    const { range: dateRange, startDateIso, endDateIso, setRange } = useUrlDateRange();
+    const { data: adminDashboard, isLoading } = useAdminDashboard({
+        startDate: startDateIso,
+        endDate: endDateIso,
+    });
 
-    // Calculate date range
-    const { startDate, endDate } = useMemo(() => {
-        const end = new Date();
-        const start = new Date();
+    const trendData = useMemo(
+        () =>
+            (adminDashboard?.revenueGraph || []).map((point) => ({
+                date: point._id,
+                orders: point.orders || 0,
+                revenue: point.revenue || 0,
+            })),
+        [adminDashboard?.revenueGraph]
+    );
 
-        switch (dateRange) {
-            case '7d':
-                start.setDate(start.getDate() - 7);
-                break;
-            case '30d':
-                start.setDate(start.getDate() - 30);
-                break;
-            case 'month':
-                start.setDate(1);
-                break;
-        }
+    const sellerDistribution = useMemo(
+        () =>
+            (adminDashboard?.companiesStats || []).map((seller) => ({
+                name: seller.companyName || 'Unknown',
+                value: seller.totalOrders || 0,
+            })),
+        [adminDashboard?.companiesStats]
+    );
 
-        return {
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0]
-        };
-    }, [dateRange]);
-
-    // Use co-located data hooks
-    const { data: deliveryData, isLoading: isLoadingDelivery } = useDeliveryPerformance({ startDate, endDate });
-    const { data: zoneData, isLoading: isLoadingZones } = useZoneDistribution();
-    const { data: profitData, isLoading: isLoadingProfit } = useProfitStats(startDate, endDate);
-
-    const deliveryPerformanceData = deliveryData?.data || [];
-    const zoneDistribution = zoneData?.data || [];
-    const profitStats = profitData?.stats || {
-        totalProfit: 0,
-        totalCharged: 0,
-        totalShipments: 0,
-        avgMargin: 0
-    };
-
-    const handleDateRangeChange = (value: string) => {
-        setDateRange(value);
-    };
+    const summary = useMemo(
+        () => ({
+            totalRevenue: adminDashboard?.totalRevenue || 0,
+            totalOrders: adminDashboard?.totalOrders || 0,
+            totalShipments: adminDashboard?.totalShipments || 0,
+            successRate: adminDashboard?.globalSuccessRate || 0,
+        }),
+        [adminDashboard]
+    );
 
     return {
         dateRange,
-        handleDateRangeChange,
-        deliveryPerformanceData,
-        zoneDistribution,
-        profitStats,
-        isLoadingDelivery,
-        isLoadingZones,
-        isLoadingProfit,
+        setDateRange: setRange,
+        trendData,
+        sellerDistribution,
+        summary,
+        isLoading,
     };
 }

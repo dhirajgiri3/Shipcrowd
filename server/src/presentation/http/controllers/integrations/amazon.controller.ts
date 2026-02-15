@@ -11,14 +11,14 @@
  * - POST /stores/:id/test - Test connection
  * - POST /stores/:id/pause - Pause sync
  * - POST /stores/:id/resume - Resume sync
- * - POST /stores/:id/sync-orders - Trigger order sync
+ * - POST /stores/:id/sync/orders - Trigger order sync
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import AmazonOAuthService from '../../../../core/application/services/amazon/amazon-oauth.service';
 import AmazonOrderSyncService from '../../../../core/application/services/amazon/amazon-order-sync.service';
-import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
+import { AmazonStore, AmazonSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
@@ -33,6 +33,7 @@ export class AmazonController {
      */
     static async connect(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const credentials = req.body.credentials || req.body;
             const {
                 sellerId,
                 marketplaceId,
@@ -45,7 +46,7 @@ export class AmazonController {
                 awsSecretAccessKey,
                 roleArn,
                 region,
-            } = req.body;
+            } = credentials;
 
             const auth = guardChecks(req);
             requireCompanyContext(auth);
@@ -280,6 +281,7 @@ export class AmazonController {
      */
     static async testConnectionCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const credentials = req.body.credentials || req.body;
             const {
                 sellerId,
                 marketplaceId,
@@ -289,7 +291,7 @@ export class AmazonController {
                 awsAccessKeyId,
                 awsSecretAccessKey,
                 region,
-            } = req.body;
+            } = credentials;
 
             if (!sellerId || !marketplaceId || !lwaClientId || !lwaClientSecret || !lwaRefreshToken || !awsAccessKeyId || !awsSecretAccessKey) {
                 throw new ValidationError('Missing required Amazon credentials');
@@ -444,7 +446,7 @@ export class AmazonController {
     }
 
     /**
-     * POST /integrations/amazon/stores/:id/sync-orders
+     * POST /integrations/amazon/stores/:id/sync/orders
      *
      * Trigger manual order sync for a store
      */
@@ -487,6 +489,55 @@ export class AmazonController {
                     errors: result.syncErrors.length > 0 ? result.syncErrors.slice(0, 10) : [],
                 },
             }, 'Order sync completed');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * GET /integrations/amazon/stores/:id/sync/logs
+     *
+     * Get recent sync logs for a store
+     */
+    static async getSyncLogs(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const auth = guardChecks(req);
+            requireCompanyContext(auth);
+            const { id } = req.params;
+            const limit = Number(req.query.limit) || 50;
+
+            const store = await AmazonStore.findOne({
+                _id: id,
+                companyId: auth.companyId,
+            }).select('_id');
+
+            if (!store) {
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+            }
+
+            const logs = await (AmazonSyncLog as any).getRecentLogs(id, undefined, limit);
+
+            sendSuccess(
+                res,
+                logs.map((log: any) => ({
+                    _id: String(log._id),
+                    integrationId: id,
+                    syncId: String(log._id),
+                    triggerType: log.metadata?.triggerType || (log.syncType === 'webhook' ? 'WEBHOOK' : 'SCHEDULED'),
+                    status: log.status,
+                    startedAt: log.startTime,
+                    completedAt: log.endTime,
+                    durationMs: log.duration,
+                    ordersProcessed: log.itemsProcessed || 0,
+                    ordersSuccess: log.itemsSynced || 0,
+                    ordersFailed: log.itemsFailed || 0,
+                    details: {
+                        message: log.metadata?.message,
+                        errors: log.syncErrors || [],
+                    },
+                })),
+                'Amazon sync logs retrieved successfully'
+            );
         } catch (error) {
             next(error);
         }

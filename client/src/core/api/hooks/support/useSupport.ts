@@ -18,7 +18,7 @@ export interface TicketResponse {
 // Hooks
 export function useSupportTickets(
     filters?: FilterParams & { status?: string; category?: string },
-    options?: UseQueryOptions<TicketResponse, ApiError>
+    options?: Omit<UseQueryOptions<TicketResponse, ApiError>, 'queryKey' | 'queryFn'>
 ) {
     return useQuery<TicketResponse, ApiError>({
         queryKey: ['support', 'tickets', filters], // TODO: Add to queryKeys factory if not present
@@ -37,7 +37,7 @@ export function useSupportTickets(
 
 export function useSupportTicket(
     id: string,
-    options?: UseQueryOptions<SupportTicket, ApiError>
+    options?: Omit<UseQueryOptions<SupportTicket, ApiError>, 'queryKey' | 'queryFn'>
 ) {
     return useQuery<SupportTicket, ApiError>({
         queryKey: ['support', 'ticket', id],
@@ -75,6 +75,17 @@ export function useCreateSupportTicket(
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
+}
+
+export async function uploadSupportAttachments(files: File[]): Promise<string[]> {
+    if (!files.length) return [];
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const { data } = await apiClient.post<{ success: boolean; data: { urls: string[] } }>(
+        '/support/upload',
+        formData
+    );
+    return (data as { data?: { urls?: string[] } })?.data?.urls ?? [];
 }
 
 export function useAddSupportTicketNote(

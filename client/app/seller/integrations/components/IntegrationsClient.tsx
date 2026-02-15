@@ -100,10 +100,6 @@ export function IntegrationsClient() {
     // Handle sync (mutation shows toast on success/error; we only manage loading state)
     const handleSync = async (storeId: string, platform: string) => {
         const type = platform.toUpperCase() as 'SHOPIFY' | 'WOOCOMMERCE' | 'AMAZON' | 'FLIPKART';
-        if (type === 'FLIPKART') {
-            addToast('Manual sync is not supported for Flipkart. Orders sync automatically.', 'info');
-            return;
-        }
         setSyncingStores(prev => new Set(prev).add(storeId));
         try {
             await triggerSync.mutateAsync({ integrationId: storeId, type });
@@ -119,8 +115,7 @@ export function IntegrationsClient() {
         }
     };
 
-    const isSyncSupported = (platform: string) =>
-        !['flipkart'].includes(platform.toLowerCase());
+    const isSyncSupported = (_platform: string) => true;
 
     if (isLoading) {
         return (

@@ -21,7 +21,7 @@ import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 import { formatDate, cn } from '@/src/lib/utils';
 import { useAllKYCs, useVerifyKYC, useRejectKYC, KYCFilters } from '@/src/core/api/hooks/security/useKYC';
-import { DateRange } from '@/src/lib/data';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 
 // --- CONSTANTS ---
 const STATUS_TABS = [
@@ -30,6 +30,7 @@ const STATUS_TABS = [
     { id: 'pending', label: 'Pending' },
     { id: 'rejected', label: 'Rejected' },
 ];
+const DEFAULT_LIMIT = 10;
 
 export function KycClient() {
     const router = useRouter();
@@ -38,11 +39,16 @@ export function KycClient() {
 
     // -- State from URL & Local --
     const page = Number(searchParams.get('page')) || 1;
-    const limit = Number(searchParams.get('limit')) || 10;
+    const limitParam = Number.parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT;
     const status = (searchParams.get('status') as KYCFilters['status']) || 'all';
     const search = searchParams.get('search') || '';
-    const startDate = searchParams.get('startDate') || '';
-    const endDate = searchParams.get('endDate') || '';
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
 
     const [searchTerm, setSearchTerm] = useState(search);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -59,6 +65,12 @@ export function KycClient() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Keep local search in sync with URL (back/forward/share links)
+    useEffect(() => {
+        setSearchTerm((current) => (current === search ? current : search));
+        setDebouncedSearch((current) => (current === search ? current : search));
+    }, [search]);
+
     // -- URL Helper --
     const updateUrl = (updates: Record<string, string | number | null>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -72,15 +84,22 @@ export function KycClient() {
         router.push(`?${params.toString()}`, { scroll: false });
     };
 
+    // Sync debounced search to URL
+    useEffect(() => {
+        if (debouncedSearch !== search) {
+            updateUrl({ search: debouncedSearch, page: 1 });
+        }
+    }, [debouncedSearch]);
+
     // -- API Params --
     const queryParams: KYCFilters = useMemo(() => ({
         page,
         limit,
         status: status === 'all' ? undefined : status,
         search: debouncedSearch || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-    }), [page, limit, status, debouncedSearch, startDate, endDate]);
+        startDate: startDateIso,
+        endDate: endDateIso,
+    }), [page, limit, status, debouncedSearch, startDateIso, endDateIso]);
 
     // -- API Hooks --
     const { data, isLoading, refetch, isFetching } = useAllKYCs(queryParams);
@@ -100,13 +119,7 @@ export function KycClient() {
         updateUrl({ page: newPage });
     };
 
-    const handleDateRangeChange = (range: DateRange) => {
-        updateUrl({
-            startDate: range.from?.toISOString() || '',
-            endDate: range.to?.toISOString() || '',
-            page: 1
-        });
-    };
+    const handleDateRangeChange = setRange;
 
     const handleRefresh = () => {
         refetch();
@@ -293,7 +306,7 @@ export function KycClient() {
 
                 <div className="flex items-center gap-4">
                     <div className="hidden md:block">
-                        <DateRangePicker onRangeChange={handleDateRangeChange} />
+                        <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
                     </div>
 
                     <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide">

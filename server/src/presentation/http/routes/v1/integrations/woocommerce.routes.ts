@@ -258,6 +258,12 @@ router.post(
 );
 
 /**
+ * GET /api/v1/integrations/woocommerce/stores/:id/sync/logs
+ * Get recent sync logs for a store
+ */
+router.get('/stores/:id/sync/logs', WooCommerceController.getSyncLogs);
+
+/**
  * GET /api/v1/integrations/woocommerce/sync/jobs/:jobId
  * Get status of a sync job
  *

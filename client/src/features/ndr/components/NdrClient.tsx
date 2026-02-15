@@ -5,7 +5,8 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     AlertTriangle,
@@ -37,8 +38,12 @@ import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { useUrlDateRange } from '@/src/hooks';
 
 export function NDRClient() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<NDRStatus | 'all'>('all');
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const [selectedCases, setSelectedCases] = useState<string[]>([]);
     const [bulkActionConfirm, setBulkActionConfirm] = useState<'return_to_origin' | 'escalate' | null>(null);
     const {
@@ -92,6 +97,41 @@ export function NDRClient() {
 
     const cases = ndrCasesResponse?.cases || [];
 
+    useEffect(() => {
+        const nextSearch = searchParams.get('search') || '';
+        setSearchTerm((current) => (current === nextSearch ? current : nextSearch));
+
+        const statusParam = searchParams.get('status');
+        const validStatuses: Array<NDRStatus | 'all'> = ['all', 'customer_action', 'reattempt_scheduled', 'resolved', 'converted_to_rto'];
+        const nextStatus: NDRStatus | 'all' =
+            statusParam && validStatuses.includes(statusParam as NDRStatus | 'all')
+                ? (statusParam as NDRStatus | 'all')
+                : 'all';
+        setStatusFilter((current) => (current === nextStatus ? current : nextStatus));
+        setIsUrlHydrated(true);
+    }, [searchParams]);
+
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+        const params = new URLSearchParams(searchParams.toString());
+        if (statusFilter !== 'all') {
+            params.set('status', statusFilter);
+        } else {
+            params.delete('status');
+        }
+        if (searchTerm.trim()) {
+            params.set('search', searchTerm.trim());
+        } else {
+            params.delete('search');
+        }
+
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [statusFilter, searchTerm, isUrlHydrated, searchParams, pathname, router]);
+
     const handleReattempt = (caseId: string) => {
         takeAction({
             caseId,
@@ -114,7 +154,7 @@ export function NDRClient() {
 
     const statusTabs = [
         { id: 'all', label: 'All Cases', count: metrics?.total || 0 },
-        { id: 'action_required', label: 'Action Required', count: metrics?.open || 0 },
+        { id: 'customer_action', label: 'Action Required', count: metrics?.open || 0 },
         { id: 'reattempt_scheduled', label: 'Reattempt', count: 0 }, // Metric missing in type
         { id: 'resolved', label: 'Resolved', count: metrics?.resolved || 0 },
         { id: 'converted_to_rto', label: 'RTO', count: metrics?.convertedToRTO || 0 }

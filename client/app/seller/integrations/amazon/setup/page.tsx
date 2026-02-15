@@ -104,7 +104,13 @@ export default function AmazonIntegrationPage() {
         integrationType: 'AMAZON',
         initialState: {
             sellerId: '',
-            mwsAuthToken: '',
+            marketplaceId: '',
+            lwaClientId: '',
+            lwaClientSecret: '',
+            lwaRefreshToken: '',
+            awsAccessKeyId: '',
+            awsSecretAccessKey: '',
+            roleArn: '',
             region: 'IN',
             settings: defaultSettings,
         },
@@ -112,12 +118,29 @@ export default function AmazonIntegrationPage() {
         autoSaveDelay: 500
     });
 
-    const { sellerId, mwsAuthToken, region: rawRegion, settings: rawSettings } = formData;
+    const {
+        sellerId,
+        marketplaceId,
+        lwaClientId,
+        lwaClientSecret,
+        lwaRefreshToken,
+        awsAccessKeyId,
+        awsSecretAccessKey,
+        roleArn,
+        region: rawRegion,
+        settings: rawSettings,
+    } = formData;
     const region = rawRegion as 'IN' | 'US' | 'EU' | 'JP';
     const settings = rawSettings as Partial<IntegrationSettings>;
 
     const setSellerId = (val: string) => updateField('sellerId', val);
-    const setMwsAuthToken = (val: string) => updateField('mwsAuthToken', val);
+    const setMarketplaceId = (val: string) => updateField('marketplaceId', val);
+    const setLwaClientId = (val: string) => updateField('lwaClientId', val);
+    const setLwaClientSecret = (val: string) => updateField('lwaClientSecret', val);
+    const setLwaRefreshToken = (val: string) => updateField('lwaRefreshToken', val);
+    const setAwsAccessKeyId = (val: string) => updateField('awsAccessKeyId', val);
+    const setAwsSecretAccessKey = (val: string) => updateField('awsSecretAccessKey', val);
+    const setRoleArn = (val: string) => updateField('roleArn', val);
     const setRegion = (val: string) => updateField('region', val);
 
     const setSettings = (val: Partial<IntegrationSettings> | ((prev: Partial<IntegrationSettings>) => Partial<IntegrationSettings>)) => {
@@ -155,7 +178,7 @@ export default function AmazonIntegrationPage() {
     // Show skeleton on initial load if we have a saved draft loading
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     // Move local state declarations here that were removed from the large block above but are still needed
-    const [showMwsToken, setShowMwsToken] = useState(false);
+    const [showLwaRefreshToken, setShowLwaRefreshToken] = useState(false);
     const [storeName, setStoreName] = useState('');
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [testResult, setTestResult] = useState<any>(null);
@@ -184,7 +207,7 @@ export default function AmazonIntegrationPage() {
     useEffect(() => {
         setTestResult(null);
         setLastTestedAt(null);
-    }, [sellerId, mwsAuthToken, region]);
+    }, [sellerId, marketplaceId, lwaClientId, lwaClientSecret, lwaRefreshToken, awsAccessKeyId, awsSecretAccessKey, roleArn, region]);
 
     // Seller ID Validation
     useEffect(() => {
@@ -197,15 +220,15 @@ export default function AmazonIntegrationPage() {
         setValidationStatus(prev => ({ ...prev, sellerId: isValid ? 'valid' : 'invalid' }));
     }, [sellerId]);
 
-    // MWS Token Validation
+    // LWA Refresh Token Validation
     useEffect(() => {
-        if (!mwsAuthToken) {
+        if (!lwaRefreshToken) {
             setValidationStatus(prev => ({ ...prev, mwsAuthToken: 'idle' }));
             return;
         }
-        const isValid = mwsAuthToken.startsWith('amzn.mws.');
+        const isValid = lwaRefreshToken.length > 20;
         setValidationStatus(prev => ({ ...prev, mwsAuthToken: isValid ? 'valid' : 'invalid' }));
-    }, [mwsAuthToken]);
+    }, [lwaRefreshToken]);
 
     const sellerIdError = useMemo(() => {
         if (!sellerId) {
@@ -215,11 +238,11 @@ export default function AmazonIntegrationPage() {
     }, [sellerId, touched.sellerId, testAttempted]);
 
     const tokenError = useMemo(() => {
-        if (!mwsAuthToken) {
-            return touched.mwsAuthToken || testAttempted ? 'MWS auth token is required' : '';
+        if (!lwaRefreshToken) {
+            return touched.mwsAuthToken || testAttempted ? 'LWA refresh token is required' : '';
         }
         return '';
-    }, [mwsAuthToken, touched.mwsAuthToken, testAttempted]);
+    }, [lwaRefreshToken, touched.mwsAuthToken, testAttempted]);
 
     if (isInitialLoad) {
         return (
@@ -237,7 +260,16 @@ export default function AmazonIntegrationPage() {
         );
     }
 
-    const canTest = Boolean(sellerId && mwsAuthToken);
+    const canTest = Boolean(
+        sellerId &&
+        marketplaceId &&
+        lwaClientId &&
+        lwaClientSecret &&
+        lwaRefreshToken &&
+        awsAccessKeyId &&
+        awsSecretAccessKey &&
+        roleArn
+    );
 
     const pasteFromClipboard = async (onPaste: (value: string) => void, field: keyof typeof touched) => {
         try {
@@ -257,7 +289,7 @@ export default function AmazonIntegrationPage() {
     const handleTest = () => {
         setTestAttempted(true);
 
-        if (!sellerId || !mwsAuthToken) {
+        if (!canTest) {
             addToast('Please fix the highlighted fields', 'error');
             return;
         }
@@ -265,7 +297,13 @@ export default function AmazonIntegrationPage() {
         const credentials: AmazonCredentials = {
             type: 'AMAZON',
             sellerId,
-            mwsAuthToken,
+            marketplaceId,
+            lwaClientId,
+            lwaClientSecret,
+            lwaRefreshToken,
+            awsAccessKeyId,
+            awsSecretAccessKey,
+            roleArn,
             region,
         };
 
@@ -301,7 +339,13 @@ export default function AmazonIntegrationPage() {
         const credentials: AmazonCredentials = {
             type: 'AMAZON',
             sellerId,
-            mwsAuthToken,
+            marketplaceId,
+            lwaClientId,
+            lwaClientSecret,
+            lwaRefreshToken,
+            awsAccessKeyId,
+            awsSecretAccessKey,
+            roleArn,
             region,
         };
 
@@ -400,11 +444,11 @@ export default function AmazonIntegrationPage() {
                         <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
                             <div className="flex items-start gap-2">
                                 <Check className="w-4 h-4 text-[var(--success)] mt-0.5" />
-                                Seller ID and MWS auth token
+                                Seller ID, Marketplace ID, and LWA credentials
                             </div>
                             <div className="flex items-start gap-2">
                                 <Check className="w-4 h-4 text-[var(--success)] mt-0.5" />
-                                Marketplace region (India, US, EU, or Japan)
+                                AWS Access Key, AWS Secret Key, and IAM Role ARN
                             </div>
                         </div>
                     </div>
@@ -476,38 +520,82 @@ export default function AmazonIntegrationPage() {
                             </div>
 
                             <div className="space-y-2.5">
+                                <label className="block text-sm font-medium text-[var(--text-primary)]">Marketplace ID</label>
+                                <Input
+                                    type="text"
+                                    value={marketplaceId}
+                                    onChange={(e) => setMarketplaceId(e.target.value.trim())}
+                                    placeholder="A21TJRUUN4KGV"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-2.5">
+                                    <label className="block text-sm font-medium text-[var(--text-primary)]">LWA Client ID</label>
+                                    <Input type="text" value={lwaClientId} onChange={(e) => setLwaClientId(e.target.value.trim())} placeholder="amzn1.application-oa2-client..." className="font-mono text-xs" />
+                                </div>
+                                <div className="space-y-2.5">
+                                    <label className="block text-sm font-medium text-[var(--text-primary)]">LWA Client Secret</label>
+                                    <Input type="password" value={lwaClientSecret} onChange={(e) => setLwaClientSecret(e.target.value.trim())} placeholder="Enter LWA client secret" className="font-mono text-xs" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-2.5">
+                                    <label className="block text-sm font-medium text-[var(--text-primary)]">AWS Access Key ID</label>
+                                    <Input type="text" value={awsAccessKeyId} onChange={(e) => setAwsAccessKeyId(e.target.value.trim())} placeholder="AKIA..." className="font-mono text-xs" />
+                                </div>
+                                <div className="space-y-2.5">
+                                    <label className="block text-sm font-medium text-[var(--text-primary)]">AWS Secret Access Key</label>
+                                    <Input type="password" value={awsSecretAccessKey} onChange={(e) => setAwsSecretAccessKey(e.target.value.trim())} placeholder="Enter AWS secret access key" className="font-mono text-xs" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2.5">
+                                <label className="block text-sm font-medium text-[var(--text-primary)]">IAM Role ARN</label>
+                                <Input
+                                    type="text"
+                                    value={roleArn}
+                                    onChange={(e) => setRoleArn(e.target.value.trim())}
+                                    placeholder="arn:aws:iam::123456789012:role/YourRole"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+
+                            <div className="space-y-2.5">
                                 <div className="flex items-center gap-2">
                                     <label className="block text-sm font-medium text-[var(--text-primary)]">
-                                        MWS Auth Token
+                                        LWA Refresh Token
                                     </label>
-                                    <Tooltip content="Begins with amzn.mws...." side="right">
+                                    <Tooltip content="Amazon Login with Amazon refresh token" side="right">
                                         <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)] cursor-help" />
                                     </Tooltip>
                                 </div>
                                 <Input
-                                    type={showMwsToken ? 'text' : 'password'}
-                                    value={mwsAuthToken}
+                                    type={showLwaRefreshToken ? 'text' : 'password'}
+                                    value={lwaRefreshToken}
                                     onChange={(e) => {
-                                        setMwsAuthToken(e.target.value.trim());
+                                        setLwaRefreshToken(e.target.value.trim());
                                         setTouched(prev => ({ ...prev, mwsAuthToken: true }));
                                     }}
                                     onBlur={() => setTouched(prev => ({ ...prev, mwsAuthToken: true }))}
-                                    placeholder="amzn.mws.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                    placeholder="Atzr|IwEB..."
                                     className={`font-mono text-xs pr-20 transition-all duration-200 ${validationStatus.mwsAuthToken === 'valid' ? 'focus:ring-2 focus:ring-[var(--success)]/20' : validationStatus.mwsAuthToken === 'invalid' ? 'focus:ring-2 focus:ring-[var(--error)]/20' : ''}`}
                                     rightIcon={
                                         <div className="flex items-center gap-2">
                                             <button
                                                 type="button"
-                                                onClick={() => setShowMwsToken(prev => !prev)}
+                                                onClick={() => setShowLwaRefreshToken(prev => !prev)}
                                                 className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                                                aria-label={showMwsToken ? 'Hide auth token' : 'Show auth token'}
-                                                aria-pressed={showMwsToken}
+                                                aria-label={showLwaRefreshToken ? 'Hide auth token' : 'Show auth token'}
+                                                aria-pressed={showLwaRefreshToken}
                                             >
-                                                {showMwsToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                {showLwaRefreshToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => pasteFromClipboard(setMwsAuthToken, 'mwsAuthToken')}
+                                                onClick={() => pasteFromClipboard(setLwaRefreshToken, 'mwsAuthToken')}
                                                 className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
                                             >
                                                 {clipboardSuccess === 'mwsAuthToken' ? (
@@ -524,7 +612,7 @@ export default function AmazonIntegrationPage() {
                                 />
                                 <p id="amazon-token-hint" className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
                                     <Info className="w-3.5 h-3.5" />
-                                    Found in Settings → User Permissions → Third Party Apps.
+                                    Generate this in your Amazon Seller Central developer application.
                                 </p>
                                 {tokenError && (
                                     <p id="amazon-token-error" className="text-xs text-[var(--error-text)] animate-in slide-in-from-top-1 duration-200">
@@ -535,7 +623,7 @@ export default function AmazonIntegrationPage() {
 
                             <Alert className="bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
                                 <AlertDescription className="text-xs text-[var(--text-secondary)]">
-                                    Find your Seller ID and MWS token in <strong>Settings → User Permissions → Third Party Apps</strong>
+                                    Use Amazon SP-API credentials (Marketplace ID, LWA, AWS keys, and IAM Role ARN).
                                 </AlertDescription>
                             </Alert>
                         </div>

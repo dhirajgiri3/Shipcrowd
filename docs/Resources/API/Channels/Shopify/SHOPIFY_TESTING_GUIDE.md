@@ -1,4 +1,120 @@
-# Shopify Channel Integration Testing Guide (Manual)
+# Shopify Integration Guide
+
+## Seller Onboarding: Connect Shopify Store to Shipcrowd
+
+### Step 1: Prerequisites
+**What the seller needs:**
+- Active Shopify store (any plan)
+- Admin access to their Shopify store
+- Shipcrowd account (seller role)
+
+**What you (developer) need:**
+- Shopify app created in Partners Dashboard
+- App API credentials configured in `server/.env`
+- Server and client running
+
+### Step 2: Seller Connects Their Store
+
+**From Shipcrowd Dashboard:**
+
+1. Seller logs into Shipcrowd at `http://localhost:3000` (or production URL)
+2. Goes to **Integrations** → **Channels** → **Shopify**
+3. Clicks **Connect Store**
+4. Enters their Shopify store domain:
+   - Example: `my-fashion-store.myshopify.com`
+   - Or just: `my-fashion-store` (system adds `.myshopify.com`)
+5. Clicks **Connect**
+
+**What happens:**
+- Shipcrowd redirects seller to Shopify OAuth page
+- Shopify shows permission request screen listing all scopes
+- Seller reviews permissions and clicks **Install app**
+
+**Required permissions seller will see:**
+- Read orders
+- Write orders
+- Read/write products
+- Read/write fulfillments
+- Read/write inventory
+- Read locations
+- Read shipping
+
+### Step 3: Authorization & Redirect
+
+**Shopify redirects back to Shipcrowd:**
+- Success URL: `/seller/integrations/shopify/setup?status=success&store=...&storeId=...`
+- Error URL: `/seller/integrations/shopify/setup?status=error&message=...`
+
+**Behind the scenes:**
+1. Shopify sends auth code to Shipcrowd callback
+2. Shipcrowd exchanges code for access token
+3. Access token is encrypted and saved to database
+4. Webhooks are registered automatically
+5. Store appears in seller's Integrations list
+
+### Step 4: Verify Connection
+
+**Seller sees:**
+- Green "Connected" badge
+- Store name and domain
+- Connection date
+- Sync settings panel
+
+**Seller can:**
+- View store details
+- Trigger manual order sync
+- Configure sync settings
+- View sync history
+- Disconnect store
+
+### Step 5: First Order Sync
+
+**Manual sync:**
+1. Click **Sync Orders** button
+2. Choose:
+   - **Recent (24h)** - Last 24 hours
+   - **All orders** - Complete history
+3. Wait for sync to complete
+4. View results in Orders page
+
+**What syncs:**
+- Order number
+- Customer info (name, email, phone, address)
+- Line items (products, SKU, quantity, price)
+- Payment status
+- Totals (subtotal, tax, shipping, discount)
+
+### Step 6: Automatic Syncing (Webhooks)
+
+**Once connected, automatic sync works via webhooks:**
+- New order placed → Syncs immediately
+- Order updated → Updates in Shipcrowd
+- Order cancelled → Status updated
+- Order fulfilled → Tracking visible
+
+### Common Issues & Solutions
+
+**Issue: "App not approved to access protected customer data"**
+- **Cause:** Shopify app needs approval for production use
+- **Solution (Dev):** Use development store (already works)
+- **Solution (Prod):** Submit app for Shopify approval
+- **Workaround:** Request "protected customer data access" in Partners Dashboard
+
+**Issue: "Invalid HMAC signature"**
+- **Cause:** Wrong API secret in `.env`
+- **Solution:** Copy correct secret from Shopify app settings
+
+**Issue:** Webhooks not received
+- **Cause:** localhost URL (not publicly accessible)
+- **Solution:** Use ngrok for local development
+
+**Issue:** Orders not syncing
+- **Cause:** Store paused or inactive
+- **Solution:** Check store status, ensure it's active
+
+---
+
+## Developer Testing Guide
 
 This guide walks you through manually testing all Shopify channel integration features: OAuth connection, order syncing, webhooks, fulfillment push, and related functionality.
 

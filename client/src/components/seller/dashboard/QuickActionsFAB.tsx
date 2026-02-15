@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus,
     Package,
+    Truck,
     Search,
     AlertCircle,
     RotateCcw,
@@ -28,6 +29,13 @@ const QUICK_ACTIONS = [
         label: 'Create Order',
         icon: Plus,
         href: '/seller/orders/create',
+        color: 'var(--primary-blue)'
+    },
+    {
+        id: 'ship-orders',
+        label: 'Ship Orders',
+        icon: Truck,
+        href: '/seller/ship-now',
         color: 'var(--primary-blue)'
     },
     {
