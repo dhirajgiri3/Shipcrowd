@@ -49,6 +49,7 @@ router.delete('/:type', consentController.withdrawConsent);
  * @access  Private
  */
 router.get('/export', consentController.exportUserData);
+router.get('/export-file', consentController.exportUserDataFile);
 
 /**
  * @route   GET /consent/history

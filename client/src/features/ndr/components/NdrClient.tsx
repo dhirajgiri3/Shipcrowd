@@ -36,6 +36,7 @@ import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { useUrlDateRange } from '@/src/hooks';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 export function NDRClient() {
     const router = useRouter();
@@ -54,6 +55,7 @@ export function NDRClient() {
     } = useUrlDateRange();
 
     const { addToast } = useToast();
+    const exportSellerData = useSellerExport();
     const { mutate: takeAction, isPending: isActionPending } = useTakeNDRAction();
     const { mutate: bulkAction, isPending: isBulkActionPending } = useBulkNDRAction();
 
@@ -244,7 +246,19 @@ export function NDRClient() {
                         >
                             <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                         </Button>
-                        <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
+                        <Button
+                            size="sm"
+                            className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                            onClick={() => exportSellerData.mutate({
+                                module: 'ndr',
+                                filters: {
+                                    status: statusFilter !== 'all' ? statusFilter : undefined,
+                                    search: searchTerm || undefined,
+                                    startDate: startDateIso || undefined,
+                                    endDate: endDateIso || undefined,
+                                },
+                            })}
+                        >
                             <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>

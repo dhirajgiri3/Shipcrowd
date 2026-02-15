@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { Parser } from 'json2csv';
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import { AuthenticationError, AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -20,6 +21,18 @@ const getAuditLogsSchema = z.object({
   resourceId: z.string().optional(),
   userId: z.string().optional(),
   search: z.string().optional(),
+});
+
+const exportAuditLogsSchema = z.object({
+  format: z.enum(['csv']).default('csv'),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  filters: z.object({
+    action: z.string().optional(),
+    entity: z.string().optional(),
+    resource: z.string().optional(),
+    search: z.string().optional(),
+  }).optional(),
 });
 
 export const getMyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -220,10 +233,79 @@ export const getSecurityAuditLogs = async (req: Request, res: Response, next: Ne
   }
 };
 
+export const exportCompanyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const auth = guardChecks(req);
+    requireCompanyContext(auth);
+
+    const validation = exportAuditLogsSchema.safeParse(req.body);
+    if (!validation.success) {
+      const details = validation.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
+      throw new ValidationError('Validation failed', details);
+    }
+
+    const parsedDateRange = parseQueryDateRange(validation.data.startDate, validation.data.endDate);
+    const query: any = { companyId: auth.companyId, isDeleted: false };
+
+    const action = validation.data.filters?.action;
+    const resource = validation.data.filters?.resource || validation.data.filters?.entity;
+    const search = validation.data.filters?.search;
+
+    if (action) query.action = action;
+    if (resource) query.resource = resource;
+    if (parsedDateRange.startDate || parsedDateRange.endDate) {
+      query.timestamp = {};
+      if (parsedDateRange.startDate) query.timestamp.$gte = parsedDateRange.startDate;
+      if (parsedDateRange.endDate) query.timestamp.$lte = parsedDateRange.endDate;
+    }
+    if (search) {
+      query.$or = [
+        { resource: { $regex: search, $options: 'i' } },
+        { 'details.message': { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const rows = await AuditLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(500000)
+      .populate('userId', 'name email')
+      .lean();
+
+    const csvRows = rows.map((log: any) => ({
+      audit_log_id: String(log._id),
+      timestamp: log.timestamp ? new Date(log.timestamp).toISOString() : '',
+      user_id: log.userId?._id ? String(log.userId._id) : String(log.userId || ''),
+      user_name: log.userId?.name || '',
+      user_email: log.userId?.email || '',
+      action: log.action || '',
+      resource: log.resource || '',
+      resource_id: log.resourceId ? String(log.resourceId) : '',
+      ip_address: log.ipAddress || '',
+      user_agent: log.userAgent || '',
+      message: log.details?.message || '',
+    }));
+
+    const parser = new Parser({ fields: csvRows.length > 0 ? Object.keys(csvRows[0]) : [] });
+    const csv = csvRows.length > 0 ? parser.parse(csvRows) : '';
+    const filename = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    logger.error('Error exporting audit logs:', error);
+    next(error);
+  }
+};
+
 const auditController = {
   getMyAuditLogs,
   getCompanyAuditLogs,
   getSecurityAuditLogs,
+  exportCompanyAuditLogs,
 };
 
 export default auditController;

@@ -22,12 +22,12 @@ import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
-import { useToast } from '@/src/components/ui/feedback/Toast';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
-import { cn, downloadCsv, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
+import { cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useUrlDateRange } from '@/src/hooks';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 const SHIPMENT_TABS = [
     { key: 'all', label: 'All' },
@@ -55,7 +55,7 @@ export function ShipmentsClient() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const hasInitializedFilterReset = useRef(false);
-    const { addToast } = useToast();
+    const exportSellerData = useSellerExport();
     const { range: dateRange, startDateIso, endDateIso, setRange } = useUrlDateRange();
 
     const {
@@ -143,25 +143,15 @@ export function ShipmentsClient() {
     };
 
     const handleExportCsv = () => {
-        if (shipmentsData.length === 0) {
-            addToast('No shipments available to export for current filters', 'info');
-            return;
-        }
-
-        downloadCsv({
-            filename: `shipments-${new Date().toISOString().slice(0, 10)}.csv`,
-            header: ['AWB', 'Order Number', 'Carrier', 'Service Type', 'Status', 'Created At'],
-            rows: shipmentsData.map((shipment) => [
-                shipment.trackingNumber || '',
-                typeof shipment.orderId === 'object' ? shipment.orderId?.orderNumber || '' : '',
-                shipment.carrier || '',
-                shipment.serviceType || '',
-                shipment.currentStatus || '',
-                shipment.createdAt || '',
-            ]),
+        exportSellerData.mutate({
+            module: 'shipments',
+            filters: {
+                status: statusFilter !== 'all' ? statusFilter : undefined,
+                search: debouncedSearch || undefined,
+                startDate: startDateIso || undefined,
+                endDate: endDateIso || undefined,
+            },
         });
-
-        addToast('Shipments exported as CSV', 'success');
     };
 
     const columns = [

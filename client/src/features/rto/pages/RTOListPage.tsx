@@ -22,6 +22,7 @@ import { RTODetailsPanel } from '@/src/components/seller/rto/RTODetailsPanel';
 import type { RTOEventDetail, RTOShipmentRef, RTOOrderRef, RTOWarehouseRef, RTOReturnStatus } from '@/src/types/api/rto.types';
 import { RTO_REASON_LABELS } from '@/src/types/api/rto.types';
 import { useUrlDateRange } from '@/src/hooks';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 const STATUS_TABS = [
     { key: 'all', label: 'All Statuses' },
@@ -47,6 +48,7 @@ export function RTOListPage() {
     const [selectedRTO, setSelectedRTO] = useState<RTOEventDetail | null>(null);
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const hasInitializedFilterReset = useRef(false);
+    const exportSellerData = useSellerExport();
 
     // Pagination state
     const [page, setPage] = useState(1);
@@ -243,7 +245,19 @@ export function RTOListPage() {
                         >
                             <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                         </Button>
-                        <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
+                        <Button
+                            size="sm"
+                            className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                            onClick={() => exportSellerData.mutate({
+                                module: 'rto',
+                                filters: {
+                                    returnStatus: statusFilter === 'all' ? undefined : statusFilter,
+                                    search: debouncedSearch || undefined,
+                                    startDate: startDate || undefined,
+                                    endDate: endDate || undefined,
+                                },
+                            })}
+                        >
                             <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>

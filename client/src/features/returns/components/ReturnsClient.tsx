@@ -19,6 +19,7 @@ import { formatCurrency, cn } from '@/src/lib/utils';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import type { ReturnRequest, ReturnStatus } from '@/src/types/api/returns/returns.types';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 const STATUS_TABS = [
     { key: 'all', label: 'All Returns' },
@@ -41,6 +42,7 @@ export function ReturnsClient() {
     const [selectedReturn, setSelectedReturn] = useState<ReturnRequest | null>(null);
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const exportSellerData = useSellerExport();
 
     // Queries
     const { data: metrics } = useReturnMetrics();
@@ -80,7 +82,17 @@ export function ReturnsClient() {
                         >
                             <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                         </Button>
-                        <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
+                        <Button
+                            size="sm"
+                            className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                            onClick={() => exportSellerData.mutate({
+                                module: 'returns',
+                                filters: {
+                                    status: activeTab === 'all' ? undefined : activeTab,
+                                    search: debouncedSearch || undefined,
+                                },
+                            })}
+                        >
                             <FileOutput className="w-4 h-4 mr-2" />
                             Export CSV
                         </Button>

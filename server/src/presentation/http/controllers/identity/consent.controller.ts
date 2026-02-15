@@ -292,6 +292,63 @@ export const exportUserData = async (req: Request, res: Response, next: NextFunc
 };
 
 /**
+ * Export user data as raw JSON attachment (file payload, no envelope)
+ * @route GET /consent/export-file
+ */
+export const exportUserDataFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+
+        const [user, consents, consentHistory] = await Promise.all([
+            User.findById(auth.userId).select('-password -security.verificationToken -security.resetToken'),
+            Consent.find({ userId: auth.userId }),
+            ConsentHistory.find({ userId: auth.userId }),
+        ]);
+
+        if (!user) {
+            throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
+        }
+
+        const exportData = {
+            exportDate: new Date().toISOString(),
+            exportVersion: '1.0',
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                teamRole: user.teamRole,
+                createdAt: user.createdAt,
+                isActive: user.isActive,
+                isEmailVerified: user.isEmailVerified,
+                oauthProvider: user.oauthProvider,
+            },
+            consents: consents.map(c => ({
+                type: c.type,
+                version: c.version,
+                accepted: c.accepted,
+                acceptedAt: c.acceptedAt,
+                withdrawnAt: c.withdrawnAt,
+            })),
+            consentHistory: consentHistory.map(h => ({
+                action: h.action,
+                type: h.type,
+                version: h.version,
+                createdAt: h.createdAt,
+            })),
+        };
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="user-data-export-${user._id}.json"`);
+        res.status(200).send(JSON.stringify(exportData, null, 2));
+    } catch (error) {
+        logger.error('Error exporting user data file:', error);
+        next(error);
+    }
+};
+
+/**
  * Get consent history
  * @route GET /consent/history
  */
@@ -316,5 +373,6 @@ export default {
     acceptConsent,
     withdrawConsent,
     exportUserData,
+    exportUserDataFile,
     getConsentHistory,
 };

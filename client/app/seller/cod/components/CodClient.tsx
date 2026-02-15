@@ -33,6 +33,7 @@ import {
     useCODStats,
     useEligibleCODShipments,
 } from '@/src/core/api/hooks/finance';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 import type { RemittanceStatus } from '@/src/types/api/finance';
 
 // Tabs matching actual backend status values:
@@ -83,6 +84,7 @@ export function CodClient() {
         setRange,
     } = useUrlDateRange();
     const { limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+    const exportSellerData = useSellerExport();
 
     // Sync from URL params (for deep linking)
     useEffect(() => {
@@ -191,56 +193,15 @@ export function CodClient() {
     };
 
     const handleExportReport = () => {
-        const rows = activeTab === 'pending'
-            ? eligibleShipments.map((shipment) => ({
-                date: shipment.deliveredAt,
-                id: shipment.awb,
-                orderId: shipment.orderId,
-                codAmount: shipment.codAmount,
-                deductions: shipment.shippingCost,
-                netAmount: shipment.codAmount - shipment.shippingCost,
-                status: 'pending',
-            }))
-            : remittances.map((remittance) => ({
-                date: remittance.createdAt,
-                id: remittance.remittanceId,
-                orderId: remittance.payout?.utr || '',
-                codAmount: remittance.batch.totalCODCollected,
-                deductions: remittance.deductions.total,
-                netAmount: remittance.finalPayable,
-                status: remittance.status,
-            }));
-
-        if (rows.length === 0) {
-            addToast('No rows available to export for current filters', 'info');
-            return;
-        }
-
-        const header = ['Date', 'ID', 'Order/UTR', 'COD Amount', 'Deductions', 'Net Amount', 'Status'];
-        const escapeCSV = (value: string | number) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-        const csv = [
-            header.join(','),
-            ...rows.map((row) => ([
-                row.date,
-                row.id,
-                row.orderId,
-                row.codAmount,
-                row.deductions,
-                row.netAmount,
-                row.status,
-            ].map(escapeCSV).join(','))),
-        ].join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        link.download = `cod-report-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        addToast('Report exported successfully', 'success');
+        exportSellerData.mutate({
+            module: activeTab === 'pending' ? 'cod_remittance_pending' : 'cod_remittance_history',
+            filters: {
+                status: statusFilter !== 'all' ? statusFilter : undefined,
+                search: debouncedSearch || undefined,
+                startDate: startDateIso || undefined,
+                endDate: endDateIso || undefined,
+            },
+        });
     };
 
     const handleRequestPayout = () => {

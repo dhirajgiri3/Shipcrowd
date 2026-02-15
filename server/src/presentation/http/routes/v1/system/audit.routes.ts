@@ -20,6 +20,7 @@ router.get('/me', auditController.getMyAuditLogs);
  * @access Private (Admin)
  */
 router.get('/company', auditController.getCompanyAuditLogs);
+router.post('/company/export', auditController.exportCompanyAuditLogs);
 
 /**
  * @route GET /audit/security

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn, formatPaginationRange, downloadCsv, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
+import { formatCurrency, cn, formatPaginationRange, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/orders/OrderDetailsPanel';
 import {
@@ -32,6 +32,7 @@ import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { OrderQuoteShipModal } from '@/src/components/seller/shipping/OrderQuoteShipModal';
 import { getShipDisabledReason } from '@/src/lib/utils/order-shipping-eligibility';
 import { Select } from '@/src/components/ui/form/Select';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 const ORDER_TABS = [
     { key: 'all', label: 'All' },
@@ -162,6 +163,7 @@ export function OrdersClient() {
         startDate: startDateIso,
         endDate: endDateIso,
     });
+    const exportSellerData = useSellerExport();
 
     const ordersData: Order[] = ordersResponse?.data || [];
     const pagination = ordersResponse?.pagination;
@@ -182,26 +184,17 @@ export function OrdersClient() {
     };
 
     const handleExportCsv = () => {
-        if (ordersData.length === 0) {
-            addToast('No orders available to export for current filters', 'info');
-            return;
-        }
-
-        downloadCsv({
-            filename: `orders-${new Date().toISOString().slice(0, 10)}.csv`,
-            header: ['Order Number', 'Created At', 'Customer', 'Phone', 'Status', 'Payment', 'Total'],
-            rows: ordersData.map((order) => [
-                order.orderNumber,
-                order.createdAt,
-                order.customerInfo?.name || '',
-                order.customerInfo?.phone || '',
-                order.currentStatus,
-                order.paymentStatus,
-                order.totals?.total ?? 0,
-            ]),
+        exportSellerData.mutate({
+            module: 'orders',
+            filters: {
+                status: activeTab !== 'all' ? activeTab : undefined,
+                search: debouncedSearch || undefined,
+                paymentStatus: paymentFilter !== 'all' ? paymentFilter : undefined,
+                smartFilter: smartFilter !== 'all' ? smartFilter : undefined,
+                startDate: startDateIso || undefined,
+                endDate: endDateIso || undefined,
+            },
         });
-
-        addToast('Orders exported as CSV', 'success');
     };
 
     const filteredOrders = ordersData;
