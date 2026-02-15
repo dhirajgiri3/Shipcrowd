@@ -172,18 +172,39 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <p className="font-semibold text-[var(--text-primary)]">{order.customerInfo.name}</p>
-                                            <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mt-1">
-                                                <Mail className="w-3.5 h-3.5" /> {order.customerInfo.email}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mt-1">
-                                                <Phone className="w-3.5 h-3.5" /> {order.customerInfo.phone}
-                                            </div>
+                                            {order.customerInfo.email && (
+                                                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mt-1">
+                                                    <Mail className="w-3.5 h-3.5" /> {order.customerInfo.email}
+                                                </div>
+                                            )}
+                                            {!order.customerInfo.email && (
+                                                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] italic mt-1">
+                                                    <Mail className="w-3.5 h-3.5" /> No email provided
+                                                </div>
+                                            )}
+                                            {order.customerInfo.phone && order.customerInfo.phone !== 'N/A' && (
+                                                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mt-1">
+                                                    <Phone className="w-3.5 h-3.5" /> {order.customerInfo.phone}
+                                                </div>
+                                            )}
+                                            {(!order.customerInfo.phone || order.customerInfo.phone === 'N/A') && (
+                                                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] italic mt-1">
+                                                    <Phone className="w-3.5 h-3.5" /> No phone number
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)] mt-2 bg-[var(--bg-secondary)]/50 p-2 rounded-lg">
-                                        <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                                        <span className="whitespace-pre-line">{formattedAddress}</span>
-                                    </div>
+                                    {customerAddress.line1 && customerAddress.line1 !== 'N/A' && customerAddress.line1 !== 'No address provided' ? (
+                                        <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)] mt-2 bg-[var(--bg-secondary)]/50 p-2 rounded-lg">
+                                            <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span className="whitespace-pre-line">{formattedAddress}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-start gap-2 text-xs text-[var(--text-muted)] italic mt-2 bg-[var(--bg-secondary)]/30 p-2 rounded-lg">
+                                            <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span>No shipping address provided</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -203,7 +224,7 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
                                                 <p className="text-xs text-[var(--text-muted)] mt-1">SKU: {product.sku || 'N/A'}</p>
                                                 <div className="flex items-center justify-between mt-2">
                                                     <span className="text-xs bg-[var(--bg-secondary)] px-2 py-0.5 rounded text-[var(--text-secondary)] border border-[var(--border-subtle)]">Qty: {product.quantity}</span>
-                                                    <span className="font-mono text-sm font-semibold">{formatCurrency(product.price)}</span>
+                                                    <span className="font-mono text-sm font-semibold">{formatCurrency(product.price, order.currency)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -215,19 +236,19 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
                             <div className="bg-[var(--bg-secondary)]/30 rounded-xl p-4 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-secondary)]">Subtotal</span>
-                                    <span className="font-medium">{formatCurrency(order.totals.subtotal)}</span>
+                                    <span className="font-medium">{formatCurrency(order.totals.subtotal, order.currency)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-[var(--text-secondary)]">Tax (18%)</span>
-                                    <span className="font-medium">{formatCurrency(order.totals.tax)}</span>
+                                    <span className="text-[var(--text-secondary)]">Tax</span>
+                                    <span className="font-medium">{formatCurrency(order.totals.tax, order.currency)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-secondary)]">Shipping</span>
-                                    <span className="font-medium">{formatCurrency(order.totals.shipping)}</span>
+                                    <span className="font-medium">{formatCurrency(order.totals.shipping, order.currency)}</span>
                                 </div>
                                 <div className="border-t border-[var(--border-subtle)] my-2 pt-2 flex justify-between text-base font-bold text-[var(--text-primary)]">
                                     <span>Total</span>
-                                    <span>{formatCurrency(order.totals.total)}</span>
+                                    <span>{formatCurrency(order.totals.total, order.currency)}</span>
                                 </div>
                             </div>
                         </div>

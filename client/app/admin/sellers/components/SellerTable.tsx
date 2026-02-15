@@ -141,8 +141,8 @@ export function SellerTable({
                                     </div>
                                 </TableHead>
                                 <TableHead className="text-center text-[var(--text-secondary)]">Risk Metrics (RTO/NDR)</TableHead>
-                                <TableHead className="text-center text-[var(--text-secondary)]">Actions</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
+                                <TableHead className="text-center text-[var(--text-secondary)] sticky right-[50px] z-20 bg-[var(--bg-secondary)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">Actions</TableHead>
+                                <TableHead className="w-[50px] sticky right-0 z-20 bg-[var(--bg-secondary)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -241,14 +241,14 @@ export function SellerTable({
                                                 })()}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center sticky right-[50px] z-10 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-hover)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                                             <ViewActionButton
                                                 onClick={() => handleViewDetails(seller.sellerId)}
                                                 variant="primary"
                                                 className="w-full justify-center"
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="sticky right-0 z-10 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-hover)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                                             <div className="relative">
                                                 <button
                                                     onClick={() => toggleDropdown(seller.sellerId)}

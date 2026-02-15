@@ -235,6 +235,8 @@ export function ShipmentsClient() {
         {
             header: 'Actions',
             accessorKey: 'actions',
+            width: 'min-w-[100px]',
+            stickyRight: true,
             cell: (row: Shipment) => (
                 <div className="flex items-center gap-2">
                     <ViewActionButton

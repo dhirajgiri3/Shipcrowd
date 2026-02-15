@@ -584,7 +584,7 @@ export class OrderService extends CachedService {
                 return { orders, total, page: pagination.page, pages: Math.ceil(total / pagination.limit) };
             },
             {
-                ttl: 300, // 5 minutes list caching
+                ttl: 60, // 1 minute list caching - optimized for real-time order sync from e-commerce channels
                 tags: tags
             }
         );

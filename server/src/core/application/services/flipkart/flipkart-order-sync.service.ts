@@ -19,6 +19,7 @@ import { FlipkartStore, FlipkartSyncLog, Order, Company } from '../../../../infr
 import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
 
 /**
  * FlipkartOrderSyncService
@@ -357,6 +358,14 @@ export class FlipkartOrderSyncService {
 
     const order = await Order.create(mapped);
 
+    // Invalidate order list cache so new orders appear immediately
+    try {
+      const cache = new CacheRepository('orders');
+      await cache.invalidateTags([`company:${store.companyId}:orders`]);
+    } catch (cacheError) {
+      logger.warn('Failed to invalidate order cache after Flipkart sync', { error: cacheError });
+    }
+
     logger.info('Created order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
       ShipcrowdOrderId: order._id,
@@ -396,6 +405,14 @@ export class FlipkartOrderSyncService {
 
     await existingOrder.save();
 
+    // Invalidate order list cache so updates appear immediately
+    try {
+      const cache = new CacheRepository('orders');
+      await cache.invalidateTags([`company:${existingOrder.companyId}:orders`]);
+    } catch (cacheError) {
+      logger.warn('Failed to invalidate order cache after Flipkart update', { error: cacheError });
+    }
+
     logger.info('Updated order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
       ShipcrowdOrderId: existingOrder._id,
@@ -423,16 +440,16 @@ export class FlipkartOrderSyncService {
       flipkartStoreId: store._id,
 
       customerInfo: {
-        name: buyer.name || 'Flipkart Customer',
+        name: buyer.name || 'No customer',
         email: buyer.email || undefined,
-        phone: buyer.phone || 'N/A',
+        phone: buyer.phone || undefined,
         address: {
-          line1: address.line1 || 'N/A',
+          line1: address.line1 || 'No address provided',
           line2: address.line2 || undefined,
-          city: address.city || 'N/A',
-          state: address.state || 'N/A',
+          city: address.city || 'Unknown',
+          state: address.state || 'Unknown',
           country: address.country || 'India',
-          postalCode: address.postalCode || 'N/A',
+          postalCode: address.postalCode || '000000',
         },
       },
 
@@ -455,6 +472,7 @@ export class FlipkartOrderSyncService {
 
       paymentStatus: this.mapPaymentStatus(shipment.paymentType, shipment.status),
       paymentMethod: shipment.paymentType === 'COD' ? 'cod' : 'prepaid',
+      currency: 'INR', // Flipkart operates only in India
 
       currentStatus: this.mapFulfillmentStatus(shipment.status),
       statusHistory: [

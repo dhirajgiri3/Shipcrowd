@@ -27,6 +27,9 @@ interface ShopifyOrder {
   updated_at: string;
   financial_status: string;
   fulfillment_status: string | null;
+  cancelled_at?: string | null; // ISO timestamp if order was cancelled
+  cancel_reason?: string;
+  currency?: string; // ISO 4217 currency code (e.g., 'USD', 'INR')
   email?: string; // Top-level email (when customer is null for gift cards)
   phone?: string; // Top-level phone
   customer?: {
@@ -76,7 +79,6 @@ interface ShopifyOrder {
     tracking_number?: string;
     tracking_company?: string;
   }>;
-  cancel_reason?: string;
 }
 
 interface SyncResult {
@@ -337,29 +339,48 @@ export class ShopifyOrderSyncService {
    * Update existing Shipcrowd order with Shopify data
    */
   private static async updateExistingOrder(existingOrder: any, shopifyOrder: ShopifyOrder): Promise<any> {
+    let updated = false;
+
     // Update payment status
     const paymentStatus = this.mapPaymentStatus(shopifyOrder.financial_status);
     if (existingOrder.paymentStatus !== paymentStatus) {
       existingOrder.paymentStatus = paymentStatus;
+      updated = true;
     }
 
-    // Update fulfillment status
-    const currentStatus = this.mapFulfillmentStatus(shopifyOrder.fulfillment_status);
+    // Determine order status: cancelled_at takes priority over fulfillment_status
+    const currentStatus = shopifyOrder.cancelled_at
+      ? 'cancelled'
+      : this.mapFulfillmentStatus(shopifyOrder.fulfillment_status);
+
     if (existingOrder.currentStatus !== currentStatus) {
       existingOrder.currentStatus = currentStatus;
       existingOrder.statusHistory.push({
         status: currentStatus,
         timestamp: new Date(),
-        comment: `Updated from Shopify sync`,
+        comment: shopifyOrder.cancelled_at
+          ? `Cancelled in Shopify. Reason: ${shopifyOrder.cancel_reason || 'Not specified'}`
+          : `Updated from Shopify sync`,
       });
+      updated = true;
     }
 
-    await existingOrder.save();
+    // Update currency if not set
+    if (!existingOrder.currency && shopifyOrder.currency) {
+      existingOrder.currency = shopifyOrder.currency;
+      updated = true;
+    }
+
+    if (updated) {
+      await existingOrder.save();
+    }
 
     logger.info('Updated order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
       ShipcrowdOrderId: existingOrder._id,
       orderNumber: existingOrder.orderNumber,
+      status: currentStatus,
+      paymentStatus,
     });
 
     return existingOrder;
@@ -369,16 +390,24 @@ export class ShopifyOrderSyncService {
    * Map Shopify order to Shipcrowd order schema
    */
   private static mapShopifyOrderToShipcrowd(shopifyOrder: ShopifyOrder, store: any): any {
-    // Handle null customer (can happen with gift cards, digital products)
+    // Handle null customer (can happen with gift cards, digital products, warehouse fulfillment)
     const customer = shopifyOrder.customer || {};
+
     const customerName = customer.first_name || customer.last_name
       ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
-      : 'Guest Customer';
-    const customerEmail = customer.email || shopifyOrder.email || 'noemail@shopify.order';
-    const customerPhone = customer.phone || shopifyOrder.phone || 'N/A';
+      : 'No customer';
 
-    // Handle null shipping_address (can happen with gift cards, digital products)
+    const customerEmail = customer.email || shopifyOrder.email || '';
+    const customerPhone = customer.phone || shopifyOrder.phone || '';
+
+    // Handle null shipping_address (can happen with gift cards, digital products, warehouse fulfillment)
     const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address || {};
+    const hasAddressData = !!(shippingAddress.address1 || shippingAddress.city);
+
+    // Determine order status: cancelled_at takes priority over fulfillment_status
+    const orderStatus = shopifyOrder.cancelled_at
+      ? 'cancelled'
+      : this.mapFulfillmentStatus(shopifyOrder.fulfillment_status);
 
     return {
       orderNumber: this.generateOrderNumber(shopifyOrder),
@@ -388,15 +417,15 @@ export class ShopifyOrderSyncService {
 
       customerInfo: {
         name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
+        email: customerEmail || undefined,
+        phone: customerPhone || undefined,
         address: {
-          line1: shippingAddress.address1 || 'N/A',
+          line1: shippingAddress.address1 || (hasAddressData ? '' : 'No address provided'),
           line2: shippingAddress.address2 || undefined,
-          city: shippingAddress.city || 'N/A',
-          state: shippingAddress.province || shippingAddress.province_code || 'N/A',
-          country: shippingAddress.country || shippingAddress.country_code || 'N/A',
-          postalCode: shippingAddress.zip || 'N/A',
+          city: shippingAddress.city || (hasAddressData ? '' : 'Unknown'),
+          state: shippingAddress.province || shippingAddress.province_code || (hasAddressData ? '' : 'Unknown'),
+          country: shippingAddress.country || shippingAddress.country_code || (hasAddressData ? '' : 'Unknown'),
+          postalCode: shippingAddress.zip || (hasAddressData ? '' : '000000'),
         },
       },
 
@@ -404,7 +433,7 @@ export class ShopifyOrderSyncService {
         name: item.title,
         sku: item.sku || undefined,
         quantity: item.quantity,
-        price: parseFloat(item.price),
+        price: parseFloat(item.price) || 0,
         weight: item.grams > 0 ? item.grams : undefined,
       })),
 
@@ -415,25 +444,29 @@ export class ShopifyOrderSyncService {
       paymentStatus: this.mapPaymentStatus(shopifyOrder.financial_status),
       paymentMethod: this.detectPaymentMethod(shopifyOrder.payment_gateway_names),
 
-      currentStatus: this.mapFulfillmentStatus(shopifyOrder.fulfillment_status),
+      currency: shopifyOrder.currency || 'USD',
+
+      currentStatus: orderStatus,
       statusHistory: [
         {
-          status: this.mapFulfillmentStatus(shopifyOrder.fulfillment_status),
+          status: orderStatus,
           timestamp: new Date(shopifyOrder.created_at),
-          comment: 'Imported from Shopify',
+          comment: shopifyOrder.cancelled_at
+            ? `Imported from Shopify (cancelled: ${shopifyOrder.cancel_reason || 'no reason'})`
+            : 'Imported from Shopify',
         },
       ],
 
       totals: {
-        subtotal: parseFloat(shopifyOrder.subtotal_price || shopifyOrder.total_line_items_price),
-        tax: parseFloat(shopifyOrder.total_tax || '0'),
-        shipping: parseFloat(shopifyOrder.total_shipping_price || '0'),
-        discount: parseFloat(shopifyOrder.total_discounts || '0'),
-        total: parseFloat(shopifyOrder.total_price),
+        subtotal: parseFloat(shopifyOrder.subtotal_price || shopifyOrder.total_line_items_price) || 0,
+        tax: parseFloat(shopifyOrder.total_tax || '0') || 0,
+        shipping: parseFloat(shopifyOrder.total_shipping_price || '0') || 0,
+        discount: parseFloat(shopifyOrder.total_discounts || '0') || 0,
+        total: parseFloat(shopifyOrder.total_price) || 0,
       },
 
-      notes: shopifyOrder.note,
-      tags: shopifyOrder.tags ? shopifyOrder.tags.split(',').map((t) => t.trim()) : [],
+      notes: shopifyOrder.note || undefined,
+      tags: shopifyOrder.tags ? shopifyOrder.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
 
       isDeleted: false,
     };
@@ -475,7 +508,7 @@ export class ShopifyOrderSyncService {
     const statusMap: Record<string, string> = {
       fulfilled: 'delivered',
       partial: 'processing',
-      restocked: 'cancelled',
+      restocked: 'rto_delivered', // Items returned and restocked, not cancelled
     };
 
     return statusMap[fulfillmentStatus.toLowerCase()] || 'pending';

@@ -20,6 +20,7 @@ import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amaz
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import AmazonOAuthService from './amazon-oauth.service';
+import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
 
 // Amazon order statuses
 type AmazonOrderStatus =
@@ -399,24 +400,29 @@ export default class AmazonOrderSyncService {
             });
         }
 
+        // Determine payment status and method from Amazon data
+        const amazonPaymentStatus = this.mapAmazonPaymentStatus(amazonOrder.OrderStatus, amazonOrder.PaymentMethod);
+        const amazonPaymentMethod = this.detectAmazonPaymentMethod(amazonOrder.PaymentMethod);
+        const hasAddress = !!(shippingAddress.AddressLine1 || shippingAddress.City);
+
         // Create order
         await Order.create({
             orderNumber: amazonOrder.AmazonOrderId,
             companyId: store.companyId,
             warehouseId,
             customerInfo: {
-                name: amazonOrder.BuyerInfo?.BuyerName || shippingAddress.Name || 'Amazon Customer',
-                email: amazonOrder.BuyerInfo?.BuyerEmail,
-                phone: shippingAddress.Phone || '',
+                name: amazonOrder.BuyerInfo?.BuyerName || shippingAddress.Name || 'No customer',
+                email: amazonOrder.BuyerInfo?.BuyerEmail || undefined,
+                phone: shippingAddress.Phone || undefined,
                 address: {
-                    line1: shippingAddress.AddressLine1 || '',
+                    line1: shippingAddress.AddressLine1 || (hasAddress ? '' : 'No address provided'),
                     line2: [shippingAddress.AddressLine2, shippingAddress.AddressLine3]
                         .filter(Boolean)
-                        .join(' '),
-                    city: shippingAddress.City || '',
-                    state: shippingAddress.StateOrRegion || '',
-                    country: shippingAddress.CountryCode || 'IN',
-                    postalCode: shippingAddress.PostalCode || '',
+                        .join(' ') || undefined,
+                    city: shippingAddress.City || (hasAddress ? '' : 'Unknown'),
+                    state: shippingAddress.StateOrRegion || (hasAddress ? '' : 'Unknown'),
+                    country: shippingAddress.CountryCode || 'Unknown',
+                    postalCode: shippingAddress.PostalCode || (hasAddress ? '' : '000000'),
                 },
             },
             products,
@@ -426,6 +432,9 @@ export default class AmazonOrderSyncService {
             amazonStoreId: store._id,
             amazonOrderId: amazonOrder.AmazonOrderId,
             fulfillmentType: amazonOrder.FulfillmentChannel === 'AFN' ? 'FBA' : 'MFN',
+            paymentStatus: amazonPaymentStatus,
+            paymentMethod: amazonPaymentMethod,
+            currency: amazonOrder.OrderTotal?.CurrencyCode || 'INR',
             statusHistory: [
                 {
                     status: this.mapAmazonStatus(amazonOrder.OrderStatus),
@@ -442,6 +451,14 @@ export default class AmazonOrderSyncService {
                 total,
             },
         });
+
+        // Invalidate order list cache so new orders appear immediately
+        try {
+            const cache = new CacheRepository('orders');
+            await cache.invalidateTags([`company:${store.companyId}:orders`]);
+        } catch (cacheError) {
+            logger.warn('Failed to invalidate order cache after Amazon sync', { error: cacheError });
+        }
 
         logger.info('Created order from Amazon', {
             storeId: store._id,
@@ -471,6 +488,14 @@ export default class AmazonOrderSyncService {
 
             await existingOrder.save();
 
+            // Invalidate order list cache so updates appear immediately
+            try {
+                const cache = new CacheRepository('orders');
+                await cache.invalidateTags([`company:${store.companyId}:orders`]);
+            } catch (cacheError) {
+                logger.warn('Failed to invalidate order cache after Amazon update', { error: cacheError });
+            }
+
             logger.info('Updated order from Amazon', {
                 storeId: store._id,
                 amazonOrderId: amazonOrder.AmazonOrderId,
@@ -496,6 +521,32 @@ export default class AmazonOrderSyncService {
         };
 
         return statusMap[amazonStatus] || 'pending';
+    }
+
+    /**
+     * Map Amazon order status to payment status
+     */
+    private static mapAmazonPaymentStatus(
+        orderStatus: AmazonOrderStatus,
+        paymentMethod?: string
+    ): 'pending' | 'paid' | 'failed' | 'refunded' {
+        // Shipped/delivered means payment was collected
+        if (['Shipped', 'PartiallyShipped'].includes(orderStatus)) return 'paid';
+        // Unshipped with non-COD means prepaid (already paid)
+        if (orderStatus === 'Unshipped' && paymentMethod !== 'COD') return 'paid';
+        // Cancelled = pending (payment wasn't collected)
+        if (['Canceled', 'Unfulfillable'].includes(orderStatus)) return 'pending';
+        return 'pending';
+    }
+
+    /**
+     * Detect Amazon payment method (COD vs Prepaid)
+     */
+    private static detectAmazonPaymentMethod(paymentMethod?: string): 'cod' | 'prepaid' {
+        if (!paymentMethod) return 'prepaid';
+        const method = paymentMethod.toLowerCase();
+        if (method.includes('cod') || method.includes('cash')) return 'cod';
+        return 'prepaid';
     }
 
     /**

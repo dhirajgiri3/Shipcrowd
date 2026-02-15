@@ -3,6 +3,10 @@
  *
  * Centralized cache management for React Query with intelligent
  * cache timing and retry strategies.
+ *
+ * OPTIMIZED FOR REAL-TIME E-COMMERCE:
+ * - Reduced staleTime across all tiers for faster order sync
+ * - Orders from Shopify/WooCommerce/Amazon/Flipkart appear within 30-60 seconds
  */
 
 /**
@@ -11,20 +15,20 @@
  */
 export const CACHE_TIMES = {
   SHORT: {
-    staleTime: 5 * 60 * 1000,
-    gcTime: 50 * 60 * 1000,
+    staleTime: 30 * 1000, // 30 seconds - for frequently changing data (orders, shipments)
+    gcTime: 5 * 60 * 1000, // 5 minutes
   },
   MEDIUM: {
-    staleTime: 15 * 60 * 1000,
-    gcTime: 150 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // 2 minutes - for moderately changing data
+    gcTime: 10 * 60 * 1000, // 10 minutes
   },
   LONG: {
-    staleTime: 30 * 60 * 1000,
-    gcTime: 300 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // 10 minutes - for rarely changing data (settings, products)
+    gcTime: 30 * 60 * 1000, // 30 minutes
   },
   REALTIME: {
-    staleTime: 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 0, // Always fetch fresh - for real-time data
+    gcTime: 1 * 60 * 1000, // 1 minute
   },
   NOCACHE: {
     staleTime: 0,

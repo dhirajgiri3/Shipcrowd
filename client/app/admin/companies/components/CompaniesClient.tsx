@@ -164,6 +164,8 @@ export function CompaniesClient() {
         {
             header: 'Actions',
             accessorKey: '_id' as const,
+            width: 'min-w-[100px]',
+            stickyRight: true,
             cell: (row: Company) => (
                 <div className="flex items-center gap-2">
                     <ViewActionButton

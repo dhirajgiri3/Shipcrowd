@@ -112,6 +112,9 @@ export interface Order {
   /** True when order has an associated shipment (computed by backend) */
   hasShipment?: boolean;
 
+  /** ISO 4217 currency code (e.g., 'USD', 'INR'). Defaults to 'INR'. */
+  currency?: string;
+
   // Backend calculates this
   totals: OrderTotals;
 

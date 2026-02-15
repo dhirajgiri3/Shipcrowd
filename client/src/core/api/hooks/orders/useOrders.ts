@@ -20,7 +20,8 @@ import type {
 
 /**
  * React Query hook for fetching orders list with pagination
- * Uses centralized cache configuration with medium cache time
+ * Uses SHORT cache (30s) for real-time order sync from e-commerce channels
+ * Refetches on window focus to show latest orders when user returns to tab
  */
 export const useOrdersList = (
     params?: OrderListParams,
@@ -30,7 +31,8 @@ export const useOrdersList = (
         queryKey: queryKeys.orders.list(params),
         queryFn: async () => await orderApi.getOrders(params),
         placeholderData: (previousData) => previousData,
-        ...CACHE_TIMES.MEDIUM,
+        ...CACHE_TIMES.SHORT, // Changed from MEDIUM to SHORT for faster updates
+        refetchOnWindowFocus: true, // Refetch when user returns to tab
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
@@ -48,7 +50,7 @@ export const useOrder = (
         queryKey: queryKeys.orders.detail(orderId),
         queryFn: async () => await orderApi.getOrder(orderId),
         enabled: !!orderId,
-        ...CACHE_TIMES.MEDIUM,
+        ...CACHE_TIMES.SHORT, // Changed from MEDIUM to SHORT for consistency
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });

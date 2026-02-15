@@ -71,6 +71,7 @@ export interface IOrder extends Document {
     updatedBy?: mongoose.Types.ObjectId;
   }>;
   currentStatus: string;
+  currency?: string; // ISO 4217 currency code (e.g., 'USD', 'INR', 'GBP'). Defaults to 'INR' for manual orders.
   totals: {
     subtotal: number;
     tax: number;
@@ -265,6 +266,10 @@ const OrderSchema = new Schema<IOrder>(
       type: String,
       required: true,
       default: 'pending',
+    },
+    currency: {
+      type: String,
+      default: 'INR',
     },
     totals: {
       subtotal: {

@@ -22,11 +22,12 @@ import { MobileOrderCard, MobileOrderCardData } from './MobileOrderCard';
 import { orderToCardData, sortOrdersByPriority } from '@/src/lib/utils/orderPriority';
 import { useIsMobile } from '@/src/hooks/ux';
 import { DataTable } from '@/src/components/ui/data/DataTable';
-import { Package, Phone, Calendar, User, ShoppingBag, CreditCard, TrendingUp, Truck } from 'lucide-react';
+import { Package, Truck } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { formatCurrency, formatDateTime } from '@/src/lib/utils/common';
 import { isSellerOrderShippable } from '@/src/lib/utils/order-shipping-eligibility';
@@ -41,32 +42,32 @@ interface ResponsiveOrderListProps {
 
 /**
  * Desktop table column configuration
+ * - Consolidated columns to reduce horizontal overflow
+ * - Actions column is sticky right so CTAs stay visible when scrolling
  */
 const getDesktopColumns = (
   onOrderClick?: (order: Order) => void,
   onShipClick?: (order: Order) => void
 ) => [
   {
-    header: 'Order ID',
+    header: 'Order',
     accessorKey: 'orderNumber',
+    width: 'min-w-[140px]',
     cell: (row: Order) => (
-      <div className="flex items-center gap-2">
-        <span className="font-semibold text-[var(--text-primary)] text-sm font-mono">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="font-semibold text-[var(--text-primary)] text-sm font-mono truncate">
           {row.orderNumber}
         </span>
+        <SourceBadge source={row.source} size="sm" className="flex-shrink-0" />
       </div>
     )
   },
   {
-    header: 'Source',
-    accessorKey: 'source',
-    cell: (row: Order) => <SourceBadge source={row.source} size="sm" />,
-  },
-  {
     header: 'Date',
     accessorKey: 'createdAt',
+    width: 'min-w-[90px]',
     cell: (row: Order) => (
-      <div className="flex flex-col text-xs">
+      <div className="flex flex-col text-xs whitespace-nowrap">
         <span className="text-[var(--text-primary)] font-medium">
           {formatDateTime(row.createdAt).split(',')[0]}
         </span>
@@ -79,13 +80,14 @@ const getDesktopColumns = (
   {
     header: 'Customer',
     accessorKey: 'customerInfo',
+    width: 'min-w-[120px] max-w-[160px]',
     cell: (row: Order) => (
-      <div className="max-w-[180px]">
+      <div className="min-w-0">
         <div className="font-medium text-[var(--text-primary)] text-sm truncate">
-          {row.customerInfo.name}
+          {row.customerInfo?.name || '—'}
         </div>
-        <div className="text-xs text-[var(--text-muted)] opacity-80 truncate">
-          {row.customerInfo.phone}
+        <div className="text-xs text-[var(--text-muted)] truncate">
+          {row.customerInfo?.phone || '—'}
         </div>
       </div>
     )
@@ -93,26 +95,27 @@ const getDesktopColumns = (
   {
     header: 'Product',
     accessorKey: 'products',
+    width: 'min-w-[140px] max-w-[200px]',
     cell: (row: Order) => {
-      const firstProduct = row.products[0];
-      const totalQty = row.products.reduce((sum, p) => sum + p.quantity, 0);
+      const firstProduct = row.products?.[0];
+      const totalQty = row.products?.reduce((sum, p) => sum + p.quantity, 0) ?? 0;
       return (
-        <div className="max-w-[200px] flex items-center gap-2">
-          <div className="flex-1 truncate">
-            <div
-              className="font-medium text-[var(--text-primary)] text-sm truncate"
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex-1 min-w-0 truncate">
+            <span
+              className="font-medium text-[var(--text-primary)] text-sm truncate block"
               title={firstProduct?.name}
             >
               {firstProduct?.name || 'No product'}
-            </div>
+            </span>
           </div>
-          {row.products.length > 1 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+          {row.products && row.products.length > 1 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] flex-shrink-0">
               +{row.products.length - 1}
             </span>
           )}
-          {totalQty > 1 && row.products.length === 1 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+          {totalQty > 1 && row.products?.length === 1 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] flex-shrink-0">
               x{totalQty}
             </span>
           )}
@@ -123,6 +126,7 @@ const getDesktopColumns = (
   {
     header: 'Payment',
     accessorKey: 'paymentStatus',
+    width: 'min-w-[90px]',
     cell: (row: Order) => (
       <StatusBadge
         domain="payment"
@@ -135,6 +139,7 @@ const getDesktopColumns = (
   {
     header: 'Status',
     accessorKey: 'currentStatus',
+    width: 'min-w-[90px]',
     cell: (row: Order) => (
       <StatusBadge domain="order" status={row.currentStatus} size="sm" className="w-fit" />
     )
@@ -142,54 +147,62 @@ const getDesktopColumns = (
   {
     header: 'Total',
     accessorKey: 'totals.total',
+    width: 'min-w-[80px]',
     cell: (row: Order) => (
-      <div className="text-right font-bold text-[var(--text-primary)]">
-        {formatCurrency(row.totals?.total || 0)}
+      <div className="text-right font-bold text-[var(--text-primary)] whitespace-nowrap">
+        {formatCurrency(row.totals?.total || 0, row.currency)}
       </div>
     )
   },
   {
     header: 'Actions',
     accessorKey: 'actions',
+    width: 'min-w-[120px]',
+    stickyRight: true,
     cell: (row: Order) => {
       const isShippable = onShipClick && isSellerOrderShippable(row);
       const hasTrack = row.hasShipment ?? (['shipped', 'delivered', 'rto'].includes(String(row.currentStatus || '').toLowerCase()) || !!row.shippingDetails?.trackingNumber);
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           {isShippable && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShipClick(row);
-              }}
-              className="flex items-center gap-1.5 h-10 min-h-[40px] px-3 text-xs font-medium rounded-md bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] transition-colors"
-              aria-label={`Ship order ${row.orderNumber}`}
-            >
-              <Truck className="w-3.5 h-3.5" />
-              Ship Now
-            </button>
+            <Tooltip content="Ship order">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShipClick(row);
+                }}
+                className="flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-md bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] transition-colors shrink-0"
+                aria-label={`Ship order ${row.orderNumber}`}
+              >
+                <Truck className="w-3.5 h-3.5" />
+                Ship
+              </button>
+            </Tooltip>
           )}
           <ViewActionButton
-            label="View"
+            showTooltip={true}
+            tooltipText="View details"
             onClick={(e) => {
               e.stopPropagation();
               onOrderClick?.(row);
             }}
           />
           {hasTrack && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                const searchValue = row.shippingDetails?.trackingNumber || row.orderNumber;
-                window.location.assign(`/seller/shipments?search=${encodeURIComponent(searchValue)}`);
-              }}
-              className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
-              aria-label={`Track shipment for order ${row.orderNumber}`}
-            >
-              Track
-            </button>
+            <Tooltip content="Track shipment">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const searchValue = row.shippingDetails?.trackingNumber || row.orderNumber;
+                  window.location.assign(`/seller/shipments?search=${encodeURIComponent(searchValue)}`);
+                }}
+                className="p-2 rounded-md border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors shrink-0"
+                aria-label={`Track shipment for order ${row.orderNumber}`}
+              >
+                <Truck className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
       );

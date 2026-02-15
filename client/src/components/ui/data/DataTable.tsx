@@ -11,6 +11,8 @@ interface DataTableProps<T> {
         accessorKey: keyof T | ((row: T) => React.ReactNode) | string;
         cell?: (row: T) => React.ReactNode;
         width?: string;
+        /** When true, column stays visible (sticky right) when table scrolls horizontally */
+        stickyRight?: boolean;
     }[];
     data: T[];
     searchKey?: keyof T;
@@ -120,7 +122,8 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
                                             className={cn(
                                                 "px-5 py-3 font-medium text-[var(--text-muted)] whitespace-nowrap select-none",
                                                 col.width,
-                                                isSortable ? "cursor-pointer hover:bg-[var(--bg-hover)] transition-colors group" : ""
+                                                isSortable ? "cursor-pointer hover:bg-[var(--bg-hover)] transition-colors group" : "",
+                                                col.stickyRight && "sticky right-0 z-20 bg-[var(--bg-secondary)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]"
                                             )}
                                             onClick={() => isSortable && handleHeaderClick(col.accessorKey as string)}
                                         >
@@ -158,11 +161,17 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
                                 displayData.map((row, idx) => (
                                     <tr
                                         key={getRowKey(row, idx)}
-                                        className={`hover:bg-[var(--bg-hover)] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                                        className={`group hover:bg-[var(--bg-hover)] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                                         onClick={() => onRowClick?.(row)}
                                     >
                                         {columns.map((col, colIdx) => (
-                                            <td key={colIdx} className="px-5 py-3 text-[var(--text-primary)]">
+                                            <td
+                                                key={colIdx}
+                                                className={cn(
+                                                    "px-5 py-3 text-[var(--text-primary)]",
+                                                    col.stickyRight && "sticky right-0 z-10 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-hover)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]"
+                                                )}
+                                            >
                                                 {col.cell ? col.cell(row) : ((row as any)[col.accessorKey as string] as React.ReactNode)}
                                             </td>
                                         ))}

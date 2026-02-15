@@ -68,7 +68,7 @@ export function ManifestTable({
                             <TableHead className="text-[var(--text-secondary)]">Pickup Date</TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Shipments</TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Status</TableHead>
-                            <TableHead className="text-right text-[var(--text-secondary)]">Actions</TableHead>
+                            <TableHead className="text-right text-[var(--text-secondary)] sticky right-0 z-20 bg-[var(--bg-secondary)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -118,7 +118,7 @@ export function ManifestTable({
                                 <TableCell>
                                     <StatusBadge domain="manifest" status={manifest.status} size="sm" />
                                 </TableCell>
-                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                <TableCell onClick={(e) => e.stopPropagation()} className="sticky right-0 z-10 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-hover)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                                     <div className="flex justify-end items-center gap-2">
                                         <ViewActionButton onClick={() => onManifestClick?.(manifest)} />
                                         <Button

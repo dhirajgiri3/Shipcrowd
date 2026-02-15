@@ -114,7 +114,7 @@ export function ReturnsTable({
                                     <ArrowUpDown size={12} className={sortBy === 'status' ? 'text-[var(--primary-blue)]' : ''} />
                                 </div>
                             </TableHead>
-                            <TableHead className="text-center text-[var(--text-secondary)]">Actions</TableHead>
+                            <TableHead className="text-center text-[var(--text-secondary)] sticky right-0 z-20 bg-[var(--bg-secondary)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -182,7 +182,7 @@ export function ReturnsTable({
                                                 size="sm"
                                             />
                                         </TableCell>
-                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <TableCell onClick={(e) => e.stopPropagation()} className="sticky right-0 z-10 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-hover)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                                             <div className="flex justify-center items-center gap-2">
                                                 <ViewActionButton
                                                     onClick={() => onRowClick(returnReq)}

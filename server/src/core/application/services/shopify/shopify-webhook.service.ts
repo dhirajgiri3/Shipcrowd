@@ -19,6 +19,7 @@ import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import ShopifyOrderSyncService from './shopify-order-sync.service';
+import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
 
 /**
  * ShopifyWebhookService
@@ -124,7 +125,10 @@ export class ShopifyWebhookService {
 
       // Update order status based on Shopify changes
       const paymentStatus = this.mapPaymentStatus(payload.financial_status);
-      const currentStatus = this.mapFulfillmentStatus(payload.fulfillment_status);
+      // cancelled_at takes priority over fulfillment_status
+      const currentStatus = payload.cancelled_at
+        ? 'cancelled'
+        : this.mapFulfillmentStatus(payload.fulfillment_status);
 
       let updated = false;
 
@@ -138,13 +142,24 @@ export class ShopifyWebhookService {
         order.statusHistory.push({
           status: currentStatus,
           timestamp: new Date(),
-          comment: 'Updated from Shopify webhook',
+          comment: payload.cancelled_at
+            ? `Cancelled in Shopify. Reason: ${payload.cancel_reason || 'Not specified'}`
+            : 'Updated from Shopify webhook',
         });
         updated = true;
       }
 
       if (updated) {
         await order.save();
+
+        // Invalidate order list cache so updates appear immediately in UI
+        try {
+          const cache = new CacheRepository('orders');
+          await cache.invalidateTags([`company:${store.companyId}:orders`]);
+        } catch (cacheError) {
+          logger.warn('Failed to invalidate order cache after webhook update', { error: cacheError });
+        }
+
         logger.info('Order updated from webhook', {
           storeId,
           orderId: payload.id,
@@ -210,6 +225,14 @@ export class ShopifyWebhookService {
       });
 
       await order.save();
+
+      // Invalidate order list cache so updates appear immediately in UI
+      try {
+        const cache = new CacheRepository('orders');
+        await cache.invalidateTags([`company:${store.companyId}:orders`]);
+      } catch (cacheError) {
+        logger.warn('Failed to invalidate order cache after webhook cancellation', { error: cacheError });
+      }
 
       // TODO: Restore inventory if applicable
       // This would integrate with InventoryService
@@ -280,6 +303,14 @@ export class ShopifyWebhookService {
       }
 
       await order.save();
+
+      // Invalidate order list cache so updates appear immediately in UI
+      try {
+        const cache = new CacheRepository('orders');
+        await cache.invalidateTags([`company:${store.companyId}:orders`]);
+      } catch (cacheError) {
+        logger.warn('Failed to invalidate order cache after webhook fulfillment', { error: cacheError });
+      }
 
       logger.info('Order fulfilled', {
         storeId,
@@ -527,7 +558,7 @@ export class ShopifyWebhookService {
     const statusMap: Record<string, string> = {
       fulfilled: 'delivered',
       partial: 'processing',
-      restocked: 'cancelled',
+      restocked: 'rto_delivered', // Items returned and restocked, not cancelled
     };
 
     return statusMap[fulfillmentStatus.toLowerCase()] || 'pending';

@@ -20,6 +20,7 @@ import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woo
 import { WooCommerceOrder } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
 
 interface SyncResult {
   itemsProcessed: number;
@@ -308,6 +309,14 @@ export default class WooCommerceOrderSyncService {
         order = await Order.create(mappedOrder);
       }
 
+      // Invalidate order list cache so new/updated orders appear immediately
+      try {
+        const cache = new CacheRepository('orders');
+        await cache.invalidateTags([`company:${store.companyId}:orders`]);
+      } catch (cacheError) {
+        logger.warn('Failed to invalidate order cache after WooCommerce sync', { error: cacheError });
+      }
+
       logger.info('WooCommerce order synced', {
         wooOrderId,
         ShipcrowdOrderId: order._id,
@@ -339,7 +348,9 @@ export default class WooCommerceOrderSyncService {
 
     const customerName = billing.first_name || billing.last_name
       ? `${billing.first_name || ''} ${billing.last_name || ''}`.trim()
-      : 'Guest Customer';
+      : 'No customer';
+
+    const hasAddress = !!(shipping.address_1 || billing.address_1 || shipping.city || billing.city);
 
     return {
       // Basic info
@@ -352,15 +363,15 @@ export default class WooCommerceOrderSyncService {
       // Customer info
       customerInfo: {
         name: customerName,
-        email: billing.email || '',
-        phone: billing.phone || '',
+        email: billing.email || undefined,
+        phone: billing.phone || undefined,
         address: {
-          line1: shipping.address_1 || billing.address_1 || 'N/A',
-          line2: shipping.address_2 || billing.address_2 || '',
-          city: shipping.city || billing.city || 'N/A',
-          state: shipping.state || billing.state || 'N/A',
-          country: shipping.country || billing.country || 'N/A',
-          postalCode: shipping.postcode || billing.postcode || 'N/A',
+          line1: shipping.address_1 || billing.address_1 || (hasAddress ? '' : 'No address provided'),
+          line2: shipping.address_2 || billing.address_2 || undefined,
+          city: shipping.city || billing.city || (hasAddress ? '' : 'Unknown'),
+          state: shipping.state || billing.state || (hasAddress ? '' : 'Unknown'),
+          country: shipping.country || billing.country || (hasAddress ? '' : 'Unknown'),
+          postalCode: shipping.postcode || billing.postcode || (hasAddress ? '' : '000000'),
         },
       },
 
@@ -385,16 +396,19 @@ export default class WooCommerceOrderSyncService {
       paymentStatus: this.mapPaymentStatus(wooOrder.status),
       paymentMethod: this.detectPaymentMethod(wooOrder.payment_method),
 
+      // Currency from WooCommerce store settings
+      currency: wooOrder.currency || 'USD',
+
       // Order status
       currentStatus: this.mapOrderStatus(wooOrder.status),
 
       // Totals
       totals: {
-        subtotal: parseFloat(wooOrder.total) - parseFloat(wooOrder.total_tax),
-        tax: parseFloat(wooOrder.total_tax),
-        shipping: parseFloat(wooOrder.shipping_total),
-        discount: parseFloat(wooOrder.discount_total),
-        total: parseFloat(wooOrder.total),
+        subtotal: parseFloat(wooOrder.total) - parseFloat(wooOrder.total_tax) || 0,
+        tax: parseFloat(wooOrder.total_tax) || 0,
+        shipping: parseFloat(wooOrder.shipping_total) || 0,
+        discount: parseFloat(wooOrder.discount_total) || 0,
+        total: parseFloat(wooOrder.total) || 0,
       },
 
       // Metadata
@@ -438,7 +452,7 @@ export default class WooCommerceOrderSyncService {
       processing: 'paid',
       'on-hold': 'pending',
       completed: 'paid',
-      cancelled: 'failed',
+      cancelled: 'pending', // Cancelled order doesn't mean payment failed
       refunded: 'refunded',
       failed: 'failed',
     };
@@ -456,7 +470,7 @@ export default class WooCommerceOrderSyncService {
       'on-hold': 'pending',
       completed: 'delivered',
       cancelled: 'cancelled',
-      refunded: 'cancelled',
+      refunded: 'delivered', // Refunded means goods were delivered but money returned
       failed: 'cancelled',
       trash: 'cancelled',
     };

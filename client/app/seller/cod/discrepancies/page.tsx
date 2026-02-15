@@ -249,6 +249,8 @@ export default function CODDiscrepancyPage() {
         {
             header: 'Actions',
             accessorKey: 'actions',
+            width: 'min-w-[100px]',
+            stickyRight: true,
             cell: (row: CODDiscrepancy) => (
                 <div className="flex items-center gap-2">
                     {row.status === 'detected' && (
