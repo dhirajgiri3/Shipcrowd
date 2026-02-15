@@ -15,7 +15,6 @@ import { Badge } from '@/src/components/ui/core/Badge';
 import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
-import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { useUrlDateRange } from '@/src/hooks';
@@ -32,6 +31,7 @@ import {
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import type { CODDiscrepancy } from '@/src/core/api/clients/finance/codDiscrepancyApi';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 const DISCREPANCY_TABS = [
     { key: '', label: 'All' },
@@ -47,7 +47,6 @@ export default function CODDiscrepancyPage() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { addToast } = useToast();
     const [page, setPage] = useState(1);
     const { limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('');
@@ -57,6 +56,7 @@ export default function CODDiscrepancyPage() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const [hasInitializedFilterReset, setHasInitializedFilterReset] = useState(false);
+    const exportSellerData = useSellerExport();
     const {
         range: dateRange,
         startDateIso,
@@ -308,7 +308,15 @@ export default function CODDiscrepancyPage() {
                             size="sm"
                             variant="outline"
                             className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
-                            onClick={() => addToast('Export feature coming soon', 'info')}
+                            onClick={() => exportSellerData.mutate({
+                                module: 'cod_discrepancies',
+                                filters: {
+                                    status: statusFilter || undefined,
+                                    search: debouncedSearch || undefined,
+                                    startDate: startDateIso || undefined,
+                                    endDate: endDateIso || undefined,
+                                },
+                            })}
                         >
                             <FileText className="w-4 h-4 mr-2" />
                             Export

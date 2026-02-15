@@ -29,8 +29,9 @@ import {
     FileOutput,
     Calendar
 } from 'lucide-react';
-import { format, isThisWeek, isToday } from 'date-fns';
+import { endOfWeek, format, isThisWeek, isToday, startOfWeek } from 'date-fns';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 export interface Transaction {
     id: string;
@@ -51,6 +52,7 @@ interface TransactionListProps {
     transactions: Transaction[];
     isLoading?: boolean;
     className?: string;
+    exportFilters?: Record<string, unknown>;
 }
 
 type FilterType = 'all' | 'credits' | 'debits' | 'this_week';
@@ -84,9 +86,12 @@ const safeFormat = (value: string, formatString: string, fallback = '--'): strin
     return date ? format(date, formatString) : fallback;
 };
 
-export function TransactionList({ transactions, isLoading = false, className = '' }: TransactionListProps) {
+export function TransactionList({ transactions, isLoading = false, className = '', exportFilters }: TransactionListProps) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [isExporting, setIsExporting] = useState(false);
+    const exportSellerData = useSellerExport({
+        onSettled: () => setIsExporting(false),
+    });
 
     // Filter transactions
     const filteredTransactions = useMemo(() => {
@@ -123,28 +128,23 @@ export function TransactionList({ transactions, isLoading = false, className = '
     // Export to CSV
     const handleExport = () => {
         setIsExporting(true);
+        const filterToExportFilters: Record<FilterType, Record<string, unknown>> = {
+            all: {},
+            credits: { type: 'credit' },
+            debits: { type: 'debit' },
+            this_week: {
+                startDate: startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
+                endDate: endOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
+            },
+        };
 
-        const csvContent = [
-            ['Date', 'Type', 'Category', 'Description', 'Amount', 'Balance'].join(','),
-            ...filteredTransactions.map(t => [
-                safeFormat(t.timestamp, 'dd/MM/yyyy HH:mm'),
-                t.type === 'credit' ? 'Credit' : 'Debit',
-                CATEGORY_LABELS[t.category],
-                `"${t.description}"`,
-                t.amount.toFixed(2),
-                t.runningBalance.toFixed(2)
-            ].join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `wallet-transactions-${format(new Date(), 'dd-MM-yyyy')}.csv`;
-        link.click();
-        window.URL.revokeObjectURL(url);
-
-        setTimeout(() => setIsExporting(false), 1000);
+        exportSellerData.mutate({
+            module: 'wallet_transactions',
+            filters: {
+                ...exportFilters,
+                ...filterToExportFilters[filter],
+            },
+        });
     };
 
     if (isLoading) {

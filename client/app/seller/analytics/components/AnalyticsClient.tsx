@@ -24,9 +24,9 @@ import {
     IndianRupee,
     Truck,
 } from 'lucide-react';
-import { useToast } from '@/src/components/ui/feedback/Toast';
 import { differenceInCalendarDays, endOfDay, isSameDay, startOfDay, subDays, subYears } from 'date-fns';
 import { useUrlDateRange } from '@/src/hooks';
+import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
 
 // Expected shape for AnalyticsSection
 interface AnalyticsDisplayData {
@@ -148,9 +148,9 @@ function normalizeToDisplayData(apiData: SellerDashboardResponse | null | undefi
 
 export function AnalyticsClient() {
     const router = useRouter();
-    const { addToast } = useToast();
     const [period, setPeriod] = useState<PeriodState>('30d');
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const exportSellerData = useSellerExport();
     const {
         range: dateRange,
         startDateIso,
@@ -239,7 +239,13 @@ export function AnalyticsClient() {
                             size="sm"
                             variant="outline"
                             className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
-                            onClick={() => addToast('Export feature coming soon', 'info')}
+                            onClick={() => exportSellerData.mutate({
+                                module: 'analytics_dashboard',
+                                filters: {
+                                    startDate: startDateIso || undefined,
+                                    endDate: endDateIso || undefined,
+                                },
+                            })}
                         >
                             <FileOutput className="w-4 h-4 mr-2" />
                             Export

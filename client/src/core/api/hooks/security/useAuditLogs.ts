@@ -34,10 +34,26 @@ export const useAuditLogs = (query: AuditLogsQuery = {}, options?: UseQueryOptio
                 ...query,
                 entity: query.entity || query.resource,
             };
-            const response = await apiClient.get<{ data: { logs: AuditLog[]; total: number } }>('/audit-logs', {
+            const response = await apiClient.get<{ data: { data: AuditLog[]; pagination: { total: number } } }>('/audit/company', {
                 params,
             });
-            return response.data.data;
+            const mappedLogs: AuditLog[] = response.data.data.data.map((log: any) => ({
+                _id: String(log.id || log._id || ''),
+                userId: String(log.user?._id || log.userId || ''),
+                userName: log.user?.name || '',
+                userEmail: log.user?.email || '',
+                action: log.action,
+                entity: log.resource,
+                entityId: log.resourceId ? String(log.resourceId) : '',
+                details: log.details || {},
+                ipAddress: log.ipAddress || '',
+                userAgent: log.userAgent || '',
+                timestamp: log.timestamp || '',
+            }));
+            return {
+                logs: mappedLogs,
+                total: response.data.data.pagination.total,
+            };
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
@@ -51,7 +67,7 @@ export const useAuditLogs = (query: AuditLogsQuery = {}, options?: UseQueryOptio
 export const useExportAuditLogs = (options?: UseMutationOptions<any, ApiError, ExportAuditLogsRequest>) => {
     return useMutation<any, ApiError, ExportAuditLogsRequest>({
         mutationFn: async (request: ExportAuditLogsRequest) => {
-            const response = await apiClient.post('/audit-logs/export', request, {
+            const response = await apiClient.post('/audit/company/export', request, {
                 responseType: 'blob',
             });
 

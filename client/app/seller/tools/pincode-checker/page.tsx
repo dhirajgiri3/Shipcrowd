@@ -71,17 +71,38 @@ export default function PincodeCheckerPage() {
     const data = mode === 'single' ? singleResult?.couriers : routeResult?.availableCouriers;
     if (!data) return;
 
+    const generatedAt = new Date().toISOString();
+    const escapeCsv = (value: string | number | boolean) => {
+      const stringValue = String(value ?? '');
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    };
+
     const csv = [
-      ['Courier', 'Serviceable', 'COD Available', 'Prepaid', 'Est. Days', 'Zone'].join(','),
+      [
+        'generated_at',
+        'mode',
+        'pickup_pincode',
+        'delivery_pincode',
+        'courier_name',
+        'serviceable',
+        'cod_available',
+        'prepaid_available',
+        'estimated_days',
+        'zone',
+      ].join(','),
       ...data.map((c) =>
         [
+          generatedAt,
+          mode,
+          mode === 'single' ? '' : originPincode,
+          mode === 'single' ? (singleResult?.pincode || '') : destinationPincode,
           c.courierDisplayName,
-          c.serviceable ? 'Yes' : 'No',
-          c.codAvailable ? 'Yes' : 'No',
-          c.prepaidAvailable ? 'Yes' : 'No',
-          c.estimatedDays,
-          c.zone,
-        ].join(',')
+          c.serviceable,
+          c.codAvailable,
+          c.prepaidAvailable,
+          c.estimatedDays ?? '',
+          c.zone ?? '',
+        ].map(escapeCsv).join(',')
       ),
     ].join('\n');
 

@@ -87,7 +87,7 @@ class ConsentApiService {
      * GET /consent/export
      */
     async exportUserData(): Promise<Blob> {
-        const response = await apiClient.get('/consent/export', {
+        const response = await apiClient.get('/consent/export-file', {
             responseType: 'blob',
         });
         return response.data;

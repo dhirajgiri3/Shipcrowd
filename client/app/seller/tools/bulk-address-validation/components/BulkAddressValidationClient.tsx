@@ -12,6 +12,7 @@
 
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import Papa from 'papaparse';
 import { useBulkValidateAddresses } from '@/src/core/api/hooks/logistics/useAddress';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import {
@@ -58,12 +59,23 @@ export function BulkAddressValidationClient() {
 
     // Parse CSV function
     const parseCSV = useCallback((csvText: string): Address[] => {
-        const lines = csvText.split('\n').filter(line => line.trim());
-        if (lines.length < 2) {
+        const parsed = Papa.parse<Record<string, string>>(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: (header) => header.trim().toLowerCase(),
+        });
+
+        if (parsed.errors.length > 0) {
+            const firstError = parsed.errors[0];
+            throw new Error(`CSV parse error: ${firstError.message}`);
+        }
+
+        const rows = parsed.data || [];
+        if (rows.length === 0) {
             throw new Error('CSV must have at least a header row and one data row');
         }
 
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const headers = Object.keys(rows[0] || {});
 
         // Required columns
         const requiredColumns = ['pincode', 'city', 'state'];
@@ -72,25 +84,27 @@ export function BulkAddressValidationClient() {
             throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
         }
 
-        // Column indices
-        const colIndex: Record<string, number> = {};
-        headers.forEach((header, idx) => {
-            colIndex[header] = idx;
-        });
+        const getValue = (row: Record<string, string>, aliases: string[]): string => {
+            for (const key of aliases) {
+                const value = row[key];
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    return String(value).trim();
+                }
+            }
+            return '';
+        };
 
         const addresses: Address[] = [];
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim());
-
+        for (const row of rows) {
             const address: Address = {
-                line1: values[colIndex['address'] ?? colIndex['line1'] ?? colIndex['address_line_1']] || '',
-                line2: values[colIndex['address2'] ?? colIndex['line2'] ?? colIndex['address_line_2']] || '',
-                city: values[colIndex['city']] || '',
-                state: values[colIndex['state']] || '',
-                pincode: values[colIndex['pincode'] ?? colIndex['zip'] ?? colIndex['postal_code']] || '',
-                country: values[colIndex['country']] || 'India',
-                contactName: values[colIndex['name'] ?? colIndex['contact_name']] || '',
-                contactPhone: values[colIndex['phone'] ?? colIndex['mobile'] ?? colIndex['contact_phone']] || '',
+                line1: getValue(row, ['address', 'line1', 'address_line_1']),
+                line2: getValue(row, ['address2', 'line2', 'address_line_2']),
+                city: getValue(row, ['city']),
+                state: getValue(row, ['state']),
+                pincode: getValue(row, ['pincode', 'zip', 'postal_code']),
+                country: getValue(row, ['country']) || 'India',
+                contactName: getValue(row, ['name', 'contact_name']),
+                contactPhone: getValue(row, ['phone', 'mobile', 'contact_phone']),
             };
 
             // Skip empty rows
@@ -171,15 +185,20 @@ export function BulkAddressValidationClient() {
         if (!results) return;
 
         const invalidResults = results.results.filter(r => !r.isValid);
+        const escapeCsv = (value: string | number) => `"${String(value ?? '').replace(/"/g, '""')}"`;
         const csv = [
-            ['Address Line 1', 'City', 'State', 'Pincode', 'Errors'].join(','),
-            ...invalidResults.map(r => [
+            ['Row Number', 'Contact Name', 'Contact Phone', 'Address Line 1', 'Address Line 2', 'City', 'State', 'Pincode', 'Errors'].join(','),
+            ...invalidResults.map((r, index) => [
+                index + 1,
+                r.originalAddress.contactName || '',
+                r.originalAddress.contactPhone || '',
                 r.originalAddress.line1,
+                r.originalAddress.line2 || '',
                 r.originalAddress.city,
                 r.originalAddress.state,
                 r.originalAddress.pincode,
                 r.errors.map(e => e.message).join('; '),
-            ].map(v => `"${v}"`).join(','))
+            ].map(escapeCsv).join(','))
         ].join('\n');
 
         const blob = new Blob([csv], { type: 'text/csv' });
