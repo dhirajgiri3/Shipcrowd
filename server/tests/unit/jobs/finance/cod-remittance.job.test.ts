@@ -1,5 +1,5 @@
-import CODRemittance from '../../../../src/infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 import CODRemittanceService from '../../../../src/core/application/services/finance/cod-remittance.service';
+import CODRemittance from '../../../../src/infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 
 jest.mock('../../../../src/core/application/services/system/mock-data.service', () => ({
   __esModule: true,

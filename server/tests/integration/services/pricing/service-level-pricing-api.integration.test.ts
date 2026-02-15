@@ -1,15 +1,15 @@
-import request from 'supertest';
-import express from 'express';
-import cookieParser from 'cookie-parser';
-import mongoose from 'mongoose';
-import { connectTestDb, closeTestDb, clearTestDb } from '../../../setup/testDatabase';
 import QuoteEngineService from '@/core/application/services/pricing/quote-engine.service';
 import ServiceRateCardFormulaService from '@/core/application/services/pricing/service-rate-card-formula.service';
 import BookFromQuoteService from '@/core/application/services/shipping/book-from-quote.service';
-import { Integration, KYC, Order, ServiceRateCard, CourierService } from '@/infrastructure/database/mongoose/models';
 import { KYCState } from '@/core/domain/types/kyc-state';
+import { CourierService, Integration, KYC, Order, ServiceRateCard } from '@/infrastructure/database/mongoose/models';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/errorCodes';
+import cookieParser from 'cookie-parser';
+import express from 'express';
+import mongoose from 'mongoose';
+import request from 'supertest';
+import { clearTestDb, closeTestDb, connectTestDb } from '../../../setup/testDatabase';
 
 jest.mock('@/core/application/services/communication/email.service', () => ({
     sendNewDeviceLoginEmail: jest.fn().mockResolvedValue(true),

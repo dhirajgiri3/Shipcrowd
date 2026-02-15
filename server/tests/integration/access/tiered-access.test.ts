@@ -1,12 +1,10 @@
-import request from 'supertest';
 import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import { Company } from '../../../src/infrastructure/database/mongoose/models';
-import { KYC } from '../../../src/infrastructure/database/mongoose/models';
-import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
 import { AccessTier } from '../../../src/core/domain/types/access-tier';
 import { KYCState } from '../../../src/core/domain/types/kyc-state';
+import { Company, KYC, User } from '../../../src/infrastructure/database/mongoose/models';
+import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
 
 describe('Tiered Access Control', () => {
     beforeAll(async () => {
@@ -248,6 +246,7 @@ describe('Tiered Access Control', () => {
         let user: any;
         let company: any;
         let kyc: any;
+void kyc;
         let token: string;
 
         beforeEach(async () => {

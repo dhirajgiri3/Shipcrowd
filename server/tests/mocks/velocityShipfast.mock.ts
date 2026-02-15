@@ -99,8 +99,8 @@ export const mockCancellationFailure = (awbNumber: string) => ({
  * Mock rate estimation response
  */
 export const mockRateEstimation = (
-    originPincode: string,
-    destPincode: string,
+    _originPincode: string,
+    _destPincode: string,
     weight: number
 ) => ({
     success: true,

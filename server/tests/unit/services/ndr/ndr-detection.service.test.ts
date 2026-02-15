@@ -1,9 +1,7 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import NDRDetectionService from '../../../../src/core/application/services/ndr/ndr-detection.service';
-import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
-import NDRClassificationService from '../../../../src/core/application/services/ndr/ndr-classification.service';
+import { NDREvent, Shipment } from '../../../../src/infrastructure/database/mongoose/models';
 import logger from '../../../../src/shared/logger/winston.logger';
-import { Shipment } from '../../../../src/infrastructure/database/mongoose/models';
 
 // Mock dependencies
 jest.mock('../../../../src/infrastructure/database/mongoose/models', () => ({

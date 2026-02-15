@@ -87,7 +87,7 @@ export const mockPaymentCaptureSuccess = (
 export const mockRefundSuccess = (
     paymentId: string,
     amount: number,
-    isPartial: boolean = false
+    _isPartial: boolean = false
 ) => ({
     id: `rfnd_${Date.now().toString(36)}`,
     entity: 'refund',
@@ -106,7 +106,7 @@ export const mockRefundSuccess = (
 export const mockPaymentVerification = (
     orderId: string,
     paymentId: string,
-    signature: string
+    _signature: string
 ) => ({
     success: true,
     orderId,

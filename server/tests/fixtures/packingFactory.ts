@@ -4,8 +4,8 @@
  */
 import mongoose from 'mongoose';
 import {
-    randomString,
-    randomNumeric,
+randomNumeric,
+randomString,
 } from '../helpers/randomData';
 
 // Import models lazily

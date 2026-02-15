@@ -2,11 +2,11 @@
  * WalletService Unit Tests
  */
 
-import crypto from 'crypto';
-import Razorpay from 'razorpay';
 import WalletService from '@/core/application/services/wallet/wallet.service';
-import { Company, WalletTransaction } from '../../../../src/infrastructure/database/mongoose/models';
+import crypto from 'crypto';
 import mongoose from 'mongoose';
+import Razorpay from 'razorpay';
+import { Company, WalletTransaction } from '../../../../src/infrastructure/database/mongoose/models';
 
 // Mock the models
 jest.mock('../../../../src/infrastructure/database/mongoose/models', () => ({

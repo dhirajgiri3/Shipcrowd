@@ -1,10 +1,7 @@
-import request from 'supertest';
 import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import { Company } from '../../../src/infrastructure/database/mongoose/models';
-import { Session } from '../../../src/infrastructure/database/mongoose/models';
-import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
+import { Company, Session, User } from '../../../src/infrastructure/database/mongoose/models';
 
 
 /**

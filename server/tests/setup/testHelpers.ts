@@ -2,8 +2,8 @@
  * Test Helpers
  * Shared utilities and lifecycle hooks for all tests
  */
-import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 function extractMongoDbName(uri: string): string | undefined {
     // Examples:

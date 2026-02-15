@@ -10,9 +10,9 @@
  * 1. Export Express app from src/index.ts: export { app }
  * 2. Or create src/app.ts that exports the app without starting the server
  */
+import app from '@/app';
 import request from 'supertest';
 import { createTestUser } from '../../fixtures/userFactory';
-import app from '@/app';
 
 // App is now exported from src/app.ts - tests can run!
 describe('POST /api/v1/auth/login', () => {

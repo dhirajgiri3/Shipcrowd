@@ -6,9 +6,8 @@
  */
 
 import mongoose from 'mongoose';
-import { Shipment, Company } from '../../../src/infrastructure/database/mongoose/models';
+import { Company, Shipment } from '../../../src/infrastructure/database/mongoose/models';
 import NDREvent from '../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-event.model';
-import RTOEvent from '../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model';
 import { setupTestDatabase, teardownTestDatabase } from '../../setup/testDatabase';
 
 jest.mock('../../../src/core/application/services/rto/rto.service', () => ({

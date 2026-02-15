@@ -1,5 +1,5 @@
-import request from 'supertest';
 import app from '@/app';
+import request from 'supertest';
 
 describe('v1 route mounts', () => {
     it('mounts commission payout webhook route (not 404)', async () => {

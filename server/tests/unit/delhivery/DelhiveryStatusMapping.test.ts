@@ -2,8 +2,8 @@
  * Delhivery Status Mapping Unit Tests
  */
 
-import { StatusMapperService } from '../../../src/core/application/services/courier/status-mappings/status-mapper.service';
 import { DELHIVERY_STATUS_MAPPINGS } from '../../../src/core/application/services/courier/status-mappings/delhivery-status-mappings';
+import { StatusMapperService } from '../../../src/core/application/services/courier/status-mappings/status-mapper.service';
 
 describe('Delhivery Status Mapping', () => {
     beforeAll(() => {

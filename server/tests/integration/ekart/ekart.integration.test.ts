@@ -11,10 +11,10 @@
  * NOTE: Requires valid Ekart credentials in .env.test
  */
 
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { beforeAll, describe, expect, it } from '@jest/globals';
 import mongoose from 'mongoose';
-import { EkartProvider } from '../../../src/infrastructure/external/couriers/ekart/ekart.provider';
 import { CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
+import { EkartProvider } from '../../../src/infrastructure/external/couriers/ekart/ekart.provider';
 
 describe('Ekart Integration Tests', () => {
     let provider: EkartProvider;

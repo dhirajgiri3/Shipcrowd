@@ -1,6 +1,6 @@
-import { AppError } from '@/shared/errors/app.error';
 import { ServiceRateCardFormulaService } from '@/core/application/services/pricing/service-rate-card-formula.service';
 import { ServiceRateCardFormulaInput } from '@/core/domain/types/service-level-pricing.types';
+import { AppError } from '@/shared/errors/app.error';
 
 type MockedPincodeLookup = {
     getPincodeDetails: jest.Mock;

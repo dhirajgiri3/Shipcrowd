@@ -15,9 +15,9 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models', () => ({
 
 import sellerPolicyBootstrapService from '../../../../src/core/application/services/organization/seller-policy-bootstrap.service';
 import {
-    Company,
-    User,
-    SellerCourierPolicy,
+Company,
+SellerCourierPolicy,
+User,
 } from '../../../../src/infrastructure/database/mongoose/models';
 
 const COMPANY_ID = new mongoose.Types.ObjectId().toString();

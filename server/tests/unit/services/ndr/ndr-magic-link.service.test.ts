@@ -1,7 +1,7 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import jwt from 'jsonwebtoken';
 import NDRMagicLinkService from '../../../../src/core/application/services/ndr/ndr-magic-link.service';
 import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
-import jwt from 'jsonwebtoken';
 
 // Mock dependencies
 jest.mock('../../../../src/infrastructure/database/mongoose/models', () => ({

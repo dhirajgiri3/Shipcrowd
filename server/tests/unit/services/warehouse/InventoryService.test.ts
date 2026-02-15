@@ -4,8 +4,6 @@
  */
 import mongoose from 'mongoose';
 import { InventoryService } from '../../../../src/core/application/services/warehouse';
-import { Inventory } from '../../../../src/infrastructure/database/mongoose/models';
-import { StockMovement } from '../../../../src/infrastructure/database/mongoose/models';
 import { createTestInventory } from '../../../fixtures/inventoryFactory';
 import { randomString } from '../../../helpers/randomData';
 

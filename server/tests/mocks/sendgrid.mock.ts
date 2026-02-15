@@ -29,7 +29,7 @@ const generateMessageId = (): string => {
 /**
  * Mock successful email send response
  */
-export const mockSendEmailSuccess = (to: string | string[]): SendGridEmailResponse => ({
+export const mockSendEmailSuccess = (_to: string | string[]): SendGridEmailResponse => ({
     statusCode: 202,
     headers: {
         'x-message-id': generateMessageId(),
@@ -41,7 +41,7 @@ export const mockSendEmailSuccess = (to: string | string[]): SendGridEmailRespon
  * Mock email send failure
  */
 export const mockSendEmailFailure = (
-    code: string = 'INVALID_EMAIL',
+    _code: string = 'INVALID_EMAIL',
     message: string = 'Invalid email address'
 ) => ({
     statusCode: 400,

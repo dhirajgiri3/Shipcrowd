@@ -8,10 +8,10 @@
  */
 
 import {
-  handleVelocityError,
-  retryWithBackoff,
-  RateLimiter,
-  VelocityRateLimiters
+handleVelocityError,
+RateLimiter,
+retryWithBackoff,
+VelocityRateLimiters
 } from '../../../src/infrastructure/external/couriers/velocity/velocity-error-handler';
 import { VelocityError, VelocityErrorType } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
 

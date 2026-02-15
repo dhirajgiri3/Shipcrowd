@@ -23,8 +23,8 @@ jest.mock('@/core/application/services/ndr/actions/ndr-action-executors', () => 
 }));
 
 // Now we can import the services that depend on the mocked models
-import NDRDetectionService from '@/core/application/services/ndr/ndr-detection.service';
 import NDRClassificationService from '@/core/application/services/ndr/ndr-classification.service';
+import NDRDetectionService from '@/core/application/services/ndr/ndr-detection.service';
 import NDRResolutionService from '@/core/application/services/ndr/ndr-resolution.service';
 
 describe('NDR/RTO Integration Tests', () => {

@@ -1,11 +1,9 @@
-import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import mongoose from 'mongoose';
+import { afterAll, beforeAll, describe, expect, test } from '@jest/globals';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
-import { ShopifyStore } from '../../../src/infrastructure/database/mongoose/models';
-import { ShopifyProductMapping as ProductMapping } from '../../../src/infrastructure/database/mongoose/models';
-import { Order } from '../../../src/infrastructure/database/mongoose/models';
+import { Order, ShopifyProductMapping as ProductMapping, ShopifyStore } from '../../../src/infrastructure/database/mongoose/models';
 import QueueManager from '../../../src/infrastructure/utilities/queue-manager';
 
 /**
@@ -25,7 +23,6 @@ describe('Shopify Integration - Complete Flow', () => {
   let mongoServer: MongoMemoryServer;
   let jwtToken: string;
   let companyId: string;
-  let userId: string;
   let storeId: string;
 
   beforeAll(async () => {
@@ -43,8 +40,6 @@ describe('Shopify Integration - Complete Flow', () => {
     // Setup test user and company
     // Note: You would create actual User and Company here
     companyId = new mongoose.Types.ObjectId().toString();
-    userId = new mongoose.Types.ObjectId().toString();
-
     // Mock JWT token (in real test, use actual auth service)
     jwtToken = 'mock_jwt_token_for_testing';
 

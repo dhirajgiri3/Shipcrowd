@@ -1,8 +1,7 @@
-import request from 'supertest';
 import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import { Company } from '../../../src/infrastructure/database/mongoose/models';
+import { Company, User } from '../../../src/infrastructure/database/mongoose/models';
 
 describe('Registration Transaction Safety', () => {
     beforeAll(async () => {
@@ -160,7 +159,7 @@ describe('Registration Transaction Safety', () => {
 
     describe('Data Integrity Checks', () => {
         it('should ensure user.companyId matches created company._id', async () => {
-            const response = await request(app)
+            await request(app)
                 .post('/api/v1/auth/register')
                 .send({
                     email: 'integrity@example.com',
@@ -178,7 +177,7 @@ describe('Registration Transaction Safety', () => {
         });
 
         it('should set correct default values for new user', async () => {
-            const response = await request(app)
+            await request(app)
                 .post('/api/v1/auth/register')
                 .send({
                     email: 'defaults@example.com',
@@ -198,7 +197,7 @@ describe('Registration Transaction Safety', () => {
         });
 
         it('should set correct default values for new company', async () => {
-            const response = await request(app)
+            await request(app)
                 .post('/api/v1/auth/register')
                 .send({
                     email: 'company-defaults@example.com',

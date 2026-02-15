@@ -1,7 +1,4 @@
-import request from 'supertest';
 import TokenService from '@/shared/services/token.service';
-import { Shipment } from '@/infrastructure/database/mongoose/models';
-import { NDREvent } from '@/infrastructure/database/mongoose/models';
 
 // This would typically be tested with a full Express app instance
 // For now, we'll test the core logic through unit tests
@@ -55,14 +52,6 @@ describe('AddressUpdate Integration', () => {
             const shipmentId = '507f1f77bcf86cd799439015';
             const companyId = 'comp123';
             const token = TokenService.generateAddressUpdateToken(shipmentId, companyId);
-
-            const newAddress = {
-                line1: '789 New Address',
-                city: 'Delhi',
-                state: 'Delhi',
-                postalCode: '110001',
-                country: 'India',
-            };
 
             const { shipmentId: verifiedId, companyId: verifiedCompanyId } = TokenService.verifyAddressUpdateToken(token);
 

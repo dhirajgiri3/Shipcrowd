@@ -5,8 +5,8 @@
  * Shipment -> /disputes/weight/webhook -> detection service -> (dispute | verification)
  */
 
-import request from 'supertest';
 import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
 import { Shipment } from '../../../src/infrastructure/database/mongoose/models';
 import WeightDispute from '../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';

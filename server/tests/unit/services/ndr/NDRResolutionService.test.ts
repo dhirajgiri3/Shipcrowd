@@ -1,5 +1,5 @@
-import NDRResolutionService from '../../../../src/core/application/services/ndr/ndr-resolution.service';
 import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/ndr-action-executors';
+import NDRResolutionService from '../../../../src/core/application/services/ndr/ndr-resolution.service';
 
 jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
     return {

@@ -10,24 +10,23 @@
  * - Token rotation prevents token reuse attacks
  */
 
-import request from 'supertest';
-import mongoose from 'mongoose';
-import app from '../../../src/app';
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import { Session } from '../../../src/infrastructure/database/mongoose/models';
-import { generateRefreshToken, generateAccessToken } from '../../../src/shared/helpers/jwt';
 import bcrypt from 'bcrypt';
+import mongoose from 'mongoose';
+import request from 'supertest';
+import app from '../../../src/app';
+import { Session, User } from '../../../src/infrastructure/database/mongoose/models';
+import { generateRefreshToken } from '../../../src/shared/helpers/jwt';
 
 // Test constants
 const TEST_USER_EMAIL = 'tokentest@example.com';
 const TEST_USER_PASSWORD = 'SecurePass123!';
-const SESSION_TIMEOUT_MS = 3600000; // 1 hour default
+const SESSION_TIMEOUT_MS = 3600000;
+void SESSION_TIMEOUT_MS; // 1 hour default
 
 describe('Token Refresh Race Conditions', () => {
     let testUser: any;
     let testSession: any;
     let refreshToken: string;
-    let cookieJar: string[] = [];
 
     beforeAll(async () => {
         // Connect to test database if not already connected
@@ -67,7 +66,6 @@ describe('Token Refresh Race Conditions', () => {
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         });
 
-        cookieJar = [];
     });
 
     afterEach(async () => {
@@ -275,11 +273,9 @@ describe('Token Refresh Race Conditions', () => {
 
         it('should invalidate previous refresh token after rotation', async () => {
             // First refresh
-            const response1 = await request(app)
+            await request(app)
                 .post('/api/v1/auth/refresh')
                 .set('Cookie', `refreshToken=${refreshToken}`);
-
-            const newToken = response1.body.data.refreshToken;
 
             // Try to use old token
             const response2 = await request(app)

@@ -74,7 +74,7 @@ export const mockVerifyPANSuccess = (pan: string, name: string = 'John Doe'): De
 /**
  * Mock PAN verification failure
  */
-export const mockVerifyPANFailure = (pan: string, reason: string = 'Invalid PAN number') => ({
+export const mockVerifyPANFailure = (_pan: string, reason: string = 'Invalid PAN number') => ({
     success: false,
     error: {
         code: 'INVALID_PAN',
@@ -109,7 +109,7 @@ export const mockVerifyAadhaarSuccess = (
  * Mock Aadhaar verification failure
  */
 export const mockVerifyAadhaarFailure = (
-    aadhaar: string,
+    _aadhaar: string,
     reason: string = 'Invalid Aadhaar number'
 ) => ({
     success: false,
@@ -142,7 +142,7 @@ export const mockVerifyGSTINSuccess = (
  * Mock GSTIN verification failure
  */
 export const mockVerifyGSTINFailure = (
-    gstin: string,
+    _gstin: string,
     reason: string = 'Invalid GSTIN'
 ) => ({
     success: false,
@@ -176,7 +176,7 @@ export const mockVerifyBankAccountSuccess = (
  * Mock Bank Account verification failure
  */
 export const mockVerifyBankAccountFailure = (
-    accountNumber: string,
+    _accountNumber: string,
     reason: string = 'Invalid bank account'
 ) => ({
     success: false,
@@ -193,7 +193,7 @@ export const createDeepVueMockClient = () => ({
     verifyPAN: jest.fn().mockImplementation((pan: string, name?: string) =>
         Promise.resolve(mockVerifyPANSuccess(pan, name))
     ),
-    verifyAadhaar: jest.fn().mockImplementation((aadhaar: string, otp?: string) =>
+    verifyAadhaar: jest.fn().mockImplementation((aadhaar: string, _otp?: string) =>
         Promise.resolve(mockVerifyAadhaarSuccess(aadhaar))
     ),
     verifyGSTIN: jest.fn().mockImplementation((gstin: string) =>

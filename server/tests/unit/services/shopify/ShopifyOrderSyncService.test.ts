@@ -1,6 +1,6 @@
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import ShopifyOrderSyncService from '../../../../src/core/application/services/shopify/shopify-order-sync.service';
-import { ShopifyStore, SyncLog, Order } from '../../../../src/infrastructure/database/mongoose/models';
+import { Order, ShopifyStore, SyncLog } from '../../../../src/infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../src/infrastructure/external/ecommerce/shopify/shopify.client';
 
 // Mock dependencies

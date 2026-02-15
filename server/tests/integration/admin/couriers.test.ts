@@ -1,10 +1,10 @@
-import request from 'supertest';
-import express from 'express';
-import mongoose from 'mongoose';
-import { connectTestDb, closeTestDb, clearTestDb } from '../../setup/testDatabase';
+import { CourierService, Integration } from '@/infrastructure/database/mongoose/models';
 import v1Routes from '@/presentation/http/routes/v1';
 import cookieParser from 'cookie-parser';
-import { CourierService, Integration } from '@/infrastructure/database/mongoose/models';
+import express from 'express';
+import mongoose from 'mongoose';
+import request from 'supertest';
+import { clearTestDb, closeTestDb, connectTestDb } from '../../setup/testDatabase';
 
 // Mock email service to prevent attempting to send emails during tests
 jest.mock('@/core/application/services/communication/email.service', () => ({
@@ -16,9 +16,7 @@ jest.mock('@/core/application/services/communication/email.service', () => ({
 
 describe('Admin Courier Management API', () => {
     let app: express.Express;
-    let adminToken: string;
     let companyId: string;
-    let userId: string;
 
     beforeAll(async () => {
         await connectTestDb();
@@ -42,7 +40,7 @@ describe('Admin Courier Management API', () => {
         companyId = new mongoose.Types.ObjectId().toString();
 
         // Create user
-        const user = await User.create({
+        await User.create({
             email: 'admin@shipcrowd.com',
             password: 'Password123!',
             name: 'Admin User',
@@ -51,8 +49,6 @@ describe('Admin Courier Management API', () => {
             isEmailVerified: true,
             companyId: companyId
         });
-        userId = user._id.toString();
-
         // Login
         const response = await request(app)
             .post('/api/v1/auth/login')

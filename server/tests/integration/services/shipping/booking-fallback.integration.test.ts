@@ -1,10 +1,10 @@
-import mongoose from 'mongoose';
+import ServiceLevelPricingMetricsService from '@/core/application/services/metrics/service-level-pricing-metrics.service';
 import BookFromQuoteService from '@/core/application/services/shipping/book-from-quote.service';
 import { ShipmentService } from '@/core/application/services/shipping/shipment.service';
-import ServiceLevelPricingMetricsService from '@/core/application/services/metrics/service-level-pricing-metrics.service';
 import { Order, QuoteSession } from '@/infrastructure/database/mongoose/models';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/errorCodes';
+import mongoose from 'mongoose';
 
 describe('Booking Fallback Integration', () => {
     const companyId = new mongoose.Types.ObjectId();

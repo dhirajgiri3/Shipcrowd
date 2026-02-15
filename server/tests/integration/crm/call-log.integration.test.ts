@@ -1,12 +1,12 @@
-import mongoose from 'mongoose';
-import request from 'supertest';
-import app from '@/app';
 import { generateAuthToken } from '@/../tests/setup/testHelpers';
+import app from '@/app';
+import CallLogService from '@/core/application/services/crm/communication/CallLogService';
 import CallLog from '@/infrastructure/database/mongoose/models/crm/communication/call-log.model';
 import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
-import CallLogService from '@/core/application/services/crm/communication/CallLogService';
 import User from '@/infrastructure/database/mongoose/models/iam/users/user.model';
 import Company from '@/infrastructure/database/mongoose/models/organization/core/company.model';
+import mongoose from 'mongoose';
+import request from 'supertest';
 
 describe('Call Log System - Integration Tests', () => {
     let company: any;
@@ -14,7 +14,6 @@ describe('Call Log System - Integration Tests', () => {
     let adminUser: any;
     let salesRep: any;
     let adminToken: string;
-    let salesRepToken: string;
 
     const testCompanyId = new mongoose.Types.ObjectId();
     const testAdminId = new mongoose.Types.ObjectId();
@@ -66,7 +65,6 @@ describe('Call Log System - Integration Tests', () => {
             isEmailVerified: true,
             kycStatus: { isComplete: true, lastUpdated: new Date() }
         });
-        salesRepToken = generateAuthToken(salesRepUser._id.toString(), 'staff');
 
         // Create Sales Representative Linked to Rep User
         salesRep = await SalesRepresentative.create({

@@ -11,9 +11,9 @@
  * - Validation functions
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { CourierReverseShipmentData, CourierShipmentData } from '@/infrastructure/external/couriers/base/courier.adapter';
 import { EkartMapper } from '@/infrastructure/external/couriers/ekart/ekart.mapper';
-import { CourierShipmentData, CourierReverseShipmentData } from '@/infrastructure/external/couriers/base/courier.adapter';
+import { describe, expect, it } from '@jest/globals';
 
 describe('EkartMapper', () => {
     describe('normalizePhone', () => {

@@ -2,8 +2,8 @@
  * DelhiveryMapper Unit Tests
  */
 
-import { DelhiveryMapper } from '../../../src/infrastructure/external/couriers/delhivery/delhivery.mapper';
 import { CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
+import { DelhiveryMapper } from '../../../src/infrastructure/external/couriers/delhivery/delhivery.mapper';
 
 describe('DelhiveryMapper', () => {
     describe('normalizePhone', () => {

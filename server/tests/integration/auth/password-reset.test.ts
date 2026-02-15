@@ -1,8 +1,7 @@
 import request from 'supertest';
 import app from '../../../src/app';
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import crypto from 'crypto';
 import { AuthTokenService } from '../../../src/core/application/services/auth/token.service';
+import { User } from '../../../src/infrastructure/database/mongoose/models';
 import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 // Helper to extract error message from response

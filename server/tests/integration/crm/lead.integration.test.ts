@@ -1,10 +1,10 @@
-import request from 'supertest';
 import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
 import Lead from '../../../src/infrastructure/database/mongoose/models/crm/leads/lead.model';
 import SalesRepresentative from '../../../src/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
-import Company from '../../../src/infrastructure/database/mongoose/models/organization/core/company.model';
 import User from '../../../src/infrastructure/database/mongoose/models/iam/users/user.model';
+import Company from '../../../src/infrastructure/database/mongoose/models/organization/core/company.model';
 import { generateAuthToken } from '../../setup/testHelpers';
 
 describe('Lead Management System - Integration Tests', () => {

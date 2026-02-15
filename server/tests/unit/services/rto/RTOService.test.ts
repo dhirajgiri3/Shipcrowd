@@ -5,9 +5,9 @@
  * QC, tracking, pickup, cancellation, and restock. Includes major flows and edge cases.
  */
 
-import RTOService from '../../../../src/core/application/services/rto/rto.service';
-import RTOAnalyticsService from '../../../../src/core/application/services/rto/rto-analytics.service';
 import mongoose from 'mongoose';
+import RTOAnalyticsService from '../../../../src/core/application/services/rto/rto-analytics.service';
+import RTOService from '../../../../src/core/application/services/rto/rto.service';
 import { AppError } from '../../../../src/shared/errors/app.error';
 
 // ---------------------------------------------------------------------------

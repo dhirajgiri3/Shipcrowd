@@ -32,8 +32,8 @@ jest.mock('../../../src/core/application/services/ndr/ndr-magic-link.service', (
     default: { generateMagicLink: jest.fn().mockReturnValue('https://example.com/ndr/magic-link') },
 }));
 
-import NDRCommunicationService from '../../../src/core/application/services/communication/ndr-communication.service';
 import mongoose from 'mongoose';
+import NDRCommunicationService from '../../../src/core/application/services/communication/ndr-communication.service';
 
 describe('NDR Communication Service', () => {
     beforeEach(() => {

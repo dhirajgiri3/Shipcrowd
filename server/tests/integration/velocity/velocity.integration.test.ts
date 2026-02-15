@@ -6,14 +6,13 @@
  * Coverage targets: 80%+
  */
 
-import mongoose from 'mongoose';
-import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
-import { CourierFactory } from '../../../src/core/application/services/courier/courier.factory';
-import { Integration } from '../../../src/infrastructure/database/mongoose/models';
-import { Warehouse } from '../../../src/infrastructure/database/mongoose/models';
-import { encryptData } from '../../../src/shared/utils/encryption';
 import axios from 'axios';
+import mongoose from 'mongoose';
+import { CourierFactory } from '../../../src/core/application/services/courier/courier.factory';
+import { Integration, Warehouse } from '../../../src/infrastructure/database/mongoose/models';
 import { CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
+import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
+import { encryptData } from '../../../src/shared/utils/encryption';
 
 // Mock axios for controlled API responses
 jest.mock('axios');
@@ -60,6 +59,7 @@ describe('Velocity Shipfast Integration', () => {
         country: 'India'
       }
     });
+void warehouse;
 
     // Create test integration with encrypted credentials
     const integration = await Integration.create({
@@ -79,6 +79,7 @@ describe('Velocity Shipfast Integration', () => {
         testWarehouseId: 'WHTEST123'
       }
     });
+void integration;
 
     // Setup axios mock defaults
     mockedAxios.create = jest.fn().mockReturnValue(mockedAxios);
@@ -170,6 +171,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockWarehouseResponse = {
         data: {
@@ -250,6 +252,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockShipmentResponse = {
         data: {
@@ -264,6 +267,7 @@ describe('Velocity Shipfast Integration', () => {
         .mockResolvedValueOnce(mockShipmentResponse);
 
       const result = await provider.createShipment(mockShipmentData);
+void result;
 
       // Warehouse creation endpoint should not be called
       expect(mockedAxios.post).toHaveBeenCalledTimes(1); // Only shipment (Auth skipped in mock)
@@ -322,6 +326,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockShipmentResponse = {
         data: {
@@ -364,6 +369,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockShipmentResponse = {
         data: {
@@ -421,6 +427,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       mockedAxios.post = jest.fn()
         .mockRejectedValueOnce({
@@ -442,6 +449,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockTrackingResponse = {
         data: {
@@ -496,6 +504,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockTrackingResponse = {
         data: {
@@ -523,6 +532,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockTrackingResponse = {
         data: {
@@ -564,6 +574,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockTrackingResponse = {
         data: {
@@ -593,6 +604,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockServiceabilityResponse = {
         data: {
@@ -618,6 +630,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       mockedAxios.post = jest.fn()
         .mockRejectedValueOnce({
@@ -638,6 +651,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockRatesResponse = {
         data: {
@@ -686,6 +700,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockRatesResponse = {
         data: {
@@ -747,6 +762,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       const mockSuccessResponse = {
         data: {
@@ -775,6 +791,7 @@ describe('Velocity Shipfast Integration', () => {
       const mockAuthResponse = {
         data: { token: 'test-token', expires_in: 86400 }
       };
+void mockAuthResponse;
 
       mockedAxios.post = jest.fn()
         .mockRejectedValueOnce({

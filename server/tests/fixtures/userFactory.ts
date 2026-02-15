@@ -4,15 +4,15 @@
  */
 import mongoose from 'mongoose';
 import {
-    randomEmail,
-    randomName,
-    randomPhone,
-    randomCompanyName,
-    randomAddress,
-    randomCity,
-    randomState,
-    randomPincode,
-    randomGstin,
+randomAddress,
+randomCity,
+randomCompanyName,
+randomEmail,
+randomGstin,
+randomName,
+randomPhone,
+randomPincode,
+randomState,
 } from '../helpers/randomData';
 
 // Import models lazily to avoid circular dependencies

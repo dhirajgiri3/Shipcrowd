@@ -1,7 +1,7 @@
+import crypto from 'crypto';
 import request from 'supertest';
 import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
-import crypto from 'crypto';
 import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 // Helper to extract error message from response

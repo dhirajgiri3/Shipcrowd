@@ -1,13 +1,10 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach, jest } from '@jest/globals';
-import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { afterAll, beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import crypto from 'crypto';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
 
 // Models
-import { WooCommerceStore } from '../../../src/infrastructure/database/mongoose/models';
-import { WooCommerceProductMapping } from '../../../src/infrastructure/database/mongoose/models';
-import { WooCommerceSyncLog } from '../../../src/infrastructure/database/mongoose/models';
-import { Order } from '../../../src/infrastructure/database/mongoose/models';
+import { Order, WooCommerceProductMapping, WooCommerceStore, WooCommerceSyncLog } from '../../../src/infrastructure/database/mongoose/models';
 
 // Mock WooCommerceClient
 import WooCommerceClient from '../../../src/infrastructure/external/ecommerce/woocommerce/woocommerce.client';
@@ -503,6 +500,7 @@ describe('WooCommerce Advanced Integration Flow', () => {
 
             // Simulate order.deleted webhook
             const deletePayload = { id: 10001 };
+void deletePayload;
 
             const order = await Order.findOne({ sourceId: '10001', companyId });
             if (order) {
@@ -639,6 +637,7 @@ describe('WooCommerce Advanced Integration Flow', () => {
 
             // Simulate product.deleted webhook
             const deletePayload = { id: 103 };
+void deletePayload;
 
             const existingMapping = await WooCommerceProductMapping.findOne({
                 woocommerceStoreId: storeId,
@@ -668,6 +667,7 @@ describe('WooCommerce Advanced Integration Flow', () => {
                 mappingType: 'MANUAL',
                 isActive: true,
             });
+void parentMapping;
 
             // Create variation mappings
             const variation1 = await WooCommerceProductMapping.create({
@@ -681,6 +681,7 @@ describe('WooCommerce Advanced Integration Flow', () => {
                 mappingType: 'MANUAL',
                 isActive: true,
             });
+void variation1;
 
             const variation2 = await WooCommerceProductMapping.create({
                 companyId,
@@ -693,6 +694,7 @@ describe('WooCommerce Advanced Integration Flow', () => {
                 mappingType: 'MANUAL',
                 isActive: true,
             });
+void variation2;
 
             // Verify all mappings
             const allMappings = await WooCommerceProductMapping.find({

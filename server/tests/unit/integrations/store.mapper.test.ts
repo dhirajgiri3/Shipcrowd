@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../src/core/mappers/store.mapper';
 
 describe('store.mapper', () => {

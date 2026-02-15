@@ -1,5 +1,5 @@
-import { isWalletAutoRechargeFeatureEnabled, WALLET_AUTO_RECHARGE_FLAG_KEY } from '@/core/application/services/wallet/wallet-feature-flags';
 import FeatureFlagService from '@/core/application/services/system/feature-flag.service';
+import { isWalletAutoRechargeFeatureEnabled, WALLET_AUTO_RECHARGE_FLAG_KEY } from '@/core/application/services/wallet/wallet-feature-flags';
 
 jest.mock('@/core/application/services/system/feature-flag.service', () => ({
     __esModule: true,

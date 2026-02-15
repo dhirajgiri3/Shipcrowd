@@ -58,10 +58,10 @@ jest.mock('../../../src/core/application/services/courier/status-mappings/status
     }
 }));
 
+import { Request } from 'express';
+import { StatusMapperService } from '../../../src/core/application/services/courier/status-mappings/status-mapper.service';
 import { VelocityWebhookHandler } from '../../../src/core/application/services/courier/webhooks/handlers/velocity-webhook-handler';
 import NDRDetectionService from '../../../src/core/application/services/ndr/ndr-detection.service';
-import { StatusMapperService } from '../../../src/core/application/services/courier/status-mappings/status-mapper.service';
-import { Request } from 'express';
 
 describe('NDR Webhook Integration Flow', () => {
     let velocityHandler: VelocityWebhookHandler;

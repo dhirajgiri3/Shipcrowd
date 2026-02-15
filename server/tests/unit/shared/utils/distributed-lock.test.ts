@@ -9,9 +9,9 @@
  * - Error handling
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { DistributedLock } from '../../../../src/shared/utils/distributed-lock';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type Redis from 'ioredis';
+import { DistributedLock } from '../../../../src/shared/utils/distributed-lock';
 
 describe('DistributedLock', () => {
     let lock: DistributedLock;

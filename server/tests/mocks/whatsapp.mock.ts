@@ -62,7 +62,7 @@ export const mockSendInteractiveMessage = jest.fn().mockImplementation((message:
 });
 
 export const mockSendNDRNotification = jest.fn().mockImplementation(
-    (orderId: string, customerPhone: string, ndrReason: string, actionUrl?: string) => {
+    (orderId: string, customerPhone: string, ndrReason: string, _actionUrl?: string) => {
         if (!orderId || !customerPhone || !ndrReason) {
             return Promise.reject(new Error('Missing NDR notification parameters'));
         }
@@ -109,7 +109,7 @@ export const mockGetMessageStatus = jest.fn().mockImplementation((messageId: str
 });
 
 export const mockSendMediaMessage = jest.fn().mockImplementation(
-    (to: string, mediaUrl: string, caption?: string, type: 'image' | 'document' | 'video' = 'image') => {
+    (to: string, mediaUrl: string, _caption?: string, _type: 'image' | 'document' | 'video' = 'image') => {
         if (!to || !mediaUrl) {
             return Promise.reject(new Error('Invalid media message parameters'));
         }
@@ -209,7 +209,7 @@ export const configureWhatsAppFailure = (
  */
 export const configureWhatsAppRetry = (failCount: number = 2) => {
     let callCount = 0;
-    const implementation = (...args: any[]) => {
+    const implementation = (..._args: any[]) => {
         callCount++;
         if (callCount <= failCount) {
             return Promise.reject(new Error('Temporary failure'));

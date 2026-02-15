@@ -1,18 +1,17 @@
-import request from 'supertest';
-import mongoose from 'mongoose';
 import app from '@/app';
 import Dispute from '@/infrastructure/database/mongoose/models/crm/disputes/dispute.model';
 import SupportTicket from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
+import Role from '@/infrastructure/database/mongoose/models/iam/role.model';
 import User from '@/infrastructure/database/mongoose/models/iam/users/user.model';
 import Company from '@/infrastructure/database/mongoose/models/organization/core/company.model';
-import Role from '@/infrastructure/database/mongoose/models/iam/role.model';
+import mongoose from 'mongoose';
+import request from 'supertest';
 import { generateAuthToken } from '../../setup/testHelpers';
 
 describe('Dispute Integration Tests', () => {
   let authToken: string;
   let userId: string;
   let companyId: string;
-  let ticketId: string;
 
   beforeEach(async () => {
     // Clear collections
@@ -55,7 +54,7 @@ describe('Dispute Integration Tests', () => {
       isSystem: true
     });
 
-    const ownerRole = await Role.create({
+    await Role.create({
       name: 'owner',
       scope: 'company',
       permissions: permissions,
@@ -86,7 +85,7 @@ describe('Dispute Integration Tests', () => {
     authToken = generateAuthToken(userId, 'admin');
 
     // Create test ticket
-    const ticket = await SupportTicket.create({
+    await SupportTicket.create({
       ticketId: 'TKT-001',
       companyId,
       userId,
@@ -97,7 +96,6 @@ describe('Dispute Integration Tests', () => {
       description: 'Test ticket for dispute creation',
       slaBreached: false,
     });
-    ticketId = (ticket as any)._id.toString();
   });
 
   afterEach(async () => {

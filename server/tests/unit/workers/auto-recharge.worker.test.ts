@@ -36,11 +36,11 @@ jest.mock('@/shared/logger/winston.logger', () => ({
     error: jest.fn(),
 }));
 
-import { autoRechargeWorker } from '@/workers/finance/auto-recharge.worker';
-import { Company } from '@/infrastructure/database/mongoose/models';
-import WalletService from '@/core/application/services/wallet/wallet.service';
-import { isWalletAutoRechargeFeatureEnabled } from '@/core/application/services/wallet/wallet-feature-flags';
 import autoRechargeMetrics from '@/core/application/services/metrics/auto-recharge-metrics.service';
+import { isWalletAutoRechargeFeatureEnabled } from '@/core/application/services/wallet/wallet-feature-flags';
+import WalletService from '@/core/application/services/wallet/wallet.service';
+import { Company } from '@/infrastructure/database/mongoose/models';
+import { autoRechargeWorker } from '@/workers/finance/auto-recharge.worker';
 
 describe('autoRechargeWorker feature flag behavior', () => {
     beforeEach(() => {

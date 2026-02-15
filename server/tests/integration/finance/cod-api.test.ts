@@ -2,25 +2,24 @@
 // Mock express-rate-limit to bypass 429 Too Many Requests during tests
 jest.mock('express-rate-limit', () => ({
     __esModule: true,
-    default: jest.fn(() => (req: any, res: any, next: any) => next()),
-    rateLimit: jest.fn(() => (req: any, res: any, next: any) => next()),
+    default: jest.fn(() => (_req: any, _res: any, next: any) => next()),
+    rateLimit: jest.fn(() => (_req: any, _res: any, next: any) => next()),
 }));
 
-import request from 'supertest';
-import express from 'express';
-import mongoose from 'mongoose';
-import { connectTestDb, closeTestDb, clearTestDb } from '../../setup/testDatabase';
+import { Shipment } from '@/infrastructure/database/mongoose/models';
+import CODDiscrepancy from '@/infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
+import EarlyCODEnrollment from '@/infrastructure/database/mongoose/models/finance/early-cod-enrollment.model';
 import v1Routes from '@/presentation/http/routes/v1';
 import cookieParser from 'cookie-parser';
-import { Shipment } from '@/infrastructure/database/mongoose/models';
-import EarlyCODEnrollment from '@/infrastructure/database/mongoose/models/finance/early-cod-enrollment.model';
-import CODDiscrepancy from '@/infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
+import express from 'express';
+import mongoose from 'mongoose';
+import request from 'supertest';
+import { clearTestDb, closeTestDb, connectTestDb } from '../../setup/testDatabase';
 
 describe('COD Finance API Integration (E2E)', () => {
     let app: express.Express;
     let agent: any;
     let companyId: mongoose.Types.ObjectId;
-    let userId: mongoose.Types.ObjectId;
 
     beforeAll(async () => {
         await connectTestDb();
@@ -51,7 +50,7 @@ describe('COD Finance API Integration (E2E)', () => {
         });
         companyId = company._id;
 
-        const user = await User.create({
+        await User.create({
             email: 'codtest@example.com',
             password: 'Test1234!',
             name: 'Test User',
@@ -60,8 +59,6 @@ describe('COD Finance API Integration (E2E)', () => {
             isActive: true,
             isEmailVerified: true
         });
-        userId = user._id;
-
         // Login
         await agent
             .post('/api/v1/auth/login')

@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 import {
-  computeFingerprint,
-  normalizeAccount,
-  normalizeIfsc,
-  maskAccount,
+computeFingerprint,
+maskAccount,
+normalizeAccount,
+normalizeIfsc,
 } from '../../../src/infrastructure/database/mongoose/models/finance/payouts/seller-bank-account.model';
 
 describe('SellerBankAccount utilities', () => {

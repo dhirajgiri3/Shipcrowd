@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
 import connectDB from '@/config/database';
-import { RazorpayPayoutProvider } from '@/infrastructure/payment/razorpay/razorpay-payout.provider';
 import { Company } from '@/infrastructure/database/mongoose/models';
+import { RazorpayPayoutProvider } from '@/infrastructure/payment/razorpay/razorpay-payout.provider';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 
 describe('Razorpay Integration - Production Tests', () => {
     let testCompanyId: string;

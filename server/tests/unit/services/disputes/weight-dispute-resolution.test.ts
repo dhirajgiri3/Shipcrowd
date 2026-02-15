@@ -1,10 +1,10 @@
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import WeightDisputeResolutionService from '../../../../src/core/application/services/disputes/weight-dispute-resolution.service';
-import WeightDispute from '../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
-import Shipment from '../../../../src/infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import WalletService from '../../../../src/core/application/services/wallet/wallet.service';
-import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../../../../src/shared/errors/app.error';
+import Shipment from '../../../../src/infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
+import WeightDispute from '../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
+import { AppError, AuthorizationError, NotFoundError, ValidationError } from '../../../../src/shared/errors/app.error';
 
 // Mock models and services
 jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model');
@@ -13,8 +13,6 @@ jest.mock('../../../../src/core/application/services/wallet/wallet.service');
 jest.mock('../../../../src/shared/logger/winston.logger');
 
 // Type helpers for mocks
-type MockedFunction<T extends (...args: any[]) => any> = jest.MockedFunction<T>;
-
 describe('WeightDisputeResolutionService', () => {
     const mockDisputeId = '654321654321654321654321';
     const mockCompanyId = '123456123456123456123456';

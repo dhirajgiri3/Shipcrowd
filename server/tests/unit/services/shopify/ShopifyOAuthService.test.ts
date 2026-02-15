@@ -1,9 +1,8 @@
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
+import crypto from 'crypto';
 import ShopifyOAuthService from '../../../../src/core/application/services/shopify/shopify-oauth.service';
 import { ShopifyStore } from '../../../../src/infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../src/infrastructure/external/ecommerce/shopify/shopify.client';
-import { AppError } from '../../../../src/shared/errors/app.error';
-import crypto from 'crypto';
 
 // Mock dependencies
 jest.mock('../../../../src/infrastructure/database/mongoose/models/marketplaces/shopify/shopify-store.model');
@@ -203,6 +202,7 @@ describe('ShopifyOAuthService', () => {
         accessToken: mockAccessToken,
         companyId: mockCompanyId,
       });
+void result;
 
       expect(ShopifyStore.findOne).toHaveBeenCalledWith({
         companyId: mockCompanyId,

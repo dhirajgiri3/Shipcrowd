@@ -83,8 +83,8 @@ jest.mock('../../../../src/shared/logger/winston.logger', () => ({
 }));
 
 // Import AFTER mocks
-import ReportBuilderService from '../../../../src/core/application/services/analytics/report-builder.service';
 import OrderAnalyticsService from '../../../../src/core/application/services/analytics/order-analytics.service';
+import ReportBuilderService from '../../../../src/core/application/services/analytics/report-builder.service';
 import { ReportConfig } from '../../../../src/infrastructure/database/mongoose/models';
 
 describe('ReportBuilderService', () => {

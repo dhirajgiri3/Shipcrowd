@@ -41,13 +41,13 @@ jest.mock('../../../../src/core/application/services/rto/rto.service', () => ({
     },
 }));
 
-import SellerAnalyticsService from '../../../../src/core/application/services/analytics/seller-analytics.service';
-import { Order, Shipment } from '../../../../src/infrastructure/database/mongoose/models';
 import OrderAnalyticsService from '../../../../src/core/application/services/analytics/order-analytics.service';
+import SellerAnalyticsService from '../../../../src/core/application/services/analytics/seller-analytics.service';
 import ShipmentAnalyticsService from '../../../../src/core/application/services/analytics/shipment-analytics.service';
-import NDRAnalyticsService from '../../../../src/core/application/services/ndr/ndr-analytics.service';
 import { CODAnalyticsService } from '../../../../src/core/application/services/finance/cod-analytics.service';
+import NDRAnalyticsService from '../../../../src/core/application/services/ndr/ndr-analytics.service';
 import RTOService from '../../../../src/core/application/services/rto/rto.service';
+import { Shipment } from '../../../../src/infrastructure/database/mongoose/models';
 
 describe('SellerAnalyticsService', () => {
     const companyId = '507f1f77bcf86cd799439011';

@@ -5,13 +5,11 @@
  * Coverage targets: 90%+
  */
 
-import request from 'supertest';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
-import { Shipment } from '../../../src/infrastructure/database/mongoose/models';
-import { Order } from '../../../src/infrastructure/database/mongoose/models';
-import { WebhookDeadLetter } from '../../../src/infrastructure/database/mongoose/models';
+import { Shipment, WebhookDeadLetter } from '../../../src/infrastructure/database/mongoose/models';
 import { VelocityWebhookPayload } from '../../../src/infrastructure/external/couriers/velocity/velocity-webhook.types';
 
 const WEBHOOK_SECRET = process.env.VELOCITY_WEBHOOK_SECRET || 'default-webhook-secret-change-me';
@@ -19,7 +17,7 @@ const WEBHOOK_SECRET = process.env.VELOCITY_WEBHOOK_SECRET || 'default-webhook-s
 /**
  * Generate webhook signature for testing
  */
-function generateWebhookSignature(payload: string, timestamp: string): string {
+function generateWebhookSignature(payload: string, _timestamp: string): string {
   return crypto
     .createHmac('sha256', WEBHOOK_SECRET)
     .update(payload)

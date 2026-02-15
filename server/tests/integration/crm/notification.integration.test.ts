@@ -1,13 +1,12 @@
-import mongoose from 'mongoose';
-import NotificationTemplate from '@/infrastructure/database/mongoose/models/crm/communication/notification-template.model';
 import { NotificationService } from '@/core/application/services/crm/communication/notification.service';
+import NotificationTemplate from '@/infrastructure/database/mongoose/models/crm/communication/notification-template.model';
 import User from '@/infrastructure/database/mongoose/models/iam/users/user.model';
 import Company from '@/infrastructure/database/mongoose/models/organization/core/company.model';
+import mongoose from 'mongoose';
 
 describe('Notification Service Tests', () => {
   let notificationService: NotificationService;
   let companyId: string;
-  let userId: string;
 
   beforeEach(async () => {
     notificationService = new NotificationService();
@@ -27,7 +26,7 @@ describe('Notification Service Tests', () => {
     companyId = (company as any)._id.toString();
 
     // Create test user
-    const user = await User.create({
+    await User.create({
       name: 'Test User',
       email: 'test@example.com',
       password: 'hashedPassword123',
@@ -36,7 +35,6 @@ describe('Notification Service Tests', () => {
       teamRole: 'manager',
       isActive: true,
     });
-    userId = (user as any)._id.toString();
   });
 
   afterEach(async () => {
@@ -405,7 +403,7 @@ describe('Notification Service Tests', () => {
 
   describe('Template Variable Interpolation', () => {
     it('should interpolate template variables correctly', async () => {
-      const template = await NotificationTemplate.create({
+      await NotificationTemplate.create({
         name: 'Complex Template',
         channel: 'email',
         trigger: 'ticket_created',
@@ -440,7 +438,7 @@ describe('Notification Service Tests', () => {
     });
 
     it('should handle missing variables gracefully', async () => {
-      const template = await NotificationTemplate.create({
+      await NotificationTemplate.create({
         name: 'Partial Template',
         channel: 'sms',
         trigger: 'callback_pending',

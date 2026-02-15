@@ -2,8 +2,8 @@
  * Auth Service Unit Tests
  * Example unit test demonstrating testing patterns
  */
-import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
+import mongoose from 'mongoose';
 
 // Import models - these will be registered after connection
 import { User } from '../../../../src/infrastructure/database/mongoose/models';
@@ -114,7 +114,9 @@ describe('Authentication Service', () => {
 
         it('should find users by role', async () => {
             const admin1 = await createTestUser({ role: 'admin', email: 'roletest-admin1@test.com' });
+void admin1;
             const admin2 = await createTestUser({ role: 'admin', email: 'roletest-admin2@test.com' });
+void admin2;
             await createTestUser({ role: 'seller', email: 'roletest-seller1@test.com' });
 
             const admins = await User.find({ role: 'admin' });

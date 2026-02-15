@@ -1,8 +1,8 @@
-import * as walletController from '@/presentation/http/controllers/finance/wallet.controller';
 import WalletService from '@/core/application/services/wallet/wallet.service';
+import * as walletController from '@/presentation/http/controllers/finance/wallet.controller';
+import { AppError } from '@/shared/errors/app.error';
 import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import { sendSuccess } from '@/shared/utils/responseHelper';
-import { AppError } from '@/shared/errors/app.error';
 
 jest.mock('@/core/application/services/wallet/wallet.service', () => ({
     __esModule: true,

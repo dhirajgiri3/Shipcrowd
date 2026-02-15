@@ -1,18 +1,18 @@
-import mongoose from 'mongoose';
-import { connectTestDb, closeTestDb, clearTestDb } from '../../setup/testDatabase';
-import {
-    Company,
-    Order,
-    Shipment,
-    WalletTransaction,
-    Warehouse,
-} from '@/infrastructure/database/mongoose/models';
-import { OrderService } from '@/core/application/services/shipping/order.service';
-import { ShipmentService } from '@/core/application/services/shipping/shipment.service';
 import AddressValidationService from '@/core/application/services/logistics/address-validation.service';
 import QuoteEngineService from '@/core/application/services/pricing/quote-engine.service';
+import { OrderService } from '@/core/application/services/shipping/order.service';
+import { ShipmentService } from '@/core/application/services/shipping/shipment.service';
+import {
+Company,
+Order,
+Shipment,
+WalletTransaction,
+Warehouse,
+} from '@/infrastructure/database/mongoose/models';
 import { AppError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/errorCodes';
+import mongoose from 'mongoose';
+import { clearTestDb, closeTestDb, connectTestDb } from '../../setup/testDatabase';
 
 describe('Order + Shipment Hardening Integration', () => {
     const userId = new mongoose.Types.ObjectId().toString();

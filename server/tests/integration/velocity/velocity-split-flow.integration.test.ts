@@ -8,9 +8,9 @@
  */
 
 import mongoose from 'mongoose';
-import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
-import { CourierShipmentData, CourierRateRequest } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
 import Warehouse from '../../../src/infrastructure/database/mongoose/models/logistics/warehouse/structure/warehouse.model';
+import { CourierRateRequest, CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
+import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
 import { setupTestDatabase, teardownTestDatabase } from '../../setup/testDatabase';
 
 describe('Velocity Split Flow Integration Tests', () => {

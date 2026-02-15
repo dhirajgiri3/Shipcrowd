@@ -1,4 +1,4 @@
-import { isSLABreached, getRemainingTime, formatRemainingTime, getSLAStatus, SLA_THRESHOLDS } from '@/core/application/services/crm/support/sla.utils';
+import { formatRemainingTime, getRemainingTime, getSLAStatus, isSLABreached, SLA_THRESHOLDS } from '@/core/application/services/crm/support/sla.utils';
 
 describe('SLA Utilities', () => {
   describe('isSLABreached', () => {

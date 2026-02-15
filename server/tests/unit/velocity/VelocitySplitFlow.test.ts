@@ -9,11 +9,11 @@
  */
 
 import mongoose from 'mongoose';
-import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
-import { CourierShipmentData, CourierReverseShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
 import Warehouse from '../../../src/infrastructure/database/mongoose/models/logistics/warehouse/structure/warehouse.model';
-import { VelocityError } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
+import { CourierReverseShipmentData, CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
 import { VELOCITY_CARRIER_IDS } from '../../../src/infrastructure/external/couriers/velocity/velocity-carrier-ids';
+import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
+import { VelocityError } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
 
 // Mock dependencies
 jest.mock('../../../src/infrastructure/external/couriers/velocity/velocity.auth');

@@ -4,8 +4,8 @@
  * Tests distributed cache invalidation across multiple app instances
  */
 
-import { PubSubService } from '../../../../src/infrastructure/redis/pubsub.service';
 import { CacheRepository } from '../../../../src/infrastructure/redis/cache.repository';
+import { PubSubService } from '../../../../src/infrastructure/redis/pubsub.service';
 import { RedisManager } from '../../../../src/infrastructure/redis/redis.manager';
 
 describe('PubSubService', () => {

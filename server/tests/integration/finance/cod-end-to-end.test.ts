@@ -1,18 +1,17 @@
 import mongoose from 'mongoose';
+import { CODRemittanceService } from '../../../src/core/application/services/finance/cod-remittance.service';
 import { Shipment } from '../../../src/infrastructure/database/mongoose/models';
-import EarlyCODEnrollment from '../../../src/infrastructure/database/mongoose/models/finance/early-cod-enrollment.model';
 import CODDiscrepancy from '../../../src/infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
+import EarlyCODEnrollment from '../../../src/infrastructure/database/mongoose/models/finance/early-cod-enrollment.model';
 import CODRemittance from '../../../src/infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 // Dynamic imports for services to handle potential circular deps in test env if any
 const CODReconciliationService = require('../../../src/core/application/services/finance/cod-reconciliation.service').CODReconciliationService;
 const CODDiscrepancyService = require('../../../src/core/application/services/finance/cod-discrepancy.service').CODDiscrepancyService;
 const EarlyCODService = require('../../../src/core/application/services/finance/early-cod.service').EarlyCODService;
-import { CODRemittanceService } from '../../../src/core/application/services/finance/cod-remittance.service';
 
 describe('COD Remittance End-to-End Flow', () => {
     let companyId: mongoose.Types.ObjectId;
     let orderId: mongoose.Types.ObjectId;
-    let session: mongoose.ClientSession;
 
     beforeAll(async () => {
         // Connect to test DB provided by global setup or strictly local
@@ -281,7 +280,7 @@ describe('COD Remittance End-to-End Flow', () => {
         const today = new Date(now);
 
         // 2. Create Eligible Shipment (Delivered 3 days ago)
-        const eligibleShipment = await Shipment.create({
+        await Shipment.create({
             trackingNumber: 'AWB-ELIGIBLE',
             companyId,
             orderId: new mongoose.Types.ObjectId(),
@@ -302,7 +301,7 @@ describe('COD Remittance End-to-End Flow', () => {
         });
 
         // 3. Create Ineligible Shipment (Delivered Today)
-        const ineligibleShipment = await Shipment.create({
+        await Shipment.create({
             trackingNumber: 'AWB-INELIGIBLE',
             companyId,
             orderId: new mongoose.Types.ObjectId(),

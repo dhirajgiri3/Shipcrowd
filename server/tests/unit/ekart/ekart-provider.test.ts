@@ -7,8 +7,8 @@
  * - Label generation (PDF and JSON formats)
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { EkartProvider } from '@/infrastructure/external/couriers/ekart/ekart.provider';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import mongoose from 'mongoose';
 
 // Mock dependencies

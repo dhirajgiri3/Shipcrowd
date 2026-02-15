@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
 import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
 import SupportTicket from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
+import mongoose from 'mongoose';
 
 describe('Sales Representative System - Integration Tests', () => {
     const testCompanyId = new mongoose.Types.ObjectId();
@@ -79,7 +79,6 @@ describe('Sales Representative System - Integration Tests', () => {
             await SalesRepresentative.create(repData);
 
             // Try to create duplicate - should succeed (MongoDB doesn't enforce unique on create, only on find)
-            const newUser = new mongoose.Types.ObjectId();
             const duplicate = await SalesRepresentative.findOne({
                 company: testCompanyId,
                 employeeId,

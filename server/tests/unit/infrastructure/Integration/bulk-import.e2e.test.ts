@@ -1,25 +1,23 @@
-import request from 'supertest';
-import express from 'express';
-import multer from 'multer';
-import { Company, Order } from '@/infrastructure/database/mongoose/models';
 import connectDB from '@/config/database';
-import mongoose from 'mongoose';
+import { Company, Order } from '@/infrastructure/database/mongoose/models';
 import orderRoutes from '@/presentation/http/routes/v1/shipping/order.routes';
-import { AccessTier } from '@/core/domain/types/access-tier';
+import express from 'express';
+import mongoose from 'mongoose';
+import request from 'supertest';
 
 // Mock dependencies
 jest.mock('@/middleware/auth/auth', () => ({
-    authenticate: (req: any, res: any, next: any) => {
+    authenticate: (req: any, _res: any, next: any) => {
         req.user = { userId: 'test-user', role: 'seller' };
         req.companyId = 'test-company-id';
         next();
     },
-    csrfProtection: (req: any, res: any, next: any) => next(),
+    csrfProtection: (_req: any, _res: any, next: any) => next(),
 }));
 
 jest.mock('@/middleware/index', () => ({
-    requireCompleteCompany: (req: any, res: any, next: any) => next(),
-    requireAccess: () => (req: any, res: any, next: any) => next(),
+    requireCompleteCompany: (_req: any, _res: any, next: any) => next(),
+    requireAccess: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 const app = express();
@@ -46,7 +44,7 @@ describe('Bulk Import E2E - Backend API', () => {
         testCompanyId = company._id.toString();
 
         // Mock request.companyId middleware injection
-        jest.spyOn(require('@/middleware/auth/auth'), 'authenticate').mockImplementation((req: any, res: any, next: any) => {
+        jest.spyOn(require('@/middleware/auth/auth'), 'authenticate').mockImplementation((req: any, _res: any, next: any) => {
             req.companyId = testCompanyId;
             req.user = { userId: 'test-user', role: 'seller' };
             next();

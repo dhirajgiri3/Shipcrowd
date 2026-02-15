@@ -1,9 +1,7 @@
 import request from 'supertest';
 import app from '../../../src/app';
 
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import { Session } from '../../../src/infrastructure/database/mongoose/models';
-import mongoose from 'mongoose';
+import { Session, User } from '../../../src/infrastructure/database/mongoose/models';
 import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 // Helper to extract error message from response
@@ -418,6 +416,7 @@ describe('Password Change Flow', () => {
 
         it('should update lastPasswordChange timestamp', async () => {
             const initialUser = await User.findById(testUser._id);
+void initialUser;
             // const initialTimestamp = initialUser!.security.lastPasswordChange; (Field removed)
 
             // Wait a second
@@ -452,8 +451,6 @@ describe('Password Change Flow', () => {
                 .set('Cookie', authCookies)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
-
-            const user = await User.findById(testUser._id);
 
             // Verify security log exists (if implemented)
             // if (user!.security.loginAttempts) {

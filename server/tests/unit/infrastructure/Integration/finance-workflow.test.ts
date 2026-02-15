@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
 import connectDB from '@/config/database';
-import WalletService from '@/core/application/services/wallet/wallet.service';
 import CODRemittanceService from '@/core/application/services/finance/cod-remittance.service';
+import WalletService from '@/core/application/services/wallet/wallet.service';
 import { Company, Order, Shipment, WalletTransaction } from '@/infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
 
 describe('Finance Workflow E2E - Production Tests', () => {
     let testCompanyId: string;
@@ -135,7 +135,7 @@ describe('Finance Workflow E2E - Production Tests', () => {
             const deliveredDate = new Date();
             deliveredDate.setDate(deliveredDate.getDate() - 1);
 
-            const shipment = await Shipment.create({
+            await Shipment.create({
                 trackingNumber: `AWB_${Date.now()}`,
                 orderId: order._id,
                 companyId: testCompanyId,
@@ -202,7 +202,7 @@ describe('Finance Workflow E2E - Production Tests', () => {
                 source: 'manual',
             });
 
-            const shipment = await Shipment.create({
+            await Shipment.create({
                 trackingNumber: `AWB_${Date.now()}`,
                 orderId: order._id,
                 companyId: testCompanyId,

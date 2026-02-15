@@ -4,13 +4,14 @@
  */
 import mongoose from 'mongoose';
 import {
-    randomString,
-    randomNumeric,
+randomNumeric,
+randomString,
 } from '../helpers/randomData';
 
 // Import models lazily
 const getPickListModel = () => mongoose.model('PickList');
 const getOrderModel = () => mongoose.model('Order');
+void getOrderModel;
 
 export interface CreatePickListOptions {
     warehouseId?: string;

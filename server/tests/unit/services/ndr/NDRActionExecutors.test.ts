@@ -2,12 +2,12 @@
  * NDRActionExecutors Unit Tests
  * Tests for all NDR action execution methods
  */
+import mongoose from 'mongoose';
 import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/ndr-action-executors';
-import ExotelClient from '../../../../src/infrastructure/external/communication/exotel/exotel.client';
-import WhatsAppService from '../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service';
 import NDRMagicLinkService from '../../../../src/core/application/services/ndr/ndr-magic-link.service';
 import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
-import mongoose from 'mongoose';
+import ExotelClient from '../../../../src/infrastructure/external/communication/exotel/exotel.client';
+import WhatsAppService from '../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service';
 
 jest.mock('../../../../src/infrastructure/external/communication/exotel/exotel.client', () => {
     return require('../../../mocks/exotel.mock');
@@ -60,8 +60,8 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models/index', () =>
 jest.mock('../../../../src/core/application/services/courier/courier.factory');
 jest.mock('../../../../src/core/application/services/rto/rto.service');
 
-import RTOService from '../../../../src/core/application/services/rto/rto.service';
 import { CourierFactory } from '../../../../src/core/application/services/courier/courier.factory';
+import RTOService from '../../../../src/core/application/services/rto/rto.service';
 
 
 

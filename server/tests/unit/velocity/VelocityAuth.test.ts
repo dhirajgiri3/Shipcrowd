@@ -5,11 +5,11 @@
  * Coverage targets: 85%+
  */
 
-import mongoose from 'mongoose';
-import { VelocityAuth } from '../../../src/infrastructure/external/couriers/velocity/velocity.auth';
-import Integration from '../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model';
-import { encryptData, decryptData } from '../../../src/shared/utils/encryption';
 import axios from 'axios';
+import mongoose from 'mongoose';
+import Integration from '../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model';
+import { VelocityAuth } from '../../../src/infrastructure/external/couriers/velocity/velocity.auth';
+import { decryptData, encryptData } from '../../../src/shared/utils/encryption';
 
 // Mock axios
 jest.mock('axios');
@@ -233,8 +233,10 @@ describe('VelocityAuth', () => {
       MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
 
       const beforeTime = Date.now();
+void beforeTime;
       await auth.authenticate();
       const afterTime = Date.now();
+void afterTime;
 
       expect((mockIntegration as any).metadata.tokenExpiresAt).toBeDefined();
       expect((mockIntegration as any).save).toHaveBeenCalled();

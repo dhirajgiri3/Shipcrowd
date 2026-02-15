@@ -1,7 +1,7 @@
-import { requireAccess } from '../../../src/presentation/http/middleware/auth/unified-access';
+import { NextFunction, Request, Response } from 'express';
 import { AccessTier } from '../../../src/core/domain/types/access-tier';
-import { Request, Response, NextFunction } from 'express';
 import { KYCState } from '../../../src/core/domain/types/kyc-state';
+import { requireAccess } from '../../../src/presentation/http/middleware/auth/unified-access';
 
 // 1. Mock External Dependencies (Access Tier)
 const mockDetermineUserTier = jest.fn();

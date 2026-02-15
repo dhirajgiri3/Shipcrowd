@@ -1,13 +1,10 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach, jest } from '@jest/globals';
-import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { afterAll, beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import crypto from 'crypto';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
 
 // Models
-import { ShopifyStore } from '../../../src/infrastructure/database/mongoose/models';
-import { ShopifyProductMapping } from '../../../src/infrastructure/database/mongoose/models';
-import { SyncLog } from '../../../src/infrastructure/database/mongoose/models';
-import { Order } from '../../../src/infrastructure/database/mongoose/models';
+import { Order, ShopifyProductMapping, ShopifyStore, SyncLog } from '../../../src/infrastructure/database/mongoose/models';
 
 // Mock ShopifyClient - but preserve static methods
 import ShopifyClient from '../../../src/infrastructure/external/ecommerce/shopify/shopify.client';
@@ -424,6 +421,7 @@ describe('Shopify Advanced Integration Flow', () => {
                 totals: { subtotal: 50, tax: 0, shipping: 0, discount: 0, total: 50 },
                 statusHistory: [{ status: 'PENDING', timestamp: new Date() }],
             });
+void order;
 
             // Simulate orders/updated webhook
             const updatedPayload = {
@@ -678,6 +676,7 @@ describe('Shopify Advanced Integration Flow', () => {
             const uninstallPayload = {
                 domain: TEST_SHOP_DOMAIN,
             };
+void uninstallPayload;
 
             // Process uninstall
             const storeToDeactivate = await ShopifyStore.findById(storeId);

@@ -18,13 +18,13 @@
  * - Retry logic
  */
 
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import mongoose from 'mongoose';
-import { DelhiveryProvider } from '../../../src/infrastructure/external/couriers/delhivery/delhivery.provider';
-import { DelhiveryMapper } from '../../../src/infrastructure/external/couriers/delhivery/delhivery.mapper';
-import { StatusMapperService } from '../../../src/core/application/services/courier/status-mappings/status-mapper.service';
 import { DELHIVERY_STATUS_MAPPINGS } from '../../../src/core/application/services/courier/status-mappings/delhivery-status-mappings';
-import { CourierShipmentData, CourierReverseShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
+import { StatusMapperService } from '../../../src/core/application/services/courier/status-mappings/status-mapper.service';
+import { CourierReverseShipmentData, CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
+import { DelhiveryMapper } from '../../../src/infrastructure/external/couriers/delhivery/delhivery.mapper';
+import { DelhiveryProvider } from '../../../src/infrastructure/external/couriers/delhivery/delhivery.provider';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;

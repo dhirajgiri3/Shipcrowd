@@ -1,7 +1,7 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { RiskScoringService } from '../../../../src/core/application/services/risk/risk-scoring.service';
 import AddressValidationService from '../../../../src/core/application/services/validation/address-validation.service';
 import PhoneVerificationService from '../../../../src/core/application/services/validation/phone-verification.service';
-import { RiskScoringService } from '../../../../src/core/application/services/risk/risk-scoring.service';
 // Note: Dependencies are mocked below
 
 // Mock PincodeLookupService
@@ -38,8 +38,8 @@ jest.mock('../../../../src/shared/logger/winston.logger', () => ({
 }));
 
 import PincodeLookupService from '../../../../src/core/application/services/logistics/pincode-lookup.service';
-import CacheService from '../../../../src/infrastructure/utilities/cache.service';
 import CODVerificationService from '../../../../src/core/application/services/payment/cod-verification.service';
+import CacheService from '../../../../src/infrastructure/utilities/cache.service';
 
 
 describe('Prevention Layer', () => {

@@ -2,8 +2,8 @@
  * Test Database Utilities
  * Methods for managing the test database state
  */
-import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
 
 let mongoServer: MongoMemoryServer | null = null;
 

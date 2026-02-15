@@ -1,11 +1,10 @@
 import request from 'supertest';
 import app from '../../../src/app';
 
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import mongoose from 'mongoose';
-import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
-import { sendVerificationEmail } from '../../../src/core/application/services/communication/email.service';
 import { AuthTokenService } from '../../../src/core/application/services/auth/token.service';
+import { sendVerificationEmail } from '../../../src/core/application/services/communication/email.service';
+import { User } from '../../../src/infrastructure/database/mongoose/models';
+import { createRateLimitIdentity, withRateLimitHeaders } from '../../setup/rateLimitTestUtils';
 
 jest.mock('../../../src/core/application/services/communication/email.service', () => ({
     sendVerificationEmail: jest.fn().mockResolvedValue(true),
@@ -479,7 +478,6 @@ describe('Email Change Flow', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
-            const user = await User.findById(testUser._id);
             const token = mockedSendVerificationEmail.mock.calls.at(-1)?.[2] as string;
 
             await request(app)

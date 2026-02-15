@@ -1,7 +1,7 @@
-import mongoose from 'mongoose';
 import connectDB from '@/config/database';
 import WalletService from '@/core/application/services/wallet/wallet.service';
 import { Company } from '@/infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
 
 describe('Wallet Service - Production Tests', () => {
     let testCompanyId: string;
@@ -177,6 +177,7 @@ describe('Wallet Service - Production Tests', () => {
                 { 'wallet.balance': smallBalance },
                 { new: true }
             );
+void company;
 
             const promises = Array(20)
                 .fill(null)
@@ -192,6 +193,7 @@ describe('Wallet Service - Production Tests', () => {
                 );
 
             const results = await Promise.all(promises);
+void results;
             const finalCompany = await Company.findById(testCompanyId);
 
             expect(finalCompany?.wallet.balance).toBeGreaterThanOrEqual(0);

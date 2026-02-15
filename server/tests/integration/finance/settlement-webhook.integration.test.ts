@@ -252,7 +252,7 @@ describe('Settlement Webhook Integration Tests', () => {
         }, 30000);
 
         it('should detect discrepancies when amounts mismatch', async () => {
-            const shipment = await Shipment.create({
+            await Shipment.create({
                 trackingNumber: 'TEST-AWB-MISMATCH',
                 orderId: new mongoose.Types.ObjectId(),
                 companyId: testCompanyId,

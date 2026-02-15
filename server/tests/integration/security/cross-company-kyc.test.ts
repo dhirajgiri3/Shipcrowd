@@ -1,17 +1,16 @@
-import request from 'supertest';
 import mongoose from 'mongoose';
+import request from 'supertest';
 import app from '../../../src/app';
-import { User } from '../../../src/infrastructure/database/mongoose/models';
-import { Company } from '../../../src/infrastructure/database/mongoose/models';
-import { KYC } from '../../../src/infrastructure/database/mongoose/models';
-import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
 import { KYCState } from '../../../src/core/domain/types/kyc-state';
+import { Company, KYC, User } from '../../../src/infrastructure/database/mongoose/models';
+import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
 
 describe('Cross-Company KYC Security', () => {
     let userA: any;
     let companyA: any;
     let companyB: any;
     let kycA: any;
+void kycA;
     let tokenA: string;
     let tokenB: string;
 
@@ -261,6 +260,7 @@ describe('Cross-Company KYC Security', () => {
                     acceptedAt: new Date()
                 }
             });
+void kycB;
 
             // Now User A should be able to create orders in both companies
             const responseA = await request(app)

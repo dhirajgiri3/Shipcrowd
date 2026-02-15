@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { CODAnalyticsService } from '../../../src/core/application/services/finance/cod-analytics.service';
-import Shipment from '../../../src/infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import CODDiscrepancy from '../../../src/infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
+import Shipment from '../../../src/infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 
 describe('COD Analytics Service', () => {
     let companyId: mongoose.Types.ObjectId;

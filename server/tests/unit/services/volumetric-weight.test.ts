@@ -1,5 +1,5 @@
-import { describe, it, expect } from '@jest/globals';
-import { VolumetricWeightCalculator, DIM_FACTORS } from '../../../src/shared/utils/volumetric-weight.util';
+import { describe, expect, it } from '@jest/globals';
+import { VolumetricWeightCalculator } from '../../../src/shared/utils/volumetric-weight.util';
 
 describe('VolumetricWeightCalculator', () => {
     describe('calculate', () => {

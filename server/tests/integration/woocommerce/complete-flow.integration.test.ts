@@ -1,13 +1,11 @@
-import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import app from '../../../src/app';
-import { WooCommerceStore } from '../../../src/infrastructure/database/mongoose/models';
-import { WooCommerceProductMapping } from '../../../src/infrastructure/database/mongoose/models';
-import { Order } from '../../../src/infrastructure/database/mongoose/models';
-import QueueManager from '../../../src/infrastructure/utilities/queue-manager';
+import { afterAll, beforeAll, describe, expect, test } from '@jest/globals';
 import crypto from 'crypto';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+import request from 'supertest';
+import app from '../../../src/app';
+import { Order, WooCommerceProductMapping, WooCommerceStore } from '../../../src/infrastructure/database/mongoose/models';
+import QueueManager from '../../../src/infrastructure/utilities/queue-manager';
 
 /**
  * Integration Test: Complete WooCommerce Integration Flow
@@ -24,9 +22,7 @@ import crypto from 'crypto';
 
 describe('WooCommerce Integration - Complete Flow', () => {
   let mongoServer: MongoMemoryServer;
-  let jwtToken: string;
   let companyId: string;
-  let userId: string;
   let storeId: string;
 
   beforeAll(async () => {
@@ -43,11 +39,6 @@ describe('WooCommerce Integration - Complete Flow', () => {
 
     // Setup test user and company
     companyId = new mongoose.Types.ObjectId().toString();
-    userId = new mongoose.Types.ObjectId().toString();
-
-    // Mock JWT token
-    jwtToken = 'mock_jwt_token_for_testing';
-
     // Mock environment variables
     process.env.ENCRYPTION_KEY = '0'.repeat(64); // 32 bytes hex
   });

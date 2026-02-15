@@ -1,17 +1,17 @@
 
 import mongoose from 'mongoose';
 
-import eventBus from '../../../src/shared/events/eventBus';
+import NDRResolutionListener from '../../../src/core/application/listeners/crm/NDRResolutionListener';
 import CallLog from '../../../src/infrastructure/database/mongoose/models/crm/communication/call-log.model';
-import Company from '../../../src/infrastructure/database/mongoose/models/organization/core/company.model';
 import SalesRepresentative from '../../../src/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
 import User from '../../../src/infrastructure/database/mongoose/models/iam/users/user.model';
-import NDRResolutionListener from '../../../src/core/application/listeners/crm/NDRResolutionListener';
-import { generateAuthToken } from '../../setup/testHelpers';
+import Company from '../../../src/infrastructure/database/mongoose/models/organization/core/company.model';
+import eventBus from '../../../src/shared/events/eventBus';
 
 describe('NDR Resolution Listener - Integration Tests', () => {
     let company: any;
     let salesRep: any;
+void salesRep;
     let salesRepUser: any;
 
     beforeAll(async () => {

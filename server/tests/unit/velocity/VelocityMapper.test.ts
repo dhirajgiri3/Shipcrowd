@@ -5,9 +5,8 @@
  * Coverage targets: 95%+
  */
 
-import { VelocityMapper } from '../../../src/infrastructure/external/couriers/velocity/velocity.mapper';
 import { CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';
-import { VELOCITY_STATUS_MAP } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
+import { VelocityMapper } from '../../../src/infrastructure/external/couriers/velocity/velocity.mapper';
 
 describe('VelocityMapper', () => {
   describe('Phone Normalization', () => {

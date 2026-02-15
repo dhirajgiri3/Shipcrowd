@@ -1,9 +1,8 @@
 import request from 'supertest';
 import app from '../../../src/app';
 
-import { Company, User } from '../../../src/infrastructure/database/mongoose/models';
-import { Session } from '../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
+import { Company, Session, User } from '../../../src/infrastructure/database/mongoose/models';
 
 // Helper to extract error message from response
 const getErrorMessage = (response: any): string => {

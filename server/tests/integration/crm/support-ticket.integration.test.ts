@@ -1,9 +1,9 @@
-import mongoose from 'mongoose';
+import SupportTicketService from '@/core/application/services/crm/support/SupportTicketService';
+import { getRemainingTime, isSLABreached } from '@/core/application/services/crm/support/sla.utils';
+import '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model'; // Register SalesRepresentative model
 import SupportTicket from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
 import '@/infrastructure/database/mongoose/models/iam/users/user.model'; // Register User model
-import '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model'; // Register SalesRepresentative model
-import SupportTicketService from '@/core/application/services/crm/support/SupportTicketService';
-import { isSLABreached, getRemainingTime } from '@/core/application/services/crm/support/sla.utils';
+import mongoose from 'mongoose';
 
 describe('Support Ticket System - Integration Tests', () => {
   const testCompanyId = new mongoose.Types.ObjectId();

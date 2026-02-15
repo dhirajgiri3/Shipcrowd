@@ -1,7 +1,7 @@
-import mongoose from 'mongoose';
 import connectDB from '@/config/database';
 import { OrderService } from '@/core/application/services/shipping/order.service';
 import { Company, Order } from '@/infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
 
 describe('Bulk Import - Production Tests', () => {
     let testCompanyId: string;
@@ -219,6 +219,7 @@ describe('Bulk Import - Production Tests', () => {
                 rows,
                 companyId: new mongoose.Types.ObjectId(testCompanyId)
             });
+void result;
 
             // Should create the valid order and skip the invalid one (Partial Success)
             const ordersInDB = await Order.countDocuments({ companyId: testCompanyId });
