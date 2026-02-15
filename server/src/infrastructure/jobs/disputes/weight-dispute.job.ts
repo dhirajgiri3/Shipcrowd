@@ -8,13 +8,13 @@
  */
 
 import { Job } from 'bullmq';
-import QueueManager from '../../utilities/queue-manager';
-import logger from '../../../shared/logger/winston.logger';
 import {
-    WeightDisputeResolutionService,
-    WeightDisputeAnalyticsService,
-    WeightDisputeDetectionService,
+WeightDisputeAnalyticsService,
+WeightDisputeDetectionService,
+WeightDisputeResolutionService,
 } from '../../../core/application/services/disputes';
+import logger from '../../../shared/logger/winston.logger';
+import QueueManager from '../../utilities/queue-manager';
 
 interface WeightDisputeJobData {
     type: 'auto_resolve' | 'fraud_check' | 'scan_updates' | 'send_reminders';

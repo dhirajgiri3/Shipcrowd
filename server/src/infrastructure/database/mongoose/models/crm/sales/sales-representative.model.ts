@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema, Model } from 'mongoose';
 import crypto from 'crypto';
+import mongoose, { Document, Model, Schema } from 'mongoose';
 
 /**
  * Sales Representative Model

@@ -1,8 +1,8 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware';
-import featureFlagController from '../../../controllers/admin/feature-flag.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import featureFlagController from '../../../controllers/admin/feature-flag.controller';
+import { requireAccess } from '../../../middleware';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

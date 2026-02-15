@@ -16,7 +16,7 @@
  * 3. Call await rateLimiter.acquire(endpoint) before API calls
  */
 
-import { Redis, Cluster } from 'ioredis';
+import { Cluster, Redis } from 'ioredis';
 import { RedisManager } from '../../../../../infrastructure/redis/redis.manager';
 import logger from '../../../../../shared/logger/winston.logger';
 

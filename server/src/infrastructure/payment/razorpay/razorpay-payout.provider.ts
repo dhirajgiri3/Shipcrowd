@@ -7,8 +7,8 @@
  */
 
 import crypto from 'crypto';
-import logger from '../../../shared/logger/winston.logger';
 import { AppError } from '../../../shared/errors/index';
+import logger from '../../../shared/logger/winston.logger';
 
 // Razorpay types
 export interface FundAccount {

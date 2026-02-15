@@ -1,22 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { Company, ICompany } from '../../../../infrastructure/database/mongoose/models';
-import { User } from '../../../../infrastructure/database/mongoose/models';
-import { TeamInvitation } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import { generateAccessToken } from '../../../../shared/helpers/jwt';
-import { getAuthCookieNames, getAuthCookieOptions } from '../../../../shared/helpers/auth-cookies';
-import { sendOwnerInvitationEmail } from '../../../../core/application/services/communication/email.service';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { z } from 'zod';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
-import { AuthenticationError, ValidationError, DatabaseError, AuthorizationError, ConflictError, NotFoundError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { sendOwnerInvitationEmail } from '../../../../core/application/services/communication/email.service';
 import CompanyOnboardingService from '../../../../core/application/services/organization/company-onboarding.service';
 import sellerPolicyBootstrapService from '../../../../core/application/services/organization/seller-policy-bootstrap.service';
+import { Company, ICompany, TeamInvitation, User } from '../../../../infrastructure/database/mongoose/models';
 import SellerPolicyBootstrapJob from '../../../../infrastructure/jobs/organization/seller-policy-bootstrap.job';
+import { AuthenticationError, AuthorizationError, ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { getAuthCookieNames, getAuthCookieOptions } from '../../../../shared/helpers/auth-cookies';
+import { generateAccessToken } from '../../../../shared/helpers/jwt';
+import logger from '../../../../shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 const createCompanySchema = z.object({
   name: z.string().min(2),

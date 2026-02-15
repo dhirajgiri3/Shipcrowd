@@ -4,31 +4,31 @@
  * Handles all inventory and stock management HTTP endpoints
  */
 
-import { Request, Response, NextFunction } from 'express';
 import InventoryService from '@/core/application/services/warehouse/inventory.service';
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
-    sendSuccess,
-    sendCreated,
-    sendPaginated,
-} from '@/shared/utils/responseHelper';
-import {
-    NotFoundError,
-    ValidationError
+NotFoundError,
+ValidationError
 } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/errorCodes';
+import { guardChecks, parsePagination, requireCompanyContext, validateObjectId } from '@/shared/helpers/controller.helpers';
 import {
-    createInventorySchema,
-    receiveStockSchema,
-    adjustStockSchema,
-    reserveStockSchema,
-    transferStockSchema,
-    cycleCountSchema,
-    releaseReservationSchema,
-    markDamagedSchema,
-    checkAvailabilitySchema,
+sendCreated,
+sendPaginated,
+sendSuccess,
+} from '@/shared/utils/responseHelper';
+import {
+adjustStockSchema,
+checkAvailabilitySchema,
+createInventorySchema,
+cycleCountSchema,
+markDamagedSchema,
+receiveStockSchema,
+releaseReservationSchema,
+reserveStockSchema,
+transferStockSchema,
 } from '@/shared/validation/warehouse.schemas';
-import { guardChecks, requireCompanyContext, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 
 /**
  * Create inventory record

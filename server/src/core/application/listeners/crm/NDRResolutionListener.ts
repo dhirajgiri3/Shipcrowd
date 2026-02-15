@@ -1,5 +1,5 @@
-import eventBus, { NDREventPayload } from '@/shared/events/eventBus';
 import CallLogService from '@/core/application/services/crm/communication/CallLogService';
+import eventBus, { NDREventPayload } from '@/shared/events/eventBus';
 import logger from '@/shared/logger/winston.logger';
 
 class NDRResolutionListener {

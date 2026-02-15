@@ -21,9 +21,7 @@
  * Unit Tests: tests/unit/services/woocommerce/WooCommerceFulfillmentService.test.ts
  */
 
-import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
-import { Order, IOrder } from '../../../../infrastructure/database/mongoose/models';
-import { Shipment, IShipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Shipment, WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -87,6 +85,7 @@ const Shipcrowd_TO_WOOCOMMERCE_STATUS: Record<string, WooCommerceOrderStatus> = 
     RTO_IN_TRANSIT: 'processing',
     RTO_DELIVERED: 'failed', // RTO completed = order failed delivery
 };
+void Shipcrowd_TO_WOOCOMMERCE_STATUS;
 
 /**
  * WooCommerceFulfillmentService

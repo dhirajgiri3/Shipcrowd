@@ -10,12 +10,12 @@
 import mongoose from 'mongoose';
 import CODRemittance from '../../mongoose/models/finance/payouts/cod-remittance.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
-import Company from '../../mongoose/models/organization/core/company.model';
-import WeightDispute from '../../mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import RTOEvent from '../../mongoose/models/logistics/shipping/exceptions/rto-event.model';
-import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
+import WeightDispute from '../../mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
+import Company from '../../mongoose/models/organization/core/company.model';
 import { addDays, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 // Remittance status distribution
 const REMITTANCE_STATUS_DISTRIBUTION = {

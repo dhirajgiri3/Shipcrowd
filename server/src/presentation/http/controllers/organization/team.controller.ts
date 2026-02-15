@@ -1,19 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { User, Company, TeamInvitation, Role, Membership } from '../../../../infrastructure/database/mongoose/models';
-import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import emailService from '../../../../core/application/services/communication/email.service';
-import { getUserPermissions } from '../../middleware/auth/permissions';
-import activityService from '../../../../core/application/services/user/activity.service';
-import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, AuthorizationError, ConflictError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { z } from 'zod';
 import { PermissionService } from '../../../../core/application/services/auth/permission.service';
+import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
+import emailService from '../../../../core/application/services/communication/email.service';
+import activityService from '../../../../core/application/services/user/activity.service';
+import { Company, Membership, Role, TeamInvitation, User } from '../../../../infrastructure/database/mongoose/models';
+import { AuthenticationError, AuthorizationError, ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { getUserPermissions } from '../../middleware/auth/permissions';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // Helper function to wrap controller methods that expect AuthRequest
 const withAuth = (handler: (req: Request, res: Response, next: NextFunction) => Promise<void>) => {

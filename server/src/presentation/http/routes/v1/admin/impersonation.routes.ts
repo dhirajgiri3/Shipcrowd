@@ -1,9 +1,8 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware';
-import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import impersonationController from '../../../controllers/admin/impersonation.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import impersonationController from '../../../controllers/admin/impersonation.controller';
+import { requireAccess } from '../../../middleware';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

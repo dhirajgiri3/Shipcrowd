@@ -8,12 +8,12 @@ import mongoose from 'mongoose';
 import { logger } from './logger.utils';
 
 // Import models
+import WalletTransaction from '../../mongoose/models/finance/wallets/wallet-transaction.model';
 import User from '../../mongoose/models/iam/users/user.model';
-import Company from '../../mongoose/models/organization/core/company.model';
-import Order from '../../mongoose/models/orders/core/order.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 import NDREvent from '../../mongoose/models/logistics/shipping/exceptions/ndr-event.model';
-import WalletTransaction from '../../mongoose/models/finance/wallets/wallet-transaction.model';
+import Order from '../../mongoose/models/orders/core/order.model';
+import Company from '../../mongoose/models/organization/core/company.model';
 
 interface ValidationResult {
     passed: boolean;

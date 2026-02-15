@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import Coupon, { ICoupon } from '../../../../infrastructure/database/mongoose/models/marketing/promotions/coupon.model';
-import { ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**

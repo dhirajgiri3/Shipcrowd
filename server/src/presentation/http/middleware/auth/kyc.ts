@@ -1,13 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
-import { User, KYC } from '../../../../infrastructure/database/mongoose/models';
-import { createAuditLog } from '../system/audit-log.middleware';
-import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, NotFoundError, AuthorizationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
-import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { NextFunction, Request, Response } from 'express';
 import { DocumentVerificationState } from '../../../../core/domain/types/document-verification-state';
+import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { KYC, User } from '../../../../infrastructure/database/mongoose/models';
+import { AuthenticationError, AuthorizationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 import { resolveVerificationState } from '../../../../shared/utils/kyc-utils';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { createAuditLog } from '../system/audit-log.middleware';
 
 /**
  * Middleware to check if user has completed KYC verification
@@ -22,7 +22,7 @@ import { resolveVerificationState } from '../../../../shared/utils/kyc-utils';
  */
 export const checkKYC = async (
     req: Request,
-    res: Response,
+    _res: Response,
     next: NextFunction
 ): Promise<void> => {
     try {
@@ -150,7 +150,7 @@ export const checkKYC = async (
  */
 export const finalKYCCheck = async (
     req: Request,
-    res: Response,
+    _res: Response,
     next: NextFunction
 ): Promise<void> => {
     try {

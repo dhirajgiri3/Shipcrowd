@@ -1,14 +1,14 @@
 import mongoose from 'mongoose';
 import PDFDocument from 'pdfkit';
-import Manifest from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest.model';
-import ManifestCounter from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest-counter.model';
 import { Shipment, Warehouse } from '../../../../infrastructure/database/mongoose/models';
+import ManifestCounter from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest-counter.model';
+import Manifest from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest.model';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import { CourierFactory } from '../courier/courier.factory';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CourierFactory } from '../courier/courier.factory';
 import { CarrierNormalizationService } from './carrier-normalization.service';
-import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { getManifestCarrierStrategy } from './manifest-carrier-strategy';
 
 /**

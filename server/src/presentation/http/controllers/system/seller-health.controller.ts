@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
+import { Parser } from 'json2csv';
+import mongoose from 'mongoose';
 import { Order, Shipment, User } from '../../../../infrastructure/database/mongoose/models';
 import Dispute from '../../../../infrastructure/database/mongoose/models/crm/disputes/dispute.model';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import mongoose from 'mongoose';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
-import { Parser } from 'json2csv';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Seller Health Controller
@@ -390,7 +390,7 @@ export const getSellerHealth = async (req: Request, res: Response, next: NextFun
 
 export const exportSellers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const { isAdmin } = guardChecks(req, { requireCompany: false });
+        guardChecks(req, { requireCompany: false });
 
         const search = (req.query.search as string || '').trim();
         const status = req.query.status as string || 'all';

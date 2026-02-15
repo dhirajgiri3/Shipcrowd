@@ -1,7 +1,7 @@
 import express from 'express';
+import onboardingController from '../../../controllers/onboarding/onboarding.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireCompany } from '../../../middleware/auth/company';
-import onboardingController from '../../../controllers/onboarding/onboarding.controller';
 
 const router = express.Router();
 

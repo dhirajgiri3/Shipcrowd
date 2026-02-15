@@ -5,13 +5,10 @@
  * Uses Regex for format validation and Exotel for missed call/OTP verification.
  */
 
-import logger from '../../../../shared/logger/winston.logger';
-import ExotelClient from '../../../../infrastructure/external/communication/exotel/exotel.client';
 import CacheService from '../../../../infrastructure/utilities/cache.service';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class PhoneVerificationService {
-    private static exotel = new ExotelClient();
-
     /**
      * Validate phone number format (Indian mobile numbers)
      */
@@ -66,5 +63,6 @@ export class PhoneVerificationService {
         return false;
     }
 }
+void PhoneVerificationService;
 
 export default PhoneVerificationService;

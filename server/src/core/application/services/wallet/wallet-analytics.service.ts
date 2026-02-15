@@ -11,10 +11,9 @@
  */
 
 import mongoose from 'mongoose';
-import { WalletTransaction, IWalletTransaction, Company } from '../../../../infrastructure/database/mongoose/models';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { Company, Shipment, WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
+import logger from '../../../../shared/logger/winston.logger';
 
 interface SpendCategory {
     name: string;
@@ -161,6 +160,7 @@ class WalletAnalyticsService {
             // 1. Low Balance Auto-Recharge
             if (balance < threshold * 2) {
                 const suggestedAmount = Math.ceil((weeklySpend || 5000) * 2 / 1000) * 1000;
+void suggestedAmount;
                 recommendations.push({
                     id: 'auto-recharge-001',
                     type: 'auto_recharge',

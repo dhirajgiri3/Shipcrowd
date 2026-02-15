@@ -9,9 +9,9 @@
 
 import { Consent, ConsentHistory } from '../../mongoose/models/iam/consent.model';
 import User from '../../mongoose/models/iam/users/user.model';
-import { randomInt, selectRandom } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
 import { addDays, addHours } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom } from '../utils/random.utils';
 
 // Consent version (update when terms change)
 const CONSENT_VERSION = '1.0';

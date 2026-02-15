@@ -15,14 +15,11 @@
  */
 
 import crypto from 'crypto';
-import mongoose from 'mongoose';
-import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { Request } from 'express';
+import mongoose from 'mongoose';
+import { User } from '../../../../infrastructure/database/mongoose/models';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendRecoveryEmail } from '../communication/email.service';
-import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
 

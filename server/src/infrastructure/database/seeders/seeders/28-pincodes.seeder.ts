@@ -9,11 +9,11 @@
  * - City/State data is cached in memory via PincodeLookupService
  */
 
+import csv from 'csv-parser';
 import fs from 'fs';
 import path from 'path';
-import csv from 'csv-parser';
-import { Pincode, IPincode } from '../../mongoose/models/logistics/pincode.model';
-import { logger, createTimer } from '../utils/logger.utils';
+import { IPincode, Pincode } from '../../mongoose/models/logistics/pincode.model';
+import { createTimer, logger } from '../utils/logger.utils';
 
 interface CSVRow {
     pincode: string;

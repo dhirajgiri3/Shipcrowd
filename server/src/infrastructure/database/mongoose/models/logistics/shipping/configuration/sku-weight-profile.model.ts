@@ -10,7 +10,7 @@
  * Industry standard naming: "Weight Profile" (not "Master")
  */
 
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISKUWeightProfile extends Document {
     companyId: mongoose.Types.ObjectId;

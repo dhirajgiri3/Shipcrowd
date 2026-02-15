@@ -15,9 +15,7 @@
  */
 
 import mongoose from 'mongoose';
-import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
-import { WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Order, WooCommerceStore, WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import { WooCommerceOrder } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import { AppError } from '../../../../shared/errors/app.error';

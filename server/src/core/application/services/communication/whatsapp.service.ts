@@ -14,8 +14,8 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import logger from '../../../../shared/logger/winston.logger';
 import twilioUtils from '../../../../shared/helpers/twilio.utils';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Send a WhatsApp message using Twilio

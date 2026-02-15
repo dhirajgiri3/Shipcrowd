@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import CODRemittanceService from '../../../../../core/application/services/finance/cod-remittance.service';
 import logger from '../../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../../shared/utils/responseHelper';
@@ -10,7 +10,7 @@ import { sendSuccess } from '../../../../../shared/utils/responseHelper';
 export const handlePayoutWebhook = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    _next: NextFunction
 ): Promise<void> => {
     try {
         // Signature is already verified by verifyRazorpayWebhook middleware.

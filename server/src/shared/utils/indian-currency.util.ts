@@ -3,7 +3,7 @@
  * Handles INR formatting with Indian comma placement and symbols
  */
 
-import { formatIndianNumber, formatIndianNumberWithDecimals } from './number-to-words.util';
+import { formatIndianNumberWithDecimals } from './number-to-words.util';
 
 /**
  * Format amount as INR with rupee symbol and Indian comma placement

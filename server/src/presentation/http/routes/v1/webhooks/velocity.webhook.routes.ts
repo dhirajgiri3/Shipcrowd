@@ -1,7 +1,7 @@
 import { Router } from 'express';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import { VelocityWebhookController } from '../../../controllers/webhooks/couriers/velocity.webhook.controller';
 import { verifyWebhookSignature } from '../../../middleware/webhooks/webhook-signature.middleware';
-import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = Router();
 
@@ -19,7 +19,7 @@ router.post(
  * GET /health
  * internal health check
  */
-router.get('/health', (req, res) => {
+router.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', service: 'velocity-webhook' });
 });
 

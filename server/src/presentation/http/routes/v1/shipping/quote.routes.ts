@@ -1,9 +1,9 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import quoteController from '../../../controllers/shipping/quote.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import quoteController from '../../../controllers/shipping/quote.controller';
+import { requireAccess } from '../../../middleware';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

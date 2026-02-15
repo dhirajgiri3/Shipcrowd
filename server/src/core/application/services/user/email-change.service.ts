@@ -15,12 +15,12 @@
  */
 
 import crypto from 'crypto';
-import mongoose from 'mongoose';
-import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { Request } from 'express';
+import mongoose from 'mongoose';
+import { IUser, User } from '../../../../infrastructure/database/mongoose/models';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendEmailChangeVerification, sendEmailChangeNotification } from '../communication/email.service';
+import { sendEmailChangeNotification, sendEmailChangeVerification } from '../communication/email.service';
 
 /**
  * Request email change for a user

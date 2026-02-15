@@ -120,7 +120,7 @@ RoleSchema.index({ name: 1, scope: 1 }, { unique: true });
  * Uses DFS with visited set + recursion stack
  */
 async function detectCycle(
-    startRoleId: mongoose.Types.ObjectId,
+    _startRoleId: mongoose.Types.ObjectId,
     inherits: mongoose.Types.ObjectId[]
 ): Promise<boolean> {
     const visited = new Set<string>();

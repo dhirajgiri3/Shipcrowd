@@ -8,20 +8,19 @@
  * - Team hierarchy
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import SalesRepresentativeService from '../../../../core/application/services/commission/sales-representative.service';
-import { AppError } from '../../../../shared/errors/index';
 import { ValidationError } from '../../../../shared/errors/app.error';
+import { AppError } from '../../../../shared/errors/index';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
-    createSalesRepSchema,
-    updateSalesRepSchema,
-    listSalesRepsQuerySchema,
-    assignTerritorySchema,
-    idParamSchema,
+assignTerritorySchema,
+createSalesRepSchema,
+idParamSchema,
+listSalesRepsQuerySchema,
+updateSalesRepSchema,
 } from '../../../../shared/validation/commission-schemas';
-import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 export class SalesRepresentativeController {
     /**

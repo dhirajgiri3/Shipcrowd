@@ -84,13 +84,13 @@
  */
 
 import mongoose from 'mongoose';
-import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
+import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
+import { AppError, AuthorizationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 import WalletService from '../wallet/wallet.service';
 import { WeightDisputeNotificationService } from './weight-dispute-notification.service';
-import logger from '../../../../shared/logger/winston.logger';
-import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Type definitions
 interface SellerEvidenceDTO {

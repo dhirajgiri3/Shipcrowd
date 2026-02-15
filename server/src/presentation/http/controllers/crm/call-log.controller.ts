@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
 import CallLogService from '@/core/application/services/crm/communication/CallLogService';
-import { AppError, ValidationError } from '@/shared/errors/app.error';
+import { ValidationError } from '@/shared/errors/app.error';
+import { NextFunction, Request, Response } from 'express';
 
 class CallLogController {
 

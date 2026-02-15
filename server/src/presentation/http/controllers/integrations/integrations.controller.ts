@@ -5,13 +5,11 @@
  * - GET /integrations/health - Get health status of all integrations
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import IntegrationHealthService from '../../../../core/application/services/integrations/integration-health.service';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { AuthenticationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 export default class IntegrationsController {
     /**

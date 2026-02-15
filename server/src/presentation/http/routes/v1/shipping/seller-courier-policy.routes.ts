@@ -1,9 +1,9 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import sellerCourierPolicyController from '../../../controllers/shipping/seller-courier-policy.controller';
+import { requireAccess } from '../../../middleware';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

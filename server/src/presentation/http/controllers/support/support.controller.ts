@@ -1,16 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import SupportTicketService from '@/core/application/services/crm/support/SupportTicketService';
 import StorageService from '@/core/application/services/storage/storage.service';
-import logger from '@/shared/logger/winston.logger';
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
-import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendCreated,
-    calculatePagination
-} from '@/shared/utils/responseHelper';
 import { ValidationError } from '@/shared/errors/app.error';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
+import logger from '@/shared/logger/winston.logger';
+import {
+calculatePagination,
+sendCreated,
+sendSuccess
+} from '@/shared/utils/responseHelper';
+import { NextFunction, Request, Response } from 'express';
+import { z } from 'zod';
 
 // Validation schemas
 const createTicketSchema = z.object({

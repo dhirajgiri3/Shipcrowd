@@ -11,10 +11,10 @@
  */
 
 import mongoose from 'mongoose';
-import { Warehouse, IWarehouse } from '../../../../infrastructure/database/mongoose/models';
-import { CourierFactory } from '../courier/courier.factory';
+import { IWarehouse, Warehouse } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CourierFactory } from '../courier/courier.factory';
 
 export type SyncErrorType = 'NETWORK' | 'VALIDATION' | 'RATE_LIMIT' | 'UNKNOWN';
 

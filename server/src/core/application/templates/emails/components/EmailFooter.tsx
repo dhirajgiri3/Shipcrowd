@@ -1,7 +1,7 @@
-import * as React from 'react';
+import { Hr } from '@react-email/hr';
 import { Section } from '@react-email/section';
 import { Text } from '@react-email/text';
-import { Hr } from '@react-email/hr';
+import * as React from 'react';
 
 export const EmailFooter = () => {
     return (

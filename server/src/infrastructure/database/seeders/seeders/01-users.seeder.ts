@@ -5,14 +5,13 @@
  */
 
 import bcrypt from 'bcrypt';
-import User from '../../mongoose/models/iam/users/user.model';
-import mongoose from 'mongoose'; // Needed for Role model
 import Role from '../../mongoose/models/iam/role.model';
+import User from '../../mongoose/models/iam/users/user.model';
 import { SEED_CONFIG } from '../config';
-import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { generateIndianName, generateIndianPhone, generateEmail, generateGender } from '../data/customer-names';
-import { INDIAN_CITIES, selectWeightedCity, getCityByName, CityData } from '../data/indian-cities';
+import { generateGender, generateIndianName, generateIndianPhone } from '../data/customer-names';
+import { INDIAN_CITIES, selectWeightedCity } from '../data/indian-cities';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom } from '../utils/random.utils';
 
 // Default passwords (hashed)
 const DEFAULT_PASSWORDS = {
@@ -31,6 +30,7 @@ const BUSINESS_DOMAINS = [
 
 // Team roles for staff
 const TEAM_ROLES = ['admin', 'manager', 'member', 'viewer'];
+void TEAM_ROLES;
 
 /**
  * Generate a Google OAuth ID (simulated)

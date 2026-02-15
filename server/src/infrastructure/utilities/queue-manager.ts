@@ -1,7 +1,7 @@
-import { Queue, Worker, QueueEvents, Job } from 'bullmq';
-import { RedisManager } from '../redis/redis.manager'; // Updated import
+import { Job, Queue, QueueEvents, Worker } from 'bullmq';
 import logger from '../../shared/logger/winston.logger';
 import JobFailureLog from '../database/mongoose/models/system/job-failure-log.model';
+import { RedisManager } from '../redis/redis.manager'; // Updated import
 
 
 /**
@@ -397,7 +397,7 @@ export class QueueManager {
     });
 
     // Worker event handlers
-    worker.on('completed', (job, result) => {
+    worker.on('completed', (job, _result) => {
       logger.info('Worker completed job', {
         queue: queueName,
         jobId: job.id,

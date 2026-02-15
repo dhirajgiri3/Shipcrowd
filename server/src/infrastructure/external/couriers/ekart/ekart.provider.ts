@@ -17,44 +17,40 @@
 import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
 import {
-    ICourierAdapter,
-    CourierShipmentData,
-    CourierShipmentResponse,
-    CourierTrackingResponse,
-    CourierRateRequest,
-    CourierRateResponse,
-    CourierReverseShipmentData,
-    CourierReverseShipmentResponse,
-    CourierPODResponse
+CourierRateRequest,
+CourierRateResponse,
+CourierReverseShipmentData,
+CourierReverseShipmentResponse,
+CourierShipmentData,
+CourierShipmentResponse,
+CourierTrackingResponse,
+ICourierAdapter
 } from '../base/courier.adapter';
 
 import { EkartAuth } from './ekart.auth';
 import { EkartMapper } from './ekart.mapper';
 import {
-    EkartError,
-    EKART_ENDPOINTS,
-    EkartShipmentRequest,
-    EkartShipmentResponse,
-    EKART_STATUS_MAP,
-    EkartTrackingResponse,
-    EkartRawTrackingResponse,
-    EkartServiceabilityResponse,
-    EkartLaneServiceabilityRequest,
-    EkartLaneServiceabilityOption,
-    EkartRateRequest,
-    EkartRateResponse
+EKART_ENDPOINTS,
+EKART_STATUS_MAP,
+EkartLaneServiceabilityOption,
+EkartLaneServiceabilityRequest,
+EkartRateRequest,
+EkartRateResponse,
+EkartRawTrackingResponse,
+EkartServiceabilityResponse,
+EkartShipmentRequest,
+EkartShipmentResponse
 } from './ekart.types';
 
 import {
-    handleEkartError,
-    waitForRateLimit
+handleEkartError,
+waitForRateLimit
 } from './ekart-error-handler';
 
 import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
 
-import CourierIdempotency from '../../../database/mongoose/models/courier-idempotency.model';
 import logger from '../../../../shared/logger/winston.logger';
-import { CourierFeatureNotSupportedError } from '../../../../shared/errors/app.error';
+import CourierIdempotency from '../../../database/mongoose/models/courier-idempotency.model';
 
 export class EkartProvider implements ICourierAdapter {
     private auth: EkartAuth;
@@ -384,7 +380,7 @@ export class EkartProvider implements ICourierAdapter {
     /**
      * Check Serviceability
      */
-    async checkServiceability(pincode: string, type: 'delivery' | 'pickup' = 'delivery'): Promise<boolean> {
+    async checkServiceability(pincode: string, _type: 'delivery' | 'pickup' = 'delivery'): Promise<boolean> {
         return this.circuitBreaker.execute(async () => {
             try {
                 // FIXED: Using correct endpoint format
@@ -542,7 +538,7 @@ export class EkartProvider implements ICourierAdapter {
         });
     }
 
-    async cancelReverseShipment(reverseAwb: string, originalAwb: string, reason?: string): Promise<boolean> {
+    async cancelReverseShipment(reverseAwb: string, _originalAwb: string, _reason?: string): Promise<boolean> {
         return this.cancelShipment(reverseAwb);
     }
 

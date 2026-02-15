@@ -14,30 +14,28 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import mongoose from 'mongoose';
-import { Inventory, IInventory } from '@/infrastructure/database/mongoose/models';
-import { StockMovement, IStockMovement } from '@/infrastructure/database/mongoose/models';
 import {
-    ICreateInventoryDTO,
-    IUpdateInventoryDTO,
-    IReceiveStockDTO,
-    IAdjustStockDTO,
-    IReserveStockDTO,
-    IReleaseReservationDTO,
-    IPickStockDTO,
-    ITransferStockDTO,
-    IMarkDamagedDTO,
-    ICycleCountDTO,
-    IInventoryQueryOptions,
-    IStockMovementQueryOptions,
-    ILowStockAlert,
-    IInventoryStats,
-    IMovementSummary,
-    IPaginatedResult,
+IAdjustStockDTO,
+ICreateInventoryDTO,
+ICycleCountDTO,
+IInventoryQueryOptions,
+IInventoryStats,
+ILowStockAlert,
+IMarkDamagedDTO,
+IPaginatedResult,
+IPickStockDTO,
+IReceiveStockDTO,
+IReleaseReservationDTO,
+IReserveStockDTO,
+IStockMovementQueryOptions,
+ITransferStockDTO,
+IUpdateInventoryDTO
 } from '@/core/domain/interfaces/warehouse/inventory.interface.service';
+import { IInventory, Inventory, IStockMovement, StockMovement } from '@/infrastructure/database/mongoose/models';
 import { AppError } from '@/shared/errors/app.error';
 import logger from '@/shared/logger/winston.logger';
 import csv from 'csv-parser';
+import mongoose from 'mongoose';
 import { Readable } from 'stream';
 
 interface CSVInventoryRow {

@@ -1,7 +1,7 @@
-import express from 'express';
 import callLogController from '@/presentation/http/controllers/crm/call-log.controller';
 import { authenticate } from '@/presentation/http/middleware/auth/auth';
 import { requireCompany } from '@/presentation/http/middleware/auth/company';
+import express from 'express';
 
 const router = express.Router();
 

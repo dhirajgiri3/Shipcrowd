@@ -1,8 +1,8 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/auth/access.middleware';
-import weightDisputesController from '../../../controllers/disputes/weight-disputes.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import weightDisputesController from '../../../controllers/disputes/weight-disputes.controller';
+import { requireAccess } from '../../../middleware/auth/access.middleware';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

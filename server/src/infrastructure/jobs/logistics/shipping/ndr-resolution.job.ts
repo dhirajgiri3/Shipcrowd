@@ -5,10 +5,10 @@
  */
 
 import { Job } from 'bullmq';
-import { NDREvent, NDRWorkflow } from '../../../database/mongoose/models';
 import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
-import QueueManager from '../../../utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
+import { NDREvent, NDRWorkflow } from '../../../database/mongoose/models';
+import QueueManager from '../../../utilities/queue-manager';
 
 interface NDRResolutionJobData {
     ndrEventId: string;

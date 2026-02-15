@@ -4,15 +4,14 @@
  * Generates RTO (Return To Origin) events for shipments with RTO status.
  */
 
-import mongoose from 'mongoose';
-import RTOEvent from '../../mongoose/models/logistics/shipping/exceptions/rto-event.model';
-import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
-import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
 import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
+import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
+import RTOEvent from '../../mongoose/models/logistics/shipping/exceptions/rto-event.model';
+import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
 import { SEED_CONFIG } from '../config';
-import { randomInt, randomFloat, selectRandom, selectWeightedFromObject, maybeExecute } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
 import { addDays, addHours, randomDateBetween } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomFloat, randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 type RTOReason = 'ndr_unresolved' | 'customer_cancellation' | 'damaged_in_transit' | 'refused' | 'other';
 type RTOStatus = 'initiated' | 'in_transit' | 'delivered_to_warehouse' | 'qc_pending' | 'qc_completed' | 'restocked' | 'disposed';
@@ -204,6 +203,7 @@ export async function seedRTOEvents(): Promise<void> {
 
                 // Get inventory records matching the shipment's products
                 const skuNames = shipment.products.map((p: any) => p.name || p.sku);
+void skuNames;
 
                 for (const product of shipment.products as any[]) {
                     const qty = product.quantity || 1;

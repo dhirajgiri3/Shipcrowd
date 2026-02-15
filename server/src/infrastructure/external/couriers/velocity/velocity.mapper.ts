@@ -9,14 +9,13 @@
  * @see docs/Development/Backend/Integrations/VELOCITY_SHIPFAST_INTEGRATION.md Section 5
  */
 
-import {
-  VelocityForwardOrderRequest,
-  VelocityOrderItem,
-  VelocityVendorDetails,
-  VelocityWarehouseRequest,
-  VELOCITY_STATUS_MAP
-} from './velocity.types';
 import { CourierShipmentData } from '../base/courier.adapter';
+import {
+VelocityForwardOrderRequest,
+VelocityOrderItem,
+VelocityVendorDetails,
+VelocityWarehouseRequest
+} from './velocity.types';
 
 export class VelocityMapper {
   /**

@@ -1,15 +1,15 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import bcrypt from 'bcrypt';
-import { getUserSessions, revokeSession, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import logger from '../../../../shared/logger/winston.logger';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { NextFunction, Request, Response } from 'express';
+import { z } from 'zod';
+import { getUserSessions, revokeAllSessions, revokeSession } from '../../../../core/application/services/auth/session.service';
 import { ISession } from '../../../../infrastructure/database/mongoose/models';
-import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { getRefreshTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 const sessionIdSchema = z.object({
   sessionId: z.string(),

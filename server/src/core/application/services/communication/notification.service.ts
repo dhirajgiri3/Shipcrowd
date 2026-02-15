@@ -14,11 +14,11 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
+import logger from '../../../../shared/logger/winston.logger';
 import emailService from './email.service';
+import NotificationPreferenceService from './notification-preferences.service';
 import smsService from './sms.service';
 import whatsappService from './whatsapp.service';
-import logger from '../../../../shared/logger/winston.logger';
-import NotificationPreferenceService from './notification-preferences.service';
 
 /**
  * Notification types

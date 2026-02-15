@@ -1,16 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
-import { Order, Company, Shipment, User } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import AdminInsightsService from '../../../../core/application/services/analytics/admin-insights.service';
 import cacheService from '../../../../core/application/services/analytics/analytics-cache.service';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import GeographicAnalyticsService from '../../../../core/application/services/analytics/geographic-analytics.service';
 import SmartInsightsService from '../../../../core/application/services/analytics/smart-insights.service';
-import AdminInsightsService from '../../../../core/application/services/analytics/admin-insights.service';
+import { Company, Order, Shipment, User } from '../../../../infrastructure/database/mongoose/models';
+import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**
  * Analytics Controller
@@ -757,20 +757,20 @@ export const getShipmentPerformance = async (
 // Week 9: New Analytics Endpoints
 // ============================================
 
-import RevenueAnalyticsService from '../../../../core/application/services/analytics/revenue-analytics.service';
 import CustomerAnalyticsService from '../../../../core/application/services/analytics/customer-analytics.service';
-import InventoryAnalyticsService from '../../../../core/application/services/analytics/inventory-analytics.service';
-import OrderAnalyticsService from '../../../../core/application/services/analytics/order-analytics.service';
-import ReportBuilderService from '../../../../core/application/services/analytics/report-builder.service';
-import SellerAnalyticsService from '../../../../core/application/services/analytics/seller-analytics.service';
 import CSVExportService from '../../../../core/application/services/analytics/export/csv-export.service';
 import ExcelExportService from '../../../../core/application/services/analytics/export/excel-export.service';
 import PDFExportService from '../../../../core/application/services/analytics/export/pdf-export.service';
+import InventoryAnalyticsService from '../../../../core/application/services/analytics/inventory-analytics.service';
+import OrderAnalyticsService from '../../../../core/application/services/analytics/order-analytics.service';
+import ReportBuilderService from '../../../../core/application/services/analytics/report-builder.service';
+import RevenueAnalyticsService from '../../../../core/application/services/analytics/revenue-analytics.service';
+import SellerAnalyticsService from '../../../../core/application/services/analytics/seller-analytics.service';
 import StorageService from '../../../../core/application/services/storage/storage.service';
 import {
-    buildReportSchema,
-    reportExportSchema,
-    saveReportConfigSchema,
+buildReportSchema,
+reportExportSchema,
+saveReportConfigSchema,
 } from '../../../../shared/validation/analytics-schemas';
 
 const isSpacesConfigured = () => {
@@ -1525,7 +1525,7 @@ export const getProfitabilityAnalytics = async (
  * @route GET /api/v1/analytics/dashboard/admin/insights
  */
 export const getAdminInsights = async (
-    req: Request,
+    _req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {

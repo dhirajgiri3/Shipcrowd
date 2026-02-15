@@ -1,7 +1,7 @@
 import express from 'express';
+import * as emailQueueController from '../../../controllers/admin/email-queue.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import * as emailQueueController from '../../../controllers/admin/email-queue.controller';
 
 const router = express.Router();
 

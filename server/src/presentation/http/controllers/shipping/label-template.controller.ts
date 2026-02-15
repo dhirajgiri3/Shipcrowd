@@ -1,11 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
-import LabelTemplate from '../../../../infrastructure/database/mongoose/models/shipping/label-template.model';
+import { NextFunction, Request, Response } from 'express';
 import LabelGeneratorService from '../../../../core/application/services/shipping/label-generator.service';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import LabelTemplate from '../../../../infrastructure/database/mongoose/models/shipping/label-template.model';
 import { ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks, requireCompanyContext, validateObjectId } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
-import { validateObjectId } from '../../../../shared/helpers/controller.helpers';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Label Template Controller

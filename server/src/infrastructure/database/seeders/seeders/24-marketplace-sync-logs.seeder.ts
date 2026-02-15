@@ -4,20 +4,19 @@
  * Generates sync logs for marketplace stores.
  */
 
-import mongoose from 'mongoose';
-import ShopifyStore from '../../mongoose/models/marketplaces/shopify/shopify-store.model';
-import WooCommerceStore from '../../mongoose/models/marketplaces/woocommerce/woocommerce-store.model';
 import AmazonStore from '../../mongoose/models/marketplaces/amazon/amazon-store.model';
 import FlipkartStore from '../../mongoose/models/marketplaces/flipkart/flipkart-store.model';
+import ShopifyStore from '../../mongoose/models/marketplaces/shopify/shopify-store.model';
+import WooCommerceStore from '../../mongoose/models/marketplaces/woocommerce/woocommerce-store.model';
 
 import { SyncLog } from '../../mongoose/models';
-import WooCommerceSyncLog from '../../mongoose/models/marketplaces/woocommerce/woocommerce-sync-log.model';
 import AmazonSyncLog from '../../mongoose/models/marketplaces/amazon/amazon-sync-log.model';
 import FlipkartSyncLog from '../../mongoose/models/marketplaces/flipkart/flipkart-sync-log.model';
+import WooCommerceSyncLog from '../../mongoose/models/marketplaces/woocommerce/woocommerce-sync-log.model';
 
-import { logger, createTimer } from '../utils/logger.utils';
-import { selectRandom, selectWeightedFromObject, randomInt } from '../utils/random.utils';
 import { subMinutes } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 // Helper function to generate data (was private method in class)
 function generateSyncLogData(store: any, type: string) {

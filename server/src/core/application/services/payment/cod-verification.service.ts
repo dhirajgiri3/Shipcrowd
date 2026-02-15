@@ -5,7 +5,6 @@
  * Checks improved customer history and RTO probability.
  */
 
-import logger from '../../../../shared/logger/winston.logger';
 
 interface CODContext {
     orderValue: number;
@@ -81,7 +80,7 @@ export class CODVerificationService {
     /**
      * Mock helper to get customer RTO count
      */
-    private static async getCustomerRTOCount(phone: string): Promise<number> {
+    private static async getCustomerRTOCount(_phone: string): Promise<number> {
         // Import Customer/Order model dynamically if needed
         return 0; // Default safe for now
     }

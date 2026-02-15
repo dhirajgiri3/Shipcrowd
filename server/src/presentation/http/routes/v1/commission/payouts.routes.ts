@@ -4,8 +4,8 @@
 
 import { Router } from 'express';
 import { PayoutController } from '../../../controllers/commission/index';
-import { authenticate } from '../../../middleware/index';
 import { requireAccess } from '../../../middleware/auth/unified-access';
+import { authenticate } from '../../../middleware/index';
 import verifyRazorpayWebhook from '../../../middleware/webhooks/razorpay-webhook-auth.middleware';
 
 const router = Router();

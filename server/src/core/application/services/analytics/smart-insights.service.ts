@@ -10,11 +10,9 @@
  */
 
 import mongoose from 'mongoose';
-import { Order, Shipment, Company, WalletTransaction, RTOEvent } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { Order, RTOEvent, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import CacheService from '../../../../infrastructure/utilities/cache.service';
-import { NotFoundError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 
 // ===== INTERFACES =====
 

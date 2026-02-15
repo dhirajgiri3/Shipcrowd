@@ -6,9 +6,9 @@
 
 import express from 'express';
 import multer from 'multer';
-import { authenticate } from '../../../middleware/auth/auth';
-import packingStationController from '../../../controllers/disputes/packing-station.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import packingStationController from '../../../controllers/disputes/packing-station.controller';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ const upload = multer({
         fileSize: 10 * 1024 * 1024, // 10MB per file
         files: 10, // Max 10 files
     },
-    fileFilter: (req, file, cb) => {
+    fileFilter: (_req, file, cb) => {
         // Only allow image files
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);

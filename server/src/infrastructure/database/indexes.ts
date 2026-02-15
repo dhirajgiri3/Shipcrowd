@@ -1,13 +1,13 @@
 import mongoose from 'mongoose';
-import {
-    Order,
-    Shipment,
-    Zone,
-    Warehouse,
-    User,
-    Company
-} from './mongoose/models';
 import logger from '../../shared/logger/winston.logger';
+import {
+Company,
+Order,
+Shipment,
+User,
+Warehouse,
+Zone
+} from './mongoose/models';
 
 /**
  * Database Indexes Configuration

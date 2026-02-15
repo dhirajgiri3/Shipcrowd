@@ -1,6 +1,6 @@
 import { Order, Shipment, UserPersona } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
 import { IndustryType } from '../../../../infrastructure/database/mongoose/models/onboarding/user-persona.model';
+import logger from '../../../../shared/logger/winston.logger';
 
 interface IDemoDataOptions {
     companyId: string;

@@ -1,10 +1,10 @@
-import mongoose, { Document, Schema } from 'mongoose';
-import { KYCState } from '../../../../../../core/domain/types/kyc-state';
 import bcrypt from 'bcrypt';
-import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
-import { fieldEncryption } from 'mongoose-field-encryption';
 import crypto from 'crypto';
+import mongoose, { Document, Schema } from 'mongoose';
+import { fieldEncryption } from 'mongoose-field-encryption';
+import { KYCState } from '../../../../../../core/domain/types/kyc-state';
 import logger from '../../../../../../shared/logger/winston.logger';
+import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
 
 // Define the interface for User document
 export interface IUser extends Document {

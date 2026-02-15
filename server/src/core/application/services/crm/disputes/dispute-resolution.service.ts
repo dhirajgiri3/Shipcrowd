@@ -1,6 +1,6 @@
-import Dispute, { IDispute, DisputeResolution } from '@/infrastructure/database/mongoose/models/crm/disputes/dispute.model';
+import Dispute, { DisputeResolution, IDispute } from '@/infrastructure/database/mongoose/models/crm/disputes/dispute.model';
 import SupportTicket from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
-import { AppError, NotFoundError, ConflictError, ValidationError } from '@/shared/errors';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '@/shared/errors';
 import mongoose from 'mongoose';
 
 export class DisputeResolutionService {

@@ -1,9 +1,9 @@
+import bwipjs from 'bwip-js';
 import mongoose from 'mongoose';
 import PDFDocument from 'pdfkit';
-import bwipjs from 'bwip-js';
 import QRCode from 'qrcode';
-import LabelTemplate from '../../../../infrastructure/database/mongoose/models/shipping/label-template.model';
 import Order from '../../../../infrastructure/database/mongoose/models/orders/core/order.model';
+import LabelTemplate from '../../../../infrastructure/database/mongoose/models/shipping/label-template.model';
 import { AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
@@ -270,7 +270,7 @@ class LabelGeneratorService {
     /**
      * Generate thermal printer label (simplified)
      */
-    private async generateThermalLabel(template: any, data: LabelData): Promise<Buffer> {
+    private async generateThermalLabel(_template: any, data: LabelData): Promise<Buffer> {
         // For thermal printers, we generate a simple text-based format
         // In production, this would integrate with specific thermal printer commands
         const lines: string[] = [
@@ -301,7 +301,7 @@ class LabelGeneratorService {
     /**
      * Generate ZPL label for Zebra printers
      */
-    private async generateZPLLabel(template: any, data: LabelData): Promise<Buffer> {
+    private async generateZPLLabel(_template: any, data: LabelData): Promise<Buffer> {
         // ZPL (Zebra Programming Language) commands
         const zpl: string[] = [
             '^XA', // Start format

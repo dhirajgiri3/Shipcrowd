@@ -5,12 +5,12 @@
  * Implements signature verification for security and processes status changes.
  */
 
-import { Request, Response } from 'express';
-import crypto from 'crypto';
 import ReturnService from '@/core/application/services/logistics/return.service';
-import logger from '@/shared/logger/winston.logger';
 import { AppError, normalizeError } from '@/shared/errors/app.error';
+import logger from '@/shared/logger/winston.logger';
 import { sendSuccess } from '@/shared/utils/responseHelper';
+import crypto from 'crypto';
+import { Request, Response } from 'express';
 
 /**
  * Webhook payload interface

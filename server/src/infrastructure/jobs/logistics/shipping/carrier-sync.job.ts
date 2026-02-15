@@ -6,9 +6,9 @@
 
 import { Job } from 'bullmq';
 import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
-import QueueManager from '../../../utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
 import { Shipment } from '../../../database/mongoose/models';
+import QueueManager from '../../../utilities/queue-manager';
 
 interface CarrierSyncJobData {
     shipmentId?: string;

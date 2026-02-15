@@ -346,14 +346,14 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
     abstract cancelReverseShipment(reverseAwb: string, originalAwb: string, reason?: string): Promise<boolean>;
 
     // Optional methods can have default implementation that throws NotSupported
-    async createWarehouse(data: any): Promise<any> {
+    async createWarehouse(_data: any): Promise<any> {
         throw new CourierFeatureNotSupportedError(
             this.constructor.name,
             'createWarehouse'
         );
     }
 
-    async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string; uplId?: string }> {
+    async requestReattempt(_trackingNumber: string, _preferredDate?: Date, _instructions?: string): Promise<{ success: boolean; message: string; uplId?: string }> {
         throw new CourierFeatureNotSupportedError(
             this.constructor.name,
             'requestReattempt'
@@ -361,16 +361,16 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
     }
 
     async updateDeliveryAddress(
-        awb: string,
-        newAddress: {
+        _awb: string,
+        _newAddress: {
             line1: string;
             city: string;
             state: string;
             pincode: string;
             country: string;
         },
-        orderId: string,
-        phone?: string
+        _orderId: string,
+        _phone?: string
     ): Promise<{ success: boolean; message: string }> {
         throw new CourierFeatureNotSupportedError(
             this.constructor.name,
@@ -378,7 +378,7 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
         );
     }
 
-    async getProofOfDelivery(trackingNumber: string): Promise<CourierPODResponse> {
+    async getProofOfDelivery(_trackingNumber: string): Promise<CourierPODResponse> {
         throw new CourierFeatureNotSupportedError(
             this.constructor.name,
             'getProofOfDelivery'

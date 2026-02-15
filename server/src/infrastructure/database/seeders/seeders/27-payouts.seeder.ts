@@ -9,12 +9,11 @@
  */
 
 import mongoose from 'mongoose';
-import Payout from '../../mongoose/models/finance/payouts/payout.model';
 import CommissionTransaction from '../../mongoose/models/finance/commission/commission-transaction.model';
-import SalesRepresentative from '../../mongoose/models/crm/sales/sales-representative.model';
-import { logger, createTimer } from '../utils/logger.utils';
-import { randomInt, selectRandom } from '../utils/random.utils';
+import Payout from '../../mongoose/models/finance/payouts/payout.model';
 import { subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom } from '../utils/random.utils';
 
 // Payout status distribution
 const PAYOUT_STATUS_DISTRIBUTION = {

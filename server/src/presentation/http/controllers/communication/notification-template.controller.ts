@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import NotificationTemplateService from '../../../../core/application/services/communication/notification-template.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**

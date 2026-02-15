@@ -5,17 +5,17 @@
  */
 
 import mongoose from 'mongoose';
-import Company from '../../mongoose/models/organization/core/company.model';
-import User from '../../mongoose/models/iam/users/user.model';
 import Membership from '../../mongoose/models/iam/membership.model'; // V5
 import Role from '../../mongoose/models/iam/role.model'; // V5
-import { SEED_CONFIG, BusinessType } from '../config';
-import { randomInt, randomFloat, selectWeightedFromObject, selectRandom, generateHexColor } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { generateBusinessName, generateBusinessDomain } from '../data/business-names';
+import User from '../../mongoose/models/iam/users/user.model';
+import Company from '../../mongoose/models/organization/core/company.model';
+import { BusinessType, SEED_CONFIG } from '../config';
+import { generateBusinessDomain, generateBusinessName } from '../data/business-names';
+import { generateAccountNumber, generateGSTIN, generateIFSC, generatePAN, generateUPIId, selectBank } from '../data/indian-banks';
 import { getCityByName, getStateCodeForCity } from '../data/indian-cities';
-import { selectBank, generateIFSC, generateAccountNumber, generatePAN, generateGSTIN, generateUPIId } from '../data/indian-banks';
-import { generateStreetAddress, generateLandmark } from '../utils/address.utils';
+import { generateLandmark, generateStreetAddress } from '../utils/address.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { generateHexColor, randomFloat, randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 /**
  * Generate company data for a seller
@@ -263,6 +263,7 @@ export async function seedCompanies(): Promise<void> {
         // Link staff users to companies
         const staffUsers = await User.find({ role: 'staff' }).lean();
         const staffBulkOps: any[] = [];
+void staffBulkOps;
         let staffLinked = 0;
 
         // Assign 40% of companies to have 0-3 staff members

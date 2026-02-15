@@ -14,16 +14,16 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { ReportConfig, IReportConfig } from '../../../../infrastructure/database/mongoose/models';
-import OrderAnalyticsService from './order-analytics.service';
-import ShipmentAnalyticsService from './shipment-analytics.service';
-import RevenueAnalyticsService from './revenue-analytics.service';
-import CustomerAnalyticsService from './customer-analytics.service';
-import InventoryAnalyticsService from './inventory-analytics.service';
-import { DateRange } from './analytics.service';
-import logger from '../../../../shared/logger/winston.logger';
+import { IReportConfig, ReportConfig } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import { DateRange } from './analytics.service';
+import CustomerAnalyticsService from './customer-analytics.service';
+import InventoryAnalyticsService from './inventory-analytics.service';
+import OrderAnalyticsService from './order-analytics.service';
+import RevenueAnalyticsService from './revenue-analytics.service';
+import ShipmentAnalyticsService from './shipment-analytics.service';
 
 export interface ReportResult {
     reportType: string;

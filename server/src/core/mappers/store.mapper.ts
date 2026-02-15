@@ -1,5 +1,5 @@
-import { EcommerceStoreDTO } from '../dtos/ecommerce-store.dto';
 import { DEFAULT_STORE_SETTINGS, DEFAULT_SYNC_CONFIG } from '../../config/integration.defaults';
+import { EcommerceStoreDTO } from '../dtos/ecommerce-store.dto';
 
 const safeNumber = (value: any, fallback: number) => {
   if (typeof value === 'number' && Number.isFinite(value)) {

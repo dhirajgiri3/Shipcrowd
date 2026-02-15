@@ -1,5 +1,5 @@
-import mongoose, { Schema, Document } from 'mongoose';
 import crypto from 'crypto';
+import mongoose, { Document, Schema } from 'mongoose';
 import { DEFAULT_STORE_SETTINGS, DEFAULT_SYNC_CONFIG } from '../../../../../../config/integration.defaults';
 
 /**

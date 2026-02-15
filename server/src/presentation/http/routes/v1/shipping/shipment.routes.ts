@@ -1,13 +1,13 @@
 import express from 'express';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import shipmentController from '../../../controllers/shipping/shipment.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { csrfProtection } from '../../../middleware/auth/csrf';
 import { requireAccess, requireCompleteCompany } from '../../../middleware/index';
-import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import shipmentController from '../../../controllers/shipping/shipment.controller';
-import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import bulkRoutes from '../shipments/bulk.routes';
 import labelRoutes from '../shipments/label.routes';
 import manifestRoutes from '../shipments/manifest.routes';
-import bulkRoutes from '../shipments/bulk.routes';
 import podRoutes from '../shipments/pod.routes';
 
 const router = express.Router();

@@ -12,7 +12,7 @@
  * - Malware scanning (placeholder for ClamAV integration)
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import path from 'path';
 import logger from '../../../../shared/logger/winston.logger';
 

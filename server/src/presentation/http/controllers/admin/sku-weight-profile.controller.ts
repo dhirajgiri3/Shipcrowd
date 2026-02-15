@@ -4,11 +4,11 @@
  * List, freeze, unfreeze, and bulk-learn SKU weight profiles.
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import skuWeightProfileService from '../../../../core/application/services/sku/sku-weight-profile.service';
-import { sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
-import { guardChecks, parsePagination } from '../../../../shared/helpers/controller.helpers';
 import { AppError, ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks, parsePagination } from '../../../../shared/helpers/controller.helpers';
+import { calculatePagination, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * GET /api/v1/admin/sku-weight-profiles

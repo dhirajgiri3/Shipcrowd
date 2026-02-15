@@ -1,8 +1,8 @@
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { DelhiveryProvider } from '../../../../infrastructure/external/couriers/delhivery/delhivery.provider';
 import { EkartProvider } from '../../../../infrastructure/external/couriers/ekart/ekart.provider';
+import { AppError, ExternalServiceError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import { AppError, NotFoundError, ValidationError, ExternalServiceError } from '../../../../shared/errors/app.error';
 
 /**
  * Service to handle courier reattempt requests and address updates
@@ -105,7 +105,7 @@ export class CourierReattemptService {
     /**
      * Request Cancellation / RTO
      */
-    static async requestCancellation(shipmentId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    static async requestCancellation(shipmentId: string, _reason?: string): Promise<{ success: boolean; message: string }> {
         try {
             const shipment = await Shipment.findById(shipmentId);
             if (!shipment) {

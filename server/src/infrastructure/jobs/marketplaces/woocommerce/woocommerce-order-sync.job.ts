@@ -19,11 +19,11 @@
  */
 
 import { Job, Queue, Worker } from 'bullmq';
-import QueueManager from '../../../utilities/queue-manager';
-import { RedisManager } from '../../../redis/redis.manager';
 import WooCommerceOrderSyncService from '../../../../core/application/services/woocommerce/woocommerce-order-sync.service';
-import { WooCommerceStore } from '../../../database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { WooCommerceStore } from '../../../database/mongoose/models';
+import { RedisManager } from '../../../redis/redis.manager';
+import QueueManager from '../../../utilities/queue-manager';
 
 interface OrderSyncJobData {
   storeId: string;

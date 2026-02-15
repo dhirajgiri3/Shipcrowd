@@ -1,8 +1,8 @@
-import { FilterQuery, Types } from 'mongoose';
 import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
-import User from '@/infrastructure/database/mongoose/models/iam/users/user.model';
 import SupportTicket from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
+import User from '@/infrastructure/database/mongoose/models/iam/users/user.model';
 import { NotFoundError, ValidationError } from '@/shared/errors/app.error';
+import { FilterQuery, Types } from 'mongoose';
 
 interface CreateSalesRepDTO {
     companyId: string;

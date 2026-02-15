@@ -33,60 +33,56 @@
 
 import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
-import {
-  BaseCourierAdapter,
-  CourierShipmentData,
-  CourierShipmentResponse,
-  CourierTrackingResponse,
-  CourierRateRequest,
-  CourierRateResponse,
-  CourierReverseShipmentData,
-  CourierReverseShipmentResponse,
-  CourierPODResponse
-} from '../base/courier.adapter';
+import { VELOCITY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs/index';
+import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
+import { CourierStatusMapping, StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
+import { VELOCITY_STATUS_MAPPINGS } from '../../../../core/application/services/courier/status-mappings/velocity-status-mappings';
+import logger from '../../../../shared/logger/winston.logger';
+import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
 import Warehouse from '../../../database/mongoose/models/logistics/warehouse/structure/warehouse.model';
 import {
-  VelocityForwardOrderRequest,
-  VelocityShipmentResponse,
-  VelocityTrackingRequest,
-  VelocityTrackingResponse,
-  VelocityServiceabilityRequest,
-  VelocityServiceabilityResponse,
-  VelocityCancelRequest,
-  VelocityCancelResponse,
-  VelocityWarehouseRequest,
-  VelocityWarehouseResponse,
-  VelocityReverseShipmentRequest,
-  VelocityReverseShipmentResponse,
-  VelocitySchedulePickupRequest,
-  VelocitySchedulePickupResponse,
-  VelocityCancelReverseShipmentRequest,
-  VelocityCancelReverseShipmentResponse,
-  VelocitySettlementRequest,
-  VelocitySettlementResponse,
-  VelocityForwardOrderOnlyResponse,
-  VelocityAssignCourierRequest,
-  VelocityReverseOrderOnlyResponse,
-  VelocityAssignReverseCourierRequest,
-  VelocityReportsRequest,
-  VelocityReportsResponse,
-  VelocityError,
-  VELOCITY_STATUS_MAP
-} from './velocity.types';
+BaseCourierAdapter,
+CourierPODResponse,
+CourierRateRequest,
+CourierRateResponse,
+CourierReverseShipmentData,
+CourierReverseShipmentResponse,
+CourierShipmentData,
+CourierShipmentResponse,
+CourierTrackingResponse
+} from '../base/courier.adapter';
+import {
+VELOCITY_CARRIER_IDS,
+isDeprecatedVelocityId,
+normalizeVelocityCarrierId
+} from './velocity-carrier-ids';
+import { handleVelocityError } from './velocity-error-handler';
 import { VelocityAuth } from './velocity.auth';
 import { VelocityMapper } from './velocity.mapper';
 import {
-  VELOCITY_CARRIER_IDS,
-  isDeprecatedVelocityId,
-  normalizeVelocityCarrierId
-} from './velocity-carrier-ids';
-import { handleVelocityError } from './velocity-error-handler';
-import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
-import { CourierStatusMapping, StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
-import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
-import { VELOCITY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs/index';
-import { VELOCITY_STATUS_MAPPINGS } from '../../../../core/application/services/courier/status-mappings/velocity-status-mappings';
-import logger from '../../../../shared/logger/winston.logger';
+VELOCITY_STATUS_MAP,
+VelocityAssignCourierRequest,
+VelocityAssignReverseCourierRequest,
+VelocityCancelRequest,
+VelocityCancelResponse,
+VelocityCancelReverseShipmentRequest,
+VelocityCancelReverseShipmentResponse,
+VelocityError,
+VelocityForwardOrderOnlyResponse,
+VelocityReportsRequest,
+VelocityReportsResponse,
+VelocityReverseOrderOnlyResponse,
+VelocityReverseShipmentRequest,
+VelocityReverseShipmentResponse,
+VelocityServiceabilityRequest,
+VelocityServiceabilityResponse,
+VelocitySettlementRequest,
+VelocitySettlementResponse,
+VelocityShipmentResponse,
+VelocityTrackingRequest,
+VelocityTrackingResponse,
+VelocityWarehouseResponse
+} from './velocity.types';
 
 export class VelocityShipfastProvider extends BaseCourierAdapter {
   private static readonly RATE_FALLBACK_MULTIPLIER: Record<string, number> = {
@@ -1052,7 +1048,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
    * NOTE: Reverse pickup is supported via orchestration. Mock fallback is disabled in production.
    */
   async createReverseShipment(data: CourierReverseShipmentData): Promise<CourierReverseShipmentResponse> {
-    const { originalAwb, pickupAddress, returnWarehouseId, package: packageDetails, orderId, reason } = data;
+    const { originalAwb, pickupAddress, returnWarehouseId, package: packageDetails, orderId } = data;
     // Get warehouse details for return destination
     const warehouse = await Warehouse.findById(returnWarehouseId);
     if (!warehouse) {
@@ -1329,7 +1325,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
    * Proof of Delivery (POD) retrieval
    * Velocity API does not provide POD download as per current docs.
    */
-  async getProofOfDelivery(trackingNumber: string): Promise<CourierPODResponse> {
+  async getProofOfDelivery(_trackingNumber: string): Promise<CourierPODResponse> {
     return {
       source: 'not_supported',
       message: 'POD download not supported by Velocity API'
@@ -1383,6 +1379,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
           1000
         );
       });
+void response;
 
       return {
         success: true,

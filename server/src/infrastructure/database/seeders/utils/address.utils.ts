@@ -4,7 +4,7 @@
  * Utilities for generating realistic Indian addresses.
  */
 
-import { selectRandom, maybeExecute } from './random.utils';
+import { maybeExecute, selectRandom } from './random.utils';
 
 // Street name templates
 const STREET_NAMES = [
@@ -99,7 +99,7 @@ const LANDMARKS = [
 /**
  * Generate a street address for residential/commercial use
  */
-export function generateStreetAddress(city: string): string {
+export function generateStreetAddress(_city: string): string {
     const templates = [
         // House number + Street
         () => `${randomHouseNumber()} ${selectRandom(STREET_NAMES)}`,
@@ -126,7 +126,7 @@ export function generateLandmark(): string | undefined {
 /**
  * Generate an industrial/warehouse address
  */
-export function generateIndustrialAddress(city: string): string {
+export function generateIndustrialAddress(_city: string): string {
     const templates = [
         () => `Plot ${randomPlot()}, ${selectRandom(INDUSTRIAL_AREAS)}`,
         () => `Unit ${randomUnit()}, ${selectRandom(INDUSTRIAL_AREAS)}`,

@@ -1,8 +1,8 @@
 import express from 'express';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { bankAccountRateLimiter } from '../../../../../shared/config/rateLimit.config';
-import bankAccountController from '../../../controllers/identity/bank-account.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import bankAccountController from '../../../controllers/identity/bank-account.controller';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

@@ -4,14 +4,13 @@
  * Generates user sessions (2-5 per user over time).
  */
 
-import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import Session from '../../mongoose/models/iam/users/session.model';
 import User from '../../mongoose/models/iam/users/user.model';
 import { SEED_CONFIG } from '../config';
-import { randomInt, selectRandom, generateUUID } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { subDays, addDays, randomDateBetween, addHours } from '../utils/date.utils';
+import { addDays, addHours, randomDateBetween, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { generateUUID, randomInt, selectRandom } from '../utils/random.utils';
 
 // User agents for variety
 const USER_AGENTS = [
@@ -89,7 +88,7 @@ function generateDeviceInfo(): any {
  */
 async function generateSessionData(
     user: any,
-    sessionIndex: number,
+    _sessionIndex: number,
     hashedToken: string,
     sessionDate: Date
 ): Promise<any> {

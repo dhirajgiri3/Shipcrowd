@@ -6,16 +6,15 @@
  * - TeamActivity: activity logs for team actions
  */
 
-import mongoose from 'mongoose';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
+import TeamInvitation from '../../mongoose/models/iam/access/team-invitation.model';
 import User from '../../mongoose/models/iam/users/user.model';
 import Company from '../../mongoose/models/organization/core/company.model';
-import TeamInvitation from '../../mongoose/models/iam/access/team-invitation.model';
 import TeamActivity from '../../mongoose/models/organization/teams/team-activity.model';
+import { addDays, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
 import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { subDays, addDays } from '../utils/date.utils';
-import { generateEmail } from '../data/customer-names';
 
 // Invitation status distribution
 const INVITATION_STATUS_DISTRIBUTION = {

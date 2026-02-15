@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
+import { cancelEmailChange, requestEmailChange, verifyEmailChange } from '../../../../core/application/services/user/email-change.service';
 import { User } from '../../../../infrastructure/database/mongoose/models';
-import { requestEmailChange, verifyEmailChange, cancelEmailChange } from '../../../../core/application/services/user/email-change.service';
-import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 const requestEmailChangeSchema = z.object({
   newEmail: z.string().email('Invalid email format'),

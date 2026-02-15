@@ -14,16 +14,15 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
+import mongoose from 'mongoose';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
+import { IUser, User } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
-import logger from '../../../../shared/logger/winston.logger';
-import crypto from 'crypto';
-import mongoose from 'mongoose';
-import { generateAccessToken, generateRefreshToken } from '../../../../shared/helpers/jwt';
-import { AuthenticationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { generateAccessToken, generateRefreshToken } from '../../../../shared/helpers/jwt';
+import logger from '../../../../shared/logger/winston.logger';
 
 // ============================================================================
 // VALIDATION HELPERS

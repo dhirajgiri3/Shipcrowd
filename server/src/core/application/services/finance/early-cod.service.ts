@@ -1,9 +1,8 @@
-import mongoose from 'mongoose';
-import EarlyCODEnrollment, { IEarlyCODEnrollment } from '../../../../infrastructure/database/mongoose/models/finance/early-cod-enrollment.model';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import EarlyCODEnrollment, { IEarlyCODEnrollment } from '../../../../infrastructure/database/mongoose/models/finance/early-cod-enrollment.model';
+import { AppError } from '../../../../shared/errors/app.error';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Early COD Service

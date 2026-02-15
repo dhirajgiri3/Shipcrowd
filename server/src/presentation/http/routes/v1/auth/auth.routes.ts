@@ -1,19 +1,19 @@
 import express from 'express';
 import passport from 'passport';
+import {
+changeEmailRateLimiter,
+changePasswordRateLimiter,
+emailVerificationRateLimiter,
+loginRateLimiter,
+magicLinkRateLimiter,
+passwordResetRateLimiter,
+registrationRateLimiter,
+resendVerificationRateLimiter,
+setPasswordRateLimiter,
+} from '../../../../../shared/config/rateLimit.config';
 import authController from '../../../controllers/auth/auth.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { csrfProtection } from '../../../middleware/auth/csrf';
-import {
-  loginRateLimiter,
-  registrationRateLimiter,
-  passwordResetRateLimiter,
-  emailVerificationRateLimiter,
-  resendVerificationRateLimiter,
-  magicLinkRateLimiter,
-  setPasswordRateLimiter,
-  changePasswordRateLimiter,
-  changeEmailRateLimiter,
-} from '../../../../../shared/config/rateLimit.config';
 import mfaRoutes from './mfa.routes';
 
 const router = express.Router();

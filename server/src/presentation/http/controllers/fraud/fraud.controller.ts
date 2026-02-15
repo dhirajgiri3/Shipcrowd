@@ -5,13 +5,13 @@
  * All endpoints require admin authentication.
  */
 
-import { Request, Response } from 'express';
 import FraudDetectionService from '@/core/application/services/fraud/fraud-detection.service';
+import Blacklist from '@/infrastructure/database/mongoose/models/fraud/blacklist.model';
 import FraudAlert from '@/infrastructure/database/mongoose/models/fraud/fraud-alert.model';
 import FraudRule from '@/infrastructure/database/mongoose/models/fraud/fraud-rule.model';
-import Blacklist from '@/infrastructure/database/mongoose/models/fraud/blacklist.model';
-import logger from '@/shared/logger/winston.logger';
 import { AppError } from '@/shared/errors/app.error';
+import logger from '@/shared/logger/winston.logger';
+import { Request, Response } from 'express';
 
 export default class FraudController {
     /**

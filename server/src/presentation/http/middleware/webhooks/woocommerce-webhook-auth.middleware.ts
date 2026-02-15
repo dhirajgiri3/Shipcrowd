@@ -11,8 +11,8 @@
  * - Store-specific secret validation
  */
 
-import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -143,7 +143,7 @@ export async function verifyWooCommerceWebhook(
  * Raw body parser middleware
  * WooCommerce webhook verification requires raw body
  */
-export function rawBodyParser(req: Request, res: Response, next: NextFunction): void {
+export function rawBodyParser(req: Request, _res: Response, next: NextFunction): void {
   let data = '';
 
   req.on('data', (chunk) => {

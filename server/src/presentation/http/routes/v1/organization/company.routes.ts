@@ -1,12 +1,12 @@
 import express from 'express';
+import multer from 'multer';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import companyController from '../../../controllers/organization/company.controller';
+import teamController from '../../../controllers/organization/team.controller';
+import warehouseController from '../../../controllers/warehouse/warehouse.controller';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import companyController from '../../../controllers/organization/company.controller';
-import warehouseController from '../../../controllers/warehouse/warehouse.controller';
-import teamController from '../../../controllers/organization/team.controller';
-import asyncHandler from '../../../../../shared/utils/asyncHandler';
-import multer from 'multer';
 
 const router = express.Router();
 

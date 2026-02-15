@@ -9,14 +9,13 @@
  */
 
 import mongoose from 'mongoose';
-import User from '../../../../infrastructure/database/mongoose/models/iam/users/user.model';
-import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import Dispute from '../../../../infrastructure/database/mongoose/models/crm/disputes/dispute.model';
-import { AuthorizationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import User from '../../../../infrastructure/database/mongoose/models/iam/users/user.model';
+import { AuthorizationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import logger from '../../../../shared/logger/winston.logger';
 import { generateAccessToken, generateRefreshToken } from '../../../../shared/helpers/jwt';
+import logger from '../../../../shared/logger/winston.logger';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 export interface UserListFilters {

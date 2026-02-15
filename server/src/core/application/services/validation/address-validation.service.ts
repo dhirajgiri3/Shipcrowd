@@ -6,8 +6,6 @@
  */
 
 import PincodeLookupService from '../logistics/pincode-lookup.service';
-import logger from '../../../../shared/logger/winston.logger';
-import axios from 'axios';
 
 interface Address {
     line1: string;

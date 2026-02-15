@@ -18,14 +18,14 @@
  */
 
 import {
-    ShopifyStore,
-    WooCommerceStore,
-    AmazonStore,
-    FlipkartStore,
-    SyncLog,
-    AmazonSyncLog,
-    FlipkartSyncLog,
-    WooCommerceSyncLog,
+AmazonStore,
+AmazonSyncLog,
+FlipkartStore,
+FlipkartSyncLog,
+ShopifyStore,
+SyncLog,
+WooCommerceStore,
+WooCommerceSyncLog,
 } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 

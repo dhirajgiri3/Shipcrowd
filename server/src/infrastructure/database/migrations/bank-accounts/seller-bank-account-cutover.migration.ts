@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
-import { BaseMigration } from '../base-migration';
 import { Company, KYC, SellerBankAccount } from '../../mongoose/models';
 import {
-  computeFingerprint,
-  normalizeAccount,
-  normalizeIfsc,
+computeFingerprint,
+normalizeAccount,
+normalizeIfsc,
 } from '../../mongoose/models/finance/payouts/seller-bank-account.model';
+import { BaseMigration } from '../base-migration';
 
 export class SellerBankAccountCutoverMigration extends BaseMigration {
   constructor(dryRun = false) {

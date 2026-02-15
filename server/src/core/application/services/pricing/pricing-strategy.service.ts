@@ -1,6 +1,6 @@
+import { IServiceRateCard } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/service-rate-card.model';
 import { PricingConfidence } from '../../../../infrastructure/external/couriers/base/normalized-pricing.types';
 import { PricingSource } from '../../../domain/types/service-level-pricing.types';
-import { IServiceRateCard } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/service-rate-card.model';
 
 type CardSourceMode = IServiceRateCard['sourceMode'];
 

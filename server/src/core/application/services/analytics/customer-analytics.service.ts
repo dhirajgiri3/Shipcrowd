@@ -16,8 +16,8 @@
 
 import mongoose from 'mongoose';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
-import AnalyticsService, { DateRange } from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
+import AnalyticsService, { DateRange } from './analytics.service';
 
 export interface CustomerStats {
     totalCustomers: number;

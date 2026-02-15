@@ -4,11 +4,11 @@
  * Courier partner data with tracking number formats, service types, and full capabilities.
  */
 
-import { selectRandom, randomInt, selectWeightedFromObject } from '../utils/random.utils';
-import { SEED_CONFIG, CarrierName } from '../config';
+import { CarrierName, SEED_CONFIG } from '../config';
+import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
+import { DELHIVERY_CONFIG } from './delhivery-config';
 import { EKART_CONFIG } from './ekart-config';
 import { VELOCITY_CONFIG } from './velocity-config';
-import { DELHIVERY_CONFIG } from './delhivery-config';
 
 // Tracking number counters per carrier to ensure uniqueness
 const trackingCounters: Map<CarrierName, number> = new Map();
@@ -338,7 +338,7 @@ export function generateCarrierWarehouseId(carrierName: CarrierName): string {
  * Get estimated delivery days based on carrier and zone
  */
 export function getEstimatedDeliveryDays(
-    carrierName: CarrierName,
+    _carrierName: CarrierName,
     zone: string,
     isExpress: boolean = false
 ): { min: number; max: number } {

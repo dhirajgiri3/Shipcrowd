@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
 import crypto from 'crypto';
+import mongoose, { Document, Schema } from 'mongoose';
 
 /**
  * MFA Settings Model

@@ -98,7 +98,7 @@ export default class ExcelExportService {
             });
 
             // Add borders to all cells
-            worksheet.eachRow((row, rowNumber) => {
+            worksheet.eachRow((row, _rowNumber) => {
                 row.eachCell(cell => {
                     cell.border = {
                         top: { style: 'thin' },

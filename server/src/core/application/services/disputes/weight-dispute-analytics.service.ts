@@ -542,6 +542,7 @@ class WeightDisputeAnalyticsService {
                     },
                 },
             ]);
+void spikeAgg;
 
             const recentSpike: Array<{ companyId: string; currentWeek: number; previousWeek: number; changePct: number }> = [];
             const currentMap = new Map<string, number>();

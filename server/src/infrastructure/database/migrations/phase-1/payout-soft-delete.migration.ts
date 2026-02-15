@@ -1,5 +1,5 @@
-import { BaseMigration, MigrationOptions } from '../base-migration';
 import Payout from '../../mongoose/models/finance/payouts/payout.model';
+import { BaseMigration } from '../base-migration';
 
 /**
  * Migration: Add soft delete to Payout

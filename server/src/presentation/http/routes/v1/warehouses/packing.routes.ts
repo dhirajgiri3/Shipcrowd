@@ -4,11 +4,11 @@
  * API routes for packing station and packing workflow operations
  */
 
-import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import packingController from '@/presentation/http/controllers/warehouse/packing.controller';
 import { authenticate } from '@/presentation/http/middleware';
 import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
+import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 

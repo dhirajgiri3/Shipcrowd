@@ -1,9 +1,9 @@
-import * as React from 'react';
 import { Section } from '@react-email/section';
 import { Text } from '@react-email/text';
-import { EmailLayout } from './components/EmailLayout';
-import { EmailHeader } from './components/EmailHeader';
+import * as React from 'react';
 import { EmailFooter } from './components/EmailFooter';
+import { EmailHeader } from './components/EmailHeader';
+import { EmailLayout } from './components/EmailLayout';
 
 export interface NewDeviceAlertEmailProps {
     name: string;

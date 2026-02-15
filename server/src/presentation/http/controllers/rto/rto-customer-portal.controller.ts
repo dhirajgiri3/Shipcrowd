@@ -4,11 +4,9 @@
  * Unauthenticated endpoints for customers to track RTO (reverse shipment) status.
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { NextFunction, Request, Response } from 'express';
 import RTOService from '../../../../core/application/services/rto/rto.service';
+import { Order, RTOEvent, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 const RTO_STATUS_LABELS_MAP: Record<string, string> = {

@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
 import sellerPolicyBootstrapService from '../../../core/application/services/organization/seller-policy-bootstrap.service';
-import QueueManager from '../../utilities/queue-manager';
 import logger from '../../../shared/logger/winston.logger';
+import QueueManager from '../../utilities/queue-manager';
 
 interface SellerPolicyBootstrapJobData {
     companyId: string;

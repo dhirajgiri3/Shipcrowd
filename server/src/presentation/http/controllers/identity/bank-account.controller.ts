@@ -1,20 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import {
-    Company,
-    SellerBankAccount,
-} from '../../../../infrastructure/database/mongoose/models';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import logger from '../../../../shared/logger/winston.logger';
 import { z } from 'zod';
 import {
-    computeFingerprint,
-    normalizeAccount,
-    normalizeIfsc,
+Company,
+SellerBankAccount,
+} from '../../../../infrastructure/database/mongoose/models';
+import {
+computeFingerprint,
+normalizeAccount,
+normalizeIfsc,
 } from '../../../../infrastructure/database/mongoose/models/finance/payouts/seller-bank-account.model';
+import { ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 const ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/;
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;

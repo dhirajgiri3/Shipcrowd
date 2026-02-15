@@ -5,8 +5,8 @@
  * All routes require authentication and admin role.
  */
 
-import { Router } from 'express';
 import FraudController from '@/presentation/http/controllers/fraud/fraud.controller';
+import { Router } from 'express';
 // FRAUD DETECTION ARCHIVED - DO NOT ENABLE UNTIL FUTURE RELEASE
 // import { authenticate } from '@/presentation/http/middleware';
 // import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';

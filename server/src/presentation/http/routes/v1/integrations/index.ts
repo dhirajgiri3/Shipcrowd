@@ -1,12 +1,12 @@
 import { Router } from 'express';
+import amazonRoutes from './amazon.routes';
+import ekartRoutes from './ekart.routes';
+import flipkartProductMappingRoutes from './flipkart-product-mapping.routes';
+import flipkartRoutes from './flipkart.routes';
+import integrationsRoutes from './integrations.routes';
+import productMappingRoutes from './product-mapping.routes';
 import shopifyRoutes from './shopify.routes';
 import woocommerceRoutes from './woocommerce.routes';
-import flipkartRoutes from './flipkart.routes';
-import amazonRoutes from './amazon.routes';
-import flipkartProductMappingRoutes from './flipkart-product-mapping.routes';
-import productMappingRoutes from './product-mapping.routes';
-import integrationsRoutes from './integrations.routes';
-import ekartRoutes from './ekart.routes';
 
 /**
  * Integrations Routes Index

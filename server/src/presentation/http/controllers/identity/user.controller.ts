@@ -1,17 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
-import { User } from '../../../../infrastructure/database/mongoose/models';
-import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import {
-  sendSuccess,
-  sendPaginated,
-  calculatePagination
-} from '../../../../shared/utils/responseHelper';
+import { AuditLog, User } from '../../../../infrastructure/database/mongoose/models';
 import { AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+calculatePagination,
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
 import { passwordSchema } from '../../../../shared/validation/commonSchemas';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // Define validation schemas
 const updateProfileSchema = z.object({

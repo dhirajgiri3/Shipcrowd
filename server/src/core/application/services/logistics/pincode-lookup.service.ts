@@ -1,8 +1,8 @@
+import csv from 'csv-parser';
 import fs from 'fs';
 import path from 'path';
-import csv from 'csv-parser';
-import logger from '../../../../shared/logger/winston.logger';
 import SystemConfiguration from '../../../../infrastructure/database/mongoose/models/configuration/system-configuration.model';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Pincode Details from CSV

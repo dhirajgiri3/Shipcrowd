@@ -1,7 +1,7 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import sellerHealthController from '../../../controllers/system/seller-health.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import sellerHealthController from '../../../controllers/system/seller-health.controller';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

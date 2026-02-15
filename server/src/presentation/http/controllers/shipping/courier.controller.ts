@@ -1,18 +1,18 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import asyncHandler from '../../../../shared/utils/asyncHandler';
-import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
-import { encryptData } from '../../../../shared/utils/encryption';
-import {
-    Integration,
-    CourierService,
-    Shipment,
-} from '../../../../infrastructure/database/mongoose/models';
-import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 import CourierProviderRegistry, {
-    CanonicalCourierProvider,
+CanonicalCourierProvider,
 } from '../../../../core/application/services/courier/courier-provider-registry';
+import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
+import {
+CourierService,
+Integration,
+Shipment,
+} from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import asyncHandler from '../../../../shared/utils/asyncHandler';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import { encryptData } from '../../../../shared/utils/encryption';
 
 const SUPPORTED_PROVIDERS = CourierProviderRegistry.getSupportedProviders();
 type SupportedProvider = CanonicalCourierProvider;
@@ -42,6 +42,7 @@ function getCompanyId(req: Request): string {
 function normalizeProvider(id: string): string {
     return CourierProviderRegistry.normalize(id);
 }
+void normalizeProvider;
 
 function formatProviderName(provider: string): string {
     return CourierProviderRegistry.getLabel(provider);
@@ -55,7 +56,7 @@ function toIntegrationProvider(provider: string): string {
     return CourierProviderRegistry.getIntegrationProvider(provider);
 }
 
-function integrationInsertFields(companyId: string, provider: string) {
+function integrationInsertFields(companyId: string, _provider: string) {
     return { companyId, type: 'courier', isDeleted: false };
 }
 

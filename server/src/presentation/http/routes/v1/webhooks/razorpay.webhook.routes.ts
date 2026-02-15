@@ -1,6 +1,6 @@
 import express from 'express';
-import * as razorpayPayoutWebhook from '../../../controllers/webhooks/payment/razorpay-payout.webhook.controller';
 import * as razorpayPaymentWebhook from '../../../controllers/webhooks/payment/razorpay-payment.webhook.controller';
+import * as razorpayPayoutWebhook from '../../../controllers/webhooks/payment/razorpay-payout.webhook.controller';
 import verifyRazorpayWebhook from '../../../middleware/webhooks/razorpay-webhook-auth.middleware';
 
 const router = express.Router();

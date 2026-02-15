@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
-import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
-import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
+import { NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Email Queue Controller
@@ -14,7 +14,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 /**
  * Get email queue statistics
  */
-export async function getEmailQueueStats(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getEmailQueueStats(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const emailQueue = QueueManager.getEmailQueue();
 
@@ -118,7 +118,7 @@ export async function retryFailedEmail(req: Request, res: Response, next: NextFu
 /**
  * Retry all failed emails
  */
-export async function retryAllFailedEmails(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function retryAllFailedEmails(_req: Request, res: Response, _next: NextFunction): Promise<void> {
     try {
         const emailQueue = QueueManager.getEmailQueue();
         const failed = await emailQueue.getFailed(0, 1000); // Get up to 1000 failed jobs

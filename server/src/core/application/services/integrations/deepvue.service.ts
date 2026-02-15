@@ -15,17 +15,17 @@
  */
 
 import axios from 'axios';
-import logger from '../../../../shared/logger/winston.logger';
 import dotenv from 'dotenv';
-import {
-  mockPanResponse,
-  mockAadhaarResponse,
-  mockGstinResponse,
-  mockBankAccountResponse,
-  mockIfscResponse
-} from './mocks/deepvue.mock';
 import { ExternalServiceError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+mockAadhaarResponse,
+mockBankAccountResponse,
+mockGstinResponse,
+mockIfscResponse,
+mockPanResponse
+} from './mocks/deepvue.mock';
 
 dotenv.config();
 

@@ -4,28 +4,28 @@
  * Handles NDR management and analytics endpoints.
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { NDREvent, NDRWorkflow, Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
-import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
+import { NextFunction, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
 import { NDRDataTransformerService } from '../../../../core/application/services/ndr/ndr-data-transformer.service';
+import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
+import { NDREvent, NDRWorkflow, Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import {
-    listNDREventsQuerySchema,
-    resolveNDRSchema,
-    takeNDRActionSchema,
-    escalateNDRSchema,
-    getNDRAnalyticsQuerySchema,
-    getNDRTrendsQuerySchema,
-    getTopNDRReasonsQuerySchema,
-} from '../../../../shared/validation/ndr-schemas';
-import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import {
+escalateNDRSchema,
+getNDRAnalyticsQuerySchema,
+getNDRTrendsQuerySchema,
+getTopNDRReasonsQuerySchema,
+listNDREventsQuerySchema,
+resolveNDRSchema,
+takeNDRActionSchema,
+} from '../../../../shared/validation/ndr-schemas';
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -265,7 +265,7 @@ export class NDRController {
                 throw new ValidationError('Validation failed', errors);
             }
 
-            const { resolution, notes, resolutionMethod } = validation.data;
+            const { resolution, notes } = validation.data;
 
             // Verify ownership
             const ndrEvent = await NDREvent.findOne({ _id: id, company: new mongoose.Types.ObjectId(companyId) });
@@ -358,7 +358,7 @@ export class NDRController {
                 throw new ValidationError('Validation failed', errors);
             }
 
-            const { reason, escalateTo, priority, notes } = validation.data;
+            const { reason, escalateTo, priority } = validation.data;
 
             // Verify ownership
             const ndrEvent = await NDREvent.findOne({ _id: id, company: new mongoose.Types.ObjectId(auth.companyId) });
@@ -419,7 +419,7 @@ export class NDRController {
                 throw new ValidationError('Validation failed', errors);
             }
 
-            const { startDate, endDate, ndrType } = validation.data;
+            const { startDate, endDate } = validation.data;
             const parsedRange = parseQueryDateRange(startDate, endDate);
 
             let dateRange;
@@ -542,7 +542,7 @@ export class NDRController {
                 throw new ValidationError('Validation failed', errors);
             }
 
-            const { limit, startDate, endDate } = validation.data;
+            const { limit } = validation.data;
 
             const reasons = await NDRAnalyticsService.getTopNDRReasons(
                 companyId,
@@ -577,7 +577,7 @@ export class NDRController {
      * Seed default workflows
      * POST /ndr/workflows/seed
      */
-    static async seedWorkflows(req: Request, res: Response, next: NextFunction): Promise<void> {
+    static async seedWorkflows(_req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             await NDRWorkflow.seedDefaultWorkflows();
 

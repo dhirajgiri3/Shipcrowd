@@ -14,14 +14,12 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
-import { AmazonSyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
+import { AmazonStore, AmazonSyncLog, Order } from '../../../../infrastructure/database/mongoose/models';
 import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
-import AmazonOAuthService from './amazon-oauth.service';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import mongoose from 'mongoose';
+import AmazonOAuthService from './amazon-oauth.service';
 
 // Amazon order statuses
 type AmazonOrderStatus =

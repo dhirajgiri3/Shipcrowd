@@ -15,10 +15,8 @@
  */
 
 import mongoose from 'mongoose';
-import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
+import { IUser, User } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Define required fields for different user roles
 const REQUIRED_FIELDS = {

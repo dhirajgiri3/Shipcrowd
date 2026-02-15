@@ -24,15 +24,15 @@
  * - Input validation for all public methods
  */
 
+import bcrypt from 'bcrypt';
 import { Request } from 'express';
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
 import * as UAParser from 'ua-parser-js';
-import { Session, ISession, User, AuditLog } from '../../../../infrastructure/database/mongoose/models';
+import { AuditLog, ISession, Session, User } from '../../../../infrastructure/database/mongoose/models';
+import { AuthenticationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { verifyRefreshToken } from '../../../../shared/helpers/jwt';
 import logger from '../../../../shared/logger/winston.logger';
-import { DatabaseError, AuthenticationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendNewDeviceLoginEmail } from '../communication/email.service';
 
 // ============================================================================

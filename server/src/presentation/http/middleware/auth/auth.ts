@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { verifyAccessToken } from '../../../../shared/helpers/jwt';
-import { getAccessTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
+import { getAccessTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
+import { verifyAccessToken } from '../../../../shared/helpers/jwt';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 import logger from '../../../../shared/logger/winston.logger';

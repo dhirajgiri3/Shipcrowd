@@ -1,10 +1,8 @@
 import { Job } from 'bullmq';
-import mongoose from 'mongoose';
-import QueueManager from '../../utilities/queue-manager';
-import logger from '../../../shared/logger/winston.logger';
 import InvoiceService from '../../../core/application/services/finance/invoice.service';
-import { Company } from '../../../infrastructure/database/mongoose/models';
-import { Shipment } from '../../../infrastructure/database/mongoose/models';
+import { Company, Shipment } from '../../../infrastructure/database/mongoose/models';
+import logger from '../../../shared/logger/winston.logger';
+import QueueManager from '../../utilities/queue-manager';
 
 interface InvoiceGenerationJobData {
     type: 'monthly_generation';
@@ -78,6 +76,7 @@ export class InvoiceGenerationJob {
 
         const companies = await Company.find({ isActive: true, isDeleted: false }).select('_id billingInfo');
         const companyMap = new Map(companies.map(company => [company._id.toString(), company]));
+void companyMap;
         const companyIds = companies.map(company => company._id);
 
         const shipmentGroups = companyIds.length > 0

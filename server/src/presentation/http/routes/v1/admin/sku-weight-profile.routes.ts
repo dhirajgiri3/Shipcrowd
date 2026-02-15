@@ -3,10 +3,9 @@
  */
 
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/auth/access.middleware';
-import * as skuWeightProfileController from '../../../controllers/admin/sku-weight-profile.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import * as skuWeightProfileController from '../../../controllers/admin/sku-weight-profile.controller';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

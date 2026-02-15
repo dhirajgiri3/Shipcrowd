@@ -14,13 +14,11 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
-import ShopifyOrderSyncService from './shopify-order-sync.service';
-import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Order, ShopifyProductMapping as ProductMapping, ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import ShopifyOrderSyncService from './shopify-order-sync.service';
 
 /**
  * ShopifyWebhookService
@@ -76,10 +74,17 @@ export class ShopifyWebhookService {
         orderId: payload.id,
       });
     } catch (error: any) {
+      console.error('\n❌ ORDER CREATE WEBHOOK ERROR:');
+      console.error('Store ID:', storeId);
+      console.error('Order ID:', payload.id);
+      console.error('Error:', error);
+      console.error('Stack:', error.stack);
+
       logger.error('Failed to handle orders/create webhook', {
         storeId,
         orderId: payload.id,
         error: error.message,
+        stack: error.stack,
       });
       throw error;
     }
@@ -147,10 +152,17 @@ export class ShopifyWebhookService {
         });
       }
     } catch (error: any) {
+      console.error('\n❌ ORDER UPDATED WEBHOOK ERROR:');
+      console.error('Store ID:', storeId);
+      console.error('Order ID:', payload.id);
+      console.error('Error:', error);
+      console.error('Stack:', error.stack);
+
       logger.error('Failed to handle orders/updated webhook', {
         storeId,
         orderId: payload.id,
         error: error.message,
+        stack: error.stack,
       });
       throw error;
     }

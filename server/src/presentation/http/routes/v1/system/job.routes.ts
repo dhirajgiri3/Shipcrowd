@@ -1,8 +1,8 @@
 import { Router } from 'express';
+import { asyncHandler } from '../../../../../shared/utils/asyncHandler';
 import { JobController } from '../../../controllers/system/job.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/auth/unified-access';
-import { asyncHandler } from '../../../../../shared/utils/asyncHandler';
 
 const router = Router();
 const controller = new JobController();

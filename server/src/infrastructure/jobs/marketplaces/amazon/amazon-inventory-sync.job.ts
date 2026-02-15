@@ -1,8 +1,8 @@
 import { Job } from 'bullmq';
-import QueueManager from '../../../utilities/queue-manager';
-import { AmazonStore } from '../../../database/mongoose/models';
 import AmazonInventorySyncService from '../../../../core/application/services/amazon/amazon-inventory-sync.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { AmazonStore } from '../../../database/mongoose/models';
+import QueueManager from '../../../utilities/queue-manager';
 
 interface InventorySyncJobData {
   storeId: string;

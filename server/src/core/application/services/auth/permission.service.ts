@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import logger from '../../../../shared/logger/winston.logger';
 import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
 import { PubSubService } from '../../../../infrastructure/redis/pubsub.service';
+import logger from '../../../../shared/logger/winston.logger';
 
 // Use mongoose.model() to avoid circular imports
 const getUser = () => mongoose.model('User');

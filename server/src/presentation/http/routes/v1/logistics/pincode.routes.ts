@@ -1,7 +1,7 @@
 import { Router } from 'express';
+import * as pincodeController from '../../../controllers/logistics/pincode.controller';
 import { authenticate } from '../../../middleware';
 import { requireAccess } from '../../../middleware/index';
-import * as pincodeController from '../../../controllers/logistics/pincode.controller';
 
 const router = Router();
 

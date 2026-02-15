@@ -4,15 +4,14 @@
  * Execute specific workflow actions for NDR resolution.
  */
 
-import { NDREvent, INDREvent, INDRResolutionAction } from '../../../../../infrastructure/database/mongoose/models';
-import { CallLog } from '../../../../../infrastructure/database/mongoose/models';
+import { CallLog, INDREvent, INDRResolutionAction, NDREvent } from '../../../../../infrastructure/database/mongoose/models';
+import OpenAIService from '../../../../../infrastructure/external/ai/openai/openai.service';
 import ExotelClient from '../../../../../infrastructure/external/communication/exotel/exotel.client';
 import WhatsAppService from '../../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
-import OpenAIService from '../../../../../infrastructure/external/ai/openai/openai.service';
-import NDRMagicLinkService from '../ndr-magic-link.service';
 import logger from '../../../../../shared/logger/winston.logger';
-import smsService from '../../communication/sms.service';
 import NotificationPreferenceService from '../../communication/notification-preferences.service';
+import smsService from '../../communication/sms.service';
+import NDRMagicLinkService from '../ndr-magic-link.service';
 
 interface ActionResult {
     success: boolean;
@@ -233,7 +232,7 @@ export class NDRActionExecutors {
      */
     static async executeSendEmail(
         context: ActionContext,
-        actionConfig: Record<string, any>
+        _actionConfig: Record<string, any>
     ): Promise<ActionResult> {
         try {
             const { ndrEvent, customer } = context;
@@ -407,7 +406,7 @@ export class NDRActionExecutors {
      */
     static async executeUpdateAddress(
         context: ActionContext,
-        actionConfig: Record<string, any>
+        _actionConfig: Record<string, any>
     ): Promise<ActionResult> {
         try {
             const { ndrEvent, customer } = context;
@@ -561,7 +560,7 @@ Need help? Reply to this message.
      */
     static async executeTriggerRTO(
         context: ActionContext,
-        actionConfig: Record<string, any>
+        _actionConfig: Record<string, any>
     ): Promise<ActionResult> {
         try {
             const { ndrEvent, customer } = context;

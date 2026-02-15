@@ -1,10 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import { RedisManager } from '../../../../infrastructure/redis/redis.manager';
 import logger from '../../../../shared/logger/winston.logger';
 
 const CSRF_TOKEN_EXPIRY = 900; // 15 minutes
-const CSRF_TOKEN_LENGTH = 64; // 64 hex characters = 256 bits
+const CSRF_TOKEN_LENGTH = 64;
+void CSRF_TOKEN_LENGTH; // 64 hex characters = 256 bits
 
 /**
  * Generate and store CSRF token in Redis
@@ -228,7 +229,7 @@ export const csrfProtection = async (
  */
 export const csrfProtectionMonitor = async (
     req: Request,
-    res: Response,
+    _res: Response,
     next: NextFunction
 ): Promise<void> => {
     if (process.env.NODE_ENV === 'test' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {

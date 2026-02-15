@@ -1,17 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
-import InvoiceService from '../../../../core/application/services/finance/invoice.service';
-import IRNService from '../../../../core/application/services/finance/irn.service';
+import { NextFunction, Request, Response } from 'express';
+import { sendEmail } from '../../../../core/application/services/communication/email.service';
 import CreditNoteService from '../../../../core/application/services/finance/credit-note.service';
 import GSTRExportService from '../../../../core/application/services/finance/gstr-export.service';
-import StorageService from '../../../../core/application/services/storage/storage.service';
+import InvoiceService from '../../../../core/application/services/finance/invoice.service';
+import IRNService from '../../../../core/application/services/finance/irn.service';
 import { InvoicePDFTemplate } from '../../../../core/application/services/pdf/templates/invoice-pdf.template';
-import { CreditNotePDFTemplate } from '../../../../core/application/services/pdf/templates/credit-note-pdf.template';
+import StorageService from '../../../../core/application/services/storage/storage.service';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
-import { sendEmail } from '../../../../core/application/services/communication/email.service';
-import { formatFinancialPeriod } from '../../../../shared/utils/date-format.util';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
+import { formatFinancialPeriod } from '../../../../shared/utils/date-format.util';
 
 /**
  * Invoice Controller
@@ -166,6 +165,7 @@ class InvoiceController {
                 const period = formatFinancialPeriod(invoice.createdAt);
                 const filename = `${invoice.invoiceNumber}.pdf`;
                 const storagePath = `invoices/${period}/${filename}`;
+void storagePath;
 
                 // Upload to storage (Local Disk for now)
                 const uploadResult = await StorageService.upload(pdfBuffer, {
@@ -181,6 +181,7 @@ class InvoiceController {
 
                 // Serve the file
                 const fileUrl = await StorageService.getFileUrl(storedPath);
+void fileUrl;
 
                 // If it's a download request, we might want to pipe the buffer directly 
                 // for immediate download, but redirecting is cleaner for caching.
@@ -237,6 +238,7 @@ class InvoiceController {
                 const period = formatFinancialPeriod(invoice.createdAt);
                 const filename = `${invoice.invoiceNumber}.pdf`;
                 const storagePath = `invoices/${period}/${filename}`;
+void storagePath;
 
                 const uploadResult = await StorageService.upload(pdfBuffer, {
                     folder: `invoices/${period}`,

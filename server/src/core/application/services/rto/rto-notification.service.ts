@@ -9,8 +9,8 @@
  */
 
 import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
-import { sendNotification } from '../communication/notification.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendNotification } from '../communication/notification.service';
 
 function getCustomerContact(rto: any): { email?: string; phone?: string } {
     const order = rto.order;

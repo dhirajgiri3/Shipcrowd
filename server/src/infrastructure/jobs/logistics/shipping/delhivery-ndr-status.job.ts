@@ -4,10 +4,10 @@
 
 import { Job } from 'bullmq';
 import mongoose from 'mongoose';
-import QueueManager from '../../../utilities/queue-manager';
+import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 import logger from '../../../../shared/logger/winston.logger';
 import { NDREvent } from '../../../database/mongoose/models';
-import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
+import QueueManager from '../../../utilities/queue-manager';
 
 interface DelhiveryNdrJobData {
     uplId: string;

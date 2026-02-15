@@ -14,16 +14,15 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
-import { WooCommerceProductMapping } from '../../../../infrastructure/database/mongoose/models';
+import { Parser } from 'json2csv';
+import { WooCommerceProductMapping, WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import {
-  WooCommerceProduct,
-  WooCommerceProductVariation,
+WooCommerceProduct,
+WooCommerceProductVariation,
 } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import { Parser } from 'json2csv';
 
 interface AutoMapResult {
   mapped: number;

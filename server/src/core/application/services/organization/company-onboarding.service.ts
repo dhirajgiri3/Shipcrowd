@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import Zone from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/zone.model';
-import sellerPolicyBootstrapService from './seller-policy-bootstrap.service';
 import logger from '../../../../shared/logger/winston.logger';
+import sellerPolicyBootstrapService from './seller-policy-bootstrap.service';
 
 /**
  * Company Onboarding Service

@@ -1,8 +1,8 @@
 import { Job } from 'bullmq';
-import QueueManager from '../../../utilities/queue-manager';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
-import { ShopifyStore } from '../../../database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { ShopifyStore } from '../../../database/mongoose/models';
+import QueueManager from '../../../utilities/queue-manager';
 
 /**
  * ShopifyOrderSyncJob

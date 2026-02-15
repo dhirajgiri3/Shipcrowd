@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import { SellerCourierPolicy } from '../../../../infrastructure/database/mongoose/models';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import logger from '../../../../shared/logger/winston.logger';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { upsertSellerCourierPolicySchema } from '../../../../shared/validation/schemas';
 
 export const getSellerCourierPolicy = async (req: Request, res: Response, next: NextFunction): Promise<void> => {

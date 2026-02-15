@@ -1,12 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import ProductMappingService from '../../../../core/application/services/shopify/product-mapping.service';
 import { ShopifyInventorySyncService } from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
-import { ShopifyStore, ShopifyProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { ValidationError, NotFoundError, AuthenticationError, AuthorizationError, AppError } from '../../../../shared/errors/app.error';
+import { ShopifyProductMapping, ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
+import { AuthorizationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * ProductMappingController

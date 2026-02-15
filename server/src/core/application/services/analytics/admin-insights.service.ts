@@ -10,8 +10,8 @@
  */
 
 import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
 import CacheService from '../../../../infrastructure/utilities/cache.service';
+import logger from '../../../../shared/logger/winston.logger';
 import type { SmartInsight } from './smart-insights.service';
 
 const CACHE_KEY = 'admin_insights';

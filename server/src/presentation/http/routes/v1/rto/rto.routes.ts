@@ -4,10 +4,10 @@
  * Endpoints for RTO management.
  */
 
-import { Router } from 'express';
-import multer from 'multer';
 import RTOController from '@/presentation/http/controllers/rto/rto.controller';
 import { authenticate } from '@/presentation/http/middleware/auth/auth';
+import { Router } from 'express';
+import multer from 'multer';
 
 const router = Router();
 

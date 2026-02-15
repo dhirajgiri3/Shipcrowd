@@ -1,8 +1,8 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import analyticsController from '../../../controllers/analytics/analytics.controller';
 import walletController from '../../../controllers/finance/wallet.controller';
-import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

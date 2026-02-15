@@ -4,22 +4,22 @@
  * Generates 3,000-5,000 orders distributed over 12 months with seasonal variations.
  */
 
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 
+import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
+import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Company from '../../mongoose/models/organization/core/company.model';
-import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
-import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
-import { SEED_CONFIG, BusinessType, PaymentMethod } from '../config';
-import { randomInt, selectRandom, selectWeightedFromObject, maybeExecute, randomFloat } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { generateMonthRange, getSeasonalMultiplier, randomDateInMonth, addDays } from '../utils/date.utils';
-import { generateIndianName, generateIndianPhone, generateEmail } from '../data/customer-names';
-import { INDIAN_CITIES, getCityByName, CityData, getShippingZone } from '../data/indian-cities';
-import { generateStreetAddress, generateLandmark } from '../utils/address.utils';
-import { generateOrderProducts, getGSTRate, calculateOrderWeight } from '../data/product-catalog';
+import { BusinessType, PaymentMethod, SEED_CONFIG } from '../config';
 import { calculateShippingCost, getBestCarrier } from '../data/carrier-data';
+import { generateEmail, generateIndianName, generateIndianPhone } from '../data/customer-names';
+import { CityData, INDIAN_CITIES, getCityByName, getShippingZone } from '../data/indian-cities';
+import { calculateOrderWeight, generateOrderProducts, getGSTRate } from '../data/product-catalog';
+import { generateLandmark, generateStreetAddress } from '../utils/address.utils';
+import { addDays, generateMonthRange, getSeasonalMultiplier } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { maybeExecute, randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 // Order number counter per company
 const orderCounters: Map<string, number> = new Map();
@@ -386,7 +386,7 @@ function generateOrderData(
 /**
  * Generate customer repository for repeat customer patterns
  */
-function generateCustomerRepository(totalOrders: number): Map<string, any> {
+function generateCustomerRepository(_totalOrders: number): Map<string, any> {
     const customers = new Map<string, any>();
 
     // Create 2,000-3,000 unique customers
@@ -413,6 +413,7 @@ function generateCustomerRepository(totalOrders: number): Map<string, any> {
 
     return customers;
 }
+void generateCustomerRepository;
 
 /**
  * Main seeder function
@@ -443,6 +444,7 @@ export async function seedOrders(): Promise<void> {
             isActive: true,
             isDeleted: false
         }).lean();
+void inventoryRecords;
 
         if (companies.length === 0 || warehouses.length === 0) {
             logger.warn('No companies or warehouses found. Skipping orders seeder.');

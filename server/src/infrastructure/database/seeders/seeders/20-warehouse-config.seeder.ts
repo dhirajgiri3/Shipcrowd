@@ -8,13 +8,13 @@
  */
 
 import mongoose from 'mongoose';
-import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
-import WarehouseZone from '../../mongoose/models/logistics/warehouse/structure/warehouse-zone.model';
-import WarehouseLocation from '../../mongoose/models/logistics/warehouse/structure/warehouse-location.model';
 import PackingStation from '../../mongoose/models/logistics/warehouse/activities/packing-station.model';
-import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
+import WarehouseLocation from '../../mongoose/models/logistics/warehouse/structure/warehouse-location.model';
+import WarehouseZone from '../../mongoose/models/logistics/warehouse/structure/warehouse-zone.model';
+import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
 import { subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 // Zone types distribution
 const ZONE_TYPE_DISTRIBUTION = {
@@ -55,6 +55,7 @@ const BOX_SIZES = ['SMALL', 'MEDIUM', 'LARGE', 'XLARGE', 'CUSTOM'];
 
 // Authorized roles
 const AUTHORIZED_ROLES = ['WAREHOUSE_MANAGER', 'PICKER', 'PACKER', 'SUPERVISOR'];
+void AUTHORIZED_ROLES;
 
 /**
  * Generate a zone code

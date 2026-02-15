@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import authAnalyticsService from '../../../../core/application/services/analytics/auth-analytics.service';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import logger from '../../../../shared/logger/winston.logger';
 import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**

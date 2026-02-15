@@ -1,7 +1,6 @@
-import Shipment, { IShipment } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
-import { CODDiscrepancyService } from './cod-discrepancy.service';
+import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import logger from '../../../../shared/logger/winston.logger';
-import { AppError } from '../../../../shared/errors/app.error';
+import { CODDiscrepancyService } from './cod-discrepancy.service';
 
 /**
  * COD Reconciliation Service

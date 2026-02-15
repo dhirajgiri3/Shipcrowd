@@ -1,7 +1,7 @@
 
+import dotenv from 'dotenv';
 import Redis, { Cluster, RedisOptions } from 'ioredis';
 import logger from '../../shared/logger/winston.logger';
-import dotenv from 'dotenv';
 
 dotenv.config();
 

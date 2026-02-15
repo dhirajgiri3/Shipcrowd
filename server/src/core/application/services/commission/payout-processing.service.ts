@@ -15,14 +15,11 @@
  */
 
 import mongoose from 'mongoose';
-import { Payout, IPayout } from '../../../../infrastructure/database/mongoose/models';
-import { CommissionTransaction } from '../../../../infrastructure/database/mongoose/models';
-import { SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
-import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
+import { AuditLog, CommissionTransaction, IPayout, Payout, SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
 import { RazorpayPayoutProvider } from '../../../../infrastructure/payment/razorpay/razorpay-payout.provider';
-import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/index';
 import eventBus from '../../../../shared/events/eventBus';
+import logger from '../../../../shared/logger/winston.logger';
 
 // DTOs
 export interface InitiatePayoutDTO {
@@ -489,7 +486,7 @@ export default class PayoutProcessingService {
      */
     static async retryPayout(
         payoutId: string,
-        userId: string,
+        _userId: string,
         companyId: string
     ): Promise<IPayout> {
         const payout = await this.getPayout(payoutId, companyId);
@@ -535,7 +532,7 @@ export default class PayoutProcessingService {
      */
     static async cancelPayout(
         payoutId: string,
-        userId: string,
+        _userId: string,
         companyId: string
     ): Promise<IPayout> {
         const payout = await this.getPayout(payoutId, companyId);

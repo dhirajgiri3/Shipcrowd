@@ -1,8 +1,8 @@
 import express from 'express';
 import multer from 'multer';
-import { authenticate } from '../../../middleware/auth/auth';
-import supportController from '../../../controllers/support/support.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import supportController from '../../../controllers/support/support.controller';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

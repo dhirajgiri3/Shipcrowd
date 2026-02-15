@@ -1,14 +1,14 @@
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import ShopifyOAuthService from '../../../../core/application/services/shopify/shopify-oauth.service';
+import { NextFunction, Request, Response } from 'express';
 import ShopifyFulfillmentService from '../../../../core/application/services/shopify/shopify-fulfillment.service';
+import ShopifyOAuthService from '../../../../core/application/services/shopify/shopify-oauth.service';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
+import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../../core/mappers/store.mapper';
 import { ShopifyStore, SyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
+import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
-import { toEcommerceStoreDTO, applyDefaultsToSettings, applyDefaultsToSyncConfig } from '../../../../core/mappers/store.mapper';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * ShopifyController
@@ -75,7 +75,7 @@ export class ShopifyController {
    * - state: CSRF protection state
    * - timestamp: Request timestamp
    */
-  static async callback(req: Request, res: Response, next: NextFunction): Promise<void> {
+  static async callback(req: Request, res: Response, _next: NextFunction): Promise<void> {
     try {
       const { shop, code, hmac, state, timestamp } = req.query;
 

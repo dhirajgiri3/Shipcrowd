@@ -6,9 +6,9 @@
 
 import { Job } from 'bullmq';
 import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
-import QueueManager from '../../../utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
 import Manifest from '../../../database/mongoose/models/logistics/shipping/manifest.model';
+import QueueManager from '../../../utilities/queue-manager';
 
 interface ManifestPickupRetryJobData {
     manifestId: string;

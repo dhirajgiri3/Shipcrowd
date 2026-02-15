@@ -15,9 +15,9 @@
  */
 
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import AnalyticsService, { DateRange } from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
+import AnalyticsService, { DateRange } from './analytics.service';
 
 export interface ShipmentStats {
     total: number;

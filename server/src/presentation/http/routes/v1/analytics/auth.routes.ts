@@ -1,7 +1,7 @@
 import express from 'express';
+import authAnalyticsController from '../../../controllers/analytics/auth-analytics.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/auth/unified-access';
-import authAnalyticsController from '../../../controllers/analytics/auth-analytics.controller';
 
 const router = express.Router();
 

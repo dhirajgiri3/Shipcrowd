@@ -5,10 +5,10 @@
  * Follows the same pattern as carrier-sync.job.ts
  */
 
-import { Job } from 'bullmq';
 import WarehouseSyncService from '@/core/application/services/logistics/warehouse-sync.service';
 import QueueManager from '@/infrastructure/utilities/queue-manager';
 import logger from '@/shared/logger/winston.logger';
+import { Job } from 'bullmq';
 
 interface WarehouseSyncJobData {
     warehouseId: string;

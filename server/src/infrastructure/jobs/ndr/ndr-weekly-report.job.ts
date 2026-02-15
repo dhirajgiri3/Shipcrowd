@@ -1,8 +1,8 @@
 import { Job } from 'bullmq';
-import QueueManager from '../../utilities/queue-manager';
-import logger from '../../../shared/logger/winston.logger';
-import Company from '../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import NDRReportService from '../../../core/application/services/ndr/ndr-report.service';
+import Company from '../../../infrastructure/database/mongoose/models/organization/core/company.model';
+import logger from '../../../shared/logger/winston.logger';
+import QueueManager from '../../utilities/queue-manager';
 
 /**
  * NDR Weekly Report Job

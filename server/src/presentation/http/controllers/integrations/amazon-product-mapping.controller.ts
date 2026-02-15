@@ -13,14 +13,13 @@
  * - GET /stores/:storeId/mappings/stats - Get mapping statistics
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import AmazonProductMappingService from '../../../../core/application/services/amazon/amazon-product-mapping.service';
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
-import { ValidationError, NotFoundError, AppError } from '../../../../shared/errors/app.error';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
-import logger from '../../../../shared/logger/winston.logger';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 export class AmazonProductMappingController {
     /**

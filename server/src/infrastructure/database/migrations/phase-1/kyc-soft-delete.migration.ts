@@ -1,5 +1,5 @@
-import { BaseMigration, MigrationOptions } from '../base-migration';
 import KYC from '../../mongoose/models/organization/core/kyc.model';
+import { BaseMigration } from '../base-migration';
 
 /**
  * Migration: Add soft delete to KYC

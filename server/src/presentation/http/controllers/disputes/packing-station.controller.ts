@@ -6,14 +6,13 @@
 
 import { Request, Response } from 'express';
 import PackingStationEvidenceService from '../../../../core/application/services/disputes/packing-station-evidence.service';
-import {
-    PackingStationEvidenceSchema,
-    PhotoUploadRequestSchema
-} from '../../dtos/disputes/evidence-submission.dto';
-import logger from '../../../../shared/logger/winston.logger';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { ZodError } from 'zod';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+PackingStationEvidenceSchema,
+PhotoUploadRequestSchema
+} from '../../dtos/disputes/evidence-submission.dto';
 
 class PackingStationController {
     /**

@@ -1,16 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import RemittanceReconciliationService from '../../../../core/application/services/finance/remittance-reconciliation.service';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess, sendCreated, sendPaginated } from '../../../../shared/utils/responseHelper';
-import { ValidationError, AppError } from '../../../../shared/errors/app.error';
+import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import { sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
-    createRemittanceSchema,
-    approveRemittanceSchema,
-    cancelRemittanceSchema
+approveRemittanceSchema,
+cancelRemittanceSchema,
+createRemittanceSchema
 } from '../../../../shared/validation/schemas/financial.schemas';
 
 /**
@@ -206,6 +206,7 @@ export const initiatePayout = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+void auth;
 
         const { id } = req.params;
 

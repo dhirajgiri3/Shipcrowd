@@ -1,6 +1,5 @@
 
 import { CachedService } from '../../base/cached.service';
-import { CacheOptions } from '../../../../infrastructure/redis/cache.repository';
 
 export class AnalyticsCacheService extends CachedService {
     protected serviceName = 'analytics';

@@ -1,10 +1,10 @@
-import mongoose, { Document, Schema } from 'mongoose';
-import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
-import { fieldEncryption } from 'mongoose-field-encryption';
 import crypto from 'crypto';
-import { KYCState } from '../../../../../../core/domain/types/kyc-state';
+import mongoose, { Document, Schema } from 'mongoose';
+import { fieldEncryption } from 'mongoose-field-encryption';
 import { DocumentVerificationState } from '../../../../../../core/domain/types/document-verification-state';
+import { KYCState } from '../../../../../../core/domain/types/kyc-state';
 import { KYC_VERIFICATION_HISTORY_LIMIT } from '../../../../../../shared/config/kyc.config';
+import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
 
 // Define the interface for KYC document
 export interface IKYCVerificationMeta {

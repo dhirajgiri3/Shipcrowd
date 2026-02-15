@@ -1,20 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { User, RecoveryToken } from '../../../../infrastructure/database/mongoose/models';
-import {
-  setupSecurityQuestions,
-  setupBackupEmail,
-  generateRecoveryKeys
-} from '../../../../core/application/services/user/recovery.service';
-import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
+import { z } from 'zod';
 import { sendAccountRecoveryEmail, sendRecoveryEmail } from '../../../../core/application/services/communication/email.service';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import {
+generateRecoveryKeys,
+setupBackupEmail,
+setupSecurityQuestions
+} from '../../../../core/application/services/user/recovery.service';
+import { RecoveryToken, User } from '../../../../infrastructure/database/mongoose/models';
+import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
+import { AppError, AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, AppError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // ============================================================================
 // ERROR HANDLING HELPER
@@ -51,7 +51,7 @@ const sendRecoveryOptionsSchema = z.object({
   email: z.string().email('Invalid email format'),
 });
 
-export const getSecurityQuestions = async (req: Request, res: Response): Promise<void> => {
+export const getSecurityQuestions = async (_req: Request, res: Response): Promise<void> => {
   sendSuccess(res, { questions: SECURITY_QUESTIONS }, 'Security questions retrieved');
 };
 

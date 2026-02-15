@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
-import QueueManager from '../../../utilities/queue-manager';
 import WooCommerceWebhookService from '../../../../core/application/services/woocommerce/woocommerce-webhook.service';
 import logger from '../../../../shared/logger/winston.logger';
+import QueueManager from '../../../utilities/queue-manager';
 
 interface WooWebhookJobData {
   storeId: string;

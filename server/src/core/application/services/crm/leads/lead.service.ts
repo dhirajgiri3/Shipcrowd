@@ -1,6 +1,6 @@
 import Lead, { ILead } from '@/infrastructure/database/mongoose/models/crm/leads/lead.model';
 import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
-import { AppError, NotFoundError, ConflictError } from '@/shared/errors';
+import { AppError, ConflictError, NotFoundError } from '@/shared/errors';
 import mongoose from 'mongoose';
 
 export class LeadService {

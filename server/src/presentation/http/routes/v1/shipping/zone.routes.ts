@@ -1,7 +1,7 @@
 import express from 'express';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import zoneController from '../../../controllers/shipping/zone.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import zoneController from '../../../controllers/shipping/zone.controller';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

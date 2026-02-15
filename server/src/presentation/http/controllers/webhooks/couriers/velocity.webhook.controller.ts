@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import { sendSuccess } from '../../../../../shared/utils/responseHelper';
-import { ValidationError } from '../../../../../shared/errors/app.error';
+import { NextFunction, Request, Response } from 'express';
 import { VelocityWebhookHandler } from '../../../../../core/application/services/courier/webhooks/handlers/index';
+import { ValidationError } from '../../../../../shared/errors/app.error';
 import logger from '../../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../../shared/utils/responseHelper';
 
 /**
  * VelocityWebhookController

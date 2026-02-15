@@ -4,8 +4,8 @@
  * Templates and data for generating realistic Indian business names.
  */
 
-import { selectRandom } from '../utils/random.utils';
 import { BusinessType } from '../config';
+import { selectRandom } from '../utils/random.utils';
 
 // Adjectives for business names
 const ADJECTIVES = [

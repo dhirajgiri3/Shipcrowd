@@ -1,7 +1,7 @@
 import { Router } from 'express';
+import adminOrderController from '../../../controllers/shipping/admin-order.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import adminOrderController from '../../../controllers/shipping/admin-order.controller';
 
 const router = Router();
 

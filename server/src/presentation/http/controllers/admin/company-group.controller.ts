@@ -1,12 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { z } from 'zod';
 import { CompanyGroup } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { guardChecks, requirePlatformAdmin } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
-import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requirePlatformAdmin } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 const companyGroupSchema = z.object({
   name: z.string().min(2),

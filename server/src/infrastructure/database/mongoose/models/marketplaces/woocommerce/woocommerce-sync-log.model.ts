@@ -12,7 +12,7 @@
  * - Automatic cleanup of old logs (90 days retention)
  */
 
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IWooCommerceSyncLog extends Document {
   storeId: mongoose.Types.ObjectId;

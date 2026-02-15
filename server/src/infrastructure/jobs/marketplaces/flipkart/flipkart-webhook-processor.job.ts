@@ -1,8 +1,8 @@
 import { Job } from 'bullmq';
-import QueueManager from '../../../utilities/queue-manager';
-import { WebhookEvent } from '../../../database/mongoose/models';
 import FlipkartWebhookService from '../../../../core/application/services/flipkart/flipkart-webhook.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { WebhookEvent } from '../../../database/mongoose/models';
+import QueueManager from '../../../utilities/queue-manager';
 
 /**
  * FlipkartWebhookProcessorJob

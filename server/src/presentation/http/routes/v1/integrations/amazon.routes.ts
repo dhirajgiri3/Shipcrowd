@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import AmazonController from '../../../controllers/integrations/amazon.controller';
-import amazonProductMappingRoutes from './amazon-product-mapping.routes';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/auth/unified-access';
+import amazonProductMappingRoutes from './amazon-product-mapping.routes';
 
 /**
  * Amazon Integration Routes

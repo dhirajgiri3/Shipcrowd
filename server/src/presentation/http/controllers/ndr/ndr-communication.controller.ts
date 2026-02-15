@@ -1,7 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import NDRCommunicationService from '../../../../core/application/services/communication/ndr-communication.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
-import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
@@ -184,7 +183,7 @@ class NDRCommunicationController {
      * Get available communication templates
      * GET /ndr/templates
      */
-    async getTemplates(req: Request, res: Response, next: NextFunction) {
+    async getTemplates(_req: Request, res: Response, next: NextFunction) {
         try {
             const templates = {
                 whatsapp: [

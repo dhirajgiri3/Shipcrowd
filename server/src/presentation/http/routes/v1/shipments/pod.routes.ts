@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { uploadRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import PODController from '../../../controllers/shipments/pod.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { uploadRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import { validateKYCFile } from '../../../middleware/upload/file-validation.middleware';
 
 const router = Router();

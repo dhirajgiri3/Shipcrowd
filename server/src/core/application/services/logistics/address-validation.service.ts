@@ -1,4 +1,4 @@
-import { Pincode, IPincode } from '../../../../infrastructure/database/mongoose/models/logistics/pincode.model';
+import { IPincode, Pincode } from '../../../../infrastructure/database/mongoose/models/logistics/pincode.model';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import PincodeLookupService from './pincode-lookup.service';

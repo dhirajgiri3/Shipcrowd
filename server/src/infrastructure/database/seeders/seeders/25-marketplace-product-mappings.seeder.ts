@@ -4,21 +4,20 @@
  * Maps internal inventory to marketplace products.
  */
 
-import mongoose from 'mongoose';
-import ShopifyStore from '../../mongoose/models/marketplaces/shopify/shopify-store.model';
-import WooCommerceStore from '../../mongoose/models/marketplaces/woocommerce/woocommerce-store.model';
 import AmazonStore from '../../mongoose/models/marketplaces/amazon/amazon-store.model';
 import FlipkartStore from '../../mongoose/models/marketplaces/flipkart/flipkart-store.model';
+import ShopifyStore from '../../mongoose/models/marketplaces/shopify/shopify-store.model';
+import WooCommerceStore from '../../mongoose/models/marketplaces/woocommerce/woocommerce-store.model';
 
-import ShopifyProductMapping from '../../mongoose/models/marketplaces/shopify/shopify-product-mapping.model';
-import WooCommerceProductMapping from '../../mongoose/models/marketplaces/woocommerce/woocommerce-product-mapping.model';
 import AmazonProductMapping from '../../mongoose/models/marketplaces/amazon/amazon-product-mapping.model';
 import FlipkartProductMapping from '../../mongoose/models/marketplaces/flipkart/flipkart-product-mapping.model';
+import ShopifyProductMapping from '../../mongoose/models/marketplaces/shopify/shopify-product-mapping.model';
+import WooCommerceProductMapping from '../../mongoose/models/marketplaces/woocommerce/woocommerce-product-mapping.model';
 
 import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
 
-import { logger, createTimer } from '../utils/logger.utils';
-import { selectRandom, selectWeightedFromObject } from '../utils/random.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { selectWeightedFromObject } from '../utils/random.utils';
 
 // Helper to generate common fields
 const generateCommonFields = (store: any, inventory: any) => ({
@@ -108,7 +107,8 @@ export async function seedMarketplaceProductMappings(): Promise<void> {
 
         for (const config of configs) {
             const mappingsToInsert: any[] = [];
-            const uniqueKeys = new Set(); // Track unique keys to prevent duplicates
+            const uniqueKeys = new Set();
+void uniqueKeys; // Track unique keys to prevent duplicates
 
             for (const store of config.stores) {
                 const companyInventory = allInventory.filter((inv: any) => inv.companyId.toString() === (store as any).companyId.toString());

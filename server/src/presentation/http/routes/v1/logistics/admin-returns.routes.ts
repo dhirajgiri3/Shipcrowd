@@ -5,10 +5,10 @@
  */
 
 import { Router } from 'express';
+import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import AdminReturnController from '../../../controllers/logistics/admin-return.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/auth/unified-access';
-import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 
 const router = Router();
 

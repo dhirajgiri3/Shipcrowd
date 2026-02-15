@@ -1,5 +1,5 @@
-import FeatureFlagService, { EvaluationContext } from '../system/feature-flag.service';
 import logger from '../../../../shared/logger/winston.logger';
+import FeatureFlagService, { EvaluationContext } from '../system/feature-flag.service';
 
 export const WALLET_AUTO_RECHARGE_FLAG_KEY = 'wallet_auto_recharge';
 

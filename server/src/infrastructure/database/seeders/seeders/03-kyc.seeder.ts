@@ -5,14 +5,14 @@
  */
 
 import mongoose from 'mongoose';
-import KYC from '../../mongoose/models/organization/core/kyc.model';
-import Company from '../../mongoose/models/organization/core/company.model';
 import User from '../../mongoose/models/iam/users/user.model';
+import Company from '../../mongoose/models/organization/core/company.model';
+import KYC from '../../mongoose/models/organization/core/kyc.model';
 import { SEED_CONFIG } from '../config';
-import { randomInt, selectWeightedFromObject, generateUUID } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { subDays, randomDateBetween } from '../utils/date.utils';
-import { generatePAN, generateGSTIN, generateAadhaar, generateAccountNumber, generateIFSC, selectBank } from '../data/indian-banks';
+import { generateAadhaar, generateAccountNumber, generateGSTIN, generateIFSC, generatePAN, selectBank } from '../data/indian-banks';
+import { randomDateBetween, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { generateUUID, selectWeightedFromObject } from '../utils/random.utils';
 
 /**
  * Generate KYC data for a company

@@ -10,10 +10,10 @@
 
 import { Job } from 'bullmq';
 import mongoose from 'mongoose';
-import QueueManager from '../../utilities/queue-manager';
+import { OrderService } from '../../../core/application/services/shipping/order.service';
 import logger from '../../../shared/logger/winston.logger';
 import { BulkOrderImportJob } from '../../database/mongoose/models';
-import { OrderService } from '../../../core/application/services/shipping/order.service';
+import QueueManager from '../../utilities/queue-manager';
 
 export interface BulkOrderImportJobData {
     jobTrackingId: string;      // MongoDB _id of BulkOrderImportJob document

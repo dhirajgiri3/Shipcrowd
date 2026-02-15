@@ -5,11 +5,11 @@
  * Endpoints for listing, promoting, and demoting users.
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import UserManagementService from '../../../../core/application/services/admin/user-management.service';
-import { guardChecks, parsePagination } from '../../../../shared/helpers/controller.helpers';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, parsePagination } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 
 import { getAuthCookieNames, getAuthCookieOptions } from '../../../../shared/helpers/auth-cookies';
@@ -21,7 +21,7 @@ class UserManagementController {
      */
     async listUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { userId, isAdmin } = guardChecks(req, { requireCompany: false });
 
             // Allow both admin and super_admin to access user management
             if (!isAdmin) {
@@ -141,7 +141,7 @@ class UserManagementController {
      */
     async getUserDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { isAdmin } = guardChecks(req, { requireCompany: false });
 
             // Allow both admin and super_admin to view user details
             if (!isAdmin) {
@@ -213,7 +213,7 @@ class UserManagementController {
      */
     async suspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { userId, isAdmin } = guardChecks(req, { requireCompany: false });
 
             // Allow admin and super_admin to suspend users (typically sellers)
             if (!isAdmin) {
@@ -260,7 +260,7 @@ class UserManagementController {
      */
     async unsuspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { userId, isAdmin, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+            const { userId, isAdmin } = guardChecks(req, { requireCompany: false });
 
             // Allow admin and super_admin to unsuspend users
             if (!isAdmin) {

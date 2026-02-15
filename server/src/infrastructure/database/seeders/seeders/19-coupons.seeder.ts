@@ -8,11 +8,11 @@
  */
 
 import mongoose from 'mongoose';
-import Company from '../../mongoose/models/organization/core/company.model';
 import Coupon from '../../mongoose/models/marketing/promotions/coupon.model';
-import { randomInt, selectRandom, selectWeightedFromObject, generateAlphanumeric } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { subDays, addDays } from '../utils/date.utils';
+import Company from '../../mongoose/models/organization/core/company.model';
+import { addDays, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { generateAlphanumeric, randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 // Discount type distribution
 const DISCOUNT_TYPE_DISTRIBUTION = {

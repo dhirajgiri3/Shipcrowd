@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import QueueManager from '../../../../../infrastructure/utilities/queue-manager';
+import { NextFunction, Request, Response } from 'express';
 import WebhookEvent from '../../../../../infrastructure/database/mongoose/models/system/integrations/webhook-event.model';
+import QueueManager from '../../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../../shared/utils/responseHelper';
 

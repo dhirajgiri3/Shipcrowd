@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 import {
-    Company,
-    SellerCourierPolicy,
-    User,
+Company,
+SellerCourierPolicy,
+User,
 } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';

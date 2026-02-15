@@ -14,9 +14,9 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { NDREvent, INDREvent } from '../../../../infrastructure/database/mongoose/models';
-import NDRClassificationService from './ndr-classification.service';
+import { INDREvent, NDREvent } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import NDRClassificationService from './ndr-classification.service';
 
 interface TrackingUpdate {
     awb: string;

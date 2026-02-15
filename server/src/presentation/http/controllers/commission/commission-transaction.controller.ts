@@ -9,26 +9,25 @@
  * - Add adjustments
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import {
-    CommissionCalculationService,
-    CommissionApprovalService,
+CommissionApprovalService,
+CommissionCalculationService,
 } from '../../../../core/application/services/commission/index';
-import { AppError } from '../../../../shared/errors/index';
 import { ValidationError } from '../../../../shared/errors/app.error';
+import { AppError } from '../../../../shared/errors/index';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { calculatePagination, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
-    listTransactionsQuerySchema,
-    approveTransactionSchema,
-    rejectTransactionSchema,
-    bulkApproveSchema,
-    bulkRejectSchema,
-    addAdjustmentSchema,
-    bulkCalculateSchema,
-    idParamSchema,
+addAdjustmentSchema,
+approveTransactionSchema,
+bulkApproveSchema,
+bulkCalculateSchema,
+bulkRejectSchema,
+idParamSchema,
+listTransactionsQuerySchema,
+rejectTransactionSchema,
 } from '../../../../shared/validation/commission-schemas';
-import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 export class CommissionTransactionController {
     /**
@@ -51,7 +50,7 @@ export class CommissionTransactionController {
                 throw new ValidationError('Validation failed', details);
             }
 
-            const { page, limit, status, salesRepId, startDate, endDate, sortBy, sortOrder } =
+            const { page, limit, status, salesRepId, startDate, endDate } =
                 validation.data;
 
             const result = await CommissionCalculationService.listTransactions(

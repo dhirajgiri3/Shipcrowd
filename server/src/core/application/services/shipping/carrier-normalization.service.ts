@@ -1,4 +1,3 @@
-import { CARRIERS } from '../../../../infrastructure/database/seeders/data/carrier-data';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
 
 /** Service types that are NOT courier providers (surface, express, etc.) */

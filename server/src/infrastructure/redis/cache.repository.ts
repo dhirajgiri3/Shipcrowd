@@ -1,7 +1,7 @@
 
-import { RedisManager } from './redis.manager';
-import logger from '../../shared/logger/winston.logger';
 import Redis from 'ioredis';
+import logger from '../../shared/logger/winston.logger';
+import { RedisManager } from './redis.manager';
 
 export interface CacheOptions {
     ttl?: number;

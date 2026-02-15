@@ -1,5 +1,5 @@
-import { BaseMigration, MigrationOptions } from '../base-migration';
 import Invoice from '../../mongoose/models/finance/billing/invoice.model';
+import { BaseMigration } from '../base-migration';
 
 /**
  * Migration: Add soft delete to Invoice

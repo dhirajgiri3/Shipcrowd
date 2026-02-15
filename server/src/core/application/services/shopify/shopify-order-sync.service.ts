@@ -1,10 +1,8 @@
-import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
-import { SyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
+import { Order, ShopifyStore, SyncLog } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import mongoose from 'mongoose';
 
 /**
  * ShopifyOrderSyncService
@@ -316,23 +314,35 @@ export class ShopifyOrderSyncService {
    * Map Shopify order to Shipcrowd order schema
    */
   private static mapShopifyOrderToShipcrowd(shopifyOrder: ShopifyOrder, store: any): any {
+    // Handle null customer (can happen with gift cards, digital products)
+    const customer = shopifyOrder.customer || {};
+    const customerName = customer.first_name || customer.last_name
+      ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
+      : 'Guest Customer';
+    const customerEmail = customer.email || shopifyOrder.email || 'noemail@shopify.order';
+    const customerPhone = customer.phone || shopifyOrder.phone || 'N/A';
+
+    // Handle null shipping_address (can happen with gift cards, digital products)
+    const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address || {};
+
     return {
       orderNumber: this.generateOrderNumber(shopifyOrder),
       companyId: store.companyId,
       source: 'shopify',
       sourceId: shopifyOrder.id.toString(),
+      platform: 'shopify', // Add platform identifier for UI display
 
       customerInfo: {
-        name: `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}`.trim(),
-        email: shopifyOrder.customer.email,
-        phone: shopifyOrder.customer.phone || 'N/A',
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
         address: {
-          line1: shopifyOrder.shipping_address.address1,
-          line2: shopifyOrder.shipping_address.address2,
-          city: shopifyOrder.shipping_address.city,
-          state: shopifyOrder.shipping_address.province,
-          country: shopifyOrder.shipping_address.country,
-          postalCode: shopifyOrder.shipping_address.zip,
+          line1: shippingAddress.address1 || 'N/A',
+          line2: shippingAddress.address2 || undefined,
+          city: shippingAddress.city || 'N/A',
+          state: shippingAddress.province || shippingAddress.province_code || 'N/A',
+          country: shippingAddress.country || shippingAddress.country_code || 'N/A',
+          postalCode: shippingAddress.zip || 'N/A',
         },
       },
 

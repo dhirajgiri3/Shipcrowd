@@ -10,9 +10,9 @@
 import { Request } from 'express';
 import { BaseWebhookHandler } from '../base-webhook-handler';
 import {
-    WebhookPayload,
-    WebhookConfig,
-    VerificationStrategy
+VerificationStrategy,
+WebhookConfig,
+WebhookPayload
 } from '../webhook-handler.interface';
 
 /**

@@ -6,7 +6,7 @@ const router = Router();
 
 router.post('/', (req, res, next) => verifyWebhookSignature('ekart')(req, res, next), EkartWebhookController.handleWebhook);
 
-router.get('/health', (req, res) => {
+router.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok', service: 'ekart-webhook' });
 });
 

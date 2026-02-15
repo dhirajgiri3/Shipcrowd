@@ -5,7 +5,7 @@
  * Used for routes that require company context (e.g., warehouse operations).
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 /**
  * Middleware to require company context

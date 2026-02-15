@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { VelocityWebhookPayload, VelocityWebhookHeaders, WebhookVerificationResult } from './velocity-webhook.types';
+import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { Shipment } from '../../../database/mongoose/models';
-import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
+import { VelocityWebhookPayload } from './velocity-webhook.types';
 import { VELOCITY_STATUS_MAP } from './velocity.types';
 
 export class VelocityWebhookService {

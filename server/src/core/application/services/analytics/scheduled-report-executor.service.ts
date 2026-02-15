@@ -1,14 +1,13 @@
-import mongoose from 'mongoose';
-import { Parser } from 'json2csv';
+import axios from 'axios';
 import ExcelJS from 'exceljs';
+import { Parser } from 'json2csv';
+import nodemailer from 'nodemailer';
 import ScheduledReport from '../../../../infrastructure/database/mongoose/models/analytics/scheduled-report.model';
-import Order from '../../../../infrastructure/database/mongoose/models/orders/core/order.model';
-import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import WalletTransaction from '../../../../infrastructure/database/mongoose/models/finance/wallets/wallet-transaction.model';
+import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
+import Order from '../../../../infrastructure/database/mongoose/models/orders/core/order.model';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import nodemailer from 'nodemailer';
-import axios from 'axios';
 
 /**
  * Scheduled Report Executor Service
@@ -170,7 +169,7 @@ class ScheduledReportExecutorService {
     /**
      * Fetch analytics data (aggregated from multiple sources)
      */
-    private async fetchAnalyticsData(report: any, baseQuery: any, dateRange: any): Promise<any[]> {
+    private async fetchAnalyticsData(_report: any, baseQuery: any, _dateRange: any): Promise<any[]> {
         // Example: Aggregate order metrics
         const pipeline: any[] = [
             { $match: baseQuery },
@@ -420,7 +419,7 @@ class ScheduledReportExecutorService {
     /**
      * Deliver via webhook
      */
-    private async deliverViaWebhook(report: any, buffer: Buffer, filename: string): Promise<void> {
+    private async deliverViaWebhook(report: any, buffer: Buffer, _filename: string): Promise<void> {
         const { webhook } = report.delivery;
 
         if (!webhook?.url) {

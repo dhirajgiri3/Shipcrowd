@@ -1,4 +1,4 @@
-import { CourierShipmentData, CourierReverseShipmentData } from '../base/courier.adapter';
+import { CourierReverseShipmentData, CourierShipmentData } from '../base/courier.adapter';
 import { DelhiveryShipmentRequest } from './delhivery.types';
 
 /**

@@ -1,4 +1,4 @@
-import { Document, Schema, model, Types } from 'mongoose';
+import { Document, model, Schema } from 'mongoose';
 
 /**
  * Failed Webhook Model

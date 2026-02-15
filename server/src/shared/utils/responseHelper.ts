@@ -1,8 +1,8 @@
 import { Response } from 'express';
 import {
-    SuccessResponse,
-    PaginatedResponse,
-    PaginationMeta,
+PaginatedResponse,
+PaginationMeta,
+SuccessResponse,
 } from '../types/apiResponse';
 
 /**

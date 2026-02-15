@@ -93,22 +93,16 @@
  * - Must maintain 99.9% consistency
  */
 
-import mongoose from 'mongoose';
 import crypto from 'crypto';
-import { Company } from '../../../../infrastructure/database/mongoose/models';
-import {
-    WalletTransaction,
-    IWalletTransaction,
-    TransactionType,
-    TransactionReason,
-} from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { AppError, NotFoundError, ConflictError, ExternalServiceError, ValidationError } from '../../../../shared/errors/app.error';
+import mongoose from 'mongoose';
+import { Company, IWalletTransaction, TransactionReason, TransactionType, WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
+import { AppError, ConflictError, ExternalServiceError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 import redisLockService from '../infra/redis-lock.service';
+import PromoCodeService from '../marketing/promo-code.service';
 import razorpayPaymentService from '../payment/razorpay-payment.service';
 import { isWalletAutoRechargeFeatureEnabled } from './wallet-feature-flags';
-import PromoCodeService from '../marketing/promo-code.service';
 
 interface TransactionResult {
     success: boolean;

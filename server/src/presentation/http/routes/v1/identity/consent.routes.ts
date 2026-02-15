@@ -12,8 +12,8 @@
  */
 
 import { Router } from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
 import consentController from '../../../controllers/identity/consent.controller';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = Router();
 

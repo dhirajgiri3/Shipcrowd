@@ -1,38 +1,37 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { KYC, KYCVerificationAttempt, User, IUser, Company, SellerBankAccount } from '../../../../infrastructure/database/mongoose/models';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import { formatError } from '../../../../shared/errors/error-messages';
-import logger from '../../../../shared/logger/winston.logger';
+import { z } from 'zod';
 import deepvueService from '../../../../core/application/services/integrations/deepvue.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
-import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
-import { withTransaction } from '../../../../shared/utils/transactionHelper';
-import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
+import { Company, IUser, KYC, KYCVerificationAttempt, SellerBankAccount, User } from '../../../../infrastructure/database/mongoose/models';
+import { AppError, AuthenticationError, AuthorizationError, ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { withTransaction } from '../../../../shared/utils/transactionHelper';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 // Import validation schemas
-import { submitKYCSchema, verifyDocumentSchema, invalidateDocumentSchema } from '../../../../shared/validation/schemas';
-import { DocumentVerificationState } from '../../../../core/domain/types/document-verification-state';
-import { KYCState } from '../../../../core/domain/types/kyc-state';
-import { KYCStateMachine } from '../../../../core/domain/kyc/kyc-state-machine';
-import { KYC_DEFAULT_PROVIDER } from '../../../../shared/config/kyc.config';
-import {
-  appendVerificationHistory,
-  buildExpiryDate,
-  buildKycSnapshot,
-  buildVerifiedData,
-  createKycInputHash,
-  resolveVerificationState,
-} from '../../../../shared/utils/kyc-utils';
 import { queueKYCApprovedEmail, queueKYCRejectedEmail } from '../../../../core/application/services/communication/email-queue.service';
 import {
-  syncRazorpayFundAccountForSellerBankAccount,
+syncRazorpayFundAccountForSellerBankAccount,
 } from '../../../../core/application/services/finance/sync-razorpay-fund-account.service';
+import { KYCStateMachine } from '../../../../core/domain/kyc/kyc-state-machine';
+import { DocumentVerificationState } from '../../../../core/domain/types/document-verification-state';
+import { KYCState } from '../../../../core/domain/types/kyc-state';
 import { computeFingerprint, normalizeAccount, normalizeIfsc } from '../../../../infrastructure/database/mongoose/models/finance/payouts/seller-bank-account.model';
+import { KYC_DEFAULT_PROVIDER } from '../../../../shared/config/kyc.config';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import {
+appendVerificationHistory,
+buildExpiryDate,
+buildKycSnapshot,
+buildVerifiedData,
+createKycInputHash,
+resolveVerificationState,
+} from '../../../../shared/utils/kyc-utils';
+import { invalidateDocumentSchema, submitKYCSchema, verifyDocumentSchema } from '../../../../shared/validation/schemas';
 
 
 /**
@@ -56,7 +55,7 @@ const getDocumentIdString = (doc: any): string => {
  * @param res Response object
  * @returns User object if valid, null if invalid (response is sent in case of error)
  */
-const validateUserAndCompany = async (req: Request, res: Response): Promise<(IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId }) | null> => {
+const validateUserAndCompany = async (req: Request, _res: Response): Promise<(IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId }) | null> => {
   const auth = guardChecks(req);
   requireCompanyContext(auth);
 

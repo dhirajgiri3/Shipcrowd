@@ -1,5 +1,5 @@
-import logger from '../../../../shared/logger/winston.logger';
 import type { ISellerBankAccount } from '../../../../infrastructure/database/mongoose/models/finance/payouts/seller-bank-account.model';
+import logger from '../../../../shared/logger/winston.logger';
 
 export interface BankDetailsForRazorpay {
     accountNumber: string;

@@ -5,9 +5,9 @@
  */
 
 import { Router } from 'express';
-import pickingRoutes from './picking.routes';
-import packingRoutes from './packing.routes';
 import inventoryRoutes from './inventory.routes';
+import packingRoutes from './packing.routes';
+import pickingRoutes from './picking.routes';
 
 const router = Router();
 

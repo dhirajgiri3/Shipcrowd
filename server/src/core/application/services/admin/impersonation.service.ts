@@ -1,11 +1,11 @@
-import mongoose from 'mongoose';
 import crypto from 'crypto';
-import ImpersonationSession from '../../../../infrastructure/database/mongoose/models/admin/impersonation-session.model';
+import mongoose from 'mongoose';
 import { User } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { AppError, ValidationError, AuthenticationError } from '../../../../shared/errors/app.error';
+import ImpersonationSession from '../../../../infrastructure/database/mongoose/models/admin/impersonation-session.model';
+import { AppError, AuthenticationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { generateAccessToken } from '../../../../shared/helpers/jwt';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Impersonation Service

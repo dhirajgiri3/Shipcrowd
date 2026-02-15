@@ -2,8 +2,8 @@ import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
 // import { AccessTier } from '../../../../../core/domain/types/access-tier'; // Not needed if we just check role
-import adminWarehouseController from '../../../controllers/warehouse/admin-warehouse.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import adminWarehouseController from '../../../controllers/warehouse/admin-warehouse.controller';
 
 const router = express.Router();
 

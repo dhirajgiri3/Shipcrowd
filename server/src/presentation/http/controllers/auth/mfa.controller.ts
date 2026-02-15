@@ -1,10 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import MFAService from '../../../../core/application/services/auth/mfa.service';
 import User from '../../../../infrastructure/database/mongoose/models/iam/users/user.model';
-import { ValidationError, AuthenticationError, NotFoundError } from '../../../../shared/errors/app.error';
-import logger from '../../../../shared/logger/winston.logger';
+import { AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { handleControllerError } from '../../../../shared/utils/errorHandler';
 
 /**
  * MFA Controller
@@ -38,7 +36,7 @@ class MFAController {
                 throw new NotFoundError('User not found');
             }
 
-            const { secret, qrCode, manualEntryKey } = await MFAService.generateTOTPSecret(
+            const { qrCode, manualEntryKey } = await MFAService.generateTOTPSecret(
                 userId,
                 user.email
             );
@@ -208,7 +206,7 @@ class MFAController {
      * POST /auth/mfa/enforce
      * TODO: Implement company-level MFA enforcement
      */
-    async enforceMFA(req: Request, res: Response, next: NextFunction) {
+    async enforceMFA(req: Request, _res: Response, next: NextFunction) {
         try {
             const userId = req.user?._id?.toString();
             if (!userId) {

@@ -1,8 +1,7 @@
+import axios from 'axios';
 import mongoose from 'mongoose';
 import os from 'os';
-import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import axios from 'axios';
 
 /**
  * System Health Service

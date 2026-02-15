@@ -2,18 +2,18 @@
  * Payout Controller
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import { PayoutProcessingService } from '../../../../core/application/services/commission/index';
-import { AppError } from '../../../../shared/errors/index';
 import { ValidationError } from '../../../../shared/errors/app.error';
+import { AppError } from '../../../../shared/errors/index';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
-    initiatePayoutSchema,
-    processBatchPayoutsSchema,
-    listPayoutsQuerySchema,
-    idParamSchema,
+idParamSchema,
+initiatePayoutSchema,
+listPayoutsQuerySchema,
+processBatchPayoutsSchema,
 } from '../../../../shared/validation/commission-schemas';
-import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 export class PayoutController {
     /**

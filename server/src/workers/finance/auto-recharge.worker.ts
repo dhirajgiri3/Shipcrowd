@@ -1,9 +1,9 @@
-import { Company } from '../../infrastructure/database/mongoose/models';
-import WalletService from '../../core/application/services/wallet/wallet.service';
-import logger from '../../shared/logger/winston.logger';
 import pMap from 'p-map';
 import autoRechargeMetrics from '../../core/application/services/metrics/auto-recharge-metrics.service';
 import { isWalletAutoRechargeFeatureEnabled } from '../../core/application/services/wallet/wallet-feature-flags';
+import WalletService from '../../core/application/services/wallet/wallet.service';
+import { Company } from '../../infrastructure/database/mongoose/models';
+import logger from '../../shared/logger/winston.logger';
 
 /**
  * Auto-Recharge Worker

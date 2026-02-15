@@ -1,5 +1,5 @@
-import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
+import Razorpay from 'razorpay';
 
 dotenv.config();
 

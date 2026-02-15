@@ -8,26 +8,15 @@ export { ErrorCode, errorStatusMap } from './errorCodes';
 
 // Error classes
 export {
-    AppError,
-    ValidationError,
-    AuthenticationError,
-    AuthorizationError,
-    NotFoundError,
-    ConflictError,
-    RateLimitError,
-    ExternalServiceError,
-    DatabaseError,
-    isOperationalError,
-    normalizeError,
+AppError, AuthenticationError,
+AuthorizationError, ConflictError, DatabaseError, ExternalServiceError, NotFoundError, RateLimitError, ValidationError, isOperationalError,
+normalizeError
 } from './app.error';
 
 // Legacy error utilities (for backward compatibility)
 export {
-    authErrorMessages,
-    kycErrorMessages,
-    getErrorMessage,
-    extractErrorCode,
-    formatError,
+authErrorMessages, extractErrorCode,
+formatError, getErrorMessage, kycErrorMessages
 } from './error-messages';
 
 // Types

@@ -74,6 +74,7 @@ const Shipcrowd_TO_AMAZON_STATUS: Record<string, string> = {
     RTO_DELIVERED: 'ReturnCompleted',
     CANCELLED: 'Cancelled',
 };
+void Shipcrowd_TO_AMAZON_STATUS;
 
 /**
  * AmazonFulfillmentService

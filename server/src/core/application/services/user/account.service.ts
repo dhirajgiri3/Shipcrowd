@@ -14,15 +14,12 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import mongoose from 'mongoose';
 import crypto from 'crypto';
-import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
-import { Session } from '../../../../infrastructure/database/mongoose/models';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { Request } from 'express';
+import mongoose from 'mongoose';
+import { Session, User } from '../../../../infrastructure/database/mongoose/models';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { NotFoundError, DatabaseError, AuthenticationError, ValidationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * Deactivate a user account

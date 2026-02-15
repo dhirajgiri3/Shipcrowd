@@ -1,10 +1,10 @@
 import express from 'express';
+import multer from 'multer';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import warehouseController from '../../../controllers/warehouse/warehouse.controller';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import warehouseController from '../../../controllers/warehouse/warehouse.controller';
-import asyncHandler from '../../../../../shared/utils/asyncHandler';
-import multer from 'multer';
 
 const router = express.Router();
 

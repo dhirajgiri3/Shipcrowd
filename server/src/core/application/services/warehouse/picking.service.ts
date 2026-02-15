@@ -14,26 +14,23 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import mongoose from 'mongoose';
-import { PickList, IPickList, IPickListItem } from '@/infrastructure/database/mongoose/models';
-import { Order, IOrder } from '@/infrastructure/database/mongoose/models';
-import { WarehouseLocation } from '@/infrastructure/database/mongoose/models';
-import { Inventory } from '@/infrastructure/database/mongoose/models';
 import {
-    ICreatePickListDTO,
-    IAssignPickListDTO,
-    IStartPickingDTO,
-    IPickItemDTO,
-    ICompletePickListDTO,
-    IVerifyPickListDTO,
-    ICancelPickListDTO,
-    IPickListQueryOptions,
-    IPickerStats,
-    IPickListStats,
-    IPaginatedResult,
+IAssignPickListDTO,
+ICancelPickListDTO,
+ICompletePickListDTO,
+ICreatePickListDTO,
+IPaginatedResult,
+IPickerStats,
+IPickItemDTO,
+IPickListQueryOptions,
+IPickListStats,
+IStartPickingDTO,
+IVerifyPickListDTO,
 } from '@/core/domain/interfaces/warehouse/picking.interface.service';
+import { IPickList, IPickListItem, Order, PickList, WarehouseLocation } from '@/infrastructure/database/mongoose/models';
 import { AppError } from '@/shared/errors/app.error';
 import logger from '@/shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
 export default class PickingService {
     static async createPickList(data: ICreatePickListDTO): Promise<IPickList> {
@@ -378,15 +375,6 @@ export default class PickingService {
         return locationMap;
     }
 
-    private static async findOptimalLocation(sku: string, warehouseId: string, quantity: number): Promise<any> {
-        return WarehouseLocation.findOne({
-            warehouseId,
-            currentSKU: sku,
-            currentStock: { $gte: quantity },
-            status: 'OCCUPIED',
-        }).sort({ isPickFace: -1, pickPriority: 1 });
-    }
-
     private static optimizeByStrategy(items: IPickListItem[], strategy: string): IPickListItem[] {
         const sorted = [...items];
         if (strategy === 'ZONE') {
@@ -396,3 +384,4 @@ export default class PickingService {
         return sorted;
     }
 }
+void PickingService;

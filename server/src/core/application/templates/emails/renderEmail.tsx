@@ -1,10 +1,10 @@
 import { render } from '@react-email/render';
 import React from 'react';
 import logger from '../../../../shared/logger/winston.logger';
-import VerificationEmail, { VerificationEmailProps } from './VerificationEmail';
-import PasswordResetEmail, { PasswordResetEmailProps } from './PasswordResetEmail';
-import NewDeviceAlertEmail, { NewDeviceAlertEmailProps } from './NewDeviceAlertEmail';
 import MagicLinkEmail, { MagicLinkEmailProps } from './MagicLinkEmail';
+import NewDeviceAlertEmail, { NewDeviceAlertEmailProps } from './NewDeviceAlertEmail';
+import PasswordResetEmail, { PasswordResetEmailProps } from './PasswordResetEmail';
+import VerificationEmail, { VerificationEmailProps } from './VerificationEmail';
 
 /**
  * Render email template using React Email

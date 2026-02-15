@@ -1,6 +1,6 @@
+import dotenv from 'dotenv';
 import twilio from 'twilio';
 import logger from '../logger/winston.logger';
-import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -21,6 +21,7 @@ try {
 }
 
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+void verifyServiceSid;
 
 // Custom error types
 export class TwilioError extends Error {

@@ -1,16 +1,16 @@
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../../../../types/express';
+import { NextFunction, Response } from 'express';
+import { z } from 'zod';
+import AchievementService from '../../../../core/application/services/onboarding/achievement.service';
+import DemoDataService from '../../../../core/application/services/onboarding/demo-data.service';
+import PersonalizationService from '../../../../core/application/services/onboarding/personalization.service';
+import ProductTourService from '../../../../core/application/services/onboarding/product-tour.service';
+import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
+import { Company } from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
-import AchievementService from '../../../../core/application/services/onboarding/achievement.service';
-import PersonalizationService from '../../../../core/application/services/onboarding/personalization.service';
-import DemoDataService from '../../../../core/application/services/onboarding/demo-data.service';
-import ProductTourService from '../../../../core/application/services/onboarding/product-tour.service';
-import { Company } from '../../../../infrastructure/database/mongoose/models';
-import { z } from 'zod';
+import { AuthRequest } from '../../../../types/express';
 
 // Validation Schemas
 // SECURITY: Only non-critical steps can be skipped
@@ -126,7 +126,7 @@ export class OnboardingController {
         }
     }
 
-    async getLeaderboard(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    async getLeaderboard(_req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
         // Optional feature for later
         // Could fetch top 10 companies by points
         sendSuccess(res, [], 'Leaderboard coming soon');

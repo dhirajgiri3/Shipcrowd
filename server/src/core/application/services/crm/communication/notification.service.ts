@@ -1,5 +1,5 @@
 import NotificationTemplate, {
-  INotificationTemplate,
+INotificationTemplate,
 } from '@/infrastructure/database/mongoose/models/communication/notification-template.model';
 import Notification, { INotification } from '@/infrastructure/database/mongoose/models/crm/communication/notification.model';
 import { AppError, NotFoundError, ValidationError } from '@/shared/errors';

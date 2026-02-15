@@ -9,9 +9,9 @@
  * - Logger
  */
 
+import mongoose from 'mongoose';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
-import mongoose from 'mongoose';
 import { DateRange } from './analytics.service';
 
 export interface CityMetric {

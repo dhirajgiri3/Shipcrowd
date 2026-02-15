@@ -4,9 +4,9 @@
  * Webhook endpoints for receiving courier pickup status updates
  */
 
-import { Router } from 'express';
 import ReturnWebhookController from '@/presentation/http/controllers/logistics/return-webhook.controller';
 import { apiRateLimiter } from '@/shared/config/rateLimit.config';
+import { Router } from 'express';
 
 const router = Router();
 

@@ -5,7 +5,6 @@
  * Handles field mapping, calculations, and data enrichment.
  */
 
-import { INDREvent } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-event.model';
 import mongoose from 'mongoose';
 
 export interface TransformedNDRCase {

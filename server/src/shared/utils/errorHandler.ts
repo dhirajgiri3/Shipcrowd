@@ -1,7 +1,7 @@
 import { NextFunction } from 'express';
 import { z } from 'zod';
 import {
-    ValidationError,
+ValidationError,
 } from '../errors/app.error';
 import logger from '../logger/winston.logger';
 

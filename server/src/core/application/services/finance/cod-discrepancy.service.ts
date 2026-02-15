@@ -1,9 +1,8 @@
-import mongoose from 'mongoose';
 import CODDiscrepancy, { ICODDiscrepancy } from '../../../../infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
 import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
-import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 import { ICODDiscrepancyResolution } from './cod-discrepancy.types';
 
 /**

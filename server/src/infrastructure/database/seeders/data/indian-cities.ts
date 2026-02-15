@@ -5,7 +5,7 @@
  */
 
 import { SEED_CONFIG } from '../config';
-import { selectWeightedFromObject, selectRandom } from '../utils/random.utils';
+import { selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 export interface CityData {
     name: string;

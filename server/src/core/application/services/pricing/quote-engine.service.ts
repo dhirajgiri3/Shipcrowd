@@ -1,41 +1,41 @@
 import mongoose from 'mongoose';
 import {
-    CourierService,
-    QuoteSession,
-    SellerCourierPolicy,
-    ServiceRateCard,
+CourierService,
+QuoteSession,
+SellerCourierPolicy,
+ServiceRateCard,
 } from '../../../../infrastructure/database/mongoose/models';
-import { CourierFactory } from '../courier/courier.factory';
-import logger from '../../../../shared/logger/winston.logger';
-import { AppError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import {
-    NormalizedRateResult,
-    PricingConfidence,
-} from '../../../../infrastructure/external/couriers/base/normalized-pricing.types';
-import {
-    CourierRateRequest,
-    CourierRateResponse,
-    ICourierAdapter,
-} from '../../../../infrastructure/external/couriers/base/courier.adapter';
-import ServiceLevelPricingMetricsService from '../metrics/service-level-pricing-metrics.service';
-import ServiceRateCardFormulaService from './service-rate-card-formula.service';
-import { getPricingFeatureFlags } from './pricing-feature-flags';
-import PricingStrategyService from './pricing-strategy.service';
-import RouteIntelligenceService from './route-intelligence.service';
-import {
-    AutoPriority,
-    PricingSource,
-    QuoteOptionOutput,
-    QuotePricingBreakdown,
-    QuoteSessionOutput,
-    SelectionMode,
-    ServiceRateCardFormulaOutput,
-} from '../../../domain/types/service-level-pricing.types';
 import { ICourierService } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/courier-service.model';
 import { ISellerCourierPolicy } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/seller-courier-policy.model';
 import { IServiceRateCard } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/service-rate-card.model';
+import {
+CourierRateRequest,
+CourierRateResponse,
+ICourierAdapter,
+} from '../../../../infrastructure/external/couriers/base/courier.adapter';
+import {
+NormalizedRateResult,
+PricingConfidence,
+} from '../../../../infrastructure/external/couriers/base/normalized-pricing.types';
+import { AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+AutoPriority,
+PricingSource,
+QuoteOptionOutput,
+QuotePricingBreakdown,
+QuoteSessionOutput,
+SelectionMode,
+ServiceRateCardFormulaOutput,
+} from '../../../domain/types/service-level-pricing.types';
 import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CourierFactory } from '../courier/courier.factory';
+import ServiceLevelPricingMetricsService from '../metrics/service-level-pricing-metrics.service';
+import { getPricingFeatureFlags } from './pricing-feature-flags';
+import PricingStrategyService from './pricing-strategy.service';
+import RouteIntelligenceService from './route-intelligence.service';
+import ServiceRateCardFormulaService from './service-rate-card-formula.service';
 
 type CanonicalProvider = NormalizedRateResult['provider'];
 type Provider = CanonicalProvider;
@@ -1105,56 +1105,6 @@ class QuoteEngineService {
         return cards[0] || null;
     }
 
-    private calculateFromCard(
-        card: ServiceRateCardLean,
-        weight: number,
-        zone: string | undefined
-    ): number {
-        const zoneRules = Array.isArray(card.zoneRules) ? card.zoneRules : [];
-        const normalizedZone = this.normalizeZoneKey(zone);
-        const selectedZoneRule =
-            zoneRules.find(
-                (rule) => this.normalizeZoneKey(rule.zoneKey) === normalizedZone
-            ) || zoneRules[0];
-
-        if (!selectedZoneRule) {
-            return Math.max(50, weight * 20);
-        }
-
-        const slabs = Array.isArray(selectedZoneRule.slabs)
-            ? selectedZoneRule.slabs
-            : [];
-        const slab = slabs.find(
-            (item) =>
-                weight >= Number(item.minKg || 0) && weight <= Number(item.maxKg || 0)
-        );
-        if (slab) {
-            return Number(slab.charge || 0);
-        }
-
-        const lastSlab = slabs[slabs.length - 1];
-        if (!lastSlab) {
-            return Math.max(50, weight * 20);
-        }
-
-        const extraWeight = Math.max(0, weight - Number(lastSlab.maxKg || 0));
-        const roundingUnitKg = Number(card.calculation?.roundingUnitKg || 1);
-        const roundingMode = card.calculation?.roundingMode || 'ceil';
-        const extraWeightUnits =
-            roundingUnitKg > 0 ? extraWeight / roundingUnitKg : extraWeight;
-
-        let roundedUnits = extraWeightUnits;
-        if (roundingMode === 'ceil') roundedUnits = Math.ceil(extraWeightUnits);
-        if (roundingMode === 'floor') roundedUnits = Math.floor(extraWeightUnits);
-        if (roundingMode === 'nearest') roundedUnits = Math.round(extraWeightUnits);
-
-        const roundedExtraWeight =
-            Math.max(0, roundedUnits) * Math.max(roundingUnitKg, 0);
-        const extraCharge =
-            roundedExtraWeight * Number(selectedZoneRule.additionalPerKg || 0);
-        return Number(lastSlab.charge || 0) + extraCharge;
-    }
-
     private normalizeZoneKey(zone?: string): string | null {
         const raw = String(zone || '').trim().toLowerCase();
         if (!raw) return null;
@@ -1268,5 +1218,6 @@ class QuoteEngineService {
         return fastest.quotedAmount <= threshold ? fastest : cheapest;
     }
 }
+void QuoteEngineService;
 
 export default new QuoteEngineService();

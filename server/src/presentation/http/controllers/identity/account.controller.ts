@@ -1,19 +1,17 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
-import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
-  deactivateAccount,
-  reactivateAccount,
-  scheduleAccountDeletion,
-  cancelScheduledDeletion,
-  permanentlyDeleteAccount
+cancelScheduledDeletion,
+deactivateAccount,
+reactivateAccount,
+scheduleAccountDeletion
 } from '../../../../core/application/services/user/account.service';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import { User } from '../../../../infrastructure/database/mongoose/models';
+import { AppError, AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { clearAuthCookies } from '../../../../shared/helpers/auth-cookies';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { clearAuthCookies } from '../../../../shared/helpers/auth-cookies';
-import { AuthenticationError, NotFoundError, ValidationError, AppError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Define validation schemas
 const deactivateAccountSchema = z.object({
@@ -40,6 +38,7 @@ const permanentDeleteSchema = z.object({
   userId: z.string().optional(), // Only for admins
   anonymize: z.boolean().default(true),
 });
+void permanentDeleteSchema;
 
 /**
  * Deactivate user account

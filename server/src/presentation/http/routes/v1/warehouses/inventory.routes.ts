@@ -4,12 +4,12 @@
  * API routes for inventory and stock management operations
  */
 
-import { Router } from 'express';
-import multer from 'multer';
-import rateLimit from 'express-rate-limit';
 import inventoryController from '@/presentation/http/controllers/warehouse/inventory.controller';
 import { authenticate } from '@/presentation/http/middleware';
 import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
+import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 
 const router = Router();
 

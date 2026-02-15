@@ -14,12 +14,11 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
-import { WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
+import { Order, Shipment, WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
 import WalletService from '../wallet/wallet.service';
 import AnalyticsService, { DateRange } from './analytics.service';
-import logger from '../../../../shared/logger/winston.logger';
-import mongoose from 'mongoose';
 
 export interface RevenueStats {
     totalRevenue: number;

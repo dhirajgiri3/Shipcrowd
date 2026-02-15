@@ -28,10 +28,10 @@
  */
 
 import mongoose from 'mongoose';
-import { SKUWeightProfile } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/sku-weight-profile.model';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { SKUWeightProfile } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/sku-weight-profile.model';
 import { AppError } from '../../../../shared/errors/app.error';
+import logger from '../../../../shared/logger/winston.logger';
 
 interface WeightSuggestion {
     value: number;
@@ -44,7 +44,6 @@ interface WeightSuggestion {
 
 export class SKUWeightProfileService {
     private static readonly MIN_SAMPLES_FOR_SUGGESTION = 10;
-    private static readonly HIGH_CONFIDENCE_THRESHOLD = 80;
     private static readonly MEDIUM_CONFIDENCE_THRESHOLD = 50;
 
     /**
@@ -608,5 +607,6 @@ export class SKUWeightProfileService {
         }
     }
 }
+void SKUWeightProfileService;
 
 export default new SKUWeightProfileService();

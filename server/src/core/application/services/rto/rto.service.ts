@@ -15,24 +15,21 @@
  */
 
 import mongoose from 'mongoose';
-import { RTOEvent, IRTOEvent } from '../../../../infrastructure/database/mongoose/models';
-import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { IRTOEvent, NDREvent, Order, RTOEvent, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
-import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
-import WalletService from '../wallet/wallet.service';
-import { RTONotificationService } from './rto-notification.service';
-import ServiceRatePricingService from './rate-card.service';
-import InventoryService from '../warehouse/inventory.service';
-import RTOAnalyticsService from './rto-analytics.service';
-import { CarrierNormalizationService } from '../shipping/carrier-normalization.service';
-import CourierProviderRegistry from '../courier/courier-provider-registry';
-import logger from '../../../../shared/logger/winston.logger';
-import { AppError } from '../../../../shared/errors/app.error';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { getRateLimiter } from '../../../../infrastructure/utilities/rate-limiter';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
+import { AppError } from '../../../../shared/errors/app.error';
 import eventBus from '../../../../shared/events/eventBus';
+import logger from '../../../../shared/logger/winston.logger';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CarrierNormalizationService } from '../shipping/carrier-normalization.service';
+import WalletService from '../wallet/wallet.service';
+import InventoryService from '../warehouse/inventory.service';
+import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
+import ServiceRatePricingService from './rate-card.service';
+import RTOAnalyticsService from './rto-analytics.service';
+import { RTONotificationService } from './rto-notification.service';
 
 interface RTOResult {
     success: boolean;
@@ -605,39 +602,6 @@ export default class RTOService {
         }
     }
 
-    /**
-     * Deduct RTO charges from company wallet
-     */
-    private static async deductRTOCharges(
-        companyId: string,
-        rtoEventId: string,
-        amount: number,
-        shipmentAwb?: string
-    ): Promise<{ success: boolean; newBalance?: number; error?: string }> {
-        try {
-            const result = await WalletService.handleRTOCharge(
-                companyId,
-                rtoEventId,
-                amount,
-                shipmentAwb
-            );
-
-            return result;
-        } catch (error: any) {
-            logger.error('Error deducting RTO charges', {
-                companyId,
-                rtoEventId,
-                amount,
-                error: error.message,
-            });
-
-            return {
-                success: false,
-                error: error.message,
-            };
-        }
-    }
-
     private static async notifyWarehouse(
         warehouseId: string,
         rtoEvent: IRTOEvent
@@ -1207,3 +1171,4 @@ export default class RTOService {
         };
     }
 }
+void RTOService;

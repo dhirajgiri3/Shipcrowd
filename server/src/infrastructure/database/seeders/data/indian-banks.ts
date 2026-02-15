@@ -4,7 +4,7 @@
  * Bank data with IFSC prefixes for realistic banking details.
  */
 
-import { selectRandom, randomInt, generateNumericString } from '../utils/random.utils';
+import { generateNumericString, randomInt, selectRandom } from '../utils/random.utils';
 
 export interface BankData {
     name: string;
@@ -113,7 +113,7 @@ export function generateAccountNumber(bank?: BankData): string {
 /**
  * Generate a UPI ID
  */
-export function generateUPIId(name: string, domain: string = 'paytm'): string {
+export function generateUPIId(name: string, _domain: string = 'paytm'): string {
     const cleanName = name
         .toLowerCase()
         .replace(/\s+/g, '')

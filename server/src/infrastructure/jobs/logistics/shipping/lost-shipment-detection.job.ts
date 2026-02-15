@@ -7,10 +7,10 @@
 
 import { Job } from 'bullmq';
 import mongoose from 'mongoose';
+import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
+import logger from '../../../../shared/logger/winston.logger';
 import { Shipment } from '../../../database/mongoose/models';
 import QueueManager from '../../../utilities/queue-manager';
-import logger from '../../../../shared/logger/winston.logger';
-import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 
 interface LostShipmentJobData {
     type: 'detect_lost' | 'refresh_tracking';

@@ -10,9 +10,9 @@
  *   npx tsx src/infrastructure/database/seeders/index.ts --clean
  */
 
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { logger, createTimer, formatDuration } from './utils/logger.utils';
+import mongoose from 'mongoose';
+import { createTimer, logger } from './utils/logger.utils';
 
 // Load environment variables
 dotenv.config();
@@ -236,6 +236,7 @@ async function runSeeders(): Promise<void> {
 
     for (const seeder of seeders) {
         const timer = createTimer();
+void timer;
         try {
             await seeder.fn();
         } catch (error) {

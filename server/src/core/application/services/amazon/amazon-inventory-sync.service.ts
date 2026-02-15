@@ -14,13 +14,10 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
-import { AmazonProductMapping, IAmazonProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { AmazonSyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
-import AmazonOAuthService from './amazon-oauth.service';
+import { AmazonProductMapping, AmazonStore, AmazonSyncLog, IAmazonProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import AmazonOAuthService from './amazon-oauth.service';
 
 interface InventoryUpdate {
     sku: string;

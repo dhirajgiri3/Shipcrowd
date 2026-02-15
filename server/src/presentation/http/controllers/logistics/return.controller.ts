@@ -16,15 +16,15 @@
  * }
  */
 
+import ReturnService from '@/core/application/services/logistics/return.service';
+import { Order, Shipment } from '@/infrastructure/database/mongoose/models';
+import ReturnOrder, { ReturnReason } from '@/infrastructure/database/mongoose/models/logistics/returns/return-order.model';
+import { AppError, normalizeError } from '@/shared/errors/app.error';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
+import logger from '@/shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '@/shared/utils/responseHelper';
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
-import ReturnService from '@/core/application/services/logistics/return.service';
-import ReturnOrder, { ReturnReason } from '@/infrastructure/database/mongoose/models/logistics/returns/return-order.model';
-import { Order, Shipment } from '@/infrastructure/database/mongoose/models';
-import logger from '@/shared/logger/winston.logger';
-import { AppError, normalizeError } from '@/shared/errors/app.error';
-import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '@/shared/utils/responseHelper';
 
 /**
  * Zod validation schemas for type-safe request validation
@@ -124,6 +124,7 @@ export default class ReturnController {
         } catch (error) {
             if (error instanceof z.ZodError) {
                 const appError = new AppError('Validation failed', 'VALIDATION_ERROR', 400);
+void appError;
                 res.status(400).json({
                     success: false,
                     message: 'Validation failed',

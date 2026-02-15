@@ -4,11 +4,11 @@
  * Endpoints for dispute management and analytics.
  */
 
-import { Router } from 'express';
 import DisputeController from '@/presentation/http/controllers/logistics/dispute.controller';
 import { authenticate } from '@/presentation/http/middleware/auth/auth';
 import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 import { apiRateLimiter } from '@/shared/config/rateLimit.config';
+import { Router } from 'express';
 
 const router = Router();
 

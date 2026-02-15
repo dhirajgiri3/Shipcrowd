@@ -21,9 +21,9 @@
 import mongoose from 'mongoose';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import StorageService from '../../../../infrastructure/external/storage/storage.service';
-import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 
 interface PackingEvidenceData {
     shipmentId: string;

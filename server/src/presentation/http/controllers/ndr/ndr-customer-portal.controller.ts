@@ -1,7 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
+import { NextFunction, Request, Response } from 'express';
 import NDRMagicLinkService from '../../../../core/application/services/ndr/ndr-magic-link.service';
-import logger from '../../../../shared/logger/winston.logger';
+import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
 
 export class NDRCustomerPortalController {
     /**

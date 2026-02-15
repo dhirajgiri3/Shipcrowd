@@ -14,10 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
-import { WooCommerceProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { Inventory } from '../../../../infrastructure/database/mongoose/models';
+import { Inventory, WooCommerceProductMapping, WooCommerceStore, WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';

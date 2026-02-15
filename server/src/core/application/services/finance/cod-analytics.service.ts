@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import CODDiscrepancy from '../../../../infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
+import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 
 /**
  * COD Analytics Service

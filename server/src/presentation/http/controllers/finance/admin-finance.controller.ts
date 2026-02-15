@@ -1,15 +1,14 @@
-import { Request, Response, NextFunction } from 'express';
-import { WalletTransaction, Company } from '../../../../infrastructure/database/mongoose/models';
-import WalletService from '../../../../core/application/services/wallet/wallet.service';
-import logger from '../../../../shared/logger/winston.logger';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendPaginated,
-    calculatePagination
-} from '../../../../shared/utils/responseHelper';
-import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { Company, WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+calculatePagination,
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
 
 /**
  * Get all wallet transactions (Admin View)
@@ -19,6 +18,7 @@ import mongoose from 'mongoose';
 export const getAllTransactions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
@@ -74,6 +74,7 @@ export const getAllTransactions = async (req: Request, res: Response, next: Next
 export const getAllWallets = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
@@ -127,6 +128,7 @@ export const getAllWallets = async (req: Request, res: Response, next: NextFunct
 export const getWalletByCompanyId = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const { companyId } = req.params;
         if (!mongoose.Types.ObjectId.isValid(companyId)) {
@@ -177,6 +179,7 @@ export const getWalletByCompanyId = async (req: Request, res: Response, next: Ne
 export const getFinanceStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const dateRange = req.query.startDate && req.query.endDate
             ? {

@@ -1,38 +1,38 @@
 import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
+import { DELHIVERY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs';
+import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
+import { StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
+import logger from '../../../../shared/logger/winston.logger';
+import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
+import Warehouse from '../../../database/mongoose/models/logistics/warehouse/structure/warehouse.model';
 import {
-    BaseCourierAdapter,
-    CourierShipmentData,
-    CourierShipmentResponse,
-    CourierTrackingResponse,
-    CourierRateRequest,
-    CourierRateResponse,
-    CourierReverseShipmentData,
-    CourierReverseShipmentResponse,
-    CourierPODResponse,
-    CourierLabelResponse
+BaseCourierAdapter,
+CourierLabelResponse,
+CourierPODResponse,
+CourierRateRequest,
+CourierRateResponse,
+CourierReverseShipmentData,
+CourierReverseShipmentResponse,
+CourierShipmentData,
+CourierShipmentResponse,
+CourierTrackingResponse
 } from '../base/courier.adapter';
+import { DelhiveryError, handleDelhiveryError } from './delhivery-error-handler';
 import { DelhiveryAuth } from './delhivery.auth';
 import { DelhiveryMapper } from './delhivery.mapper';
 import {
-    DelhiveryCreateShipmentPayload,
-    DelhiveryTrackResponse,
-    DelhiveryServiceabilityResponse,
-    DelhiveryPickupRequest,
-    DelhiveryWarehouseCreateRequest,
-    DelhiveryWarehouseUpdateRequest,
-    DelhiveryNdrActionRequest,
-    DelhiveryNdrActionResponse,
-    DelhiveryNdrStatusResponse,
-    DelhiveryDocumentResponse
+DelhiveryCreateShipmentPayload,
+DelhiveryDocumentResponse,
+DelhiveryNdrActionRequest,
+DelhiveryNdrActionResponse,
+DelhiveryNdrStatusResponse,
+DelhiveryPickupRequest,
+DelhiveryServiceabilityResponse,
+DelhiveryTrackResponse,
+DelhiveryWarehouseCreateRequest,
+DelhiveryWarehouseUpdateRequest
 } from './delhivery.types';
-import { handleDelhiveryError, DelhiveryError } from './delhivery-error-handler';
-import { CircuitBreaker, retryWithBackoff } from '../../../../shared/utils/circuit-breaker.util';
-import { StatusMapperService } from '../../../../core/application/services/courier/status-mappings/status-mapper.service';
-import { RateLimiterService } from '../../../../core/application/services/courier/rate-limiter-configs/rate-limiter.service';
-import { DELHIVERY_RATE_LIMITER_CONFIG } from '../../../../core/application/services/courier/rate-limiter-configs';
-import Warehouse from '../../../database/mongoose/models/logistics/warehouse/structure/warehouse.model';
-import logger from '../../../../shared/logger/winston.logger';
 
 export class DelhiveryProvider extends BaseCourierAdapter {
     private auth: DelhiveryAuth;
@@ -433,7 +433,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
         }
     }
 
-    async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string; uplId?: string }> {
+    async requestReattempt(trackingNumber: string, _preferredDate?: Date, _instructions?: string): Promise<{ success: boolean; message: string; uplId?: string }> {
         try {
             const request: DelhiveryNdrActionRequest = {
                 data: [{ waybill: trackingNumber, act: 'RE-ATTEMPT' }]
@@ -463,7 +463,7 @@ export class DelhiveryProvider extends BaseCourierAdapter {
     async updateDeliveryAddress(
         awb: string,
         newAddress: { line1: string; city: string; state: string; pincode: string; country: string; },
-        orderId: string,
+        _orderId: string,
         phone?: string
     ): Promise<{ success: boolean; message: string }> {
         try {

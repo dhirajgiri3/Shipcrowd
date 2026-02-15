@@ -1,5 +1,5 @@
-import { BaseMigration, MigrationOptions } from '../base-migration';
 import CommissionTransaction from '../../mongoose/models/finance/commission/commission-transaction.model';
+import { BaseMigration } from '../base-migration';
 
 /**
  * Migration: Add soft delete to CommissionTransaction

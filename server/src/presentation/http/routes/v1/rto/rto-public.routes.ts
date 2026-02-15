@@ -5,8 +5,8 @@
  */
 
 import { Router } from 'express';
-import { RTOCustomerPortalController } from '../../../controllers/rto/rto-customer-portal.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import { RTOCustomerPortalController } from '../../../controllers/rto/rto-customer-portal.controller';
 
 const router = Router();
 

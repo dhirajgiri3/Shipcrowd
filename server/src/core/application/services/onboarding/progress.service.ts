@@ -1,8 +1,7 @@
-import mongoose from 'mongoose';
-import { OnboardingProgress, Achievement } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { Achievement, OnboardingProgress } from '../../../../infrastructure/database/mongoose/models';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class OnboardingProgressService {
     /**

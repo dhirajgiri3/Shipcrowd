@@ -6,12 +6,11 @@
  * - 20-30 integrations across companies
  */
 
-import mongoose from 'mongoose';
 import Company from '../../mongoose/models/organization/core/company.model';
 import Integration from '../../mongoose/models/system/integrations/integration.model';
-import { randomInt, selectRandom, generateHexString, generateAlphanumeric } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
 import { subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { generateAlphanumeric, generateHexString, randomInt, selectRandom } from '../utils/random.utils';
 
 // Integration types and providers
 const INTEGRATION_CONFIGS = {
@@ -101,7 +100,7 @@ function generateCredentials(provider: string): any {
 /**
  * Generate integration settings
  */
-function generateSettings(type: string, provider: string): any {
+function generateSettings(_type: string, provider: string): any {
     const isActive = Math.random() > 0.1;
     const isPrimary = Math.random() > 0.7;
 

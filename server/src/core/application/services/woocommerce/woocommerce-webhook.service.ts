@@ -14,13 +14,12 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import WooCommerceOrderSyncService from './woocommerce-order-sync.service';
-import { WooCommerceProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
+import { WooCommerceProductMapping, WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import { WooCommerceOrder, WooCommerceProduct } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
-import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import WooCommerceOrderSyncService from './woocommerce-order-sync.service';
 
 
 export default class WooCommerceWebhookService {

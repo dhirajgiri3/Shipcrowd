@@ -1,6 +1,6 @@
-import express from 'express';
-import { authenticate } from '@/presentation/http/middleware';
 import { EarlyCODController } from '@/presentation/http/controllers/finance/early-cod.controller';
+import { authenticate } from '@/presentation/http/middleware';
+import express from 'express';
 
 const router = express.Router();
 

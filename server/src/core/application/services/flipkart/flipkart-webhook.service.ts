@@ -14,9 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { FlipkartStore } from '../../../../infrastructure/database/mongoose/models';
-import { FlipkartSyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { FlipkartStore, FlipkartSyncLog, Order } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 

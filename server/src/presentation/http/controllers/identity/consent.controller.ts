@@ -10,16 +10,16 @@
  * - GET /consent/export - Export user data (GDPR right)
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { Consent, ConsentHistory, ConsentType } from '../../../../infrastructure/database/mongoose/models/iam/consent.model';
 import { User } from '../../../../infrastructure/database/mongoose/models';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { Consent, ConsentHistory, ConsentType } from '../../../../infrastructure/database/mongoose/models/iam/consent.model';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // Validation schemas
 const acceptConsentSchema = z.object({
@@ -31,6 +31,7 @@ const acceptConsentSchema = z.object({
 const withdrawConsentSchema = z.object({
     type: z.enum(['terms', 'privacy', 'marketing', 'cookies', 'data_processing']),
 });
+void withdrawConsentSchema;
 
 /**
  * Get user's current consents

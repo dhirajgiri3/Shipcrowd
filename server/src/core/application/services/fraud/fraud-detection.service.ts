@@ -5,14 +5,13 @@
  * pattern matching, and blacklist verification.
  */
 
-import mongoose from 'mongoose';
+import { Order } from '@/infrastructure/database/mongoose/models';
+import Blacklist, { IBlacklist } from '@/infrastructure/database/mongoose/models/fraud/blacklist.model';
 import FraudAlert, { IFraudAlert } from '@/infrastructure/database/mongoose/models/fraud/fraud-alert.model';
 import FraudRule, { IFraudRule } from '@/infrastructure/database/mongoose/models/fraud/fraud-rule.model';
-import Blacklist, { IBlacklist } from '@/infrastructure/database/mongoose/models/fraud/blacklist.model';
-import { Order } from '@/infrastructure/database/mongoose/models';
-import OpenAIFraudService from './openai-fraud.service';
 import logger from '@/shared/logger/winston.logger';
-import { AppError } from '@/shared/errors/app.error';
+import mongoose from 'mongoose';
+import OpenAIFraudService from './openai-fraud.service';
 
 // ============================================================================
 // INTERFACES
@@ -503,8 +502,8 @@ export default class FraudDetectionService {
     }
 
     private static async checkBehavioralPattern(
-        rule: IFraudRule,
-        data: IOrderAnalysisInput
+        _rule: IFraudRule,
+        _data: IOrderAnalysisInput
     ): Promise<boolean> {
         try {
             // Placeholder for behavioral analysis

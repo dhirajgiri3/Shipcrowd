@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
-import BarcodeService from './barcode.service';
 import logger from '../../../../shared/logger/winston.logger';
+import BarcodeService from './barcode.service';
 
 /**
  * Label Service

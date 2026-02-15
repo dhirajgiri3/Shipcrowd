@@ -16,15 +16,15 @@
 
 import mongoose from 'mongoose';
 import {
-    SalesRepresentative,
-    ISalesRepresentative,
-    SalesRepRole,
-    SalesRepStatus,
-    User,
-    AuditLog
+AuditLog,
+ISalesRepresentative,
+SalesRepresentative,
+SalesRepRole,
+SalesRepStatus,
+User
 } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/index';
+import logger from '../../../../shared/logger/winston.logger';
 
 // DTOs
 export interface CreateSalesRepDTO {

@@ -1,6 +1,6 @@
+import * as crypto from 'crypto';
 import mongoose, { Document, Schema } from 'mongoose';
 import { fieldEncryption } from 'mongoose-field-encryption';
-import * as crypto from 'crypto';
 
 // Define the interface for Integration document
 export interface IIntegration extends Document {

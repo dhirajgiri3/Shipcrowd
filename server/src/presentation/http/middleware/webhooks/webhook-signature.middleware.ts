@@ -7,10 +7,10 @@
  * - Unauthorized webhook calls
  */
 
-import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import logger from '../../../../shared/logger/winston.logger';
+import { NextFunction, Request, Response } from 'express';
 import { AuthenticationError } from '../../../../shared/errors/app.error';
+import logger from '../../../../shared/logger/winston.logger';
 
 interface WebhookConfig {
     secret: string;

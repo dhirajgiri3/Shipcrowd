@@ -15,11 +15,7 @@
  */
 
 import mongoose from 'mongoose';
-import { CommissionTransaction } from '../../../../infrastructure/database/mongoose/models';
-import { Payout } from '../../../../infrastructure/database/mongoose/models';
-import { SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import CacheService from '../../../../infrastructure/utilities/cache.service';
+import { CommissionTransaction, Payout } from '../../../../infrastructure/database/mongoose/models';
 
 export interface CommissionMetrics {
     totalCommission: number;

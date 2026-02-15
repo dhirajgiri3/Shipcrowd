@@ -57,14 +57,6 @@ class WebhookDispatcherService {
         }
     }
 
-    private generateSignature(payload: any, secret: string): string {
-        if (!secret) return '';
-        return crypto
-            .createHmac('sha256', secret)
-            .update(JSON.stringify(payload))
-            .digest('hex');
-    }
-
     /**
      * Initialize the worker to process webhook jobs
      */
@@ -103,5 +95,6 @@ class WebhookDispatcherService {
         logger.info('Webhook Worker initialized');
     }
 }
+void WebhookDispatcherService;
 
 export default new WebhookDispatcherService();

@@ -1,5 +1,5 @@
-import { KYCState } from '../types/kyc-state';
 import { ValidationError } from '../../../shared/errors/app.error';
+import { KYCState } from '../types/kyc-state';
 
 /**
  * KYC state machine: only allowed transitions are permitted.

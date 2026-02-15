@@ -8,16 +8,14 @@
  */
 
 import mongoose from 'mongoose';
-import PickList from '../../mongoose/models/logistics/warehouse/activities/pick-list.model';
-import Order from '../../mongoose/models/orders/core/order.model';
-import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
-import WarehouseLocation from '../../mongoose/models/logistics/warehouse/structure/warehouse-location.model';
-import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
 import User from '../../mongoose/models/iam/users/user.model';
-import { SEED_CONFIG } from '../config';
+import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
+import PickList from '../../mongoose/models/logistics/warehouse/activities/pick-list.model';
+import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
+import Order from '../../mongoose/models/orders/core/order.model';
+import { addMinutes } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
 import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { addDays, addMinutes } from '../utils/date.utils';
 
 // Pick list status distribution - Uppercase to match Enum
 const PICKLIST_STATUS_DISTRIBUTION = {

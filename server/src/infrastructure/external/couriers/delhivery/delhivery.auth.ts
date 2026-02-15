@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import Integration from '../../../database/mongoose/models/system/integrations/integration.model';
 import { decryptData } from '../../../../shared/utils/encryption';
+import Integration from '../../../database/mongoose/models/system/integrations/integration.model';
 
 /**
  * Delhivery B2C Authentication

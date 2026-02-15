@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
 import crypto from 'crypto';
+import mongoose, { Document, Schema } from 'mongoose';
 import { fieldEncryption } from 'mongoose-field-encryption';
 
 export type BankVerificationStatus = 'pending' | 'verified' | 'failed';

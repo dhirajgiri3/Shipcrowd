@@ -1,11 +1,10 @@
 import { Job, Worker } from 'bullmq';
-import { EmailJob, EmailJobResult, EmailJobType } from '../../../core/domain/types/email-job.types';
-import logger from '../../../shared/logger/winston.logger';
-import { AuditLog } from '../../database/mongoose/models/index';
-import QueueManager from '../../utilities/queue-manager';
-import { RedisManager } from '../../redis/redis.manager';
 import nodemailer from 'nodemailer';
 import { renderEmailTemplate } from '../../../core/application/templates/emails/renderEmail';
+import { EmailJob, EmailJobResult } from '../../../core/domain/types/email-job.types';
+import logger from '../../../shared/logger/winston.logger';
+import { AuditLog } from '../../database/mongoose/models/index';
+import { RedisManager } from '../../redis/redis.manager';
 
 /**
  * Email Queue Processor

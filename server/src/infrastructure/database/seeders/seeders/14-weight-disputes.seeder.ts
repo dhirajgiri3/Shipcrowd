@@ -8,13 +8,13 @@
  */
 
 import mongoose from 'mongoose';
-import WeightDispute from '../../mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
-import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 import WalletTransaction from '../../mongoose/models/finance/wallets/wallet-transaction.model';
+import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
+import WeightDispute from '../../mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import Company from '../../mongoose/models/organization/core/company.model';
-import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
 import { addDays, addHours } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 // Dispute status distribution
 const DISPUTE_STATUS_DISTRIBUTION = {

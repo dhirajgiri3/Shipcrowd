@@ -14,8 +14,8 @@
  * @see docs/Resources/API/Courier/Shipfast/Shipfast_API.md
  */
 
-import { VelocityError, VelocityErrorType, VelocityAPIError } from './velocity.types';
 import logger from '../../../../shared/logger/winston.logger';
+import { VelocityError, VelocityErrorType } from './velocity.types';
 
 // ──────────────────────────────────────────────
 // Shipfast 422 Sub-Classification

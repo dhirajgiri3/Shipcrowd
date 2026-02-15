@@ -14,12 +14,11 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
-import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';
+import { Parser } from 'json2csv';
+import { ShopifyProductMapping as ProductMapping, ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import { Parser } from 'json2csv';
 
 /**
  * ProductMappingService

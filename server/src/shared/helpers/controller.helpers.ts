@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { z } from 'zod';
 import mongoose from 'mongoose';
-import logger from '../logger/winston.logger';
+import { z } from 'zod';
 import { AuthenticationError, ValidationError } from '../errors/app.error';
 import { ErrorCode } from '../errors/errorCodes';
 

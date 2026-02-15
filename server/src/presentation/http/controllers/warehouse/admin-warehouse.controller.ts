@@ -1,18 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { Warehouse, IWarehouse } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { formatOperatingHours } from '../../../../shared/helpers/formatOperatingHours';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendPaginated,
-    calculatePagination
-} from '../../../../shared/utils/responseHelper';
-import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { z } from 'zod';
+import { Warehouse } from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { formatOperatingHours } from '../../../../shared/helpers/formatOperatingHours';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+calculatePagination,
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // Reusing schemas if possible, or defining new ones if admin has different validation requirements
 // For now, assuming admin updates use same schema
@@ -90,6 +90,7 @@ const processOperatingHours = (operatingHours?: any) => {
 export const getAllWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         // Admin check is handled by middleware in routes, but good to be explicit or use it for logic
         // if (!auth.isAdmin && !auth.isSuperAdmin) ... (middleware should catch this)
@@ -142,6 +143,7 @@ export const getAllWarehouses = async (req: Request, res: Response, next: NextFu
 export const getWarehouseById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const warehouseId = req.params.warehouseId;
         if (!mongoose.Types.ObjectId.isValid(warehouseId)) {

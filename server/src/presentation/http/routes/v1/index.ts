@@ -3,101 +3,101 @@
  * Central hub for all API routes, grouped by domain.
  */
 
-import express from 'express';
 import logger from '@/shared/logger/winston.logger';
+import express from 'express';
 
 // ============================================================================
 // 1. CORE & AUTHENTICATION
 // ============================================================================
 import authRoutes from './auth/auth.routes';
-import sessionRoutes from './auth/session.routes';
 import recoveryRoutes from './auth/recovery.routes';
-import consentRoutes from './identity/consent.routes';
-import userRoutes from './identity/user.routes';
-import profileRoutes from './identity/profile.routes';
+import sessionRoutes from './auth/session.routes';
 import accountRoutes from './identity/account.routes';
+import consentRoutes from './identity/consent.routes';
 import kycRoutes from './identity/kyc.routes';
+import profileRoutes from './identity/profile.routes';
+import userRoutes from './identity/user.routes';
 
 // ============================================================================
 // 2. ORGANIZATION & TEAM
 // ============================================================================
+import onboardingRoutes from './onboarding/onboarding.routes';
 import companyRoutes from './organization/company.routes';
 import teamRoutes from './organization/team.routes';
-import warehouseRoutes from './warehouses/warehouse.routes';
-import adminWarehouseRoutes from './warehouses/admin-warehouse.routes';
 import warehouseWorkflowRoutes from './warehouses';
-import onboardingRoutes from './onboarding/onboarding.routes';
+import adminWarehouseRoutes from './warehouses/admin-warehouse.routes';
+import warehouseRoutes from './warehouses/warehouse.routes';
 
 // ============================================================================
 // 3. COMMUNICATION
 // ============================================================================
-import notificationRoutes from './communication/notification.routes';
-import notificationTemplateRoutes from './communication/notification-template.routes';
-import whatsappRoutes from './communication/whatsapp.routes';
 import emailRoutes from './communication/email.routes';
+import notificationTemplateRoutes from './communication/notification-template.routes';
+import notificationRoutes from './communication/notification.routes';
+import whatsappRoutes from './communication/whatsapp.routes';
 
 // ============================================================================
 // 4. LOGISTICS (SHIPPING & ORDERS)
 // ============================================================================
-import orderRoutes from './shipping/order.routes';
 import adminOrderRoutes from './shipping/admin-order.routes';
+import courierServiceRoutes from './shipping/courier-service.routes';
+import orderRoutes from './shipping/order.routes';
+import quoteRoutes from './shipping/quote.routes';
+import sellerCourierPolicyRoutes from './shipping/seller-courier-policy.routes';
+import serviceRateCardRoutes from './shipping/service-ratecard.routes';
 import shipmentRoutes from './shipping/shipment.routes';
 import zoneRoutes from './shipping/zone.routes';
-import quoteRoutes from './shipping/quote.routes';
-import courierServiceRoutes from './shipping/courier-service.routes';
-import serviceRateCardRoutes from './shipping/service-ratecard.routes';
-import sellerCourierPolicyRoutes from './shipping/seller-courier-policy.routes';
 
-import courierRoutes from './shipping/courier.routes';
-import labelTemplateRoutes from './shipping/label-template.routes';
+import integrationsRoutes from './integrations';
 import addressRoutes from './logistics/address.routes';
+import adminReturnsRoutes from './logistics/admin-returns.routes';
 import pincodeRoutes from './logistics/pincode.routes';
 import returnsRoutes from './logistics/returns.routes';
-import adminReturnsRoutes from './logistics/admin-returns.routes';
-import integrationsRoutes from './integrations';
+import courierRoutes from './shipping/courier.routes';
+import labelTemplateRoutes from './shipping/label-template.routes';
 
 // ============================================================================
 // 5. LOGISTICS (EXCEPTIONS & DISPUTES)
 // ============================================================================
-import ndrRoutes from './ndr/ndr.routes';
-import ndrCommunicationRoutes from './ndr/ndr-communication.routes';
-import rtoRoutes from './rto/rto.routes';
-import weightDisputesRoutes from './disputes/weight-disputes.routes';
 import packingStationRoutes from './disputes/packing-station.routes';
-import disputeRoutes from './logistics/dispute.routes';
+import weightDisputesRoutes from './disputes/weight-disputes.routes';
 import fraudRoutes from './fraud/fraud.routes';
+import disputeRoutes from './logistics/dispute.routes';
+import ndrCommunicationRoutes from './ndr/ndr-communication.routes';
+import ndrRoutes from './ndr/ndr.routes';
+import rtoRoutes from './rto/rto.routes';
 
 // ============================================================================
 // 6. FINANCE & BILLING
 // ============================================================================
-import walletRoutes from './finance/wallet.routes';
+import commissionRoutes from './commission';
 import adminFinanceRoutes from './finance/admin-finance.routes';
-import financialsRoutes from './finance/financials.routes';
 import billingRoutes from './finance/billing.routes';
-import invoiceRoutes from './finance/invoice.routes';
-import codRemittanceRoutes from './finance/cod-remittance.routes';
 import codDiscrepancyRoutes from './finance/cod-discrepancy.routes';
+import codRemittanceRoutes from './finance/cod-remittance.routes';
 import earlyCodRoutes from './finance/early-cod.routes';
+import financialsRoutes from './finance/financials.routes';
+import invoiceRoutes from './finance/invoice.routes';
 import reconciliationRoutes from './finance/reconciliation.routes';
+import walletRoutes from './finance/wallet.routes';
 import bankAccountRoutes from './identity/bank-account.routes';
 import promoCodeRoutes from './marketing/promo-code.routes';
-import commissionRoutes from './commission';
 
 // ============================================================================
 // 7. CRM & SUPPORT
 // ============================================================================
-import leadRoutes from './crm/leads.routes';
 import salesRepRoutes from '../crm/sales-rep.routes';
 import callLogRoutes from './crm/call-log.routes';
 import crmDisputeRoutes from './crm/disputes.routes';
+import leadRoutes from './crm/leads.routes';
 import supportRoutes from './support/support.routes';
 
 // ============================================================================
 // 8. SYSTEM & ANALYTICS
 // ============================================================================
-import analyticsRoutes from './system/analytics.routes';
 import exportRoutes from './analytics/export.routes';
 import scheduledReportRoutes from './analytics/scheduled-report.routes';
+import analyticsRoutes from './system/analytics.routes';
 import auditRoutes from './system/audit.routes';
 import healthRoutes from './system/health.routes';
 import jobRoutes from './system/job.routes';
@@ -106,27 +106,27 @@ import sellerHealthRoutes from './system/seller-health.routes';
 // ============================================================================
 // 9. ADMIN & CONFIGURATION
 // ============================================================================
-import userManagementRoutes from './admin/user-management.routes';
-import impersonationRoutes from './admin/impersonation.routes';
-import featureFlagRoutes from './admin/feature-flag.routes';
-import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
-import disputeMetricsRoutes from './admin/dispute-metrics.routes';
 import companyGroupRoutes from './admin/company-group.routes';
+import disputeMetricsRoutes from './admin/dispute-metrics.routes';
 import emailQueueRoutes from './admin/email-queue.routes';
+import featureFlagRoutes from './admin/feature-flag.routes';
+import impersonationRoutes from './admin/impersonation.routes';
+import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
+import userManagementRoutes from './admin/user-management.routes';
 
 // ============================================================================
 // 10. WEBHOOKS
 // ============================================================================
-import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
-import delhiveryWebhookRoutes from './webhooks/delhivery.webhook.routes';
-import shopifyWebhookRoutes from './webhooks/shopify.routes';
-import woocommerceWebhookRoutes from './webhooks/woocommerce.webhook.routes';
-import flipkartWebhookRoutes from './webhooks/flipkart.webhook.routes';
-import razorpayWebhookRoutes from './webhooks/razorpay.webhook.routes';
-import ekartWebhookRoutes from './webhooks/ekart.routes';
 import returnWebhooksRoutes from './logistics/return-webhooks.routes';
 import ndrPublicRoutes from './ndr/ndr-public.routes';
 import rtoPublicRoutes from './rto/rto-public.routes';
+import delhiveryWebhookRoutes from './webhooks/delhivery.webhook.routes';
+import ekartWebhookRoutes from './webhooks/ekart.routes';
+import flipkartWebhookRoutes from './webhooks/flipkart.webhook.routes';
+import razorpayWebhookRoutes from './webhooks/razorpay.webhook.routes';
+import shopifyWebhookRoutes from './webhooks/shopify.routes';
+import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
+import woocommerceWebhookRoutes from './webhooks/woocommerce.webhook.routes';
 
 const router = express.Router();
 

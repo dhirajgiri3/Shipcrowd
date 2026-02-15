@@ -39,20 +39,6 @@ interface InstallUrlParams {
   redirectUri?: string;
 }
 
-interface CallbackParams {
-  shop: string;
-  code: string;
-  hmac: string;
-  state: string;
-  timestamp: string;
-  companyId: string;
-}
-
-interface WebhookRegistration {
-  topic: string;
-  address: string;
-}
-
 export class ShopifyOAuthService {
 
   // Shopify OAuth scopes required
@@ -140,7 +126,7 @@ export class ShopifyOAuthService {
   private static validateState(state: string): string {
     try {
       const decoded = Buffer.from(state, 'base64').toString('utf8');
-      const [companyId, timestamp, random] = decoded.split(':');
+      const [companyId, timestamp] = decoded.split(':');
 
       // Check state is not too old (10 minutes)
       const stateAge = Date.now() - parseInt(timestamp);
@@ -208,7 +194,7 @@ export class ShopifyOAuthService {
    * @returns ShopifyStore document
    */
   static async handleCallback(query: Record<string, any>) {
-    const { shop, code, hmac, state, timestamp } = query;
+    const { shop, code, hmac, state } = query;
 
     // Validate HMAC
     // PASS THE FULL QUERY OBJECT to ensure all params (like host) are included

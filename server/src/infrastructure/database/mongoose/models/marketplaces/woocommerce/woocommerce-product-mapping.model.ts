@@ -12,7 +12,7 @@
  * - Support for both simple products and variations
  */
 
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Document, Model, Schema } from 'mongoose';
 
 // Static methods interface
 interface IWooCommerceProductMappingModel extends Model<IWooCommerceProductMapping> {

@@ -8,12 +8,12 @@ import mongoose from 'mongoose';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
 import Company from '../../mongoose/models/organization/core/company.model';
 import { SEED_CONFIG } from '../config';
-import { randomInt, randomFloat, selectRandom } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { generateIndianName, generateIndianPhone, generateEmail } from '../data/customer-names';
-import { getCityByName, getNearbyCities, getCityCoordinates, CityData } from '../data/indian-cities';
-import { generateIndustrialAddress } from '../utils/address.utils';
 import { generateCarrierWarehouseId } from '../data/carrier-data';
+import { generateIndianName, generateIndianPhone } from '../data/customer-names';
+import { CityData, getCityByName, getCityCoordinates, getNearbyCities } from '../data/indian-cities';
+import { generateIndustrialAddress } from '../utils/address.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomFloat, randomInt, selectRandom } from '../utils/random.utils';
 
 /**
  * Generate operating hours
@@ -125,6 +125,7 @@ export async function seedWarehouses(): Promise<void> {
 
         const warehouses: any[] = [];
         const companyDefaultWarehouses: Map<string, mongoose.Types.ObjectId> = new Map();
+void companyDefaultWarehouses;
         const usedNames = new Set<string>();
 
         for (let i = 0; i < companies.length; i++) {

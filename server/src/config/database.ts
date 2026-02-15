@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
 import dotenv from "dotenv";
-import logger from "../shared/logger/winston.logger";
+import mongoose from "mongoose";
 import { createIndexes } from "../infrastructure/database/indexes";
+import logger from "../shared/logger/winston.logger";
 
 dotenv.config();
 

@@ -8,12 +8,12 @@ import mongoose from 'mongoose';
 import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
 import Company from '../../mongoose/models/organization/core/company.model';
-import { SEED_CONFIG, BusinessType } from '../config';
-import { randomInt, randomFloat, selectRandom, selectMultipleRandom } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { subDays, randomDateBetween } from '../utils/date.utils';
-import { generateLocationCode, generateBarcode } from '../utils/address.utils';
+import { BusinessType, SEED_CONFIG } from '../config';
 import { getProductsForBusinessType, ProductData } from '../data/product-catalog';
+import { generateBarcode } from '../utils/address.utils';
+import { randomDateBetween, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomFloat, randomInt, selectMultipleRandom } from '../utils/random.utils';
 
 /**
  * Determine business type from company/warehouse name
@@ -46,7 +46,7 @@ function calculateInventoryStatus(
 /**
  * Generate inventory locations for a warehouse zone
  */
-function generateInventoryLocations(onHand: number, warehouseId: string): any[] {
+function generateInventoryLocations(onHand: number, _warehouseId: string): any[] {
     if (onHand === 0) return [];
 
     const locationCount = Math.min(randomInt(1, 3), Math.ceil(onHand / 50));

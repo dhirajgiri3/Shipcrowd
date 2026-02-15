@@ -1,7 +1,7 @@
-import { Router } from 'express';
 import disputeController from '@/presentation/http/controllers/crm/dispute.controller';
 import { authenticate } from '@/presentation/http/middleware/auth/auth';
 import { requirePermission } from '@/presentation/http/middleware/auth/require-permission.middleware';
+import { Router } from 'express';
 
 const router = Router();
 

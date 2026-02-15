@@ -1,7 +1,7 @@
-import winston from 'winston';
+import { NextFunction, Request, Response } from 'express';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { Request, Response, NextFunction } from 'express';
+import winston from 'winston';
 // Import our global type augmentation for Express.Request
 import '../../types/express';
 

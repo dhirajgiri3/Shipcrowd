@@ -24,18 +24,18 @@
  * ```
  */
 
+import { Integration } from '@/infrastructure/database/mongoose/models/index';
 import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
-import { getDistributedLock } from '../../../../shared/utils/distributed-lock';
 import logger from '../../../../shared/logger/winston.logger';
-import { encryptData, decryptData } from '../../../../shared/utils/encryption';
-import { Integration } from '@/infrastructure/database/mongoose/models/index';
+import { getDistributedLock } from '../../../../shared/utils/distributed-lock';
+import { decryptData, encryptData } from '../../../../shared/utils/encryption';
 import {
-    EkartAuthRequest,
-    EkartAuthResponse,
-    EkartError,
-    EKART_ENDPOINTS,
-    EKART_CONSTRAINTS,
+EKART_CONSTRAINTS,
+EKART_ENDPOINTS,
+EkartAuthRequest,
+EkartAuthResponse,
+EkartError,
 } from './ekart.types';
 
 interface CachedToken {

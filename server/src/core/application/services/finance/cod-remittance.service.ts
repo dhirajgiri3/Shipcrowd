@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import CODRemittance, { ICODRemittance } from '../../../../infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 import { SellerBankAccount, Shipment } from '../../../../infrastructure/database/mongoose/models';
+import CODRemittance, { ICODRemittance } from '../../../../infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -75,6 +75,7 @@ export class CODRemittanceService {
         // Calculate totals and map shipments
         let totalCodAmount = 0;
         let totalPlatformFees = 0;
+void totalPlatformFees;
         let totalEarlyFees = 0; // Will be mapped to otherFees or similar
         const remittanceShipments = [];
 

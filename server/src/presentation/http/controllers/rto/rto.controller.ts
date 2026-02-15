@@ -4,26 +4,26 @@
  * Handles RTO management endpoints.
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
-import RTOService from '../../../../core/application/services/rto/rto.service';
+import { NextFunction, Request, Response } from 'express';
+import cacheService from '../../../../core/application/services/analytics/analytics-cache.service';
 import RTOAnalyticsService from '../../../../core/application/services/rto/rto-analytics.service';
 import { RTODispositionService } from '../../../../core/application/services/rto/rto-disposition.service';
-import { AppError, ValidationError, NotFoundError, RateLimitError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import cacheService from '../../../../core/application/services/analytics/analytics-cache.service';
+import RTOService from '../../../../core/application/services/rto/rto.service';
+import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import StorageService from '../../../../infrastructure/external/storage/storage.service';
+import { AppError, NotFoundError, RateLimitError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
-    listRTOEventsQuerySchema,
-    triggerManualRTOSchema,
-    updateRTOStatusSchema,
-    recordQCResultSchema,
-    getRTOAnalyticsQuerySchema,
-    getPendingRTOsQuerySchema,
-    executeDispositionSchema,
+executeDispositionSchema,
+getPendingRTOsQuerySchema,
+getRTOAnalyticsQuerySchema,
+listRTOEventsQuerySchema,
+recordQCResultSchema,
+triggerManualRTOSchema,
+updateRTOStatusSchema,
 } from '../../../../shared/validation/rto-schemas';
 
 export class RTOController {
@@ -140,7 +140,6 @@ export class RTOController {
         try {
             const auth = guardChecks(req);
             requireCompanyContext(auth);
-            const companyId = auth.companyId;
             const userId = auth.userId;
 
             // Validate request body
@@ -153,7 +152,7 @@ export class RTOController {
                 throw new ValidationError('Validation failed', errors);
             }
 
-            const { shipmentId, reason, notes, warehouseId, expectedReturnDate } = validation.data;
+            const { shipmentId, reason } = validation.data;
 
             const result = await RTOService.triggerRTO(
                 shipmentId,
@@ -292,7 +291,7 @@ export class RTOController {
                 throw new ValidationError('Validation failed', errors);
             }
 
-            const { qcResult, nextAction } = validation.data;
+            const { qcResult } = validation.data;
 
             // Verify ownership
             const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });

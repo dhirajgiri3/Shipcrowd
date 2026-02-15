@@ -1,7 +1,7 @@
-import { FilterQuery, Types } from 'mongoose';
 import SupportTicket, { ISupportTicket } from '@/infrastructure/database/mongoose/models/crm/support/support-ticket.model';
-import { NotFoundError, ValidationError } from '@/shared/errors/app.error';
-import { isSLABreached, getRemainingTime, Priority } from './sla.utils';
+import { NotFoundError } from '@/shared/errors/app.error';
+import { FilterQuery, Types } from 'mongoose';
+import { getRemainingTime, isSLABreached, Priority } from './sla.utils';
 
 interface CreateTicketDTO {
     companyId: string;

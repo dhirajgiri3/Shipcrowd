@@ -1,14 +1,14 @@
 import mongoose from 'mongoose';
 import { Company, Order, Warehouse } from '../../../../infrastructure/database/mongoose/models';
-import { generateOrderNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
-import { ORDER_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
-import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus';
-import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
+import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import QuoteEngineService from '../pricing/quote-engine.service';
+import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus';
+import { generateOrderNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { ORDER_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import { CachedService } from '../../base/cached.service';
 import AddressValidationService from '../logistics/address-validation.service';
+import QuoteEngineService from '../pricing/quote-engine.service';
 
 /**
  * OrderService - Business logic for order management
@@ -846,11 +846,10 @@ export class OrderService extends CachedService {
      */
     async processBulkOrderRow(args: {
         row: any;
-        rowIndex: number;
         companyId: mongoose.Types.ObjectId;
         session: mongoose.ClientSession;
     }): Promise<{ success: boolean; order?: any; error?: string }> {
-        const { row, rowIndex, companyId, session } = args;
+        const { row, companyId, session } = args;
 
         // Normalize keys (aliases)
         const normalizedRow = {
@@ -989,12 +988,12 @@ export class OrderService extends CachedService {
         const session = await mongoose.startSession();
         session.startTransaction();
         let transactionCommitted = false;
+void transactionCommitted;
 
         try {
             for (let i = 0; i < rows.length; i++) {
                 const result = await this.processBulkOrderRow({
                     row: rows[i],
-                    rowIndex: i,
                     companyId,
                     session
                 });

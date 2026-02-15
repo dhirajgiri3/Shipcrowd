@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import crypto from 'crypto';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -29,7 +29,6 @@ export class FlipkartClient {
   private httpClient: AxiosInstance;
   private apiKey: string;
   private apiSecret: string;
-  private sellerId: string;
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
 
@@ -42,8 +41,6 @@ export class FlipkartClient {
   constructor(config: FlipkartClientConfig) {
     this.apiKey = config.apiKey;
     this.apiSecret = config.apiSecret;
-    this.sellerId = config.sellerId;
-
     const baseURL = config.sandbox
       ? 'https://sandbox-api.flipkart.net/sellers'
       : 'https://api.flipkart.net/sellers';
@@ -262,5 +259,6 @@ export class FlipkartClient {
     }
   }
 }
+void FlipkartClient;
 
 export default FlipkartClient;

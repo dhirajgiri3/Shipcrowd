@@ -1,6 +1,6 @@
 import { UserPersona } from '../../../../infrastructure/database/mongoose/models';
+import { ExperienceLevelType, IndustryType, MonthlyVolumeType, PrimaryGoalType } from '../../../../infrastructure/database/mongoose/models/onboarding/user-persona.model';
 import logger from '../../../../shared/logger/winston.logger';
-import { IndustryType, MonthlyVolumeType, ExperienceLevelType, PrimaryGoalType } from '../../../../infrastructure/database/mongoose/models/onboarding/user-persona.model';
 
 interface IPersonaInput {
     industry: IndustryType;

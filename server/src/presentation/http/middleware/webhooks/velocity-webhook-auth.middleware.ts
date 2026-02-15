@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { VelocityWebhookService } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.service';
 import logger from '@/shared/logger/winston.logger';
+import { NextFunction, Request, Response } from 'express';
+import { VelocityWebhookService } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.service';
 
 /**
  * Middleware to verify Velocity webhook signature

@@ -22,14 +22,14 @@
  * - Analytics: 100 requests/hour per company
  */
 
-import { Request, Response } from 'express';
-import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
-import DisputeService from '@/core/application/services/logistics/dispute.service';
 import DisputeAnalyticsService from '@/core/application/services/logistics/dispute-analytics.service';
-import logger from '@/shared/logger/winston.logger';
+import DisputeService from '@/core/application/services/logistics/dispute.service';
 import { AppError, normalizeError } from '@/shared/errors/app.error';
-import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '@/shared/utils/responseHelper';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
+import logger from '@/shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '@/shared/utils/responseHelper';
 import { isPlatformAdmin } from '@/shared/utils/role-helpers';
+import { Request, Response } from 'express';
 
 // ============================================================================
 // CUSTOMER ENDPOINTS

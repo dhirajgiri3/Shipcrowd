@@ -1,9 +1,8 @@
-import speakeasy from 'speakeasy';
-import QRCode from 'qrcode';
 import crypto from 'crypto';
+import QRCode from 'qrcode';
+import speakeasy from 'speakeasy';
 import MFASettings from '../../../../infrastructure/database/mongoose/models/iam/users/mfa-settings.model';
-import { NotFoundError, ValidationError, AuthenticationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**

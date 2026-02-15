@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import FlipkartProductMappingService from '../../../../core/application/services/flipkart/flipkart-product-mapping.service';
+import { NextFunction, Request, Response } from 'express';
 import FlipkartInventorySyncService from '../../../../core/application/services/flipkart/flipkart-inventory-sync.service';
-import { ValidationError, NotFoundError, AuthenticationError, AuthorizationError, AppError } from '../../../../shared/errors/app.error';
+import FlipkartProductMappingService from '../../../../core/application/services/flipkart/flipkart-product-mapping.service';
+import { AuthorizationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * FlipkartProductMappingController

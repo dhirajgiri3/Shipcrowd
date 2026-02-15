@@ -14,14 +14,13 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { NDREvent, INDREvent } from '../../../../infrastructure/database/mongoose/models';
-import { NDRWorkflow, INDRWorkflow, IWorkflowAction } from '../../../../infrastructure/database/mongoose/models';
-import NDRActionExecutors from './actions/ndr-action-executors';
+import { INDREvent, INDRWorkflow, IWorkflowAction, NDREvent, NDRWorkflow } from '../../../../infrastructure/database/mongoose/models';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
-import logger from '../../../../shared/logger/winston.logger';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
+import logger from '../../../../shared/logger/winston.logger';
+import NDRActionExecutors from './actions/ndr-action-executors';
 
 interface CustomerInfo {
     name: string;
@@ -533,7 +532,7 @@ export default class NDRResolutionService {
         ndrEventId: string,
         resolution: string,
         resolvedBy: string,
-        notes?: string
+        _notes?: string
     ): Promise<void> {
         try {
             logger.info('Attempting to resolve NDR', { ndrEventId, resolvedBy });
@@ -592,8 +591,8 @@ export default class NDRResolutionService {
     static async escalateNDR(
         ndrEventId: string,
         reason: string,
-        priority?: string,
-        escalateTo?: string
+        _priority?: string,
+        _escalateTo?: string
     ): Promise<void> {
         try {
             logger.info('Attempting to escalate NDR', { ndrEventId, reason });

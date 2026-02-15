@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import PincodeLookupService from '../../../../core/application/services/logistics/pincode-lookup.service';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Get Pincode Details
@@ -142,7 +142,7 @@ export const searchPincodes = async (
  * GET /api/v1/logistics/pincode/stats
  */
 export const getCacheStats = async (
-    req: Request,
+    _req: Request,
     res: Response,
     next: NextFunction
 ) => {

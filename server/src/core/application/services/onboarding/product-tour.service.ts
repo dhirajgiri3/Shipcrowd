@@ -1,7 +1,7 @@
-import { ProductTour, TourCompletion, ITourStep } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { ProductTour, TourCompletion } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class ProductTourService {
     /**

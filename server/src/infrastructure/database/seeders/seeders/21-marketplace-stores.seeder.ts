@@ -10,16 +10,15 @@
  * Note: Generates fake OAuth tokens/API keys as per user requirement
  */
 
-import mongoose from 'mongoose';
-import Company from '../../mongoose/models/organization/core/company.model';
 import User from '../../mongoose/models/iam/users/user.model';
-import ShopifyStore from '../../mongoose/models/marketplaces/shopify/shopify-store.model';
-import WooCommerceStore from '../../mongoose/models/marketplaces/woocommerce/woocommerce-store.model';
 import AmazonStore from '../../mongoose/models/marketplaces/amazon/amazon-store.model';
 import FlipkartStore from '../../mongoose/models/marketplaces/flipkart/flipkart-store.model';
-import { randomInt, selectRandom, generateAlphanumeric, generateHexString } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
+import ShopifyStore from '../../mongoose/models/marketplaces/shopify/shopify-store.model';
+import WooCommerceStore from '../../mongoose/models/marketplaces/woocommerce/woocommerce-store.model';
+import Company from '../../mongoose/models/organization/core/company.model';
 import { subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { generateAlphanumeric, generateHexString, randomInt, selectRandom } from '../utils/random.utils';
 
 // Store status distribution
 const STORE_STATUS_DISTRIBUTION = {
@@ -27,6 +26,7 @@ const STORE_STATUS_DISTRIBUTION = {
     paused: 20,
     error: 10,
 };
+void STORE_STATUS_DISTRIBUTION;
 
 // Shopify plans
 const SHOPIFY_PLANS = ['basic', 'shopify', 'advanced', 'plus'];
@@ -137,7 +137,7 @@ function getRandomStatus(): 'active' | 'paused' | 'error' {
 /**
  * Generate a Shopify store
  */
-function generateShopifyStore(companyId: any, createdBy: any): any {
+function generateShopifyStore(companyId: any, _createdBy: any): any {
     const storeName = generateStoreName();
     const shopDomain = storeName.toLowerCase().replace(/\s+/g, '-') + '.myshopify.com';
     const status = getRandomStatus();

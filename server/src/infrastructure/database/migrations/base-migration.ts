@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
+import os from 'os';
 import MigrationLock from '../mongoose/models/system/migrations/migration-lock.model';
 import MigrationProgress from '../mongoose/models/system/migrations/migration-progress.model';
-import os from 'os';
 
 /**
  * Base Migration Runner

@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import { LeadService } from '@/core/application/services/crm/leads/lead.service';
-import { sendSuccess, sendCreated, calculatePagination } from '@/shared/utils/responseHelper';
-import { AuthenticationError, ValidationError } from '@/shared/errors';
+import { ValidationError } from '@/shared/errors';
+import { guardChecks, requireCompanyContext } from '@/shared/helpers/controller.helpers';
 import logger from '@/shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendSuccess } from '@/shared/utils/responseHelper';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { z } from 'zod';
 
 const leadService = new LeadService(); // Assuming service doesn't have getInstance yet, will check service next
 

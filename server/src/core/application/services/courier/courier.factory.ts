@@ -12,14 +12,14 @@
  */
 
 import mongoose from 'mongoose';
+import { Integration } from '../../../../infrastructure/database/mongoose/models';
 import { ICourierAdapter } from '../../../../infrastructure/external/couriers/base/courier.adapter';
-import { VelocityShipfastProvider } from '../../../../infrastructure/external/couriers/velocity';
 import { DelhiveryProvider } from '../../../../infrastructure/external/couriers/delhivery';
 import { EkartProvider } from '../../../../infrastructure/external/couriers/ekart/ekart.provider';
-import { Integration } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { VelocityShipfastProvider } from '../../../../infrastructure/external/couriers/velocity';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
 import CourierProviderRegistry from './courier-provider-registry';
 
 type CourierProviderBuilder = (companyId: mongoose.Types.ObjectId) => ICourierAdapter;

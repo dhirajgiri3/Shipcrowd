@@ -1,7 +1,7 @@
-import { User } from '../../../database/mongoose/models';
+import mongoose from 'mongoose';
 import { permanentlyDeleteAccount } from '../../../../core/application/services/user/account.service';
 import logger from '../../../../shared/logger/winston.logger';
-import mongoose from 'mongoose';
+import { User } from '../../../database/mongoose/models';
 
 /**
  * Process scheduled account deletions

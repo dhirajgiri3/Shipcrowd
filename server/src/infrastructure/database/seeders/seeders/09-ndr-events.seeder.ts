@@ -4,13 +4,12 @@
  * Generates NDR (Non-Delivery Report) events for shipments with NDR status.
  */
 
-import mongoose from 'mongoose';
-import NDREvent from '../../mongoose/models/logistics/shipping/exceptions/ndr-event.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
+import NDREvent from '../../mongoose/models/logistics/shipping/exceptions/ndr-event.model';
 import { SEED_CONFIG } from '../config';
-import { randomInt, selectRandom, selectWeightedFromObject, maybeExecute, generateUUID } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { addHours, addDays } from '../utils/date.utils';
+import { addDays, addHours } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { generateUUID, maybeExecute, randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
 type NDRType = 'address_issue' | 'customer_unavailable' | 'refused' | 'payment_issue' | 'other';
 type NDRStatus = 'detected' | 'in_resolution' | 'resolved' | 'rto_triggered';

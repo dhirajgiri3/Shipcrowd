@@ -1,16 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
-  updateProfileCompletionStatus,
-  getProfileCompletionSuggestions
+getProfileCompletionSuggestions,
+updateProfileCompletionStatus
 } from '../../../../core/application/services/user/profile.service';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import { User } from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // Define validation schemas for different profile sections
 const basicProfileSchema = z.object({

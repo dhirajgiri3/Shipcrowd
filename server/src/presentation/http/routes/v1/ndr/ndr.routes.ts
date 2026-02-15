@@ -4,11 +4,11 @@
  * Endpoints for NDR management and analytics.
  */
 
-import { Router } from 'express';
-import NDRController from '@/presentation/http/controllers/ndr/ndr.controller';
 import NDRAnalyticsController from '@/presentation/http/controllers/ndr/ndr-analytics.controller';
+import NDRController from '@/presentation/http/controllers/ndr/ndr.controller';
 import { authenticate } from '@/presentation/http/middleware/auth/auth';
 import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
+import { Router } from 'express';
 
 const router = Router();
 

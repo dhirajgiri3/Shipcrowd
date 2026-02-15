@@ -5,8 +5,8 @@
  * Docs: https://razorpay.com/docs/webhooks/signature-verification/
  */
 
-import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import logger from '../../../../shared/logger/winston.logger';
 
 type RazorpayWebhookTarget = 'auto' | 'payment' | 'payout' | 'commission';

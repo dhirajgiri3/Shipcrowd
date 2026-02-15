@@ -1,22 +1,19 @@
 import mongoose from 'mongoose';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import { Warehouse } from '../../../../infrastructure/database/mongoose/models';
-import { Company } from '../../../../infrastructure/database/mongoose/models';
-import { getCarrierService, CarrierSelectionResult } from './carrier.service';
-import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
-import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
-import { withTransaction } from '../../../../shared/utils/transactionHelper';
-import { CourierFactory } from '../courier/courier.factory';
+import { Company, Order, Shipment, Warehouse } from '../../../../infrastructure/database/mongoose/models';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
-import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, ValidationError, DatabaseError, AppError, NotFoundError } from '../../../../shared/errors/app.error';
+import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { withTransaction } from '../../../../shared/utils/transactionHelper';
+import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CourierFactory } from '../courier/courier.factory';
+import skuWeightProfileService from '../sku/sku-weight-profile.service';
 import WalletService from '../wallet/wallet.service';
 import WebhookDispatcherService from '../webhooks/webhook-dispatcher.service';
-import skuWeightProfileService from '../sku/sku-weight-profile.service';
-import CourierProviderRegistry from '../courier/courier-provider-registry';
 import CarrierNormalizationService from './carrier-normalization.service';
+import { CarrierSelectionResult, getCarrierService } from './carrier.service';
 
 /**
  * ShipmentService - Business logic for shipment management

@@ -6,8 +6,8 @@
  */
 
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
-import { EmailJob, EmailJobType } from '../../../domain/types/email-job.types';
 import logger from '../../../../shared/logger/winston.logger';
+import { EmailJob, EmailJobType } from '../../../domain/types/email-job.types';
 
 /**
  * Queue a verification email

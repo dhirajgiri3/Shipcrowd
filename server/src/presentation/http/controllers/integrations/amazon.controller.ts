@@ -14,16 +14,16 @@
  * - POST /stores/:id/sync/orders - Trigger order sync
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import AmazonOAuthService from '../../../../core/application/services/amazon/amazon-oauth.service';
 import AmazonOrderSyncService from '../../../../core/application/services/amazon/amazon-order-sync.service';
+import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../../core/mappers/store.mapper';
 import { AmazonStore, AmazonSyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
-import { toEcommerceStoreDTO, applyDefaultsToSettings, applyDefaultsToSyncConfig } from '../../../../core/mappers/store.mapper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 export class AmazonController {
     /**

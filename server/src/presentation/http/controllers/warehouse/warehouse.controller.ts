@@ -1,26 +1,24 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { Warehouse, IWarehouse } from '../../../../infrastructure/database/mongoose/models';
-import { User } from '../../../../infrastructure/database/mongoose/models';
-import { Company } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import mongoose from 'mongoose';
 import csv from 'csv-parser';
+import { NextFunction, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Readable } from 'stream';
-import { formatOperatingHours } from '../../../../shared/helpers/formatOperatingHours';
-import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import {
-  sendSuccess,
-  sendPaginated,
-  sendCreated,
-  calculatePagination
-} from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { z } from 'zod';
 import WarehouseSyncService from '../../../../core/application/services/logistics/warehouse-sync.service';
+import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
+import { Company, Warehouse } from '../../../../infrastructure/database/mongoose/models';
+import { AuthorizationError, ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { formatOperatingHours } from '../../../../shared/helpers/formatOperatingHours';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+calculatePagination,
+sendCreated,
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // Validation schemas
 const createWarehouseSchema = z.object({

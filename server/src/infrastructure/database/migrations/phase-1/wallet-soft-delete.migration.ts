@@ -1,5 +1,5 @@
-import { BaseMigration, MigrationOptions } from '../base-migration';
 import WalletTransaction from '../../mongoose/models/finance/wallets/wallet-transaction.model';
+import { BaseMigration } from '../base-migration';
 
 /**
  * Migration: Add soft delete to WalletTransaction

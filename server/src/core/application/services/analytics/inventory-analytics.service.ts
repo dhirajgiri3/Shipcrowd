@@ -14,11 +14,9 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { Inventory } from '../../../../infrastructure/database/mongoose/models';
-import { StockMovement } from '../../../../infrastructure/database/mongoose/models';
-import AnalyticsService from './analytics.service';
-import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
+import { Inventory } from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
 
 export interface StockLevels {
     totalSKUs: number;

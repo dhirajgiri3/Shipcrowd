@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import SystemHealthService from '../../../../core/application/services/system/system-health.service';
+import { NextFunction, Request, Response } from 'express';
 import ServiceLevelPricingMetricsService from '../../../../core/application/services/metrics/service-level-pricing-metrics.service';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import SystemHealthService from '../../../../core/application/services/system/system-health.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * System Health Controller
@@ -14,7 +14,7 @@ import logger from '../../../../shared/logger/winston.logger';
  * Basic health check (lightweight, fast)
  * Public endpoint for load balancers and monitoring tools
  */
-export const basicHealthCheck = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const basicHealthCheck = async (_req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
         const healthCheck = await SystemHealthService.basicHealthCheck();
 
@@ -51,7 +51,7 @@ export const basicHealthCheck = async (req: Request, res: Response, next: NextFu
  * Comprehensive health report
  * Admin-only endpoint
  */
-export const detailedHealthCheck = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const detailedHealthCheck = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const healthReport = await SystemHealthService.getHealthReport();
 
@@ -77,7 +77,7 @@ export const detailedHealthCheck = async (req: Request, res: Response, next: Nex
  * API metrics only
  * Admin-only endpoint
  */
-export const getApiMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getApiMetrics = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const metrics = SystemHealthService.getApiMetrics();
         const serviceLevelPricing = ServiceLevelPricingMetricsService.getSnapshot();
@@ -94,7 +94,7 @@ export const getApiMetrics = async (req: Request, res: Response, next: NextFunct
  * Database health check
  * Admin-only endpoint
  */
-export const checkDatabaseHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const checkDatabaseHealth = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const healthReport = await SystemHealthService.getHealthReport();
 
@@ -120,7 +120,7 @@ export const checkDatabaseHealth = async (req: Request, res: Response, next: Nex
  * External services health check
  * Admin-only endpoint
  */
-export const checkExternalServicesHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const checkExternalServicesHealth = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const healthReport = await SystemHealthService.getHealthReport();
 
@@ -156,7 +156,7 @@ export const checkExternalServicesHealth = async (req: Request, res: Response, n
  * System metrics (CPU, memory, etc.)
  * Admin-only endpoint
  */
-export const getSystemMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getSystemMetrics = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const healthReport = await SystemHealthService.getHealthReport();
 

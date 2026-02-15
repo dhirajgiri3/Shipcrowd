@@ -1,8 +1,8 @@
 import rateLimit from 'express-rate-limit';
+import { Cluster, Redis } from 'ioredis';
 import { RedisStore } from 'rate-limit-redis';
 import { RedisManager } from '../../infrastructure/redis/redis.manager';
 import { SYSTEM_MESSAGES } from '../constants/messages';
-import { Redis, Cluster } from 'ioredis';
 
 /**
  * Rate Limiting Configuration
@@ -74,7 +74,7 @@ export const globalRateLimiter = createLimiterConfig(
     SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(1000),
     'rl:global:',
     {
-        handler: (req: any, res: any) => {
+        handler: (_req: any, res: any) => {
             res.status(429).json({
                 success: false,
                 error: {
@@ -97,7 +97,7 @@ export const authRateLimiter = createLimiterConfig(
     'rl:auth:',
     {
         skipSuccessfulRequests: true,
-        handler: (req: any, res: any) => {
+        handler: (_req: any, res: any) => {
             res.status(429).json({
                 success: false,
                 error: {
@@ -124,7 +124,7 @@ export const apiRateLimiter = createLimiterConfig(
         keyGenerator: (req: any) => {
             return req.user?._id?.toString() || req.ip || 'unknown';
         },
-        handler: (req: any, res: any) => {
+        handler: (_req: any, res: any) => {
             const retryAfter = 60;
             res.set('Retry-After', String(retryAfter));
             res.status(429).json({
@@ -180,7 +180,7 @@ export const publicTrackingRateLimiter = createLimiterConfig(
         keyGenerator: (req: any) => {
             return req.ip || 'unknown'; // Public endpoint, key by IP
         },
-        handler: (req: any, res: any) => {
+        handler: (_req: any, res: any) => {
             res.status(429).json({
                 success: false,
                 error: {

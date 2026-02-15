@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../../../../shared/errors/app.error';
-import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
+import { NextFunction, Request, Response } from 'express';
 import { PermissionService } from '../../../../core/application/services/auth/permission.service';
+import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
+import { AppError } from '../../../../shared/errors/app.error';
+import logger from '../../../../shared/logger/winston.logger';
 
 interface RequirePermissionOptions {
     /**

@@ -91,15 +91,15 @@
 
 import mongoose from 'mongoose';
 import {
-    CommissionTransaction,
-    ICommissionTransaction,
-    CommissionRule,
-    SalesRepresentative,
-    Order,
-    AuditLog
+AuditLog,
+CommissionRule,
+CommissionTransaction,
+ICommissionTransaction,
+Order,
+SalesRepresentative
 } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/index';
+import logger from '../../../../shared/logger/winston.logger';
 
 // Event types
 export type OrderEvent = 'order.created' | 'order.cancelled' | 'order.updated';

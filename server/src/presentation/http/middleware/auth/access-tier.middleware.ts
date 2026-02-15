@@ -1,6 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { AccessTier } from '../../../../core/domain/types/access-tier';
-import { User } from '../../../../infrastructure/database/mongoose/models';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
 
 /**

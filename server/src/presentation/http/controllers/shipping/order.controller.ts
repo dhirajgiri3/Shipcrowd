@@ -1,33 +1,32 @@
-import { Request, Response, NextFunction } from 'express';
-import { Order, BulkOrderImportJob } from '../../../../infrastructure/database/mongoose/models';
-import RiskScoringService from '../../../../core/application/services/risk/risk-scoring.service';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import mongoose from 'mongoose';
 import csv from 'csv-parser';
-import { Readable } from 'stream';
 import ExcelJS from 'exceljs';
-import { BulkOrderImportJobProcessor } from '../../../../infrastructure/jobs/shipping/bulk-order-import.job';
-import {
-    guardChecks,
-    requireCompanyContext,
-    validateObjectId,
-    parsePagination,
-} from '../../../../shared/helpers/controller.helpers';
-import {
-    createOrderSchema,
-    updateOrderSchema,
-} from '../../../../shared/validation/schemas';
-import {
-    sendSuccess,
-    sendPaginated,
-    sendCreated,
-    calculatePagination
-} from '../../../../shared/utils/responseHelper';
-import { OrderService } from '../../../../core/application/services/shipping/order.service';
+import { NextFunction, Request, Response } from 'express';
+import mongoose from 'mongoose';
+import { Readable } from 'stream';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
+import RiskScoringService from '../../../../core/application/services/risk/risk-scoring.service';
+import { OrderService } from '../../../../core/application/services/shipping/order.service';
+import { BulkOrderImportJob, Order } from '../../../../infrastructure/database/mongoose/models';
+import { BulkOrderImportJobProcessor } from '../../../../infrastructure/jobs/shipping/bulk-order-import.job';
+import { AppError, ConflictError, DatabaseError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import {
+guardChecks,
+parsePagination,
+requireCompanyContext,
+validateObjectId,
+} from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+sendCreated,
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
+import {
+createOrderSchema,
+updateOrderSchema,
+} from '../../../../shared/validation/schemas';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 export const createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -363,7 +362,7 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
                     .pipe(csv())
                     .on('data', (row) => rows.push(row))
                     .on('end', () => resolve())
-                    .on('error', (err) => reject(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400)));
+                    .on('error', (_err) => reject(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400)));
             });
         }
 
@@ -448,7 +447,7 @@ export const bulkImportOrdersAsync = async (req: Request, res: Response, next: N
                     .pipe(csv())
                     .on('data', (row) => rows.push(row))
                     .on('end', () => resolve())
-                    .on('error', (err) => reject(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400)));
+                    .on('error', (_err) => reject(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400)));
             });
         }
 

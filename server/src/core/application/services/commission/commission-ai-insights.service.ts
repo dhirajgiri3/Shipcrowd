@@ -17,11 +17,11 @@
 import mongoose from 'mongoose';
 import { CommissionTransaction, SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
 import OpenAIService from '../../../../infrastructure/external/ai/openai/openai.service';
-import CommissionAnalyticsService from './commission-analytics.service';
 import CacheService from '../../../../infrastructure/utilities/cache.service';
-import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import logger from '../../../../shared/logger/winston.logger';
+import CommissionAnalyticsService from './commission-analytics.service';
 
 // ===== INTERFACES =====
 
@@ -709,7 +709,7 @@ Respond in JSON:
     private static async getAIRecommendations(
         metrics: any,
         topPerformer: any,
-        salesRep: any
+        _salesRep: any
     ): Promise<{ recommendations: PerformanceRecommendations['recommendations']; confidence: number }> {
         const prompt = `Generate performance improvement recommendations.
 

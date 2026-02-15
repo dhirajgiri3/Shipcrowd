@@ -14,9 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
-import { Session } from '../../../../infrastructure/database/mongoose/models';
-import { User } from '../../../../infrastructure/database/mongoose/models';
+import { AuditLog, Session, User } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**

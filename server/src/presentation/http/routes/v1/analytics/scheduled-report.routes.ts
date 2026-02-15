@@ -1,8 +1,8 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { csrfProtection } from '../../../middleware';
-import scheduledReportController from '../../../controllers/analytics/scheduled-report.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import scheduledReportController from '../../../controllers/analytics/scheduled-report.controller';
+import { csrfProtection } from '../../../middleware';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

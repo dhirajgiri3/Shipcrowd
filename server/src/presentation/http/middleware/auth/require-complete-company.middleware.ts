@@ -5,12 +5,12 @@
  * Part of the onboarding state machine security fix.
  */
 
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../../../../types/express';
+import { NextFunction, Response } from 'express';
 import { Company } from '../../../../infrastructure/database/mongoose/models';
 import { AuthorizationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
+import { AuthRequest } from '../../../../types/express';
 
 export const requireCompleteCompany = async (
     req: AuthRequest,

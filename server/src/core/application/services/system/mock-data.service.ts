@@ -54,6 +54,7 @@ export class MockDataService {
     static generatePayoutStatus(razorpayPayoutId: string) {
         // Weighted random: 85% processed, 10% processing, 5% failed
         const statuses = ['processed', 'processing', 'failed'];
+void statuses;
         const weights = [0.85, 0.10, 0.05];
 
         const random = Math.random();

@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import shipmentController from '../../../controllers/shipping/shipment.controller';
-import { CourierController } from '../../../controllers/shipping/courier.controller';
-import courierServiceController from '../../../controllers/shipping/courier-service.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import courierServiceController from '../../../controllers/shipping/courier-service.controller';
+import { CourierController } from '../../../controllers/shipping/courier.controller';
+import shipmentController from '../../../controllers/shipping/shipment.controller';
+import { requireAccess } from '../../../middleware';
+import { authenticate } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 const courierController = new CourierController();

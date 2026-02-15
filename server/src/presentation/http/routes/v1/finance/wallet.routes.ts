@@ -1,8 +1,8 @@
 import express from 'express';
-import { authenticate } from '../../../middleware';
-import { requireAccess } from '../../../middleware/auth/unified-access';
-import { csrfProtection } from '../../../middleware/auth/csrf';
 import * as walletController from '../../../controllers/finance/wallet.controller';
+import { authenticate } from '../../../middleware';
+import { csrfProtection } from '../../../middleware/auth/csrf';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = express.Router();
 

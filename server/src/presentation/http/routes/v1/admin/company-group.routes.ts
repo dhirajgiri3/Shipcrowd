@@ -1,8 +1,8 @@
 import express from 'express';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import companyGroupController from '../../../controllers/admin/company-group.controller';
+import { requireAccess } from '../../../middleware';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 
 const router = express.Router();
 

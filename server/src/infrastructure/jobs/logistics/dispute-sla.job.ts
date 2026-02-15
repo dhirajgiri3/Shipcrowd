@@ -36,11 +36,11 @@
  */
 
 // @ts-ignore - node-cron doesn't have type declarations
-import cron from 'node-cron';
 import Dispute from '@/infrastructure/database/mongoose/models/logistics/disputes/dispute.model';
-import logger from '@/shared/logger/winston.logger';
 import QueueManager from '@/infrastructure/utilities/queue-manager';
+import logger from '@/shared/logger/winston.logger';
 import mongoose from 'mongoose';
+import cron from 'node-cron';
 
 // ============================================================================
 // CONFIGURATION

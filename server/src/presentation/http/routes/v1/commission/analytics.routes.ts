@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { CommissionAnalyticsController } from '../../../controllers/commission/index';
-import { authenticate } from '../../../middleware/index';
 import { requireAccess } from '../../../middleware/auth/unified-access';
+import { authenticate } from '../../../middleware/index';
 const router = Router();
 
 // All routes require authentication

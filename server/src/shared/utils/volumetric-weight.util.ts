@@ -15,6 +15,7 @@ export const DIM_FACTORS: Record<string, number> = {
 
 // Unit conversion constants
 const CM_TO_INCH = 0.393701;
+void CM_TO_INCH;
 const INCH_TO_CM = 2.54;
 
 export type DimensionUnit = 'cm' | 'inch';

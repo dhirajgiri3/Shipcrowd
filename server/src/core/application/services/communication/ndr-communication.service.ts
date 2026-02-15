@@ -1,11 +1,11 @@
-import { Shipment, Company } from '../../../../infrastructure/database/mongoose/models';
-import WhatsAppService from './whatsapp.service';
-import smsService from './sms.service';
-import { sendEmail } from './email.service';
-import logger from '../../../../shared/logger/winston.logger';
+import { Company, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError } from '../../../../shared/errors/app.error';
-import NotificationPreferenceService, { NotificationPreferences } from './notification-preferences.service';
+import logger from '../../../../shared/logger/winston.logger';
 import NDRMagicLinkService from '../ndr/ndr-magic-link.service';
+import { sendEmail } from './email.service';
+import NotificationPreferenceService, { NotificationPreferences } from './notification-preferences.service';
+import smsService from './sms.service';
+import WhatsAppService from './whatsapp.service';
 
 /**
  * NDR Communication Service
@@ -178,7 +178,7 @@ class NDRCommunicationService {
      * Send NDR notification to buyer and optionally seller
      */
     async sendNDRNotification(options: NDRCommunicationOptions) {
-        const { ndrEventId, shipmentId, channel, templateType, customMessage } = options;
+        const { shipmentId } = options;
 
         try {
             // Fetch shipment

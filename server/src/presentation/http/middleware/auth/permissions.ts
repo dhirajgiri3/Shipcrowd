@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import { PermissionService } from '../../../../core/application/services/auth/permission.service';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
-import { PermissionService } from '../../../../core/application/services/auth/permission.service';
 
 type PermissionMap = Record<string, Record<string, boolean>>;
 

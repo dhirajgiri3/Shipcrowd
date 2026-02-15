@@ -4,18 +4,18 @@
  * Provides common utilities for headers, tables, styling, and layout
  */
 
-import PDFDocument from 'pdfkit';
 import * as fs from 'fs';
 import * as path from 'path';
+import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import { PDF_BRAND_COLORS } from '../../../../shared/constants/shipcrowd.constants';
 import { formatINR } from '../../../../shared/utils/indian-currency.util';
 import {
-    PDFBrandConfig,
-    PDFPartyDetails,
-    PDFTableColumn,
-    PDFTaxSummary,
-    PDFPageOptions,
+PDFBrandConfig,
+PDFPageOptions,
+PDFPartyDetails,
+PDFTableColumn,
+PDFTaxSummary,
 } from './pdf.types';
 
 export class BasePDFService {

@@ -1,9 +1,8 @@
-import { startOfWeek, endOfWeek, subWeeks, format } from 'date-fns';
-import { Types } from 'mongoose';
-import NDRAnalyticsService from './ndr-analytics.service';
-import EmailService from '../communication/email.service';
+import { endOfWeek, format, startOfWeek, subWeeks } from 'date-fns';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import logger from '../../../../shared/logger/winston.logger';
+import EmailService from '../communication/email.service';
+import NDRAnalyticsService from './ndr-analytics.service';
 
 /**
  * NDR Report Service

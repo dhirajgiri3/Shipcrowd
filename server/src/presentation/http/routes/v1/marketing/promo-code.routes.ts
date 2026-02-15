@@ -1,7 +1,7 @@
 import { Router } from 'express';
+import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import PromoCodeController from '../../../controllers/marketing/promo-code.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 
 const router = Router();
 

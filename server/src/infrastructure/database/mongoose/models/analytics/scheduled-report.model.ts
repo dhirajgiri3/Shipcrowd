@@ -284,7 +284,7 @@ ScheduledReportSchema.methods.calculateNextRun = function (): Date | undefined {
     }
 
     const now = new Date();
-    const { frequency, time, dayOfWeek, dayOfMonth, cronExpression } = this.schedule;
+    const { frequency, time, dayOfWeek, dayOfMonth } = this.schedule;
 
     switch (frequency) {
         case 'once':

@@ -4,15 +4,14 @@
  * Generates audit trails for user activities, orders, and shipments.
  */
 
-import mongoose from 'mongoose';
-import AuditLog from '../../mongoose/models/system/audit/audit-log.model';
-import Order from '../../mongoose/models/orders/core/order.model';
-import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
-import ServiceRateCard from '../../mongoose/models/logistics/shipping/configuration/service-rate-card.model';
 import User from '../../mongoose/models/iam/users/user.model';
-import { logger, createTimer } from '../utils/logger.utils';
-import { selectRandom, randomInt } from '../utils/random.utils';
-import { subMinutes, subHours, subDays, addDays } from '../utils/date.utils';
+import ServiceRateCard from '../../mongoose/models/logistics/shipping/configuration/service-rate-card.model';
+import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
+import Order from '../../mongoose/models/orders/core/order.model';
+import AuditLog from '../../mongoose/models/system/audit/audit-log.model';
+import { addDays, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom } from '../utils/random.utils';
 
 export async function seedAuditLogs(): Promise<void> {
     const timer = createTimer();

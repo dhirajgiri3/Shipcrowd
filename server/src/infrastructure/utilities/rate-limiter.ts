@@ -7,9 +7,9 @@
  * - Graceful fallback to in-memory when Redis unavailable
  */
 
+import { Cluster, Redis } from 'ioredis';
 import { RedisManager } from '../../infrastructure/redis/redis.manager';
 import logger from '../../shared/logger/winston.logger';
-import { Redis, Cluster } from 'ioredis';
 
 export interface RateLimitResult {
     allowed: boolean;

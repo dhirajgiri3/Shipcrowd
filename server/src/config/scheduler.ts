@@ -1,12 +1,12 @@
 import { CronJob } from 'cron';
-import logger from '../shared/logger/winston.logger';
-import { processScheduledDeletions } from '../infrastructure/jobs/system/maintenance/account-deletion.job';
 import WeightDisputeJob from '../infrastructure/jobs/disputes/weight-dispute.job';
 import CODRemittanceJob from '../infrastructure/jobs/finance/cod-remittance.job';
 import InvoiceGenerationJob from '../infrastructure/jobs/finance/invoice-generation.job';
 import LostShipmentDetectionJob from '../infrastructure/jobs/logistics/shipping/lost-shipment-detection.job';
 import NDRWeeklyReportJob from '../infrastructure/jobs/ndr/ndr-weekly-report.job';
+import { processScheduledDeletions } from '../infrastructure/jobs/system/maintenance/account-deletion.job';
 import { startAutoRechargeScheduler } from '../infrastructure/schedulers/auto-recharge.scheduler';
+import logger from '../shared/logger/winston.logger';
 
 /**
  * Initialize all scheduled jobs

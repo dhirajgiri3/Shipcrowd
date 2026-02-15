@@ -6,18 +6,13 @@
 
 import mongoose from 'mongoose';
 import WalletTransaction from '../../mongoose/models/finance/wallets/wallet-transaction.model';
-import Company from '../../mongoose/models/organization/core/company.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 import RTOEvent from '../../mongoose/models/logistics/shipping/exceptions/rto-event.model';
+import Company from '../../mongoose/models/organization/core/company.model';
 import { SEED_CONFIG } from '../config';
-import { randomInt, randomFloat, selectRandom } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { addDays, addHours, subDays, randomDateBetween } from '../utils/date.utils';
-
-interface CompanyBalance {
-    companyId: mongoose.Types.ObjectId;
-    balance: number;
-}
+import { addDays, addHours, subDays } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { randomInt, selectRandom } from '../utils/random.utils';
 
 /**
  * Generate initial recharge transaction

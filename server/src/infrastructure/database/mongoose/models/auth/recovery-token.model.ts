@@ -1,5 +1,5 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
 import crypto from 'crypto';
+import mongoose, { Document, Model, Schema } from 'mongoose';
 
 /**
  * Recovery Token Model

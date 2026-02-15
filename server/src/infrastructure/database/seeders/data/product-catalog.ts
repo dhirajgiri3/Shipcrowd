@@ -4,8 +4,8 @@
  * Realistic product data for different business categories.
  */
 
-import { selectRandom, randomInt, randomFloat } from '../utils/random.utils';
 import { BusinessType } from '../config';
+import { randomInt } from '../utils/random.utils';
 
 export interface ProductData {
     name: string;

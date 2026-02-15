@@ -1,22 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import mongoose from 'mongoose';
-import {
-    guardChecks,
-    validateObjectId,
-    parsePagination,
-} from '../../../../shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendPaginated,
-    calculatePagination
-} from '../../../../shared/utils/responseHelper';
+import { NextFunction, Request, Response } from 'express';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
-import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import {
+guardChecks,
+parsePagination,
+validateObjectId,
+} from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
 import { updateOrderSchema } from '../../../../shared/validation/schemas';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 /**
  * Get all orders (Admin View)
@@ -26,6 +24,7 @@ import { updateOrderSchema } from '../../../../shared/validation/schemas';
 export const getAllOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const { page, limit } = parsePagination(req.query as Record<string, any>);
         const sortBy = req.query.sortBy as string || 'createdAt';
@@ -76,6 +75,7 @@ export const getAllOrders = async (req: Request, res: Response, next: NextFuncti
 export const getOrderById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const { orderId } = req.params;
         validateObjectId(orderId, 'order');

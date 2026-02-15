@@ -1,9 +1,9 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import cookieParser from 'cookie-parser';
+import express, { Express, NextFunction, Request, Response } from 'express';
 import morgan from 'morgan';
-import compression from 'compression';
 
 // Load environment variables
 dotenv.config();
@@ -19,8 +19,8 @@ import { securityHeaders } from './presentation/http/middleware/system/security-
 import { globalRateLimiter } from './shared/config/rateLimit.config';
 
 // Import shared utilities
+import { normalizeError } from './shared/errors/app.error';
 import logger from './shared/logger/winston.logger';
-import { AppError, normalizeError } from './shared/errors/app.error';
 
 // Initialize Express app
 const app: Express = express();
@@ -105,7 +105,7 @@ const path = require('path');
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -114,7 +114,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Root endpoint
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
     res.json({
         message: 'Welcome to Shipcrowd API',
         version: '1.0.0',
@@ -134,7 +134,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Global error handler
-app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
     const normalizedError = normalizeError(error);
 
     logger.error('Error occurred:', {

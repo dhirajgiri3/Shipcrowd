@@ -11,14 +11,14 @@
 
 import mongoose from 'mongoose';
 import {
-    Company,
-    CourierService,
-    Integration,
-    SellerCourierPolicy,
-    ServiceRateCard,
-    User,
+Company,
+CourierService,
+Integration,
+SellerCourierPolicy,
+ServiceRateCard,
+User,
 } from '../../mongoose/models';
-import { logger, createTimer } from '../utils/logger.utils';
+import { createTimer, logger } from '../utils/logger.utils';
 
 type ProviderKey = 'velocity' | 'delhivery' | 'ekart';
 type ZoneKey = 'zoneA' | 'zoneB' | 'zoneC' | 'zoneD' | 'zoneE';

@@ -5,10 +5,10 @@
  * about weight dispute creation, resolution, and reminders.
  */
 
-import EmailService from '../communication/email.service';
-import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import { Company, User } from '../../../../infrastructure/database/mongoose/models';
+import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import logger from '../../../../shared/logger/winston.logger';
+import EmailService from '../communication/email.service';
 
 export class WeightDisputeNotificationService {
     private static whatsapp = new WhatsAppService();

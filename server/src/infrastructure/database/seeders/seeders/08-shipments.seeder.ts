@@ -4,26 +4,25 @@
  * Generates shipments for orders (one per order) with 85% delivered, 5-8% NDR, 5-7% RTO.
  */
 
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 
 
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
-import Order from '../../mongoose/models/orders/core/order.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
-import { SEED_CONFIG } from '../config';
-import { randomInt, selectRandom, selectWeightedFromObject, maybeExecute } from '../utils/random.utils';
-import { logger, createTimer } from '../utils/logger.utils';
-import { addDays, addHours, randomDateBetween } from '../utils/date.utils';
-import { INDIAN_CITIES, getCityByName, CityData, getShippingZone, getCityTier } from '../data/indian-cities';
-import {
-    selectCarrier,
-    generateTrackingNumber,
-    selectServiceType,
-    getEstimatedDeliveryDays,
-    resetTrackingCounters
-} from '../data/carrier-data';
+import Order from '../../mongoose/models/orders/core/order.model';
 import { CarrierName } from '../config';
+import {
+generateTrackingNumber,
+getEstimatedDeliveryDays,
+resetTrackingCounters,
+selectCarrier,
+selectServiceType
+} from '../data/carrier-data';
+import { getShippingZone } from '../data/indian-cities';
+import { addDays, addHours } from '../utils/date.utils';
+import { createTimer, logger } from '../utils/logger.utils';
+import { maybeExecute, randomInt, selectRandom } from '../utils/random.utils';
 
 const ZONE_CODE_MAP: Record<string, 'zoneA' | 'zoneB' | 'zoneC' | 'zoneD' | 'zoneE'> = {
     zone_a: 'zoneA',

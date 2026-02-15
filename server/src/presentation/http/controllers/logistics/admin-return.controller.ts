@@ -1,18 +1,17 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import ReturnOrder from '../../../../infrastructure/database/mongoose/models/logistics/returns/return-order.model';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendPaginated,
-    calculatePagination
-} from '../../../../shared/utils/responseHelper';
-import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import ReturnService from '../../../../core/application/services/logistics/return.service';
+import ReturnOrder from '../../../../infrastructure/database/mongoose/models/logistics/returns/return-order.model';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import {
+calculatePagination,
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 /**
  * Admin Return Controller
@@ -28,6 +27,7 @@ import ReturnService from '../../../../core/application/services/logistics/retur
 export const getAllReturns = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
@@ -112,6 +112,7 @@ export const getAllReturns = async (req: Request, res: Response, next: NextFunct
 export const getReturnStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const filter: any = { isDeleted: false };
 
@@ -149,6 +150,7 @@ export const getReturnStats = async (req: Request, res: Response, next: NextFunc
 export const getReturnById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
+void auth;
 
         const { returnId } = req.params;
 

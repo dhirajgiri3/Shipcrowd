@@ -1,6 +1,6 @@
-import express from 'express';
-import { authenticate } from '@/presentation/http/middleware';
 import { CODDiscrepancyController } from '@/presentation/http/controllers/finance/cod-discrepancy.controller';
+import { authenticate } from '@/presentation/http/middleware';
+import express from 'express';
 
 const router = express.Router();
 

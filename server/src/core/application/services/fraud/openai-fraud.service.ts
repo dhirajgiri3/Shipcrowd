@@ -5,8 +5,8 @@
  * Analyzes order patterns and provides intelligent fraud detection.
  */
 
-import OpenAI from 'openai';
 import logger from '@/shared/logger/winston.logger';
+import OpenAI from 'openai';
 
 // ============================================================================
 // INTERFACES

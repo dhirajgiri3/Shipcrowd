@@ -14,25 +14,25 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import mongoose from 'mongoose';
-import { PackingStation, IPackingStation, IPackage } from '@/infrastructure/database/mongoose/models';
 import {
-    ICreatePackingStationDTO,
-    IUpdatePackingStationDTO,
-    IAssignPackerDTO,
-    IStartPackingSessionDTO,
-    IPackItemDTO,
-    ICreatePackageDTO,
-    IVerifyWeightDTO,
-    ICompletePackingSessionDTO,
-    IPackingStationQueryOptions,
-    IWeightVerificationResult,
-    IPackingStationStats,
-    IPackerStats,
-    IPaginatedResult,
+IAssignPackerDTO,
+ICompletePackingSessionDTO,
+ICreatePackageDTO,
+ICreatePackingStationDTO,
+IPackerStats,
+IPackingStationQueryOptions,
+IPackingStationStats,
+IPackItemDTO,
+IPaginatedResult,
+IStartPackingSessionDTO,
+IUpdatePackingStationDTO,
+IVerifyWeightDTO,
+IWeightVerificationResult,
 } from '@/core/domain/interfaces/warehouse/packing.interface.service';
+import { IPackage, IPackingStation, PackingStation } from '@/infrastructure/database/mongoose/models';
 import { AppError } from '@/shared/errors/app.error';
 import logger from '@/shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
 export default class PackingService {
     static async createStation(data: ICreatePackingStationDTO): Promise<IPackingStation> {
@@ -99,7 +99,7 @@ export default class PackingService {
         }).sort({ stationCode: 1 });
     }
 
-    static async setStationOffline(stationId: string, reason?: string): Promise<IPackingStation> {
+    static async setStationOffline(stationId: string, _reason?: string): Promise<IPackingStation> {
         const station = await PackingStation.findById(stationId);
         if (!station) throw new AppError('Packing station not found', 'STATION_NOT_FOUND', 404);
 
@@ -294,7 +294,7 @@ export default class PackingService {
         return station;
     }
 
-    static async cancelPackingSession(stationId: string, reason: string): Promise<IPackingStation> {
+    static async cancelPackingSession(stationId: string, _reason: string): Promise<IPackingStation> {
         const station = await PackingStation.findById(stationId);
         if (!station) throw new AppError('Packing station not found', 'STATION_NOT_FOUND', 404);
 
@@ -329,7 +329,7 @@ export default class PackingService {
         return `https://Shipcrowd.s3.amazonaws.com/labels/${stationId}-${packageNumber}.pdf`;
     }
 
-    static async getStationStats(stationId: string, startDate: Date, endDate: Date): Promise<IPackingStationStats> {
+    static async getStationStats(stationId: string, _startDate: Date, _endDate: Date): Promise<IPackingStationStats> {
         const station = await PackingStation.findById(stationId);
         if (!station) throw new AppError('Packing station not found', 'STATION_NOT_FOUND', 404);
 

@@ -1,7 +1,7 @@
 import express from 'express';
+import * as addressController from '../../../controllers/logistics/address.controller';
 import { authenticate } from '../../../middleware';
 import { requireAccess } from '../../../middleware/index';
-import * as addressController from '../../../controllers/logistics/address.controller';
 
 const router = express.Router();
 

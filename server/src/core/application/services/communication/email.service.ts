@@ -14,12 +14,11 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import nodemailer from 'nodemailer';
-import sgMail from '@sendgrid/mail';
-import { MailDataRequired } from '@sendgrid/mail';
+import sgMail, { MailDataRequired } from '@sendgrid/mail';
 import axios from 'axios';
-import logger from '../../../../shared/logger/winston.logger';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
+import logger from '../../../../shared/logger/winston.logger';
 
 // Load environment variables from .env file
 dotenv.config();

@@ -1,10 +1,10 @@
-import express, { Request, Response, NextFunction, RequestHandler } from 'express';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/index';
+import express, { NextFunction, Request, RequestHandler, Response } from 'express';
+import deepvueService from '../../../../../core/application/services/integrations/deepvue.service';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import { kycRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import kycController from '../../../controllers/identity/kyc.controller';
-import deepvueService from '../../../../../core/application/services/integrations/deepvue.service';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/index';
 
 const router = express.Router();
 

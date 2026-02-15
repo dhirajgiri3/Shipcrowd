@@ -36,7 +36,7 @@ export class PricingMetricsService {
     /**
      * Increment pricing request counter
      */
-    incrementRequestCount(labels: MetricLabels = {}): void {
+    incrementRequestCount(_labels: MetricLabels = {}): void {
         this.metrics.pricing_requests_total++;
     }
 
@@ -66,21 +66,21 @@ export class PricingMetricsService {
     /**
      * Record Cache Hit
      */
-    recordCacheHit(type?: string): void {
+    recordCacheHit(_type?: string): void {
         this.metrics.cache_hits++;
     }
 
     /**
      * Record Cache Miss
      */
-    recordCacheMiss(type?: string): void {
+    recordCacheMiss(_type?: string): void {
         this.metrics.cache_misses++;
     }
 
     /**
      * Increment fallback usage counter
      */
-    incrementFallbackUsed(type: 'generic_rate' | 'carrier_default' | 'zone_default' | 'weight_generic'): void {
+    incrementFallbackUsed(_type: 'generic_rate' | 'carrier_default' | 'zone_default' | 'weight_generic'): void {
         if (!this.metrics.pricing_fallback_used) {
             this.metrics.pricing_fallback_used = 0;
         }

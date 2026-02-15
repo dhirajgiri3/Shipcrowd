@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
-import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import CourierProviderRegistry from '../courier/courier-provider-registry';
+import { CODAnalyticsService } from '../finance/cod-analytics.service';
+import NDRAnalyticsService from '../ndr/ndr-analytics.service';
+import RTOService from '../rto/rto.service';
+import CarrierNormalizationService from '../shipping/carrier-normalization.service';
 import OrderAnalyticsService from './order-analytics.service';
 import ShipmentAnalyticsService from './shipment-analytics.service';
-import NDRAnalyticsService from '../ndr/ndr-analytics.service';
-import { CODAnalyticsService } from '../finance/cod-analytics.service';
-import RTOService from '../rto/rto.service';
-import CourierProviderRegistry from '../courier/courier-provider-registry';
-import CarrierNormalizationService from '../shipping/carrier-normalization.service';
 
 export interface SellerAnalyticsDateRange {
     start: Date;

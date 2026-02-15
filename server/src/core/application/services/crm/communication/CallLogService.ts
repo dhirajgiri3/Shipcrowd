@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
 import CallLog, { ICallLog } from '@/infrastructure/database/mongoose/models/crm/communication/call-log.model';
 import SalesRepresentative from '@/infrastructure/database/mongoose/models/crm/sales/sales-representative.model';
-import logger from '@/shared/logger/winston.logger';
 import { NotFoundError } from '@/shared/errors/app.error';
+import logger from '@/shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
 interface CreateCallLogDTO {
     companyId: string;

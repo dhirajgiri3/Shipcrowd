@@ -1,8 +1,8 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
-import crypto from 'crypto';
-import logger from '../logger/winston.logger';
 import { RedisManager } from '../../infrastructure/redis/redis.manager';
+import logger from '../logger/winston.logger';
 
 // Define token types
 export interface AccessTokenPayload {

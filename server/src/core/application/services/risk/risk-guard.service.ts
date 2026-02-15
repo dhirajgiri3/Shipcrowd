@@ -1,7 +1,6 @@
 
-import mongoose from 'mongoose';
-import BlacklistItem from '@/infrastructure/database/mongoose/models/risk/blacklist-item.model';
 import { Company } from '@/infrastructure/database/mongoose/models';
+import BlacklistItem from '@/infrastructure/database/mongoose/models/risk/blacklist-item.model';
 
 interface RiskCheckInput {
     companyId: string;

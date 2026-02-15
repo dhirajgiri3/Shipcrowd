@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
-import { User, KYC } from '../../../../infrastructure/database/mongoose/models';
+import { NextFunction, Request, Response } from 'express';
 import { AccessTier } from '../../../../core/domain/types/access-tier';
-import { determineUserTier } from './access-tier.middleware';
-import logger from '../../../../shared/logger/winston.logger';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { KYC } from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { determineUserTier } from './access-tier.middleware';
 
 type UserRole = 'super_admin' | 'admin' | 'seller' | 'staff';
 type TeamRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer' | 'warehouse_manager' | 'inventory_manager' | 'picker' | 'packer';

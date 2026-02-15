@@ -9,12 +9,12 @@
  * - Courier integration
  */
 
-import mongoose from 'mongoose';
-import Dispute, { IDispute } from '@/infrastructure/database/mongoose/models/logistics/disputes/dispute.model';
 import { Shipment } from '@/infrastructure/database/mongoose/models';
-import logger from '@/shared/logger/winston.logger';
-import { AppError, NotFoundError, ValidationError, ConflictError } from '@/shared/errors/app.error';
+import Dispute, { IDispute } from '@/infrastructure/database/mongoose/models/logistics/disputes/dispute.model';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '@/shared/errors/app.error';
 import { ErrorCode } from '@/shared/errors/errorCodes';
+import logger from '@/shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
 // ============================================================================
 // INTERFACES

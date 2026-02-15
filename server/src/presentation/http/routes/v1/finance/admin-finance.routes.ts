@@ -1,7 +1,7 @@
 import { Router } from 'express';
+import adminFinanceController from '../../../controllers/finance/admin-finance.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import adminFinanceController from '../../../controllers/finance/admin-finance.controller';
 
 const router = Router();
 

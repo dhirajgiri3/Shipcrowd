@@ -14,12 +14,11 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { FlipkartStore } from '../../../../infrastructure/database/mongoose/models';
-import { FlipkartProductMapping } from '../../../../infrastructure/database/mongoose/models';
+import { Parser } from 'json2csv';
+import { FlipkartProductMapping, FlipkartStore } from '../../../../infrastructure/database/mongoose/models';
 import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import { Parser } from 'json2csv';
 
 /**
  * FlipkartProductMappingService

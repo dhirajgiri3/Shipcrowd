@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import mongoose, { Document, Schema, UpdateQuery } from 'mongoose'; // Import Document, Schema, UpdateQuery
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';

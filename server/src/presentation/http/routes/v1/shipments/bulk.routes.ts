@@ -1,7 +1,7 @@
 import { Router } from 'express';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import BulkShipmentController from '../../../controllers/shipments/bulk-shipment.controller';
 import { authenticate, requireAccess } from '../../../middleware';
-import { AccessTier } from '../../../../../core/domain/types/access-tier';
 
 const router = Router();
 

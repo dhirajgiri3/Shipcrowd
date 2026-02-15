@@ -1,13 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { NextFunction, Request, Response } from 'express';
 import FlipkartOAuthService from '../../../../core/application/services/flipkart/flipkart-oauth.service';
-import FlipkartOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/flipkart/flipkart-order-sync.job';
+import { applyDefaultsToSettings, applyDefaultsToSyncConfig, toEcommerceStoreDTO } from '../../../../core/mappers/store.mapper';
 import { FlipkartStore, FlipkartSyncLog } from '../../../../infrastructure/database/mongoose/models';
-import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
+import FlipkartOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/flipkart/flipkart-order-sync.job';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
-import { toEcommerceStoreDTO, applyDefaultsToSettings, applyDefaultsToSyncConfig } from '../../../../core/mappers/store.mapper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * FlipkartController

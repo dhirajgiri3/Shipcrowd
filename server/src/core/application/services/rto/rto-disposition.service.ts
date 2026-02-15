@@ -4,12 +4,11 @@
  * Suggests and executes disposition (restock / refurb / dispose / claim) after QC.
  */
 
-import { RTOEvent, IRTOEvent } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import RTOService from './rto.service';
+import { IRTOEvent, Order, RTOEvent } from '../../../../infrastructure/database/mongoose/models';
+import type { RTODispositionAction } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import type { RTODispositionAction } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model';
+import RTOService from './rto.service';
 
 const COURIER_DAMAGE_INDICATORS = ['Crushed Box', 'Water Damage', 'Torn Packaging'];
 const REFURB_VALUE_THRESHOLD_INR = 2000;

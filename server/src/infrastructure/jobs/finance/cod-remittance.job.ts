@@ -10,13 +10,13 @@
 
 import { Job } from 'bullmq';
 import mongoose from 'mongoose';
-import QueueManager from '../../utilities/queue-manager';
-import logger from '../../../shared/logger/winston.logger';
 import CODRemittanceService from '../../../core/application/services/finance/cod-remittance.service';
-import { Company } from '../../../infrastructure/database/mongoose/models';
-import CODRemittance, { ICODRemittance } from '../../../infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 import FeatureFlagService from '../../../core/application/services/system/feature-flags.service';
 import MockDataService from '../../../core/application/services/system/mock-data.service';
+import { Company } from '../../../infrastructure/database/mongoose/models';
+import CODRemittance from '../../../infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
+import logger from '../../../shared/logger/winston.logger';
+import QueueManager from '../../utilities/queue-manager';
 
 interface CODRemittanceJobData {
     type: 'daily_batch' | 'check_settlements' | 'process_payouts' | 'verify_payouts';

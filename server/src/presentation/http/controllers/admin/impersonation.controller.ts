@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import ImpersonationService from '../../../../core/application/services/admin/impersonation.service';
-import { guardChecks, parsePagination } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks, parsePagination } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
+import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Start impersonation session
@@ -100,6 +100,7 @@ export const getActiveSessions = async (req: Request, res: Response, next: NextF
 export const getImpersonationHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
+void auth;
 
         const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
 

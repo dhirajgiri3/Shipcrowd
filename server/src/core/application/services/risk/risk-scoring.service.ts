@@ -5,10 +5,10 @@
  * to calculate a comprehensive risk score for an order.
  */
 
+import logger from '../../../../shared/logger/winston.logger';
+import CODVerificationService from '../payment/cod-verification.service';
 import AddressValidationService from '../validation/address-validation.service';
 import PhoneVerificationService from '../validation/phone-verification.service';
-import CODVerificationService from '../payment/cod-verification.service';
-import logger from '../../../../shared/logger/winston.logger';
 
 interface OrderContext {
     orderValue: number;

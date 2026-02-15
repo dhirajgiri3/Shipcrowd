@@ -54,6 +54,7 @@ const Shipcrowd_TO_FLIPKART_STATUS: Record<string, string> = {
     RTO_IN_TRANSIT: 'RETURN_REQUESTED',
     RTO_DELIVERED: 'RETURN_COMPLETED',
 };
+void Shipcrowd_TO_FLIPKART_STATUS;
 
 /**
  * FlipkartFulfillmentService

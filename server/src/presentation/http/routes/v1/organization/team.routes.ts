@@ -1,7 +1,7 @@
 import express from 'express';
+import teamController from '../../../controllers/organization/team.controller';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import teamController from '../../../controllers/organization/team.controller';
 
 const router = express.Router();
 

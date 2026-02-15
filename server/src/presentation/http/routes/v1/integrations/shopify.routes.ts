@@ -1,8 +1,8 @@
 import { Router } from 'express';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import ShopifyController from '../../../controllers/integrations/shopify.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
-import { AccessTier } from '../../../../../core/domain/types/access-tier';
 
 /**
  * Shopify Integration Routes

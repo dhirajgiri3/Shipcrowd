@@ -1,35 +1,34 @@
-import { Response, NextFunction, Request } from 'express';
-import { Shipment, Warehouse } from '../../../../infrastructure/database/mongoose/models';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import AddressValidationService from '../../../../core/application/services/logistics/address-validation.service'; // Import Service
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import {
-    guardChecks,
-    requireCompanyContext,
-    validateObjectId,
-    parsePagination,
-} from '../../../../shared/helpers/controller.helpers';
-import {
-    createShipmentSchema,
-    bookFromQuoteSchema,
-    updateShipmentStatusSchema,
-    recommendCourierSchema
-} from '../../../../shared/validation/schemas';
+import AddressValidationService from '../../../../core/application/services/logistics/address-validation.service'; // Import Service
 import QuoteEngineService from '../../../../core/application/services/pricing/quote-engine.service';
-import {
-    sendSuccess,
-    sendPaginated,
-    sendCreated,
-    calculatePagination
-} from '../../../../shared/utils/responseHelper';
-import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
-import CacheService from '../../../../infrastructure/utilities/cache.service';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import BookFromQuoteService from '../../../../core/application/services/shipping/book-from-quote.service';
+import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
+import { Order, Shipment, Warehouse } from '../../../../infrastructure/database/mongoose/models';
+import CacheService from '../../../../infrastructure/utilities/cache.service';
+import { AppError, ConflictError, DatabaseError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import {
+guardChecks,
+parsePagination,
+requireCompanyContext,
+validateObjectId,
+} from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import {
+calculatePagination,
+sendCreated,
+sendPaginated,
+sendSuccess
+} from '../../../../shared/utils/responseHelper';
+import {
+bookFromQuoteSchema,
+createShipmentSchema,
+recommendCourierSchema,
+updateShipmentStatusSchema
+} from '../../../../shared/validation/schemas';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 const toShipmentResponseWithCompat = (shipment: any) => {
     if (!shipment) return shipment;

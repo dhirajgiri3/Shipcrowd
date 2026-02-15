@@ -21,9 +21,7 @@
  * Unit Tests: tests/unit/services/shopify/ShopifyFulfillmentService.test.ts
  */
 
-import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
-import { Order, IOrder } from '../../../../infrastructure/database/mongoose/models';
-import { Shipment, IShipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Shipment, ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';

@@ -1,20 +1,19 @@
-import { Request, Response, NextFunction } from 'express';
-import WalletService from '../../../../core/application/services/wallet/wallet.service';
-import { WalletAnalyticsService } from '../../../../core/application/services/wallet';
-import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
-import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
-import { ValidationError, AppError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import logger from '../../../../shared/logger/winston.logger';
-import {
-    initRechargeSchema,
-    rechargeWalletSchema,
-    updateWalletThresholdSchema,
-    refundTransactionSchema
-} from '../../../../shared/validation/schemas/financial.schemas';
+import { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
+import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
+import { WalletAnalyticsService } from '../../../../core/application/services/wallet';
+import WalletService from '../../../../core/application/services/wallet/wallet.service';
+import { TransactionReason, TransactionType } from '../../../../infrastructure/database/mongoose/models';
+import { AppError, ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
+import {
+initRechargeSchema,
+rechargeWalletSchema,
+refundTransactionSchema,
+updateWalletThresholdSchema
+} from '../../../../shared/validation/schemas/financial.schemas';
 
 /**
  * Get wallet balance

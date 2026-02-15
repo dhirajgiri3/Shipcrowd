@@ -1,5 +1,4 @@
 
-import mongoose from 'mongoose';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 
 export class CodEnhancementMigration {

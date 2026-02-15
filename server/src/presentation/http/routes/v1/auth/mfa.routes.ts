@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import {
+apiRateLimiter,
+loginRateLimiter
+} from '../../../../../shared/config/rateLimit.config';
 import MFAController from '../../../controllers/auth/mfa.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import {
-    apiRateLimiter,
-    loginRateLimiter
-} from '../../../../../shared/config/rateLimit.config';
 
 
 const router = Router();

@@ -14,21 +14,11 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
-import { AmazonProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
-import AmazonOAuthService from './amazon-oauth.service';
+import { Parser } from 'json2csv';
+import { AmazonProductMapping, AmazonStore } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-import { Parser } from 'json2csv';
-
-interface AmazonListing {
-    asin: string;
-    sku: string;
-    title?: string;
-    category?: string;
-    fulfillmentChannel?: 'AFN' | 'MFN';
-}
+import AmazonOAuthService from './amazon-oauth.service';
 
 interface AutoMapResult {
     mapped: number;
@@ -78,6 +68,7 @@ export default class AmazonProductMappingService {
         };
 
         const client = await AmazonOAuthService.createClientForStore(storeId);
+void client;
 
         // Fetch catalog items from Amazon (simplified - in production would use Catalog API)
         // For now, we'll create mappings based on provided data

@@ -8,18 +8,18 @@
  * - Business rule triggers
  */
 
-import { Request } from 'express';
 import crypto from 'crypto';
+import { Request } from 'express';
 import mongoose from 'mongoose';
 import { Shipment } from '../../../../../infrastructure/database/mongoose/models/index';
-import { StatusMapperService } from '../status-mappings/status-mapper.service';
-import { ShipmentService } from '../../shipping/shipment.service';
 import logger from '../../../../../shared/logger/winston.logger';
+import { ShipmentService } from '../../shipping/shipment.service';
+import { StatusMapperService } from '../status-mappings/status-mapper.service';
 import {
-    IWebhookHandler,
-    WebhookPayload,
-    WebhookConfig,
-    VerificationStrategy
+IWebhookHandler,
+VerificationStrategy,
+WebhookConfig,
+WebhookPayload
 } from './webhook-handler.interface';
 
 /**

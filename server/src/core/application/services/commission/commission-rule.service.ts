@@ -16,14 +16,14 @@
 
 import mongoose from 'mongoose';
 import {
-    CommissionRule,
-    ICommissionRule,
-    RuleType,
-    AuditLog,
-    Order
+AuditLog,
+CommissionRule,
+ICommissionRule,
+Order,
+RuleType
 } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/index';
+import logger from '../../../../shared/logger/winston.logger';
 
 // DTOs and types
 export interface CreateRuleDTO {

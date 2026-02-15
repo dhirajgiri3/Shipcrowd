@@ -12,10 +12,10 @@
 
 import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
-import Integration from '../../../database/mongoose/models/system/integrations/integration.model';
-import { encryptData, decryptData } from '../../../../shared/utils/encryption';
-import { VelocityAuthRequest, VelocityAuthResponse, VelocityError } from './velocity.types';
 import logger from '../../../../shared/logger/winston.logger';
+import { decryptData, encryptData } from '../../../../shared/utils/encryption';
+import Integration from '../../../database/mongoose/models/system/integrations/integration.model';
+import { VelocityAuthRequest, VelocityAuthResponse, VelocityError } from './velocity.types';
 
 export class VelocityAuth {
   private baseUrl: string;

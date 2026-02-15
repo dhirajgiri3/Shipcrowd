@@ -14,9 +14,8 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { NDREvent, PreventionEvent } from '../../../../infrastructure/database/mongoose/models';
-import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
+import { NDREvent, PreventionEvent, RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import RTOAnalyticsService from '../rto/rto-analytics.service';
 
@@ -553,6 +552,7 @@ export default class NDRAnalyticsService {
         const SMS_COST = 0.20;
         const WHATSAPP_COST = 0.80;
         const EMAIL_COST = 0.00;
+void EMAIL_COST;
 
         // Get Current Stats
         const ndrStats = await this.getNDRStats(companyId, dateRange);

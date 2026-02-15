@@ -1,34 +1,34 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import crypto from 'crypto';
-import passport from 'passport';
-import { User, IUser, MagicLink, TeamInvitation, Session, ISession } from '../../../../infrastructure/database/mongoose/models';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
-import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../../../../core/application/services/communication/email.service';
-import { createSession } from '../../../../core/application/services/auth/session.service';
-import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
-import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
-import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
-import { generateCSRFToken } from '../../middleware/auth/csrf';
-import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
-import { withTransaction } from '../../../../shared/utils/transactionHelper';
-import { SESSION_CONSTANTS } from '../../../../shared/constants/security';
-import {
-  clearAuthCookies,
-  getAccessTokenFromRequest,
-  getAuthCookieNames,
-  getAuthCookieOptions,
-  getRefreshTokenFromRequest,
-} from '../../../../shared/helpers/auth-cookies';
-import { UserDTO } from '../../dtos/user.dto';
-import { AuthenticationError, ValidationError, NotFoundError, ExternalServiceError, ConflictError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import passport from 'passport';
+import { z } from 'zod';
 import MFAService from '../../../../core/application/services/auth/mfa.service';
+import { evaluatePasswordStrength, meetsMinimumRequirements, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
+import { createSession } from '../../../../core/application/services/auth/session.service';
+import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
+import { sendMagicLinkEmail, sendPasswordResetEmail, sendVerificationEmail } from '../../../../core/application/services/communication/email.service';
+import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
+import { ISession, IUser, MagicLink, Session, TeamInvitation, User } from '../../../../infrastructure/database/mongoose/models';
+import { SESSION_CONSTANTS } from '../../../../shared/constants/security';
+import { AuthenticationError, ConflictError, ExternalServiceError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import {
+clearAuthCookies,
+getAccessTokenFromRequest,
+getAuthCookieNames,
+getAuthCookieOptions,
+getRefreshTokenFromRequest,
+} from '../../../../shared/helpers/auth-cookies';
+import { generateAccessToken, generateRefreshToken, revokeRefreshToken, verifyRefreshToken } from '../../../../shared/helpers/jwt';
+import logger from '../../../../shared/logger/winston.logger';
+import { sendCreated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { withTransaction } from '../../../../shared/utils/transactionHelper';
+import { UserDTO } from '../../dtos/user.dto';
+import { generateCSRFToken } from '../../middleware/auth/csrf';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -793,9 +793,6 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
  */
 export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Cookie names with secure prefix in production
-    const { refreshCookieName, accessCookieName } = getAuthCookieNames();
-
     const refreshToken = getRefreshTokenFromRequest(req);
 
     // ✅ FIX: Get access token to blacklist it immediately
@@ -1133,7 +1130,7 @@ export const googleAuth = passport.authenticate('google', {
 * Google OAuth callback
  * @route GET /auth/google/callback
  */
-export const googleCallback = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const googleCallback = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
   try {
     const user = req.user as IUser & { _id: mongoose.Types.ObjectId };
 

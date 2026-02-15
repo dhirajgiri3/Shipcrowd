@@ -16,12 +16,12 @@
  * ```
  */
 
-import { CourierShipmentData, CourierReverseShipmentData } from '../base/courier.adapter';
+import { CourierReverseShipmentData, CourierShipmentData } from '../base/courier.adapter';
 import {
-    EkartShipmentRequest,
-    EkartLocation,
-    EkartAddressRequest,
-    EKART_CONSTRAINTS,
+EKART_CONSTRAINTS,
+EkartAddressRequest,
+EkartLocation,
+EkartShipmentRequest,
 } from './ekart.types';
 
 export class EkartMapper {

@@ -90,13 +90,13 @@
 
 import mongoose from 'mongoose';
 import {
-    CommissionTransaction,
-    ICommissionTransaction,
-    CommissionAdjustment,
-    AuditLog
+AuditLog,
+CommissionAdjustment,
+CommissionTransaction,
+ICommissionTransaction
 } from '../../../../infrastructure/database/mongoose/models';
-import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/index';
+import logger from '../../../../shared/logger/winston.logger';
 
 // DTOs
 export interface ApproveTransactionDTO {

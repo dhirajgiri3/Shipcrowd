@@ -2,16 +2,15 @@
  * Commission Analytics Controller
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { CommissionAnalyticsService } from '../../../../core/application/services/commission/index';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import { AppError, ValidationError, AuthenticationError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
-    analyticsDateRangeSchema,
-    generateReportSchema,
-    topPerformersQuerySchema,
+analyticsDateRangeSchema,
+generateReportSchema,
+topPerformersQuerySchema,
 } from '../../../../shared/validation/commission-schemas';
 
 export class CommissionAnalyticsController {

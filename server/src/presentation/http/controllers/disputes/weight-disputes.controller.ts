@@ -9,31 +9,31 @@
  * - Get analytics (admin only)
  */
 
-import { Request, Response, NextFunction } from 'express';
-import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { NextFunction, Request, Response } from 'express';
 import {
-    WeightDisputeDetectionService,
-    WeightDisputeResolutionService,
-    WeightDisputeAnalyticsService,
+WeightDisputeAnalyticsService,
+WeightDisputeDetectionService,
+WeightDisputeResolutionService,
 } from '../../../../core/application/services/disputes';
-import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
-import {
-    guardChecks,
-    requireCompanyContext,
-    validateObjectId,
-    parsePagination,
-} from '../../../../shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendPaginated,
-    calculatePagination,
-} from '../../../../shared/utils/responseHelper';
-import { NotFoundError, ValidationError, AppError, AuthorizationError } from '../../../../shared/errors/app.error';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
+import { AppError, AuthorizationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import {
+guardChecks,
+parsePagination,
+requireCompanyContext,
+validateObjectId,
+} from '../../../../shared/helpers/controller.helpers';
+import logger from '../../../../shared/logger/winston.logger';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
+import {
+calculatePagination,
+sendPaginated,
+sendSuccess,
+} from '../../../../shared/utils/responseHelper';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
 /**
  * GET /api/v1/disputes/weight
@@ -296,6 +296,7 @@ export const getAnalytics = async (
 ): Promise<void> => {
     try {
         const auth = guardChecks(req);
+void auth;
 
         // Admin check
         if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {

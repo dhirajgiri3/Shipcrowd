@@ -36,10 +36,10 @@
  * - Expected query time: <1s per analytics call
  */
 
-import mongoose from 'mongoose';
 import Dispute from '@/infrastructure/database/mongoose/models/logistics/disputes/dispute.model';
-import logger from '@/shared/logger/winston.logger';
 import { AppError } from '@/shared/errors/app.error';
+import logger from '@/shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
 // ============================================================================
 // INTERFACES

@@ -1,14 +1,14 @@
-import { Request, Response, NextFunction } from 'express';
-import mongoose from 'mongoose';
 import axios from 'axios';
+import { NextFunction, Request, Response } from 'express';
+import mongoose from 'mongoose';
+import CourierProviderRegistry from '../../../../core/application/services/courier/courier-provider-registry';
+import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 import LabelService from '../../../../core/application/services/shipping/label.service';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
-import CourierProviderRegistry from '../../../../core/application/services/courier/courier-provider-registry';
 
 class LabelController {
     private getStoredLabelUrl(shipment: any): string | undefined {

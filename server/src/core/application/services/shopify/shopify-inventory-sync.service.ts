@@ -14,10 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { number } from 'zod';
-import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
-import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { SyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { ShopifyProductMapping as ProductMapping, ShopifyStore, SyncLog } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
