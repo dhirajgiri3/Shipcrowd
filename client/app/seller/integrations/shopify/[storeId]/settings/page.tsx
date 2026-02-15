@@ -11,20 +11,29 @@ import {
 import { IntegrationSettings } from '@/src/types/api/integrations/integrations.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Badge } from '@/src/components/ui/core/Badge';
+import { Input } from '@/src/components/ui/core/Input';
+import { Switch } from '@/src/components/ui/core/Switch';
+import { Select } from '@/src/components/ui/form/Select';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import {
     ArrowLeft,
     Save,
     Trash2,
     AlertTriangle,
-    Settings as SettingsIcon,
-    Clock,
-    Zap,
-    Shield
+    Loader2,
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
 export const dynamic = "force-dynamic";
+
+const syncFrequencyOptions = [
+    { value: 'REALTIME', label: 'Real-time (Webhooks)' },
+    { value: 'EVERY_5_MIN', label: 'Every 5 minutes' },
+    { value: 'EVERY_15_MIN', label: 'Every 15 minutes' },
+    { value: 'EVERY_30_MIN', label: 'Every 30 minutes' },
+    { value: 'HOURLY', label: 'Hourly' },
+    { value: 'MANUAL', label: 'Manual only' },
+];
 
 export default function ShopifySettingsPage() {
     const params = useParams();
@@ -57,7 +66,18 @@ export default function ShopifySettingsPage() {
 
     React.useEffect(() => {
         if (store?.settings) {
-            setSettings(store.settings);
+            setSettings(prev => ({
+                ...prev,
+                ...store.settings,
+                notifications: {
+                    ...prev.notifications,
+                    ...(store?.settings?.notifications || {}),
+                },
+                orderFilters: {
+                    ...prev.orderFilters,
+                    ...(store?.settings?.orderFilters || {}),
+                },
+            }));
         }
     }, [store]);
 
@@ -91,202 +111,172 @@ export default function ShopifySettingsPage() {
     if (isLoading) {
         return (
             <div className="flex justify-center items-center min-h-[400px]">
-                <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto p-6">
+        <div className="space-y-6 max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-6 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-4">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => router.push(`/seller/integrations/shopify/${storeId}`)}
+                        className="gap-2"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Dashboard
+                        <ArrowLeft className="w-4 h-4" />
+                        Back
                     </Button>
+                    <div className="w-12 h-12 rounded-xl bg-[#95BF47]/10 border border-[#95BF47]/20 flex items-center justify-center shrink-0">
+                        <img src="/logos/shopify.svg" alt="Shopify" className="w-7 h-7" />
+                    </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                            <SettingsIcon className="w-6 h-6" />
-                            Store Settings
-                        </h1>
-                        <p className="text-sm text-[var(--text-secondary)]">
-                            {store?.storeName || 'Store'}
-                        </p>
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Shopify Settings</h1>
+                        <p className="text-sm text-[var(--text-secondary)] mt-1">{store?.storeName || 'Store'}</p>
                     </div>
                 </div>
-
                 <Button
                     onClick={handleSaveSettings}
                     disabled={isUpdating}
-                    className="bg-[var(--primary-bg)] hover:opacity-90 text-[var(--accent-text)]"
+                    className="gap-2 bg-[#96bf48] hover:bg-[#7ea03e] text-white"
                 >
-                    <Save className="w-4 h-4 mr-2" />
+                    {isUpdating ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <Save className="w-4 h-4" />
+                    )}
                     {isUpdating ? 'Saving...' : 'Save Changes'}
                 </Button>
             </div>
 
-            {/* Sync Settings */}
+            {/* Sync Configuration */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-[var(--primary-blue)]" />
-                        Sync Configuration
-                    </CardTitle>
+                    <CardTitle>Sync Configuration</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium mb-2">Sync Frequency</label>
-                        <select
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-[var(--text-primary)]">
+                            Sync Frequency
+                        </label>
+                        <Select
                             value={settings.syncFrequency}
-                            onChange={(e) => setSettings({ ...settings, syncFrequency: e.target.value as any })}
-                            className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg bg-[var(--bg-primary)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent"
-                        >
-                            <option value="REALTIME">Real-time (Webhooks)</option>
-                            <option value="EVERY_5_MIN">Every 5 minutes</option>
-                            <option value="EVERY_15_MIN">Every 15 minutes</option>
-                            <option value="EVERY_30_MIN">Every 30 minutes</option>
-                            <option value="HOURLY">Hourly</option>
-                            <option value="MANUAL">Manual only</option>
-                        </select>
-                        <p className="text-xs text-[var(--text-secondary)] mt-1">
-                            How often to check for new orders from Shopify
-                        </p>
+                            onChange={(e) => setSettings(prev => ({
+                                ...prev,
+                                syncFrequency: e.target.value as any
+                            }))}
+                            options={syncFrequencyOptions}
+                        />
+                        <p className="text-xs text-[var(--text-muted)]">How often to check for new orders from Shopify</p>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                         <div className="flex-1">
-                            <div className="font-medium text-[var(--text-primary)]">Sync Historical Orders</div>
-                            <div className="text-sm text-[var(--text-secondary)]">Import orders from before connection</div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">Import historical orders</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">Sync orders from before connection</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={settings.syncHistoricalOrders}
-                                onChange={(e) => setSettings({ ...settings, syncHistoricalOrders: e.target.checked })}
-                                className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
-                        </label>
+                        <Switch
+                            checked={settings.syncHistoricalOrders}
+                            onCheckedChange={(checked) => setSettings(prev => ({
+                                ...prev,
+                                syncHistoricalOrders: checked
+                            }))}
+                        />
                     </div>
 
                     {settings.syncHistoricalOrders && (
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Historical Order Days</label>
-                            <input
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Historical Order Days</label>
+                            <Input
                                 type="number"
-                                min="1"
-                                max="365"
+                                min={1}
+                                max={365}
                                 value={settings.historicalOrderDays}
-                                onChange={(e) => setSettings({ ...settings, historicalOrderDays: parseInt(e.target.value) })}
-                                className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg bg-[var(--bg-primary)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent"
+                                onChange={(e) =>
+                                    setSettings((prev) => ({
+                                        ...prev,
+                                        historicalOrderDays: parseInt(e.target.value, 10) || 30,
+                                    }))
+                                }
+                                aria-label="Historical order days"
                             />
-                            <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                Number of days to look back (max 365)
-                            </p>
+                            <p className="text-xs text-[var(--text-muted)]">Number of days to look back (max 365)</p>
                         </div>
                     )}
                 </CardContent>
             </Card>
 
-            {/* Automation Settings */}
+            {/* Automation */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-[var(--warning)]" />
-                        Automation
-                    </CardTitle>
+                    <CardTitle>Automation</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                         <div className="flex-1">
-                            <div className="font-medium text-[var(--text-primary)]">Auto-fulfill Orders</div>
-                            <div className="text-sm text-[var(--text-secondary)]">Automatically mark orders as fulfilled when shipment is created</div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">Auto-fulfill orders</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">Automatically mark orders as fulfilled when shipment is created</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={settings.autoFulfill}
-                                onChange={(e) => setSettings({ ...settings, autoFulfill: e.target.checked })}
-                                className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
-                        </label>
+                        <Switch
+                            checked={settings.autoFulfill}
+                            onCheckedChange={(checked) => setSettings(prev => ({
+                                ...prev,
+                                autoFulfill: checked
+                            }))}
+                        />
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                         <div className="flex-1">
-                            <div className="font-medium text-[var(--text-primary)]">Auto Tracking Updates</div>
-                            <div className="text-sm text-[var(--text-secondary)]">Push tracking numbers back to Shopify automatically</div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">Auto-update tracking</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">Push tracking numbers back to Shopify automatically</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={settings.autoTrackingUpdate}
-                                onChange={(e) => setSettings({ ...settings, autoTrackingUpdate: e.target.checked })}
-                                className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
-                        </label>
+                        <Switch
+                            checked={settings.autoTrackingUpdate}
+                            onCheckedChange={(checked) => setSettings(prev => ({
+                                ...prev,
+                                autoTrackingUpdate: checked
+                            }))}
+                        />
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Notification Settings */}
+            {/* Notifications */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-[var(--secondary-purple)]" />
-                        Notifications
-                    </CardTitle>
+                    <CardTitle>Notifications</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                         <div className="flex-1">
-                            <div className="font-medium text-[var(--text-primary)]">Sync Errors</div>
-                            <div className="text-sm text-[var(--text-secondary)]">Get notified when sync operations fail</div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">Sync errors</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">Get notified when sync operations fail</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={settings.notifications.syncErrors}
-                                onChange={(e) => setSettings(prev => ({
-                                    ...prev,
-                                    notifications: {
-                                        ...prev.notifications,
-                                        syncErrors: e.target.checked
-                                    }
-                                }))}
-                                className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
-                        </label>
+                        <Switch
+                            checked={settings.notifications.syncErrors}
+                            onCheckedChange={(checked) => setSettings(prev => ({
+                                ...prev,
+                                notifications: { ...prev.notifications, syncErrors: checked }
+                            }))}
+                        />
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                         <div className="flex-1">
-                            <div className="font-medium text-[var(--text-primary)]">Connection Issues</div>
-                            <div className="text-sm text-[var(--text-secondary)]">Alert when connection to Shopify is lost</div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">Connection issues</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">Alert when connection to Shopify is lost</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={settings.notifications.connectionIssues}
-                                onChange={(e) => setSettings(prev => ({
-                                    ...prev,
-                                    notifications: {
-                                        ...prev.notifications,
-                                        connectionIssues: e.target.checked
-                                    }
-                                }))}
-                                className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-[var(--toggle-bg-off)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--primary-blue-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-blue)]"></div>
-                        </label>
+                        <Switch
+                            checked={settings.notifications.connectionIssues}
+                            onCheckedChange={(checked) => setSettings(prev => ({
+                                ...prev,
+                                notifications: { ...prev.notifications, connectionIssues: checked }
+                            }))}
+                        />
                     </div>
                 </CardContent>
             </Card>
@@ -302,8 +292,8 @@ export default function ShopifySettingsPage() {
                 <CardContent>
                     <div className="flex items-center justify-between p-4 bg-[var(--error-bg)] rounded-lg">
                         <div className="flex-1">
-                            <div className="font-medium text-[var(--error-text)]">Disconnect Store</div>
-                            <div className="text-sm text-[var(--error-text)] opacity-90">
+                            <div className="font-medium text-[var(--error)]">Disconnect Store</div>
+                            <div className="text-sm text-[var(--error)] opacity-90">
                                 This will stop all syncs and remove the integration. This action cannot be undone.
                             </div>
                         </div>
@@ -319,47 +309,16 @@ export default function ShopifySettingsPage() {
                 </CardContent>
             </Card>
 
-            {/* Delete Confirmation Modal */}
-            {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <Card className="w-full max-w-md mx-4">
-                        <CardHeader>
-                            <CardTitle className="text-[var(--error)]">Confirm Disconnection</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-sm text-[var(--text-primary)]">
-                                Are you sure you want to disconnect <strong>{store?.storeName}</strong>?
-                                This will:
-                            </p>
-                            <ul className="list-disc list-inside text-sm text-[var(--text-secondary)] space-y-1">
-                                <li>Stop all automatic syncs</li>
-                                <li>Remove webhook connections</li>
-                                <li>Disable order fulfillment updates</li>
-                            </ul>
-                            <p className="text-sm font-medium text-[var(--error)]">
-                                This action cannot be undone.
-                            </p>
-
-                            <div className="flex gap-2 justify-end">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setShowDeleteConfirm(false)}
-                                    disabled={isDeleting}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    variant="danger"
-                                    onClick={handleDeleteStore}
-                                    disabled={isDeleting}
-                                >
-                                    {isDeleting ? 'Disconnecting...' : 'Yes, Disconnect'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                title="Confirm Disconnection"
+                description={`Are you sure you want to disconnect ${store?.storeName || 'this store'}? This will stop all automatic syncs, remove webhook connections, and disable order fulfillment updates. This action cannot be undone.`}
+                confirmText={isDeleting ? 'Disconnecting...' : 'Yes, Disconnect'}
+                confirmVariant="danger"
+                isLoading={isDeleting}
+                onCancel={() => setShowDeleteConfirm(false)}
+                onConfirm={handleDeleteStore}
+            />
         </div>
     );
 }

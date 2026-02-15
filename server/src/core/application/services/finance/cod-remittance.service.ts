@@ -521,7 +521,7 @@ export class CODRemittanceService {
         const lockKey = `payout:lock:${remittanceId}`;
         const lockTTL = 30; // 30 seconds
 
-        const { getRateLimiter } = await import('../../../../infrastructure/utilities/rate-limiter.js');
+        const { getRateLimiter } = await import('../../../../infrastructure/utilities/rate-limiter');
         const rateLimiter = getRateLimiter();
 
         // Try to acquire lock
@@ -1120,7 +1120,7 @@ export class CODRemittanceService {
                 });
 
                 // Send email alert to finance team
-                const EmailService = (await import('../communication/email.service.js')).default;
+                const EmailService = (await import('../communication/email.service')).default;
                 if ((EmailService as any).sendOperationalAlert) {
                     await (EmailService as any).sendOperationalAlert({
                         to: process.env.FINANCE_ALERT_EMAIL || 'finance@shipcrowd.com',

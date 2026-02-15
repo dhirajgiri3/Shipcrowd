@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/src/components/ui/core/Button';
 import {
     Card,
@@ -12,6 +12,8 @@ import {
 import { Input } from '@/src/components/ui/core/Input';
 import { Label } from '@/src/components/ui/core/Label';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
+import { Select } from '@/src/components/ui/form/Select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/core/Tabs';
 import {
     Dialog,
@@ -21,6 +23,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/src/components/ui/feedback/Dialog';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import {
     usePlatformSettings,
     useUpdatePlatformSettings,
@@ -38,6 +42,7 @@ import {
     EyeOff,
     CheckCircle2,
 } from 'lucide-react';
+
 export default function PlatformSettingsPage() {
     const { data: settings, isLoading } = usePlatformSettings();
     const updateSettings = useUpdatePlatformSettings();
@@ -49,7 +54,7 @@ export default function PlatformSettingsPage() {
     const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
 
     // Initialize form when settings load
-    useState(() => {
+    useEffect(() => {
         if (settings && !hasChanges) {
             setFormData({
                 business: { ...settings.business },
@@ -63,7 +68,7 @@ export default function PlatformSettingsPage() {
                 notifications: { ...settings.notifications },
             });
         }
-    });
+    }, [settings]);
 
     const handleChange = (
         section: keyof UpdatePlatformSettingsRequest,
@@ -127,27 +132,43 @@ export default function PlatformSettingsPage() {
 
     if (isLoading || !settings) {
         return (
-            <div className="flex items-center justify-center h-96">
-                <p className="text-muted-foreground">Loading settings...</p>
+            <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+                <PageHeader
+                    title="Platform Settings"
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: '/admin' },
+                        { label: 'Settings', href: '/admin/settings' },
+                        { label: 'Platform', active: true },
+                    ]}
+                    subtitle="Configure platform-wide settings and integrations"
+                    showBack={false}
+                />
+                <div className="space-y-4 max-w-4xl">
+                    <Skeleton className="h-12 w-40 rounded-lg" />
+                    <Skeleton className="h-96 w-full rounded-2xl" />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Platform Settings</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Configure platform-wide settings and integrations
-                    </p>
-                </div>
-                <Button onClick={() => setShowConfirmDialog(true)} disabled={!hasChanges}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                </Button>
-            </div>
+        <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+            <PageHeader
+                title="Platform Settings"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/admin' },
+                    { label: 'Settings', href: '/admin/settings' },
+                    { label: 'Platform', active: true },
+                ]}
+                subtitle="Configure platform-wide settings and integrations"
+                showBack={false}
+                actions={
+                    <Button onClick={() => setShowConfirmDialog(true)} disabled={!hasChanges}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                    </Button>
+                }
+            />
 
             {/* Settings Tabs */}
             <Tabs defaultValue="business">
@@ -250,9 +271,13 @@ export default function PlatformSettingsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="currency">Currency</Label>
-                                    <select
+                                    <Select
                                         id="currency"
-                                        className="w-full h-10 px-3 py-2 text-sm border rounded-md"
+                                        options={[
+                                            { label: 'INR (₹)', value: 'INR' },
+                                            { label: 'USD ($)', value: 'USD' },
+                                            { label: 'EUR (€)', value: 'EUR' },
+                                        ]}
                                         value={
                                             formData.financial?.currency ||
                                             settings.financial.currency
@@ -260,11 +285,7 @@ export default function PlatformSettingsPage() {
                                         onChange={(e) =>
                                             handleChange('financial', 'currency', e.target.value)
                                         }
-                                    >
-                                        <option value="INR">INR (₹)</option>
-                                        <option value="USD">USD ($)</option>
-                                        <option value="EUR">EUR (€)</option>
-                                    </select>
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="minWalletBalance">
@@ -288,22 +309,20 @@ export default function PlatformSettingsPage() {
                                 </div>
                             </div>
 
-                            <div className="border-t pt-4 space-y-4">
-                                <h4 className="font-medium">GST Configuration</h4>
+                            <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
+                                <h4 className="font-medium text-[var(--text-primary)]">GST Configuration</h4>
                                 <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         id="gstEnabled"
                                         checked={
                                             formData.financial?.gstEnabled ??
                                             settings.financial.gstEnabled
                                         }
-                                        onChange={(e) =>
-                                            handleChange('financial', 'gstEnabled', e.target.checked)
+                                        onCheckedChange={(checked) =>
+                                            handleChange('financial', 'gstEnabled', checked === true)
                                         }
-                                        className="h-4 w-4"
                                     />
-                                    <Label htmlFor="gstEnabled">Enable GST</Label>
+                                    <Label htmlFor="gstEnabled" className="text-[var(--text-primary)]">Enable GST</Label>
                                 </div>
                                 {(formData.financial?.gstEnabled ??
                                     settings.financial.gstEnabled) && (
@@ -329,8 +348,8 @@ export default function PlatformSettingsPage() {
                                     )}
                             </div>
 
-                            <div className="border-t pt-4 space-y-4">
-                                <h4 className="font-medium">COD Charges</h4>
+                            <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
+                                <h4 className="font-medium text-[var(--text-primary)]">COD Charges</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="codChargePercentage">Percentage (%)</Label>
@@ -430,9 +449,14 @@ export default function PlatformSettingsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="emailProvider">Provider</Label>
-                                    <select
+                                    <Select
                                         id="emailProvider"
-                                        className="w-full h-10 px-3 py-2 text-sm border rounded-md"
+                                        options={[
+                                            { label: 'SMTP', value: 'SMTP' },
+                                            { label: 'SendGrid', value: 'SENDGRID' },
+                                            { label: 'AWS SES', value: 'AWS_SES' },
+                                            { label: 'Mailgun', value: 'MAILGUN' },
+                                        ]}
                                         value={
                                             formData.integrations?.email?.provider ||
                                             settings.integrations.email.provider
@@ -440,12 +464,7 @@ export default function PlatformSettingsPage() {
                                         onChange={(e) =>
                                             handleIntegrationChange('email', 'provider', e.target.value)
                                         }
-                                    >
-                                        <option value="SMTP">SMTP</option>
-                                        <option value="SENDGRID">SendGrid</option>
-                                        <option value="AWS_SES">AWS SES</option>
-                                        <option value="MAILGUN">Mailgun</option>
-                                    </select>
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="emailFromEmail">From Email</Label>
@@ -503,19 +522,17 @@ export default function PlatformSettingsPage() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
+                                <Checkbox
                                     id="emailEnabled"
                                     checked={
                                         formData.integrations?.email?.isEnabled ??
                                         settings.integrations.email.isEnabled
                                     }
-                                    onChange={(e) =>
-                                        handleIntegrationChange('email', 'isEnabled', e.target.checked)
+                                    onCheckedChange={(checked) =>
+                                        handleIntegrationChange('email', 'isEnabled', checked === true)
                                     }
-                                    className="h-4 w-4"
                                 />
-                                <Label htmlFor="emailEnabled">Enable Email Service</Label>
+                                <Label htmlFor="emailEnabled" className="text-[var(--text-primary)]">Enable Email Service</Label>
                             </div>
                         </CardContent>
                     </Card>
@@ -555,9 +572,14 @@ export default function PlatformSettingsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="smsProvider">Provider</Label>
-                                    <select
+                                    <Select
                                         id="smsProvider"
-                                        className="w-full h-10 px-3 py-2 text-sm border rounded-md"
+                                        options={[
+                                            { label: 'Twilio', value: 'TWILIO' },
+                                            { label: 'AWS SNS', value: 'AWS_SNS' },
+                                            { label: 'MSG91', value: 'MSG91' },
+                                            { label: 'Gupshup', value: 'GUPSHUP' },
+                                        ]}
                                         value={
                                             formData.integrations?.sms?.provider ||
                                             settings.integrations.sms.provider
@@ -565,12 +587,7 @@ export default function PlatformSettingsPage() {
                                         onChange={(e) =>
                                             handleIntegrationChange('sms', 'provider', e.target.value)
                                         }
-                                    >
-                                        <option value="TWILIO">Twilio</option>
-                                        <option value="AWS_SNS">AWS SNS</option>
-                                        <option value="MSG91">MSG91</option>
-                                        <option value="GUPSHUP">Gupshup</option>
-                                    </select>
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="smsSenderId">Sender ID</Label>
@@ -614,19 +631,17 @@ export default function PlatformSettingsPage() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
+                                <Checkbox
                                     id="smsEnabled"
                                     checked={
                                         formData.integrations?.sms?.isEnabled ??
                                         settings.integrations.sms.isEnabled
                                     }
-                                    onChange={(e) =>
-                                        handleIntegrationChange('sms', 'isEnabled', e.target.checked)
+                                    onCheckedChange={(checked) =>
+                                        handleIntegrationChange('sms', 'isEnabled', checked === true)
                                     }
-                                    className="h-4 w-4"
                                 />
-                                <Label htmlFor="smsEnabled">Enable SMS Service</Label>
+                                <Label htmlFor="smsEnabled" className="text-[var(--text-primary)]">Enable SMS Service</Label>
                             </div>
                         </CardContent>
                     </Card>
@@ -644,119 +659,107 @@ export default function PlatformSettingsPage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         id="emailNotifications"
                                         checked={
                                             formData.notifications?.emailEnabled ??
                                             settings.notifications.emailEnabled
                                         }
-                                        onChange={(e) =>
-                                            handleChange('notifications', 'emailEnabled', e.target.checked)
+                                        onCheckedChange={(checked) =>
+                                            handleChange('notifications', 'emailEnabled', checked === true)
                                         }
-                                        className="h-4 w-4"
                                     />
-                                    <Label htmlFor="emailNotifications">
+                                    <Label htmlFor="emailNotifications" className="text-[var(--text-primary)]">
                                         Enable Email Notifications
                                     </Label>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         id="smsNotifications"
                                         checked={
                                             formData.notifications?.smsEnabled ??
                                             settings.notifications.smsEnabled
                                         }
-                                        onChange={(e) =>
-                                            handleChange('notifications', 'smsEnabled', e.target.checked)
+                                        onCheckedChange={(checked) =>
+                                            handleChange('notifications', 'smsEnabled', checked === true)
                                         }
-                                        className="h-4 w-4"
                                     />
-                                    <Label htmlFor="smsNotifications">Enable SMS Notifications</Label>
+                                    <Label htmlFor="smsNotifications" className="text-[var(--text-primary)]">Enable SMS Notifications</Label>
                                 </div>
                             </div>
 
-                            <div className="border-t pt-4 space-y-3">
-                                <h4 className="font-medium">Event Notifications</h4>
+                            <div className="border-t border-[var(--border-subtle)] pt-4 space-y-3">
+                                <h4 className="font-medium text-[var(--text-primary)]">Event Notifications</h4>
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             id="notifyOrderCreated"
                                             checked={
                                                 formData.notifications?.notifyOnOrderCreated ??
                                                 settings.notifications.notifyOnOrderCreated
                                             }
-                                            onChange={(e) =>
+                                            onCheckedChange={(checked) =>
                                                 handleChange(
                                                     'notifications',
                                                     'notifyOnOrderCreated',
-                                                    e.target.checked
+                                                    checked === true
                                                 )
                                             }
-                                            className="h-4 w-4"
                                         />
-                                        <Label htmlFor="notifyOrderCreated">Order Created</Label>
+                                        <Label htmlFor="notifyOrderCreated" className="text-[var(--text-primary)]">Order Created</Label>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             id="notifyShipmentStatus"
                                             checked={
                                                 formData.notifications?.notifyOnShipmentStatusChange ??
                                                 settings.notifications.notifyOnShipmentStatusChange
                                             }
-                                            onChange={(e) =>
+                                            onCheckedChange={(checked) =>
                                                 handleChange(
                                                     'notifications',
                                                     'notifyOnShipmentStatusChange',
-                                                    e.target.checked
+                                                    checked === true
                                                 )
                                             }
-                                            className="h-4 w-4"
                                         />
-                                        <Label htmlFor="notifyShipmentStatus">
+                                        <Label htmlFor="notifyShipmentStatus" className="text-[var(--text-primary)]">
                                             Shipment Status Change
                                         </Label>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             id="notifyPayment"
                                             checked={
                                                 formData.notifications?.notifyOnPaymentReceived ??
                                                 settings.notifications.notifyOnPaymentReceived
                                             }
-                                            onChange={(e) =>
+                                            onCheckedChange={(checked) =>
                                                 handleChange(
                                                     'notifications',
                                                     'notifyOnPaymentReceived',
-                                                    e.target.checked
+                                                    checked === true
                                                 )
                                             }
-                                            className="h-4 w-4"
                                         />
-                                        <Label htmlFor="notifyPayment">Payment Received</Label>
+                                        <Label htmlFor="notifyPayment" className="text-[var(--text-primary)]">Payment Received</Label>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             id="notifyKYC"
                                             checked={
                                                 formData.notifications?.notifyOnKYCStatusChange ??
                                                 settings.notifications.notifyOnKYCStatusChange
                                             }
-                                            onChange={(e) =>
+                                            onCheckedChange={(checked) =>
                                                 handleChange(
                                                     'notifications',
                                                     'notifyOnKYCStatusChange',
-                                                    e.target.checked
+                                                    checked === true
                                                 )
                                             }
-                                            className="h-4 w-4"
                                         />
-                                        <Label htmlFor="notifyKYC">KYC Status Change</Label>
+                                        <Label htmlFor="notifyKYC" className="text-[var(--text-primary)]">KYC Status Change</Label>
                                     </div>
                                 </div>
                             </div>

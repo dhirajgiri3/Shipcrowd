@@ -57,7 +57,7 @@ app.use(globalRateLimiter);
 app.use(securityHeaders);
 
 // Body parsing middleware with raw body capture for webhook signature verification
-app.use(express.json({
+const jsonParser = express.json({
     limit: '10mb',
     verify: (req: any, _res, buf, _encoding) => {
         // Store raw body for webhook signature verification
@@ -73,7 +73,16 @@ app.use(express.json({
     },
     // ✅ FIX: Strict JSON parsing with better error messages
     strict: true
-}));
+});
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+    // Shopify webhook routes need route-level express.raw() for byte-exact HMAC verification.
+    if (req.path.startsWith('/api/v1/webhooks/shopify')) {
+        next();
+        return;
+    }
+    jsonParser(req, res, next);
+});
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Cookie parser

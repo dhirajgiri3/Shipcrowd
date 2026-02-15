@@ -9,6 +9,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+    useIntegrations,
     useTestConnection,
     useCreateIntegration,
 } from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
@@ -153,6 +154,18 @@ export default function AmazonIntegrationPage() {
 
     const { mutate: testConnection, isPending: isTesting } = useTestConnection();
     const { mutate: createIntegration, isPending: isCreating } = useCreateIntegration();
+    const { data: integrations, isLoading: isLoadingIntegrations } = useIntegrations({ type: 'AMAZON' });
+
+    const [isRedirectingToStore, setIsRedirectingToStore] = useState(false);
+    useEffect(() => {
+        if (isLoadingIntegrations || !integrations || integrations.length === 0) return;
+        const existing = (integrations as any[])[0];
+        const storeId = existing?.integrationId || existing?.storeId || existing?.id || existing?._id;
+        if (storeId) {
+            setIsRedirectingToStore(true);
+            router.replace(`/seller/integrations/amazon/${storeId}`);
+        }
+    }, [integrations, isLoadingIntegrations, router]);
 
     // Online/offline detection
     useEffect(() => {
@@ -199,10 +212,11 @@ export default function AmazonIntegrationPage() {
     });
 
     useEffect(() => {
-        // Simulate initial checks
-        const timer = setTimeout(() => setIsInitialLoad(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+        if (!isLoadingIntegrations) {
+            const timer = setTimeout(() => setIsInitialLoad(false), 400);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoadingIntegrations]);
 
     useEffect(() => {
         setTestResult(null);
@@ -244,7 +258,7 @@ export default function AmazonIntegrationPage() {
         return '';
     }, [lwaRefreshToken, touched.mwsAuthToken, testAttempted]);
 
-    if (isInitialLoad) {
+    if (isInitialLoad || isRedirectingToStore) {
         return (
             <Dialog open={true}>
                 <DialogContent

@@ -1,17 +1,19 @@
 "use client";
 
-
 import { BillingSettings } from './BillingSettings';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import { User, Bell, Lock, Globe, CreditCard, Building2, Key, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useProfile, useUpdateProfile, useCompany, useUpdateCompany } from '@/src/core/api/hooks';
 import { Loader } from '@/src/components/ui';
+import { cn } from '@/src/lib/utils';
 
 export function SettingsClient() {
     const router = useRouter();
@@ -81,22 +83,80 @@ export function SettingsClient() {
         }
     };
 
+    const isLoading = profileLoading || (!!companyId && companyLoading);
+
+    if (isLoading && !profileData) {
+        return (
+            <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+                <PageHeader
+                    title="Settings"
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: '/seller' },
+                        { label: 'Settings', active: true },
+                    ]}
+                    subtitle="Manage your account and business preferences"
+                    showBack={false}
+                />
+                <div className="flex flex-col md:flex-row gap-8 max-w-5xl">
+                    <aside className="w-full md:w-64 space-y-2">
+                        <Skeleton className="h-8 w-32 mb-6" />
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                            <Skeleton key={i} className="h-11 w-full rounded-lg mb-2" />
+                        ))}
+                    </aside>
+                    <div className="flex-1">
+                        <Skeleton className="h-64 w-full rounded-2xl" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-8">
-                <aside className="w-full md:w-64 space-y-2">
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 px-2">Settings</h2>
+        <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+            <PageHeader
+                title="Settings"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/seller' },
+                    { label: 'Settings', active: true },
+                ]}
+                subtitle="Manage your account and business preferences"
+                showBack={false}
+            />
+
+            <div className="flex flex-col md:flex-row gap-8 max-w-5xl">
+                <aside className="w-full md:w-64 space-y-2 shrink-0">
                     {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => handleTabClick(tab)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === tab.id ? 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border border-[var(--primary-blue)]/20' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
-                                }`}
-                        >
-                            <tab.icon className="w-5 h-5" />
-                            {tab.label}
-                            {tab.path && <Badge variant="success" className="ml-auto text-[10px]">New</Badge>}
-                        </button>
+                        tab.path ? (
+                            <Button
+                                key={tab.id}
+                                variant="ghost"
+                                onClick={() => handleTabClick(tab)}
+                                className={cn(
+                                    "w-full justify-start gap-3 px-4 py-2 font-medium",
+                                    "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+                                )}
+                            >
+                                <tab.icon className="w-4 h-4" />
+                                {tab.label}
+                                <Badge variant="success" className="ml-auto text-[10px]">New</Badge>
+                            </Button>
+                        ) : (
+                            <Button
+                                key={tab.id}
+                                variant="ghost"
+                                onClick={() => handleTabClick(tab)}
+                                className={cn(
+                                    "w-full justify-start gap-3 px-4 py-2 font-medium",
+                                    activeTab === tab.id
+                                        ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] hover:text-[var(--primary-blue)]"
+                                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+                                )}
+                            >
+                                <tab.icon className="w-4 h-4" />
+                                {tab.label}
+                            </Button>
+                        )
                     ))}
                 </aside>
 

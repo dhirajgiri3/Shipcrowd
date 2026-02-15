@@ -2,7 +2,7 @@
 export const siteConfig = {
     name: 'Shipcrowd',
     description: 'AI-Powered Multi-Carrier Shipping Platform',
-    url: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000',
+    url: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005',
 
     // Navigation
     nav: {

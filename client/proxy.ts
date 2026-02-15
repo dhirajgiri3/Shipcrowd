@@ -14,6 +14,13 @@ export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // ═══════════════════════════════════════════════════════════════════════
+    // SET CSP HEADERS FOR SHOPIFY EMBEDDED APP
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Always set CSP headers to allow Shopify embedding
+    const cspHeader = "frame-ancestors https://admin.shopify.com https://*.myshopify.com";
+
+    // ═══════════════════════════════════════════════════════════════════════
     // CHECK AUTHENTICATION TOKENS
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -34,9 +41,13 @@ export async function proxy(request: NextRequest) {
     if (isGuestOnlyRoute(pathname)) {
         if (hasToken) {
             // Default dashboard route
-            return NextResponse.redirect(new URL('/seller', request.url));
+            const response = NextResponse.redirect(new URL('/seller', request.url));
+            response.headers.set('Content-Security-Policy', cspHeader);
+            return response;
         }
-        return NextResponse.next();
+        const response = NextResponse.next();
+        response.headers.set('Content-Security-Policy', cspHeader);
+        return response;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -44,7 +55,9 @@ export async function proxy(request: NextRequest) {
     // ═══════════════════════════════════════════════════════════════════════
 
     if (isPublicRoute(pathname)) {
-        return NextResponse.next();
+        const response = NextResponse.next();
+        response.headers.set('Content-Security-Policy', cspHeader);
+        return response;
     }
 
 
@@ -58,7 +71,9 @@ export async function proxy(request: NextRequest) {
             console.log(`[Middleware] No auth tokens, redirecting to login: ${pathname}`);
         }
 
-        return NextResponse.redirect(loginUrl);
+        const response = NextResponse.redirect(loginUrl);
+        response.headers.set('Content-Security-Policy', cspHeader);
+        return response;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -69,25 +84,33 @@ export async function proxy(request: NextRequest) {
     if (isAdminRoute(pathname)) {
         // Token exists but role check will happen in AuthGuard component
         // This is just a basic check - detailed validation happens client-side
-        return NextResponse.next();
+        const response = NextResponse.next();
+        response.headers.set('Content-Security-Policy', cspHeader);
+        return response;
     }
 
     // Seller routes - require seller or admin role
     if (isSellerRoute(pathname)) {
         // Token exists - AuthGuard will validate role and company
-        return NextResponse.next();
+        const response = NextResponse.next();
+        response.headers.set('Content-Security-Policy', cspHeader);
+        return response;
     }
 
     // Onboarding route - require authentication
     if (pathname.startsWith('/onboarding')) {
-        return NextResponse.next();
+        const response = NextResponse.next();
+        response.headers.set('Content-Security-Policy', cspHeader);
+        return response;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     // DEFAULT - ALLOW ACCESS
     // ═══════════════════════════════════════════════════════════════════════
 
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set('Content-Security-Policy', cspHeader);
+    return response;
 }
 
 /**

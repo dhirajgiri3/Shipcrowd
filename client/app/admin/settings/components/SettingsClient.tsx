@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { User, Bell, Lock, Globe, CreditCard, Loader2 } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
+import { User, Bell, Lock, Globe, CreditCard, Loader2, Settings2, ChevronRight } from 'lucide-react';
 import { useProfile, useProfileUpdate } from '@/src/core/api/hooks/identity/useProfile';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from '@/src/lib/utils';
-import { Loader } from '@/src/components/ui/feedback/Loader';
-import { StandardPageLoading } from '@/src/components/ui/data/Skeleton';
 
 export function SettingsClient() {
     const [activeTab, setActiveTab] = useState('profile');
@@ -59,21 +60,60 @@ export function SettingsClient() {
         { id: 'billing', label: 'Billing', icon: CreditCard },
     ];
 
+    const settingsNavItems = [
+        { label: 'Profile', href: '/admin/settings', icon: User },
+        { label: 'Feature Flags', href: '/admin/settings/features', icon: Settings2 },
+        { label: 'Platform', href: '/admin/settings/platform', icon: Globe },
+    ];
+
     if (isLoading) {
-        return <StandardPageLoading layout="form" showHeader={false} />;
+        return (
+            <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+                <div className="flex flex-col gap-6">
+                    <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-4" />
+                        <Skeleton className="h-4 w-40" />
+                    </div>
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <Skeleton className="h-9 w-48" />
+                    </div>
+                </div>
+                <div className="flex flex-col md:flex-row gap-8 max-w-5xl">
+                    <aside className="w-full md:w-64 space-y-2">
+                        <Skeleton className="h-8 w-32 mb-6" />
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <Skeleton key={i} className="h-11 w-full rounded-lg mb-2" />
+                        ))}
+                    </aside>
+                    <div className="flex-1">
+                        <Skeleton className="h-64 w-full rounded-2xl" />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-8">
+        <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+            <PageHeader
+                title="Settings"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/admin' },
+                    { label: 'Settings', active: true },
+                ]}
+                subtitle="Manage your admin profile and preferences"
+                showBack={false}
+            />
+
+            <div className="flex flex-col md:flex-row gap-8 max-w-5xl">
                 {/* Sidebar Navigation for Settings */}
-                <aside className="w-full md:w-64 space-y-2">
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 px-2">Settings</h2>
+                <aside className="w-full md:w-64 space-y-2 shrink-0">
                     <div className="flex flex-col gap-1">
                         {tabs.map((tab) => (
                             <Button
                                 key={tab.id}
-                                variant={activeTab === tab.id ? 'primary' : 'ghost'}
+                                variant="ghost"
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
                                     "w-full justify-start gap-3 px-4 py-2 font-medium",
@@ -85,6 +125,21 @@ export function SettingsClient() {
                                 <tab.icon className="w-4 h-4" />
                                 {tab.label}
                             </Button>
+                        ))}
+                        <div className="my-2 h-px bg-[var(--border-subtle)]" />
+                        {settingsNavItems.slice(1).map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    "flex items-center gap-3 px-4 py-2 font-medium rounded-lg text-sm transition-colors",
+                                    "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+                                )}
+                            >
+                                <item.icon className="w-4 h-4" />
+                                {item.label}
+                                <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+                            </Link>
                         ))}
                     </div>
                 </aside>

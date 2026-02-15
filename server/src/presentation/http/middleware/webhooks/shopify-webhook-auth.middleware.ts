@@ -25,6 +25,45 @@ import logger from '../../../../shared/logger/winston.logger';
 /**
  * Verify Shopify webhook HMAC signature
  */
+const secretFingerprint = (secret: string): string =>
+  crypto.createHash('sha256').update(secret).digest('hex').slice(0, 12);
+
+const resolveWebhookSecret = (): string | null => {
+  const webhookSecret = process.env.SHOPIFY_WEBHOOK_SECRET;
+  const apiSecret = process.env.SHOPIFY_API_SECRET;
+
+  if (webhookSecret && apiSecret && webhookSecret !== apiSecret) {
+    logger.warn('Shopify secrets differ; using SHOPIFY_WEBHOOK_SECRET for webhook verification', {
+      webhookSecretFingerprint: secretFingerprint(webhookSecret),
+      apiSecretFingerprint: secretFingerprint(apiSecret),
+    });
+  }
+
+  return webhookSecret || apiSecret || null;
+};
+
+const getRawBodyForVerification = (req: Request): string | null => {
+  const rawBody = (req as any).rawBody;
+
+  if (typeof rawBody === 'string') {
+    return rawBody;
+  }
+
+  if (Buffer.isBuffer(rawBody)) {
+    return rawBody.toString('utf8');
+  }
+
+  if (Buffer.isBuffer(req.body)) {
+    return req.body.toString('utf8');
+  }
+
+  if (typeof req.body === 'string') {
+    return req.body;
+  }
+
+  return null;
+};
+
 export const verifyShopifyWebhook = async (
   req: Request,
   res: Response,
@@ -50,17 +89,17 @@ export const verifyShopifyWebhook = async (
     }
 
     // Get raw body (must be set by express.raw() middleware)
-    const rawBody = (req as any).rawBody;
+    const rawBody = getRawBodyForVerification(req);
 
     if (!rawBody) {
       throw new AppError('Raw body not available for HMAC verification', 'ERROR_CODE', 500);
     }
 
     // Get webhook secret from environment
-    const webhookSecret = process.env.SHOPIFY_WEBHOOK_SECRET;
+    const webhookSecret = resolveWebhookSecret();
 
     if (!webhookSecret) {
-      logger.error('SHOPIFY_WEBHOOK_SECRET not configured');
+      logger.error('Shopify webhook secret not configured (SHOPIFY_WEBHOOK_SECRET/SHOPIFY_API_SECRET)');
       throw new AppError('Webhook secret not configured', 'ERROR_CODE', 500);
     }
 
@@ -70,17 +109,35 @@ export const verifyShopifyWebhook = async (
       .update(rawBody, 'utf8')
       .digest('base64');
 
+    logger.debug('Shopify webhook HMAC verification', {
+      topic,
+      shopDomain,
+      webhookId,
+      receivedHmacPrefix: hmacHeader.substring(0, 10),
+      calculatedHmacPrefix: hash.substring(0, 10),
+      match: hmacHeader === hash,
+      webhookSecretFingerprint: secretFingerprint(webhookSecret),
+      rawBodyLength: rawBody.length,
+    });
+
     // Constant-time comparison (prevents timing attacks)
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(hmacHeader, 'base64'),
-      Buffer.from(hash, 'base64')
-    );
+    let isValid = false;
+    try {
+      isValid = crypto.timingSafeEqual(
+        Buffer.from(hmacHeader, 'base64'),
+        Buffer.from(hash, 'base64')
+      );
+    } catch {
+      isValid = false;
+    }
 
     if (!isValid) {
       logger.warn('Invalid webhook HMAC signature', {
         shopDomain,
         topic,
         webhookId,
+        receivedHmacPrefix: hmacHeader.substring(0, 10),
+        calculatedHmacPrefix: hash.substring(0, 10),
       });
       throw new AppError('Invalid webhook signature', 'ERROR_CODE', 403);
     }
@@ -118,13 +175,13 @@ export const verifyShopifyWebhook = async (
     next();
   } catch (error) {
     if (error instanceof AppError) {
-      // Return 200 to prevent Shopify from retrying invalid requests
+      // Return 401 so Shopify retries and transient/config issues are recoverable.
       if (error.statusCode === 403 || error.statusCode === 401) {
         logger.error('Webhook authentication failed', {
           error: error.message,
           shopDomain: req.headers['x-shopify-shop-domain'],
         });
-        res.status(200).json({
+        res.status(401).json({
           received: false,
           error: 'Authentication failed',
         });

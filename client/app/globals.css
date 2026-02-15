@@ -81,6 +81,7 @@
    --primary-blue-deep: hsl(var(--brand-h), var(--brand-s), 45%);
    --primary-blue-light: hsl(var(--brand-h), var(--brand-s), 65%);
    --primary-blue-soft: hsl(var(--brand-h), var(--brand-s), 96%);
+   --primary-purple: hsl(270, 60%, 55%); /* Used in PrivacyClient, integrations */
 
    /* Neutrals */
    --white: hsl(0, 0%, 100%);

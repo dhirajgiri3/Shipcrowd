@@ -10,6 +10,7 @@ import {
     CardTitle,
 } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { Switch } from '@/src/components/ui/core/Switch';
 import {
     Dialog,
     DialogContent,
@@ -18,12 +19,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/src/components/ui/feedback/Dialog';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import {
     useFeatureFlags,
     useToggleFeature,
     useBulkUpdateFeatures,
 } from '@/src/core/api/hooks/settings/useSettings';
 import type { FeatureFlags } from '@/src/types/api/settings';
+import { cn } from '@/src/lib/utils';
 import {
     Save,
     Shield,
@@ -147,15 +151,27 @@ export default function FeatureFlagsPage() {
 
     if (isLoading || !features) {
         return (
-            <div className="flex items-center justify-center h-96">
-                <p className="text-muted-foreground">Loading feature flags...</p>
+            <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+                <PageHeader
+                    title="Feature Management"
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: '/admin' },
+                        { label: 'Settings', href: '/admin/settings' },
+                        { label: 'Feature Flags', active: true },
+                    ]}
+                    subtitle="Control system-wide feature availability and modules"
+                    showBack={false}
+                />
+                <div className="space-y-4 max-w-4xl">
+                    <Skeleton className="h-48 w-full rounded-2xl" />
+                    <Skeleton className="h-64 w-full rounded-2xl" />
+                </div>
             </div>
         );
     }
 
     const renderFeatureCard = (key: FeatureFlagKey) => {
         const config = FEATURE_CONFIG[key];
-        // Handle case where key might not be in config (if types change)
         if (!config) return null;
 
         const Icon = config.icon;
@@ -164,17 +180,19 @@ export default function FeatureFlagsPage() {
         return (
             <div
                 key={key}
-                className="flex items-start justify-between p-4 border rounded-lg bg-card hover:bg-accent/5 transition-colors"
+                className="flex items-start justify-between p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]/50 transition-colors"
             >
                 <div className="flex gap-4">
                     <div
-                        className={`p-2 rounded-full ${isEnabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                            }`}
+                        className={cn(
+                            "p-2 rounded-full",
+                            isEnabled ? "bg-[var(--primary-blue)]/10 text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
+                        )}
                     >
                         <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                        <h4 className="font-medium flex items-center gap-2">
+                        <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
                             {config.label}
                             {key === 'maintenanceMode' && isEnabled && (
                                 <Badge variant="warning" className="text-xs">
@@ -182,40 +200,38 @@ export default function FeatureFlagsPage() {
                                 </Badge>
                             )}
                         </h4>
-                        <p className="text-sm text-muted-foreground mt-1">{config.description}</p>
+                        <p className="text-sm text-[var(--text-secondary)] mt-1">{config.description}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground font-medium">
+                    <span className="text-xs text-[var(--text-muted)] font-medium">
                         {isEnabled ? 'Enabled' : 'Disabled'}
                     </span>
-                    <button
-                        onClick={() => handleToggle(key, isEnabled)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${isEnabled ? 'bg-primary' : 'bg-input'
-                            }`}
-                    >
-                        <span
-                            className={`${isEnabled ? 'translate-x-6' : 'translate-x-1'
-                                } inline-block h-4 w-4 transform rounded-full bg-background transition-transform`}
-                        />
-                    </button>
+                    <Switch
+                        checked={isEnabled}
+                        onCheckedChange={() => handleToggle(key, isEnabled)}
+                    />
                 </div>
             </div>
         );
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold">Feature Management</h1>
-                <p className="text-muted-foreground mt-1">
-                    Control system-wide feature availability and modules
-                </p>
-            </div>
+        <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+            <PageHeader
+                title="Feature Management"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/admin' },
+                    { label: 'Settings', href: '/admin/settings' },
+                    { label: 'Feature Flags', active: true },
+                ]}
+                subtitle="Control system-wide feature availability and modules"
+                showBack={false}
+            />
 
             {/* Core Features */}
-            <Card>
+            <div className="max-w-4xl space-y-6">
+            <Card className="border-[var(--border-subtle)]">
                 <CardHeader>
                     <CardTitle>Core Modules</CardTitle>
                     <CardDescription>Essential shipping and logistics features</CardDescription>
@@ -228,7 +244,7 @@ export default function FeatureFlagsPage() {
             </Card>
 
             {/* System Features */}
-            <Card>
+            <Card className="border-[var(--border-subtle)]">
                 <CardHeader>
                     <CardTitle>System Capabilities</CardTitle>
                     <CardDescription>
@@ -241,21 +257,22 @@ export default function FeatureFlagsPage() {
                         .map((key) => renderFeatureCard(key))}
                 </CardContent>
             </Card>
+            </div>
 
             {/* Confirmation Dialog */}
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-warning" />
+                        <DialogTitle className="flex items-center gap-2 text-[var(--text-primary)]">
+                            <AlertTriangle className="h-5 w-5 text-[var(--warning)]" />
                             Confirm Action
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-[var(--text-secondary)]">
                             Are you sure you want to{' '}
                             <strong>{featureToToggle?.enabled ? 'enable' : 'disable'}</strong>{' '}
                             {featureToToggle?.label}?
                             {featureToToggle?.key === 'maintenanceMode' && featureToToggle.enabled && (
-                                <p className="mt-2 text-warning font-medium">
+                                <p className="mt-2 text-[var(--warning)] font-medium">
                                     Warning: This will prevent non-admin users from accessing the platform.
                                 </p>
                             )}

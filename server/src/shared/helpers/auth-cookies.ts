@@ -22,15 +22,23 @@ export const getAuthCookieNames = (): AuthCookieNames => {
 // Helper function to get cookie options for auth tokens
 // ✅ CRITICAL FIX: Never set domain for localhost - it breaks cookie persistence
 // Browsers handle localhost specially; explicit domain prevents cookie setting/sending
-export const getAuthCookieOptions = (maxAge: number) => ({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
-  path: '/',
-  // ✅ Domain must be undefined for localhost (browser auto-handles it)
-  // Only set domain in production if needed for subdomain sharing
-  maxAge,
-});
+export const getAuthCookieOptions = (maxAge: number) => {
+  const isProd = process.env.NODE_ENV === 'production';
+
+  // For development with ngrok/tunneling: sameSite=none + secure=true
+  // This allows cookies to work through the Next.js proxy
+  const isProxied = process.env.USE_PROXY_COOKIES === 'true';
+
+  return {
+    httpOnly: true,
+    secure: isProd || isProxied, // Secure cookies for production OR when using proxy
+    sameSite: (isProd ? 'strict' : (isProxied ? 'none' : 'lax')) as 'strict' | 'lax' | 'none',
+    path: '/',
+    // ✅ Domain must be undefined for localhost (browser auto-handles it)
+    // Only set domain in production if needed for subdomain sharing
+    maxAge,
+  };
+};
 
 export const clearAuthCookies = (
   res: Response,

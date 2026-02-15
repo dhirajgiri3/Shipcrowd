@@ -6,17 +6,21 @@ import { useParams } from 'next/navigation';
 import {
     useIntegration,
     useUpdateIntegration,
+    useDeleteIntegration
 } from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
 import { IntegrationSettings } from '@/src/types/api/integrations/integrations.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { Switch } from '@/src/components/ui/core/Switch';
 import { Select } from '@/src/components/ui/form/Select';
 import {
     ArrowLeft,
     Save,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Trash2,
+    AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
@@ -36,6 +40,9 @@ export default function AmazonSettingsPage() {
 
     const { data: store, isLoading } = useIntegration(storeId, 'AMAZON');
     const { mutate: updateSettings, isPending: isUpdating } = useUpdateIntegration();
+    const { mutate: deleteStore, isPending: isDeleting } = useDeleteIntegration();
+
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const [settings, setSettings] = useState<IntegrationSettings>({
         syncFrequency: 'HOURLY',
@@ -56,7 +63,18 @@ export default function AmazonSettingsPage() {
 
     React.useEffect(() => {
         if (store?.settings) {
-            setSettings(store.settings);
+            setSettings(prev => ({
+                ...prev,
+                ...store.settings,
+                notifications: {
+                    ...prev.notifications,
+                    ...(store?.settings?.notifications || {}),
+                },
+                orderFilters: {
+                    ...prev.orderFilters,
+                    ...(store?.settings?.orderFilters || {}),
+                },
+            }));
         }
     }, [store]);
 
@@ -68,10 +86,21 @@ export default function AmazonSettingsPage() {
         }, {
             onSuccess: () => {
                 addToast('Settings saved successfully', 'success');
-                router.push(`/seller/integrations/amazon/${storeId}`);
             },
             onError: (error: any) => {
                 addToast(error.message || 'Failed to save settings', 'error');
+            }
+        });
+    };
+
+    const handleDeleteStore = () => {
+        deleteStore({ integrationId: storeId, type: 'AMAZON' }, {
+            onSuccess: () => {
+                addToast('Store disconnected successfully', 'success');
+                router.push('/seller/integrations');
+            },
+            onError: (error: any) => {
+                addToast(error.message || 'Failed to disconnect store', 'error');
             }
         });
     };
@@ -216,6 +245,45 @@ export default function AmazonSettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Danger Zone */}
+            <Card className="border-[var(--error-border)]">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-[var(--error)]">
+                        <AlertTriangle className="w-5 h-5" />
+                        Danger Zone
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between p-4 bg-[var(--error-bg)] rounded-lg">
+                        <div className="flex-1">
+                            <div className="font-medium text-[var(--error)]">Disconnect Store</div>
+                            <div className="text-sm text-[var(--error)] opacity-90">
+                                This will stop all syncs and remove the integration. This action cannot be undone.
+                            </div>
+                        </div>
+                        <Button
+                            variant="danger"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            disabled={isDeleting}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Disconnect
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                title="Confirm Disconnection"
+                description={`Are you sure you want to disconnect ${store?.storeName || 'this store'}? This will stop all automatic syncs, remove API connections, and disable shipment confirmation updates. This action cannot be undone.`}
+                confirmText={isDeleting ? 'Disconnecting...' : 'Yes, Disconnect'}
+                confirmVariant="danger"
+                isLoading={isDeleting}
+                onCancel={() => setShowDeleteConfirm(false)}
+                onConfirm={handleDeleteStore}
+            />
         </div>
     );
 }

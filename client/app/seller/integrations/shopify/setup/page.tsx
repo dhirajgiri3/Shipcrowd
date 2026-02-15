@@ -194,26 +194,36 @@ export default function ShopifyIntegrationPage() {
     // In a real app we might also check for existing integration data here
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [existingIntegration, setExistingIntegration] = useState<any>(null);
+    const [isRedirectingToStore, setIsRedirectingToStore] = useState(false);
 
     const { data: integrations, isLoading: isLoadingIntegrations } = useIntegrations({ type: 'SHOPIFY' });
 
+    // CRITICAL: Redirect immediately when store is already connected - never show connect modal
     useEffect(() => {
-        if (integrations && integrations.length > 0) {
-            // Find if this shop is already integrated
-            const shop = searchParams.get('shop') || searchParams.get('store');
-            const existing = shop 
-                ? (integrations as any[]).find((i: any) => i.shopDomain === shop || i.shopDomain === `${shop}.myshopify.com` || i.storeUrl?.includes(shop))
-                : (integrations as any[])[0]; // Default to first one if no shop in URL
-            
-            if (existing) {
+        if (isLoadingIntegrations || !integrations || integrations.length === 0) return;
+
+        const shop = searchParams.get('shop') || searchParams.get('store');
+        const existing = shop
+            ? (integrations as any[]).find((i: any) => {
+                const domain = (i.shopDomain || i.storeUrl?.replace(/^https?:\/\//, '') || '').toLowerCase();
+                const shopNorm = shop.toLowerCase().replace(/\.myshopify\.com$/, '');
+                return domain === shop || domain === `${shop}.myshopify.com` || domain.includes(shopNorm);
+            })
+            : (integrations as any[])[0];
+
+        if (existing) {
+            const storeId = existing.integrationId || existing.storeId || existing.id || existing._id;
+            if (storeId) {
+                setIsRedirectingToStore(true);
+                router.replace(`/seller/integrations/shopify/${storeId}`);
+            } else {
                 setExistingIntegration(existing);
                 setIsAuthenticated(true);
                 setShopDomain(existing.shopDomain || (existing.storeUrl?.replace('https://', '') || ''));
                 setStoreName(existing.shopName || existing.storeName || (existing.shopDomain || '').replace('.myshopify.com', ''));
-                setStoreId(existing.integrationId || existing.id || existing._id);
             }
         }
-    }, [integrations, searchParams]);
+    }, [integrations, isLoadingIntegrations, searchParams, router]);
 
     useEffect(() => {
         // Simulate initial checks
@@ -303,7 +313,7 @@ export default function ShopifyIntegrationPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [shopDomain, isAuthenticated, addToast]);
 
-    if (isInitialLoad) {
+    if (isInitialLoad || isRedirectingToStore) {
         return (
             <Dialog open={true}>
                 <DialogContent

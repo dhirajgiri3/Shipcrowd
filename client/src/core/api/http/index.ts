@@ -42,27 +42,34 @@ const getBaseURL = (): string => {
 
     // ✅ Validate URL format if provided
     if (apiUrl) {
-        // Check if it starts with http:// or https://
-        if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+        // Check if it's a relative URL (for Next.js proxy) or absolute URL
+        const isRelativeUrl = apiUrl.startsWith('/');
+        const isAbsoluteUrl = apiUrl.startsWith('http://') || apiUrl.startsWith('https://');
+
+        if (!isRelativeUrl && !isAbsoluteUrl) {
             throw new Error(
                 `❌ Invalid NEXT_PUBLIC_API_URL: "${apiUrl}"\n` +
-                'Must start with http:// or https://\n' +
-                'Example: https://api.Shipcrowd.com/v1'
+                'Must start with http://, https://, or / (for Next.js proxy)\n' +
+                'Examples:\n' +
+                '  - Production: https://api.Shipcrowd.com/v1\n' +
+                '  - With Next.js proxy: /api/v1'
             );
         }
 
-        // Validate URL structure
-        try {
-            new URL(apiUrl);
-        } catch {
-            throw new Error(
-                `❌ Invalid NEXT_PUBLIC_API_URL: "${apiUrl}"\n` +
-                'Must be a valid URL.\n' +
-                'Example: https://api.Shipcrowd.com/v1'
-            );
+        // Validate absolute URL structure (skip validation for relative URLs)
+        if (isAbsoluteUrl) {
+            try {
+                new URL(apiUrl);
+            } catch {
+                throw new Error(
+                    `❌ Invalid NEXT_PUBLIC_API_URL: "${apiUrl}"\n` +
+                    'Must be a valid URL.\n' +
+                    'Example: https://api.Shipcrowd.com/v1'
+                );
+            }
         }
 
-        // ✅ Warn if using HTTP in production for non-local hosts (localhost is allowed for local builds)
+        // ✅ Warn if using HTTP in production for non-local hosts (skip for relative URLs)
         if (process.env.NODE_ENV === 'production' && apiUrl.startsWith('http://')) {
             const parsedUrl = new URL(apiUrl);
             const hostname = parsedUrl.hostname.toLowerCase();
@@ -77,6 +84,14 @@ const getBaseURL = (): string => {
                     'Please use HTTPS for production API URL.'
                 );
             }
+        }
+
+        // ℹ️ Log when using Next.js proxy pattern
+        if (apiUrl.startsWith('/') && process.env.NODE_ENV === 'development') {
+            console.log(
+                '📡 Using Next.js API proxy pattern.\n' +
+                `API requests to "${apiUrl}" will be forwarded to backend via proxy route.`
+            );
         }
     }
 

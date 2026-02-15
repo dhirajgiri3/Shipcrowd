@@ -18,15 +18,23 @@ const router = Router();
 
 // Use raw body parser for HMAC verification
 const rawBodyParser = express.raw({
-  type: 'application/json',
+  type: '*/*',
+  limit: '10mb',
   verify: captureRawBody,
 });
 
 // Middleware to parse raw body to JSON after verification
 const parseJSONAfterVerification = (req: any, res: any, next: any) => {
   try {
-    if (req.rawBody) {
-      req.body = JSON.parse(req.rawBody);
+    if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+      next();
+      return;
+    }
+
+    const rawBody = req.rawBody ?? req.body;
+    if (rawBody) {
+      const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody);
+      req.body = JSON.parse(bodyStr);
     }
     next();
   } catch (error) {

@@ -9,6 +9,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+    useIntegrations,
     useTestConnection,
     useCreateIntegration,
 } from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
@@ -118,6 +119,18 @@ export default function FlipkartIntegrationPage() {
 
     const { mutate: testConnection, isPending: isTesting } = useTestConnection();
     const { mutate: createIntegration, isPending: isCreating } = useCreateIntegration();
+    const { data: integrations, isLoading: isLoadingIntegrations } = useIntegrations({ type: 'FLIPKART' });
+
+    const [isRedirectingToStore, setIsRedirectingToStore] = useState(false);
+    useEffect(() => {
+        if (isLoadingIntegrations || !integrations || integrations.length === 0) return;
+        const existing = (integrations as any[])[0];
+        const storeId = existing?.integrationId || existing?.storeId || existing?.id || existing?._id;
+        if (storeId) {
+            setIsRedirectingToStore(true);
+            router.replace(`/seller/integrations/flipkart/${storeId}`);
+        }
+    }, [integrations, isLoadingIntegrations, router]);
 
     // Online/offline detection
     useEffect(() => {
@@ -168,10 +181,11 @@ export default function FlipkartIntegrationPage() {
     });
 
     useEffect(() => {
-        // Simulate initial checks
-        const timer = setTimeout(() => setIsInitialLoad(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+        if (!isLoadingIntegrations) {
+            const timer = setTimeout(() => setIsInitialLoad(false), 400);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoadingIntegrations]);
 
     useEffect(() => {
         setTestResult(null);
@@ -224,7 +238,7 @@ export default function FlipkartIntegrationPage() {
         return '';
     }, [accessToken, touched.accessToken, testAttempted]);
 
-    if (isInitialLoad) {
+    if (isInitialLoad || isRedirectingToStore) {
         return (
             <Dialog open={true}>
                 <DialogContent

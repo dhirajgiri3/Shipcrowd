@@ -204,7 +204,7 @@ export class CODRemittanceJob {
     }> {
         try {
             const { VelocityShipfastProvider } = await import(
-                '../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+                '../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider'
             );
 
             const velocityClient = new VelocityShipfastProvider(companyId);
@@ -244,14 +244,36 @@ export class CODRemittanceJob {
 
         logger.info(`Processing ${approvedRemittances.length} approved remittances for payout`);
 
+        let successCount = 0;
+        let failureCount = 0;
+        const failures: Array<{ remittanceId: string; error: string }> = [];
+
         for (const rem of approvedRemittances) {
             try {
                 // If company has auto-payout enabled
                 // For MVP, assume manual approval was the gate, so initiate now
                 await CODRemittanceService.initiatePayout(rem.remittanceId);
+                successCount += 1;
             } catch (error) {
-                logger.error(`Failed auto-payout for ${rem.remittanceId}`, error);
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                failureCount += 1;
+                failures.push({
+                    remittanceId: rem.remittanceId,
+                    error: errorMessage,
+                });
+                logger.error(`Failed auto-payout for ${rem.remittanceId}`, { error: errorMessage });
             }
+        }
+
+        logger.info('COD auto-payout run completed', {
+            total: approvedRemittances.length,
+            successCount,
+            failureCount,
+            failures: failures.slice(0, 10),
+        });
+
+        if (approvedRemittances.length > 0 && failureCount === approvedRemittances.length) {
+            throw new Error(`Auto-payout failed for all ${failureCount} approved remittances`);
         }
     }
 

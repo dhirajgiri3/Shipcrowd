@@ -8,7 +8,7 @@ import { ValidationError, NotFoundError, AuthenticationError, AppError } from '.
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
-import { toEcommerceStoreDTO, applyDefaultsToSettings } from '../../../../core/mappers/store.mapper';
+import { toEcommerceStoreDTO, applyDefaultsToSettings, applyDefaultsToSyncConfig } from '../../../../core/mappers/store.mapper';
 
 /**
  * ShopifyController
@@ -92,8 +92,8 @@ export class ShopifyController {
         companyId: store.companyId,
       });
 
-      // Redirect to frontend success page
-      const redirectUrl = `${process.env.FRONTEND_URL}/seller/integrations/shopify/setup?status=success&store=${store.shopDomain}&storeId=${store._id}&step=3`;
+      // Redirect directly to store dashboard (not setup page)
+      const redirectUrl = `${process.env.FRONTEND_URL}/seller/integrations/shopify/${store._id}`;
       res.redirect(redirectUrl);
     } catch (error) {
       logger.error('Shopify OAuth callback failed', { error });
@@ -283,7 +283,7 @@ export class ShopifyController {
       const auth = guardChecks(req);
       requireCompanyContext(auth);
       const { id } = req.params;
-      const { settings } = req.body;
+      const { settings, syncConfig } = req.body;
 
       // Verify ownership
       const store = await ShopifyStore.findOne({ _id: id, companyId: auth.companyId }) as any;
@@ -292,12 +292,20 @@ export class ShopifyController {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
-      // Update settings
+      // Update settings with defaults applied
       if (settings) {
-        store.settings = {
-          ...store.settings,
+        store.settings = applyDefaultsToSettings({
+          ...(store.settings || {}),
           ...settings,
-        };
+        });
+      }
+
+      // Update syncConfig with defaults applied
+      if (syncConfig) {
+        store.syncConfig = applyDefaultsToSyncConfig({
+          ...(store.syncConfig || {}),
+          ...syncConfig,
+        });
       }
 
       await store.save();
@@ -308,7 +316,21 @@ export class ShopifyController {
         userId: auth.userId,
       });
 
-      sendSuccess(res, { store }, 'Settings updated successfully');
+      sendSuccess(res, {
+        store: {
+          ...toEcommerceStoreDTO(store, 'shopify'),
+          shopDomain: store.shopDomain,
+          shopName: store.shopName,
+          shopEmail: store.shopEmail,
+          shopCountry: store.shopCountry,
+          shopCurrency: store.shopCurrency,
+          shopPlan: store.shopPlan,
+          scope: store.scope,
+          syncConfig: store.syncConfig,
+          settings: applyDefaultsToSettings(store.settings),
+          stats: store.stats,
+        },
+      }, 'Settings updated successfully');
     } catch (error) {
       next(error);
     }
