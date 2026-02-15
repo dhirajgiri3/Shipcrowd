@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { DetailPanel } from '@/src/components/ui/layout/DetailPanel';
 import { Button } from '@/src/components/ui/core/Button';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { useShipmentPOD, useUploadShipmentPOD } from '@/src/core/api/hooks/logistics/usePod';
 import { useGenerateLabel } from '@/src/core/api/hooks/seller/useShipment';
 import {
@@ -151,7 +152,12 @@ function ShipmentDetailsPanelComponent({ shipment, onClose }: ShipmentDetailsPan
                 {/* Status & AWB Section */}
                 <div className="flex items-center justify-between bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-subtle)]">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">AWB Number</p>
+                        <div className="flex items-center gap-2 mb-1">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">AWB Number</p>
+                            {(shipment as any).orderId?.source && (
+                                <SourceBadge source={(shipment as any).orderId.source} size="sm" />
+                            )}
+                        </div>
                         <div className="flex items-center gap-2">
                             <span className="font-mono font-bold text-lg text-[var(--text-primary)]">{trackingNumber || 'N/A'}</span>
                             {trackingNumber && (

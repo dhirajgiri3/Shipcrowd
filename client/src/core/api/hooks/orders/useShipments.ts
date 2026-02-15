@@ -18,6 +18,7 @@ export interface Shipment {
         orderNumber: string;
         customerInfo?: any;
         totals?: any;
+        source?: string;
     } | string;
     companyId: string;
     carrier: string;

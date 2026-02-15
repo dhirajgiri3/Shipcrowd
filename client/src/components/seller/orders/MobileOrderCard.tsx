@@ -34,6 +34,7 @@ import {
   Copy,
   Eye
 } from 'lucide-react';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { cn } from '@/src/lib/utils';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
 
@@ -67,6 +68,7 @@ export interface MobileOrderCardData {
   createdAt: string; // ISO string
   courierName?: string;
   urgentReason?: string; // e.g., "Pickup in 2 hours", "Exception: Address incomplete"
+  source?: string;
 }
 
 interface MobileOrderCardProps {
@@ -312,11 +314,14 @@ export function MobileOrderCard({
           </div>
         )}
 
-        {/* Header: Status + Payment Mode */}
+        {/* Header: Status + Payment Mode + Source */}
         <div className="flex items-center justify-between mb-3">
-          <div className={cn('flex items-center gap-2 px-2.5 py-1.5 rounded-lg', config.bgColor)}>
-            <Icon className={cn('w-4 h-4', config.color)} />
-            <span className={cn('text-xs font-bold', config.color)}>{config.label}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className={cn('flex items-center gap-2 px-2.5 py-1.5 rounded-lg', config.bgColor)}>
+              <Icon className={cn('w-4 h-4', config.color)} />
+              <span className={cn('text-xs font-bold', config.color)}>{config.label}</span>
+            </div>
+            {order.source && <SourceBadge source={order.source} size="sm" />}
           </div>
 
           <div className="flex items-center gap-2">

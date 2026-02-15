@@ -114,10 +114,10 @@ export class FlipkartWebhookService {
           currency: 'INR',
         },
         paymentStatus: this.mapPaymentStatus(payload.paymentStatus),
-        currentStatus: 'PENDING',
+        currentStatus: 'pending',
         statusHistory: [
           {
-            status: 'PENDING',
+            status: 'pending',
             timestamp: new Date(),
             comment: 'Order created from Flipkart webhook',
           },
@@ -406,9 +406,9 @@ export class FlipkartWebhookService {
         return;
       }
 
-      order.currentStatus = 'CANCELLED';
+      order.currentStatus = 'cancelled';
       order.statusHistory.push({
-        status: 'CANCELLED',
+        status: 'cancelled',
         timestamp: new Date(),
         comment: `Cancelled in Flipkart. Reason: ${payload.cancelReason || 'Not specified'}`,
       });

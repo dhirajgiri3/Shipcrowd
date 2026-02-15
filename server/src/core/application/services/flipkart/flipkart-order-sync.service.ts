@@ -14,7 +14,8 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import { FlipkartStore, FlipkartSyncLog, Order } from '../../../../infrastructure/database/mongoose/models';
+import mongoose from 'mongoose';
+import { FlipkartStore, FlipkartSyncLog, Order, Company } from '../../../../infrastructure/database/mongoose/models';
 import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -338,12 +339,29 @@ export class FlipkartOrderSyncService {
   private static async createNewOrder(shipment: FlipkartShipment, store: any): Promise<any> {
     const mapped = this.mapFlipkartOrderToShipcrowd(shipment, store);
 
+    // Fetch and assign default warehouse
+    try {
+      const company = await Company.findById(store.companyId)
+        .select('settings.defaultWarehouseId')
+        .lean();
+
+      if (company?.settings?.defaultWarehouseId) {
+        mapped.warehouseId = new mongoose.Types.ObjectId(company.settings.defaultWarehouseId);
+      }
+    } catch (warehouseError) {
+      logger.warn('Failed to assign default warehouse to Flipkart order', {
+        error: warehouseError,
+        orderId: shipment.orderItemId,
+      });
+    }
+
     const order = await Order.create(mapped);
 
     logger.info('Created order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
       ShipcrowdOrderId: order._id,
       orderNumber: order.orderNumber,
+      warehouseId: order.warehouseId,
     });
 
     return order;
@@ -393,6 +411,10 @@ export class FlipkartOrderSyncService {
   private static mapFlipkartOrderToShipcrowd(shipment: FlipkartShipment, store: any): any {
     const { buyerDetails, lineItems, priceComponents } = shipment;
 
+    // Handle null buyerDetails or address
+    const buyer = buyerDetails || {};
+    const address = buyer.address || {};
+
     return {
       orderNumber: this.generateOrderNumber(shipment),
       companyId: store.companyId,
@@ -401,16 +423,16 @@ export class FlipkartOrderSyncService {
       flipkartStoreId: store._id,
 
       customerInfo: {
-        name: buyerDetails.name,
-        email: buyerDetails.email || undefined,
-        phone: buyerDetails.phone || 'N/A',
+        name: buyer.name || 'Flipkart Customer',
+        email: buyer.email || undefined,
+        phone: buyer.phone || 'N/A',
         address: {
-          line1: buyerDetails.address.line1,
-          line2: buyerDetails.address.line2,
-          city: buyerDetails.address.city,
-          state: buyerDetails.address.state,
-          country: buyerDetails.address.country || 'India',
-          postalCode: buyerDetails.address.postalCode,
+          line1: address.line1 || 'N/A',
+          line2: address.line2 || undefined,
+          city: address.city || 'N/A',
+          state: address.state || 'N/A',
+          country: address.country || 'India',
+          postalCode: address.postalCode || 'N/A',
         },
       },
 
@@ -498,20 +520,20 @@ export class FlipkartOrderSyncService {
    */
   private static mapFulfillmentStatus(flipkartStatus: string): string {
     const statusMap: Record<string, string> = {
-      APPROVED: 'PENDING',
-      READY_TO_DISPATCH: 'PROCESSING',
-      PACKED: 'PROCESSING',
-      FORM_FAILED: 'PENDING',
-      PICKUP_COMPLETE: 'IN_TRANSIT',
-      SHIPPED: 'SHIPPED',
-      DELIVERED: 'DELIVERED',
-      CANCELLED: 'CANCELLED',
-      CUSTOMER_RETURN_REQUESTED: 'RETURN_REQUESTED',
-      RETURNED: 'RETURNED',
-      LOST: 'LOST',
+      APPROVED: 'pending',
+      READY_TO_DISPATCH: 'ready_to_ship',
+      PACKED: 'ready_to_ship',
+      FORM_FAILED: 'pending',
+      PICKUP_COMPLETE: 'in_transit',
+      SHIPPED: 'shipped',
+      DELIVERED: 'delivered',
+      CANCELLED: 'cancelled',
+      CUSTOMER_RETURN_REQUESTED: 'rto_initiated',
+      RETURNED: 'rto_delivered',
+      LOST: 'cancelled',
     };
 
-    return statusMap[flipkartStatus.toUpperCase()] || 'PENDING';
+    return statusMap[flipkartStatus.toUpperCase()] || 'pending';
   }
 
   /**

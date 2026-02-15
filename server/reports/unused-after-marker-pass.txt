@@ -1,0 +1,58 @@
+
+> server@1.0.0 typecheck:unused
+> tsc --noEmit --noUnusedLocals --noUnusedParameters
+
+src/core/application/services/amazon/amazon-product-mapping.service.ts(30,6): error TS6196: '__unused_AmazonListing' is declared but never used.
+src/core/application/services/communication/ndr-communication.service.ts(181,17): error TS6133: 'ndrEventId' is declared but its value is never read.
+src/core/application/services/communication/ndr-communication.service.ts(181,41): error TS6133: 'channel' is declared but its value is never read.
+src/core/application/services/communication/ndr-communication.service.ts(181,50): error TS6133: 'templateType' is declared but its value is never read.
+src/core/application/services/communication/ndr-communication.service.ts(181,64): error TS6133: 'customMessage' is declared but its value is never read.
+src/core/application/services/pricing/quote-engine.service.ts(1108,13): error TS6133: 'calculateFromCard' is declared but its value is never read.
+src/core/application/services/rto/rto.service.ts(608,26): error TS6133: 'deductRTOCharges' is declared but its value is never read.
+src/core/application/services/shipping/order.service.ts(853,22): error TS6133: 'rowIndex' is declared but its value is never read.
+src/core/application/services/shopify/shopify-oauth.service.ts(50,6): error TS6196: '__unused_CallbackParams' is declared but never used.
+src/core/application/services/shopify/shopify-oauth.service.ts(56,6): error TS6196: '__unused_WebhookRegistration' is declared but never used.
+src/core/application/services/shopify/shopify-oauth.service.ts(145,36): error TS6133: 'random' is declared but its value is never read.
+src/core/application/services/shopify/shopify-oauth.service.ts(213,38): error TS6133: 'timestamp' is declared but its value is never read.
+src/core/application/services/sku/sku-weight-profile.service.ts(47,29): error TS6133: 'HIGH_CONFIDENCE_THRESHOLD' is declared but its value is never read.
+src/core/application/services/validation/phone-verification.service.ts(13,20): error TS6133: 'exotel' is declared but its value is never read.
+src/core/application/services/warehouse/picking.service.ts(378,26): error TS6133: 'findOptimalLocation' is declared but its value is never read.
+src/core/application/services/webhooks/webhook-dispatcher.service.ts(60,13): error TS6133: 'generateSignature' is declared but its value is never read.
+src/core/application/templates/emails/components/EmailLayout.tsx(14,41): error TS6133: 'previewText' is declared but its value is never read.
+src/infrastructure/database/mongoose/models/analytics/scheduled-report.model.ts(287,53): error TS6133: 'cronExpression' is declared but its value is never read.
+src/infrastructure/database/seeders/seeders/11-wallet-transactions.seeder.ts(21,6): error TS6196: '__unused_CompanyBalance' is declared but never used.
+src/infrastructure/external/couriers/velocity/velocity-shipfast.provider.ts(1051,94): error TS6133: 'reason' is declared but its value is never read.
+src/infrastructure/external/ecommerce/flipkart/flipkart.client.ts(32,11): error TS6133: 'sellerId' is declared but its value is never read.
+src/presentation/http/controllers/admin/user-management.controller.ts(24,38): error TS6133: 'isSuperAdmin' is declared but its value is never read.
+src/presentation/http/controllers/admin/user-management.controller.ts(144,30): error TS6133: 'isSuperAdmin' is declared but its value is never read.
+src/presentation/http/controllers/admin/user-management.controller.ts(216,38): error TS6133: 'isSuperAdmin' is declared but its value is never read.
+src/presentation/http/controllers/admin/user-management.controller.ts(263,38): error TS6133: 'isSuperAdmin' is declared but its value is never read.
+src/presentation/http/controllers/auth/auth.controller.ts(797,11): error TS6198: All destructured elements are unused.
+src/presentation/http/controllers/auth/mfa.controller.ts(39,21): error TS6133: 'secret' is declared but its value is never read.
+src/presentation/http/controllers/commission/commission-transaction.controller.ts(53,74): error TS6133: 'sortBy' is declared but its value is never read.
+src/presentation/http/controllers/commission/commission-transaction.controller.ts(53,82): error TS6133: 'sortOrder' is declared but its value is never read.
+src/presentation/http/controllers/ndr/ndr.controller.ts(268,40): error TS6133: 'resolutionMethod' is declared but its value is never read.
+src/presentation/http/controllers/ndr/ndr.controller.ts(361,51): error TS6133: 'notes' is declared but its value is never read.
+src/presentation/http/controllers/ndr/ndr.controller.ts(422,41): error TS6133: 'ndrType' is declared but its value is never read.
+src/presentation/http/controllers/ndr/ndr.controller.ts(545,28): error TS6133: 'startDate' is declared but its value is never read.
+src/presentation/http/controllers/ndr/ndr.controller.ts(545,39): error TS6133: 'endDate' is declared but its value is never read.
+src/presentation/http/controllers/rto/rto.controller.ts(157,41): error TS6133: 'notes' is declared but its value is never read.
+src/presentation/http/controllers/rto/rto.controller.ts(157,48): error TS6133: 'warehouseId' is declared but its value is never read.
+src/presentation/http/controllers/rto/rto.controller.ts(157,61): error TS6133: 'expectedReturnDate' is declared but its value is never read.
+src/presentation/http/controllers/rto/rto.controller.ts(296,31): error TS6133: 'nextAction' is declared but its value is never read.
+src/presentation/http/controllers/system/seller-health.controller.ts(393,15): error TS6133: 'isAdmin' is declared but its value is never read.
+src/presentation/http/middleware/webhooks/shopify-webhook-auth.middleware.ts(250,3): error TS6133: 'res' is declared but its value is never read.
+tests/integration/admin/couriers.test.ts(20,6): error TS2454: Variable 'adminToken' is used before being assigned.
+tests/integration/admin/couriers.test.ts(23,6): error TS2454: Variable 'userId' is used before being assigned.
+tests/integration/crm/call-log.integration.test.ts(18,6): error TS2454: Variable 'salesRepToken' is used before being assigned.
+tests/integration/crm/dispute.integration.test.ts(16,6): error TS2454: Variable 'ticketId' is used before being assigned.
+tests/integration/crm/notification.integration.test.ts(11,6): error TS2454: Variable 'userId' is used before being assigned.
+tests/integration/finance/cod-api.test.ts(24,6): error TS2454: Variable 'userId' is used before being assigned.
+tests/integration/finance/cod-end-to-end.test.ts(16,6): error TS2454: Variable 'session' is used before being assigned.
+tests/integration/shopify/complete-flow.integration.test.ts(27,6): error TS2454: Variable 'userId' is used before being assigned.
+tests/integration/woocommerce/complete-flow.integration.test.ts(26,6): error TS2454: Variable 'jwtToken' is used before being assigned.
+tests/integration/woocommerce/complete-flow.integration.test.ts(29,6): error TS2454: Variable 'userId' is used before being assigned.
+tests/unit/services/disputes/weight-dispute-detection.test.ts(15,6): error TS6196: '__unused_MockedFunction' is declared but never used.
+tests/unit/services/disputes/weight-dispute-detection.test.ts(15,32): error TS2314: Generic type 'MockedFunction' requires 1 type argument(s).
+tests/unit/services/disputes/weight-dispute-resolution.test.ts(17,6): error TS6196: '__unused_MockedFunction' is declared but never used.
+tests/unit/services/disputes/weight-dispute-resolution.test.ts(17,32): error TS2314: Generic type 'MockedFunction' requires 1 type argument(s).

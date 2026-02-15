@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { formatCurrency, cn, formatPaginationRange } from '@/src/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '@/src/components/ui/core/Button';
@@ -106,6 +107,7 @@ export function OrderTable({
                                     <ArrowUpDown size={12} className={sortBy === 'orderNumber' ? 'text-[var(--primary-blue)]' : ''} />
                                 </div>
                             </TableHead>
+                            <TableHead className="text-[var(--text-secondary)]">Source</TableHead>
                             <TableHead className="cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]" onClick={() => handleSortClick('customer')}>
                                 <div className="flex items-center gap-1">
                                     Customer
@@ -145,6 +147,9 @@ export function OrderTable({
                                             <div className="font-medium text-[var(--text-primary)]">{order.orderNumber}</div>
                                             <div className="text-xs text-[var(--text-tertiary)]">{format(new Date(order.createdAt), 'MMM d, h:mm a')}</div>
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <SourceBadge source={order.source} size="sm" />
                                     </TableCell>
                                     <TableCell>
                                         <div>

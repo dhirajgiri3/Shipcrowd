@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Phone, Mail, MapPin, Package, Truck, Loader2 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { formatCurrency } from '@/src/lib/utils';
 import { Order } from '@/src/types/domain/order';
 import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
@@ -69,8 +70,9 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
                             <div>
-                                <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2 flex-wrap">
                                     Order #{order.orderNumber}
+                                    <SourceBadge source={order.source} size="sm" />
                                 </h2>
                                 <p className="text-sm text-[var(--text-muted)]">
                                     Placed on {new Date(order.createdAt).toLocaleDateString()}

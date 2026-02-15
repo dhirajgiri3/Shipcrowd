@@ -18,6 +18,7 @@ import { Shipment, useShipments, useShipmentStats } from '@/src/core/api/hooks/o
 import { ShipmentDetailsPanel } from '@/src/components/seller/shipments/ShipmentDetailsPanel';
 import { format } from 'date-fns';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
@@ -204,6 +205,14 @@ export function ShipmentsClient() {
                         <div className="text-xs text-[var(--text-muted)]">{customerName}</div>
                     </div>
                 );
+            },
+        },
+        {
+            header: 'Source',
+            accessorKey: 'orderId.source',
+            cell: (row: Shipment) => {
+                const source = typeof row.orderId === 'object' ? (row.orderId as { source?: string })?.source : undefined;
+                return <SourceBadge source={source} size="sm" />;
             },
         },
         {

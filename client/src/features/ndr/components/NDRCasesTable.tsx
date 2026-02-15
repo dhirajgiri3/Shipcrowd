@@ -18,6 +18,7 @@ import type { NDRStatus, NDRFilters } from '@/src/types/api/orders';
 import { useDebouncedValue } from '@/src/hooks/data';
 
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 
 const STATUS_TABS: { status: NDRStatus | 'all'; label: string }[] = [
     { status: 'all', label: 'All Cases' },
@@ -143,6 +144,7 @@ export function NDRCasesTable() {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">NDR ID</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tracking</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reason</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Attempts</th>
@@ -175,6 +177,9 @@ export function NDRCasesTable() {
                                                     {shipment.carrier}
                                                 </div>
                                             )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <SourceBadge source={(shipment as any)?.orderId?.source} size="sm" />
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-sm text-gray-900 dark:text-white">

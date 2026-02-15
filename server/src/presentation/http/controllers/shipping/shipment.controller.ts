@@ -281,7 +281,7 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
 
         const [shipments, total] = await Promise.all([
             Shipment.find(filter)
-                .populate('orderId', 'orderNumber customerInfo totals')
+                .populate('orderId', 'orderNumber customerInfo totals source')
                 .populate('pickupDetails.warehouseId', 'name address')
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -311,7 +311,7 @@ export const getShipmentById = async (req: Request, res: Response, next: NextFun
             companyId: auth.companyId,
             isDeleted: false,
         })
-            .populate('orderId', 'orderNumber customerInfo products totals currentStatus')
+            .populate('orderId', 'orderNumber customerInfo products totals currentStatus source')
             .populate('pickupDetails.warehouseId', 'name address contactInfo')
             .lean();
 
@@ -343,7 +343,7 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
             companyId: auth.companyId,
             isDeleted: false,
         })
-            .populate('orderId', 'orderNumber customerInfo')
+            .populate('orderId', 'orderNumber customerInfo source')
             .populate('pickupDetails.warehouseId', 'name address')
             .select('trackingNumber carrier serviceType currentStatus statusHistory deliveryDetails pickupDetails estimatedDelivery actualDelivery createdAt carrierDetails')
             .lean();
@@ -530,7 +530,7 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
             ],
             isDeleted: false,
         })
-            .populate('orderId', 'orderNumber')
+            .populate('orderId', 'orderNumber source')
             .populate('pickupDetails.warehouseId', 'name address')
             .select('trackingNumber carrier serviceType currentStatus statusHistory deliveryDetails pickupDetails estimatedDelivery actualDelivery createdAt carrierDetails')
             .lean();

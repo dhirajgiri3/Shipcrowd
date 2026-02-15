@@ -15,7 +15,7 @@
  */
 
 import mongoose from 'mongoose';
-import { Order, WooCommerceStore, WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { Order, WooCommerceStore, WooCommerceSyncLog, Company } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import { WooCommerceOrder } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import { AppError } from '../../../../shared/errors/app.error';
@@ -137,6 +137,24 @@ export default class WooCommerceOrderSyncService {
 
           // Transform WooCommerce order to Shipcrowd order
           const mappedOrder = this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
+
+          // Assign default warehouse for new orders
+          if (!existingOrder && !mappedOrder.warehouseId) {
+            try {
+              const company = await Company.findById(store.companyId)
+                .select('settings.defaultWarehouseId')
+                .lean();
+
+              if (company?.settings?.defaultWarehouseId) {
+                mappedOrder.warehouseId = new mongoose.Types.ObjectId(company.settings.defaultWarehouseId);
+              }
+            } catch (warehouseError) {
+              logger.warn('Failed to assign default warehouse to WooCommerce order', {
+                error: warehouseError,
+                orderId: wooOrder.id,
+              });
+            }
+          }
 
           // Create or update order
           if (existingOrder) {
@@ -263,6 +281,24 @@ export default class WooCommerceOrderSyncService {
       // Transform order
       const mappedOrder = this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
 
+      // Assign default warehouse for new orders
+      if (!existingOrder && !mappedOrder.warehouseId) {
+        try {
+          const company = await Company.findById(store.companyId)
+            .select('settings.defaultWarehouseId')
+            .lean();
+
+          if (company?.settings?.defaultWarehouseId) {
+            mappedOrder.warehouseId = new mongoose.Types.ObjectId(company.settings.defaultWarehouseId);
+          }
+        } catch (warehouseError) {
+          logger.warn('Failed to assign default warehouse to WooCommerce order', {
+            error: warehouseError,
+            orderId: wooOrder.id,
+          });
+        }
+      }
+
       // Create or update
       let order;
       if (existingOrder) {
@@ -297,6 +333,14 @@ export default class WooCommerceOrderSyncService {
     wooOrder: WooCommerceOrder,
     store: any
   ): any {
+    // Handle null billing/shipping (can happen with digital products, gift cards)
+    const billing = wooOrder.billing || {};
+    const shipping = wooOrder.shipping || {};
+
+    const customerName = billing.first_name || billing.last_name
+      ? `${billing.first_name || ''} ${billing.last_name || ''}`.trim()
+      : 'Guest Customer';
+
     return {
       // Basic info
       orderNumber: this.generateOrderNumber(wooOrder),
@@ -307,16 +351,16 @@ export default class WooCommerceOrderSyncService {
 
       // Customer info
       customerInfo: {
-        name: `${wooOrder.billing.first_name} ${wooOrder.billing.last_name}`.trim(),
-        email: wooOrder.billing.email || '',
-        phone: wooOrder.billing.phone || '',
+        name: customerName,
+        email: billing.email || '',
+        phone: billing.phone || '',
         address: {
-          line1: wooOrder.shipping.address_1 || wooOrder.billing.address_1,
-          line2: wooOrder.shipping.address_2 || wooOrder.billing.address_2 || '',
-          city: wooOrder.shipping.city || wooOrder.billing.city,
-          state: wooOrder.shipping.state || wooOrder.billing.state,
-          country: wooOrder.shipping.country || wooOrder.billing.country,
-          postalCode: wooOrder.shipping.postcode || wooOrder.billing.postcode,
+          line1: shipping.address_1 || billing.address_1 || 'N/A',
+          line2: shipping.address_2 || billing.address_2 || '',
+          city: shipping.city || billing.city || 'N/A',
+          state: shipping.state || billing.state || 'N/A',
+          country: shipping.country || billing.country || 'N/A',
+          postalCode: shipping.postcode || billing.postcode || 'N/A',
         },
       },
 
@@ -407,17 +451,17 @@ export default class WooCommerceOrderSyncService {
    */
   private static mapOrderStatus(wooStatus: string): string {
     const statusMap: Record<string, string> = {
-      pending: 'PENDING',
-      processing: 'PROCESSING',
-      'on-hold': 'PENDING',
-      completed: 'FULFILLED',
-      cancelled: 'CANCELLED',
-      refunded: 'REFUNDED',
-      failed: 'CANCELLED',
-      trash: 'CANCELLED',
+      pending: 'pending',
+      processing: 'processing',
+      'on-hold': 'pending',
+      completed: 'delivered',
+      cancelled: 'cancelled',
+      refunded: 'cancelled',
+      failed: 'cancelled',
+      trash: 'cancelled',
     };
 
-    return statusMap[wooStatus] || 'PENDING';
+    return statusMap[wooStatus] || 'pending';
   }
 
   /**
@@ -498,9 +542,9 @@ export default class WooCommerceOrderSyncService {
         return;
       }
 
-      order.currentStatus = 'CANCELLED';
+      order.currentStatus = 'cancelled';
       order.statusHistory.push({
-        status: 'CANCELLED',
+        status: 'cancelled',
         timestamp: new Date(),
         comment: 'Order cancelled in WooCommerce',
       });

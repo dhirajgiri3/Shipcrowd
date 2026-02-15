@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
-import { Order, ShopifyStore, SyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { Order, ShopifyStore, SyncLog, Company } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
+import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -26,37 +27,56 @@ interface ShopifyOrder {
   updated_at: string;
   financial_status: string;
   fulfillment_status: string | null;
-  customer: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string;
-  };
-  shipping_address: {
-    address1: string;
+  email?: string; // Top-level email (when customer is null for gift cards)
+  phone?: string; // Top-level phone
+  customer?: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+  } | null;
+  shipping_address?: {
+    address1?: string;
     address2?: string;
-    city: string;
-    province: string;
-    country: string;
-    zip: string;
-  };
+    city?: string;
+    province?: string;
+    province_code?: string; // Alternative to province
+    country?: string;
+    country_code?: string; // Alternative to country
+    zip?: string;
+  } | null;
+  billing_address?: {
+    address1?: string;
+    address2?: string;
+    city?: string;
+    province?: string;
+    province_code?: string;
+    country?: string;
+    country_code?: string;
+    zip?: string;
+  } | null;
   line_items: Array<{
     id: number;
     title: string;
-    sku: string;
+    sku?: string;
     quantity: number;
     price: string;
     grams: number;
   }>;
   total_line_items_price: string;
-  total_tax: string;
-  total_shipping_price: string;
-  total_discounts: string;
+  total_tax?: string;
+  total_shipping_price?: string;
+  total_discounts?: string;
   total_price: string;
-  subtotal_price: string;
-  payment_gateway_names: string[];
+  subtotal_price?: string;
+  payment_gateway_names?: string[];
   note?: string;
   tags?: string;
+  fulfillments?: Array<{
+    tracking_number?: string;
+    tracking_company?: string;
+  }>;
+  cancel_reason?: string;
 }
 
 interface SyncResult {
@@ -267,12 +287,47 @@ export class ShopifyOrderSyncService {
   private static async createNewOrder(shopifyOrder: ShopifyOrder, store: any): Promise<any> {
     const mapped = this.mapShopifyOrderToShipcrowd(shopifyOrder, store);
 
+    // Fetch company's default warehouse and assign it to the order
+    try {
+      const company = await Company.findById(store.companyId)
+        .select('settings.defaultWarehouseId')
+        .lean();
+
+      const defaultWarehouseId = company?.settings?.defaultWarehouseId;
+      if (defaultWarehouseId) {
+        mapped.warehouseId = new mongoose.Types.ObjectId(defaultWarehouseId);
+        logger.debug('Assigned default warehouse to Shopify order', {
+          orderId: shopifyOrder.id,
+          warehouseId: defaultWarehouseId,
+        });
+      } else {
+        logger.warn('No default warehouse configured for company', {
+          companyId: store.companyId,
+          orderId: shopifyOrder.id,
+        });
+      }
+    } catch (warehouseError) {
+      logger.error('Failed to assign default warehouse', {
+        error: warehouseError,
+        orderId: shopifyOrder.id,
+      });
+    }
+
     const order = await Order.create(mapped);
+
+    // Invalidate order list cache so the new order appears immediately
+    try {
+      const cache = new CacheRepository('orders');
+      await cache.invalidateTags([`company:${store.companyId}:orders`]);
+    } catch (cacheError) {
+      logger.warn('Failed to invalidate order cache after Shopify sync', { error: cacheError });
+    }
 
     logger.info('Created order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
       ShipcrowdOrderId: order._id,
       orderNumber: order.orderNumber,
+      warehouseId: order.warehouseId,
     });
 
     return order;
@@ -330,7 +385,6 @@ export class ShopifyOrderSyncService {
       companyId: store.companyId,
       source: 'shopify',
       sourceId: shopifyOrder.id.toString(),
-      platform: 'shopify', // Add platform identifier for UI display
 
       customerInfo: {
         name: customerName,
@@ -413,23 +467,24 @@ export class ShopifyOrderSyncService {
 
   /**
    * Map Shopify fulfillment status to Shipcrowd order status
+   * NOTE: Must use lowercase to match order service conventions
    */
   private static mapFulfillmentStatus(fulfillmentStatus: string | null): string {
-    if (!fulfillmentStatus) return 'PENDING';
+    if (!fulfillmentStatus) return 'pending';
 
     const statusMap: Record<string, string> = {
-      fulfilled: 'FULFILLED',
-      partial: 'PROCESSING',
-      restocked: 'CANCELLED',
+      fulfilled: 'delivered',
+      partial: 'processing',
+      restocked: 'cancelled',
     };
 
-    return statusMap[fulfillmentStatus.toLowerCase()] || 'PENDING';
+    return statusMap[fulfillmentStatus.toLowerCase()] || 'pending';
   }
 
   /**
    * Detect payment method (COD vs Prepaid)
    */
-  private static detectPaymentMethod(paymentGateways: string[]): 'cod' | 'prepaid' {
+  private static detectPaymentMethod(paymentGateways: string[] | undefined): 'cod' | 'prepaid' {
     if (!paymentGateways || paymentGateways.length === 0) {
       return 'prepaid'; // Default to prepaid
     }

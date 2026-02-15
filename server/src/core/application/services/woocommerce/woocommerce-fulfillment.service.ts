@@ -605,16 +605,16 @@ Thank you for your order!`;
      */
     private static mapWooCommerceToShipcrowd(wooStatus: WooCommerceOrderStatus): string {
         const statusMap: Record<WooCommerceOrderStatus, string> = {
-            pending: 'PENDING',
-            processing: 'PROCESSING',
-            'on-hold': 'PENDING',
-            completed: 'DELIVERED',
-            cancelled: 'CANCELLED',
-            refunded: 'REFUNDED',
-            failed: 'FAILED',
+            pending: 'pending',
+            processing: 'processing',
+            'on-hold': 'pending',
+            completed: 'delivered',
+            cancelled: 'cancelled',
+            refunded: 'cancelled',
+            failed: 'cancelled',
         };
 
-        return statusMap[wooStatus] || 'PENDING';
+        return statusMap[wooStatus] || 'pending';
     }
 
     /**

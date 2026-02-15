@@ -59,6 +59,10 @@ brain/
 # --- Docker ---
 docker-compose.override.yml
 
+# --- Debug / Capture (may contain sensitive webhook data) ---
+server/failed-webhook-capture.json
+server/captured-webhook.json
+
 # --- Misc ---
 *.log
 tmp/

@@ -194,7 +194,7 @@ void appError;
             // Fetch returns with pagination
             const [returns, total] = await Promise.all([
                 ReturnOrder.find(filter)
-                    .populate('orderId', 'orderNumber totals customerInfo')
+                    .populate('orderId', 'orderNumber totals customerInfo source')
                     .populate('shipmentId', 'trackingNumber deliveryDetails')
                     .sort({ createdAt: -1 })
                     .skip((page - 1) * limit)
@@ -225,6 +225,7 @@ void appError;
                         _id: String(order._id),
                         orderNumber: order.orderNumber,
                         totalAmount: order?.totals?.total || 0,
+                        source: order?.source,
                     }
                     : String(ret.orderId),
                 shipmentId: shipment
@@ -289,7 +290,7 @@ void appError;
                 : { returnId, isDeleted: { $ne: true } };
 
             const returnOrder = await ReturnOrder.findOne(query)
-                .populate('orderId', 'orderNumber totals customerInfo')
+                .populate('orderId', 'orderNumber totals customerInfo source')
                 .populate('shipmentId', 'trackingNumber carrier deliveryDetails');
 
             if (!returnOrder) {

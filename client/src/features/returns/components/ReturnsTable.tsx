@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { formatCurrency, formatDate, formatPaginationRange } from '@/src/lib/utils';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
@@ -98,6 +99,7 @@ export function ReturnsTable({
                                 </div>
                             </TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Order Info</TableHead>
+                            <TableHead className="text-[var(--text-secondary)]">Source</TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Customer</TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Items</TableHead>
                             <TableHead className="text-right cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]" onClick={() => handleSortClick('amount')}>
@@ -143,6 +145,12 @@ export function ReturnsTable({
                                         </TableCell>
                                         <TableCell>
                                             <span className="font-medium text-[var(--text-primary)]">{orderNumber}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <SourceBadge
+                                                source={typeof returnReq.orderId === 'object' ? (returnReq.orderId as { source?: string })?.source : undefined}
+                                                size="sm"
+                                            />
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">

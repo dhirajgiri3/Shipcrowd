@@ -36,7 +36,6 @@ import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOpti
 import { apiClient, ApiError } from '@/src/core/api/http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
-import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 // ==================== Import Types ====================
 import type {
@@ -278,9 +277,7 @@ export const useCreateIntegration = (options?: UseMutationOptions<EcommerceInteg
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
-            showSuccessToast('Integration connected successfully');
         },
-        onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
@@ -311,9 +308,7 @@ export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceInteg
             }
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             queryClient.invalidateQueries({ queryKey: ['integrations', 'health'] });
-            showSuccessToast('Integration updated successfully');
         },
-        onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
@@ -336,10 +331,6 @@ export const useDeleteIntegration = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
-            showSuccessToast('Integration disconnected');
-        },
-        onError: (error) => {
-            handleApiError(error, 'Failed to Disconnect Integration');
         },
     });
 };
@@ -396,26 +387,10 @@ export const useTestConnection = () => {
                 }
             );
         },
-        onSuccess: (data) => {
+        onSuccess: () => {
             setRetryCount(0);
-            if ((data as any).connected || (data as any).success) {
-                showSuccessToast(`Connection successful! Found store: ${data.storeName || 'store'}`);
-            }
         },
-        onError: (error: any) => {
-            const { parseIntegrationError } = require('./integrationErrors');
-            const parsedError = parseIntegrationError(error, retryCount);
-
-            // Show detailed error with suggestion
-            const errorMessage = parsedError.suggestion
-                ? `${parsedError.message}. ${parsedError.suggestion}`
-                : parsedError.message;
-
-            handleApiError(
-                { ...error, message: errorMessage },
-                'Connection Test Failed'
-            );
-
+        onError: () => {
             setRetryCount(0);
         },
     });
@@ -448,10 +423,6 @@ export const useTriggerSync = () => {
         onSuccess: (_, { integrationId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.syncLogs(integrationId) });
-            showSuccessToast('Sync started successfully');
-        },
-        onError: (error) => {
-            handleApiError(error, 'Failed to Start Sync');
         },
     });
 };
@@ -497,10 +468,6 @@ export const useReconnectIntegration = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
-            showSuccessToast('Integration reconnected successfully');
-        },
-        onError: (error) => {
-            handleApiError(error, 'Failed to Reconnect Integration');
         },
     });
 };
@@ -542,9 +509,6 @@ export const useInitiateOAuth = () => {
                 throw new Error('No redirect URL received from OAuth provider');
             }
         },
-        onError: (error) => {
-            handleApiError(error, 'Failed to Initiate OAuth');
-        },
     });
 };
 
@@ -562,10 +526,6 @@ export const useCompleteOAuth = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
-            showSuccessToast('OAuth authentication successful');
-        },
-        onError: (error) => {
-            handleApiError(error, 'OAuth Authentication Failed');
         },
     });
 };
@@ -595,10 +555,6 @@ export const useToggleIntegrationSync = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
-            showSuccessToast('Sync status updated');
-        },
-        onError: (error) => {
-            handleApiError(error, 'Failed to Update Sync Status');
         },
     });
 };

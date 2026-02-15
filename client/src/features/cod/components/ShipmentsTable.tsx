@@ -14,6 +14,7 @@
 import React, { useState } from 'react';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import type { ShipmentInRemittance } from '@/src/types/api/finance';
 
 interface ShipmentsTableProps {
@@ -65,6 +66,9 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
                                 Customer
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Source
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Delivered
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -111,6 +115,9 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
                                                 </div>
                                             )}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <SourceBadge source={(shipment.shipmentId as any)?.orderId?.source} size="sm" />
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                             {formatDate(shipment.deliveredAt)}
                                         </td>
@@ -147,7 +154,7 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
                                     {/* Expanded Row - Deduction Breakdown */}
                                     {isExpanded && (
                                         <tr className="bg-gray-50 dark:bg-gray-700/30">
-                                            <td colSpan={8} className="px-6 py-4">
+                                            <td colSpan={9} className="px-6 py-4">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     {/* Left Column - Deduction Details */}
                                                     <div>

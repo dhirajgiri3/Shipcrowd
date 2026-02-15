@@ -378,9 +378,9 @@ export class FlipkartFulfillmentService {
                 }
             );
 
-            order.currentStatus = 'CANCELLED';
+            order.currentStatus = 'cancelled';
             order.statusHistory.push({
-                status: 'CANCELLED',
+                status: 'cancelled',
                 timestamp: new Date(),
                 comment: `Cancelled in Flipkart: ${reason || 'Seller cancelled'}`,
             });
@@ -492,7 +492,7 @@ export class FlipkartFulfillmentService {
             const orders = await Order.find({
                 source: 'flipkart',
                 companyId: store.companyId,
-                currentStatus: { $in: ['PROCESSING', 'READY_TO_SHIP', 'SHIPPED'] },
+                currentStatus: { $in: ['processing', 'ready_to_ship', 'shipped'] },
             }).limit(50);
 
             const orderIds = orders.map((order: any) => order._id);

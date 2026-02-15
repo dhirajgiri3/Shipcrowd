@@ -69,6 +69,8 @@ export { Pagination } from './data/Pagination';
 export type { PaginationProps } from './data/Pagination';
 export { StatusBadge, StatusBadges } from './data/StatusBadge';
 export type { StatusBadgeProps, StatusBadgesProps, StatusDomain } from './data/StatusBadge';
+export { SourceBadge } from './data/SourceBadge';
+export type { SourceBadgeProps, OrderSource } from './data/SourceBadge';
 export {
     Skeleton,
     CardSkeleton,

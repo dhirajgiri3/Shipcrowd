@@ -97,15 +97,16 @@ export function IntegrationsClient() {
         .filter(([key]) => !connectedPlatformIds.has(key))
         .map(([key, meta]) => ({ id: key, ...meta }));
 
-    // Handle sync (mutation shows toast on success/error; we only manage loading state)
+    // Handle sync (toast on success/error; manage loading state)
     const handleSync = async (storeId: string, platform: string) => {
         const type = platform.toUpperCase() as 'SHOPIFY' | 'WOOCOMMERCE' | 'AMAZON' | 'FLIPKART';
         setSyncingStores(prev => new Set(prev).add(storeId));
         try {
             await triggerSync.mutateAsync({ integrationId: storeId, type });
+            addToast('Sync started successfully', 'success');
             setTimeout(() => refetch(), 2000);
-        } catch {
-            // Error toast handled by useTriggerSync onError
+        } catch (err) {
+            addToast((err as Error)?.message || 'Failed to start sync', 'error');
         } finally {
             setSyncingStores(prev => {
                 const next = new Set(prev);

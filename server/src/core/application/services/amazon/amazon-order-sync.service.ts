@@ -15,7 +15,7 @@
  */
 
 import mongoose from 'mongoose';
-import { AmazonStore, AmazonSyncLog, Order } from '../../../../infrastructure/database/mongoose/models';
+import { AmazonStore, AmazonSyncLog, Order, Company } from '../../../../infrastructure/database/mongoose/models';
 import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -382,10 +382,28 @@ export default class AmazonOrderSyncService {
 
         const total = amazonOrder.OrderTotal ? parseFloat(amazonOrder.OrderTotal.Amount) : subtotal + tax + shipping;
 
+        // Fetch default warehouse
+        let warehouseId;
+        try {
+            const company = await Company.findById(store.companyId)
+                .select('settings.defaultWarehouseId')
+                .lean();
+
+            if (company?.settings?.defaultWarehouseId) {
+                warehouseId = new mongoose.Types.ObjectId(company.settings.defaultWarehouseId);
+            }
+        } catch (warehouseError) {
+            logger.warn('Failed to assign default warehouse to Amazon order', {
+                error: warehouseError,
+                orderId: amazonOrder.AmazonOrderId,
+            });
+        }
+
         // Create order
         await Order.create({
             orderNumber: amazonOrder.AmazonOrderId,
             companyId: store.companyId,
+            warehouseId,
             customerInfo: {
                 name: amazonOrder.BuyerInfo?.BuyerName || shippingAddress.Name || 'Amazon Customer',
                 email: amazonOrder.BuyerInfo?.BuyerEmail,

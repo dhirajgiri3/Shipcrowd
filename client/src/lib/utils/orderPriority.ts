@@ -164,7 +164,8 @@ export function orderToCardData(order: Order) {
     amount: order.totals?.total || 0,
     createdAt: order.createdAt,
     courierName: order.shippingDetails?.provider,
-    urgentReason: getUrgentReason(order)
+    urgentReason: getUrgentReason(order),
+    source: order.source,
   };
 }
 

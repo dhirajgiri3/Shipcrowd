@@ -27,6 +27,7 @@ import { cn } from '@/src/lib/utils';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { formatCurrency, formatDateTime } from '@/src/lib/utils/common';
 import { isSellerOrderShippable } from '@/src/lib/utils/order-shipping-eligibility';
 
@@ -55,6 +56,11 @@ const getDesktopColumns = (
         </span>
       </div>
     )
+  },
+  {
+    header: 'Source',
+    accessorKey: 'source',
+    cell: (row: Order) => <SourceBadge source={row.source} size="sm" />,
   },
   {
     header: 'Date',

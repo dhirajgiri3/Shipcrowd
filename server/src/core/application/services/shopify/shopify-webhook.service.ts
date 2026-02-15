@@ -202,9 +202,9 @@ export class ShopifyWebhookService {
       }
 
       // Update order status
-      order.currentStatus = 'CANCELLED';
+      order.currentStatus = 'cancelled';
       order.statusHistory.push({
-        status: 'CANCELLED',
+        status: 'cancelled',
         timestamp: new Date(),
         comment: `Cancelled in Shopify. Reason: ${payload.cancel_reason || 'Not specified'}`,
       });
@@ -263,9 +263,9 @@ export class ShopifyWebhookService {
       }
 
       // Update order status
-      order.currentStatus = 'FULFILLED';
+      order.currentStatus = 'delivered';
       order.statusHistory.push({
-        status: 'FULFILLED',
+        status: 'delivered',
         timestamp: new Date(),
         comment: 'Fulfilled in Shopify',
       });
@@ -519,17 +519,18 @@ export class ShopifyWebhookService {
 
   /**
    * Map Shopify fulfillment status
+   * NOTE: Must use lowercase to match order service conventions
    */
   private static mapFulfillmentStatus(fulfillmentStatus: string | null): string {
-    if (!fulfillmentStatus) return 'PENDING';
+    if (!fulfillmentStatus) return 'pending';
 
     const statusMap: Record<string, string> = {
-      fulfilled: 'FULFILLED',
-      partial: 'PROCESSING',
-      restocked: 'CANCELLED',
+      fulfilled: 'delivered',
+      partial: 'processing',
+      restocked: 'cancelled',
     };
 
-    return statusMap[fulfillmentStatus.toLowerCase()] || 'PENDING';
+    return statusMap[fulfillmentStatus.toLowerCase()] || 'pending';
   }
 }
 

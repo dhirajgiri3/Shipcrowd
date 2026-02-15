@@ -17,6 +17,7 @@ import type { Order } from '@/src/types/domain/order';
 import { cn, formatCurrency, formatPaginationRange, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { Clock, Package, RefreshCw, Send, Truck, Users } from 'lucide-react';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { isSellerOrderShippable } from '@/src/lib/utils/order-shipping-eligibility';
 
 const DEFAULT_LIMIT = 20;
@@ -255,6 +256,7 @@ export function ShipQueueClient() {
                                         />
                                     </th>
                                     <th className="px-4 py-3 font-medium text-[var(--text-muted)]">Order</th>
+                                    <th className="px-4 py-3 font-medium text-[var(--text-muted)]">Source</th>
                                     <th className="px-4 py-3 font-medium text-[var(--text-muted)]">Customer</th>
                                     <th className="px-4 py-3 font-medium text-[var(--text-muted)]">Created</th>
                                     <th className="px-4 py-3 font-medium text-[var(--text-muted)]">Total</th>
@@ -265,13 +267,13 @@ export function ShipQueueClient() {
                             <tbody className="divide-y divide-[var(--border-subtle)]">
                                 {isLoading ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-12 text-center text-[var(--text-muted)]">
+                                        <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-muted)]">
                                             Loading orders ready to ship...
                                         </td>
                                     </tr>
                                 ) : shippableOrders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-12 text-center text-[var(--text-muted)]">
+                                        <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-muted)]">
                                             No orders are currently ready to ship for this filter.
                                         </td>
                                     </tr>
@@ -290,6 +292,9 @@ export function ShipQueueClient() {
                                                 <td className="px-4 py-3">
                                                     <p className="font-semibold text-[var(--text-primary)]">{order.orderNumber}</p>
                                                     <p className="text-xs text-[var(--text-muted)]">{order.products.length} item(s)</p>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <SourceBadge source={order.source} size="sm" />
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <p className="text-[var(--text-primary)]">{order.customerInfo.name}</p>

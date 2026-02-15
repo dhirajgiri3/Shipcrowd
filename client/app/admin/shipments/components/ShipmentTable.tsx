@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
 import { formatCurrency, cn, formatPaginationRange } from '@/src/lib/utils';
 import { format } from 'date-fns';
 import { Button } from '@/src/components/ui/core/Button';
@@ -102,6 +103,7 @@ export function ShipmentTable({
                                 </div>
                             </TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Order</TableHead>
+                            <TableHead className="text-[var(--text-secondary)]">Source</TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Customer</TableHead>
                             <TableHead className="text-[var(--text-secondary)]">Carrier</TableHead>
                             <TableHead className="text-center text-[var(--text-secondary)]">Status</TableHead>
@@ -138,6 +140,12 @@ export function ShipmentTable({
                                         <div className="text-sm font-medium text-[var(--text-secondary)]">
                                             {getOrderNumber(shipment.orderId)}
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <SourceBadge
+                                            source={typeof shipment.orderId === 'object' ? (shipment.orderId as { source?: string })?.source : undefined}
+                                            size="sm"
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <div>
