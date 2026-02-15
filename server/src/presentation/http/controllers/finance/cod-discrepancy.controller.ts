@@ -5,6 +5,7 @@ import { CODDiscrepancyService } from '../../../../core/application/services/fin
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
 import CODDiscrepancy from '../../../../infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
 import logger from '../../../../shared/logger/winston.logger';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 export class CODDiscrepancyController {
 
@@ -28,9 +29,13 @@ export class CODDiscrepancyController {
             ];
         }
         if (startDate || endDate) {
+            const parsedRange = parseQueryDateRange(
+                startDate ? String(startDate) : undefined,
+                endDate ? String(endDate) : undefined
+            );
             query.createdAt = {};
-            if (startDate) query.createdAt.$gte = new Date(String(startDate));
-            if (endDate) query.createdAt.$lte = new Date(String(endDate));
+            if (parsedRange.startDate) query.createdAt.$gte = parsedRange.startDate;
+            if (parsedRange.endDate) query.createdAt.$lte = parsedRange.endDate;
         }
 
         const discrepancies = await CODDiscrepancy.find(query)

@@ -18,6 +18,7 @@ import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import { useUrlDateRange } from '@/src/hooks';
 import type { DateRange } from '@/src/lib/data';
 import {
     AlertCircle,
@@ -52,9 +53,14 @@ export default function CODDiscrepancyPage() {
     const debouncedSearch = useDebouncedValue(search, 300);
     const [resolveTarget, setResolveTarget] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [dateRange, setDateRange] = useState<{ startDate?: string; endDate?: string }>({});
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
 
-    const stats = useCodDiscrepancyStats();
+    const stats = useCodDiscrepancyStats({ startDate: startDateIso, endDate: endDateIso });
 
     const {
         data: response,
@@ -66,8 +72,8 @@ export default function CODDiscrepancyPage() {
         limit,
         status: statusFilter || undefined,
         search: debouncedSearch || undefined,
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
+        startDate: startDateIso,
+        endDate: endDateIso,
     });
 
     const resolveMutation = useResolveCodDiscrepancy();
@@ -86,7 +92,7 @@ export default function CODDiscrepancyPage() {
 
     useEffect(() => {
         setPage(1);
-    }, [statusFilter, debouncedSearch]);
+    }, [statusFilter, debouncedSearch, startDateIso, endDateIso]);
 
     // Reset to page 1 when current page is out of range
     useEffect(() => {
@@ -116,15 +122,8 @@ export default function CODDiscrepancyPage() {
 
     const handleQuickResolve = useCallback((id: string) => setResolveTarget(id), []);
     const handleDateRangeChange = useCallback((range: DateRange) => {
-        const start = new Date(range.from);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(range.to);
-        end.setHours(23, 59, 59, 999);
-        setDateRange({
-            startDate: start.toISOString(),
-            endDate: end.toISOString(),
-        });
-    }, []);
+        setRange(range);
+    }, [setRange]);
 
     const handleConfirmResolve = useCallback(() => {
         if (!resolveTarget) return;
@@ -260,7 +259,7 @@ export default function CODDiscrepancyPage() {
                 description="Review and resolve COD payment mismatches"
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker onRangeChange={handleDateRangeChange} />
+                        <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
                         <Button
                             onClick={handleRefresh}
                             variant="ghost"

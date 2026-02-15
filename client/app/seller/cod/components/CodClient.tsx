@@ -27,6 +27,7 @@ import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import type { DateRange } from '@/src/lib/data';
+import { useUrlDateRange } from '@/src/hooks';
 import {
     useCODRemittances,
     useCODStats,
@@ -71,7 +72,12 @@ export function CodClient() {
     const debouncedSearch = useDebouncedValue(search, 300);
     const [page, setPage] = useState(1);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [dateRange, setDateRange] = useState<{ startDate?: string; endDate?: string }>({});
+    const {
+        range: selectedDateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
     const limit = 20;
 
     // Sync from URL params (for deep linking)
@@ -88,7 +94,7 @@ export function CodClient() {
     // Reset page on filter change
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, statusFilter]);
+    }, [debouncedSearch, statusFilter, startDateIso, endDateIso]);
 
     // API Hooks - Real data only, no mock fallbacks
     const {
@@ -101,11 +107,14 @@ export function CodClient() {
         limit,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         search: debouncedSearch || undefined,
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
+        startDate: startDateIso,
+        endDate: endDateIso,
     });
 
-    const { data: stats, isLoading: isLoadingStats } = useCODStats();
+    const { data: stats, isLoading: isLoadingStats } = useCODStats({
+        startDate: startDateIso,
+        endDate: endDateIso,
+    });
 
     // For Pending COD tab - use far future date as cutoff to get all eligible shipments
     const futureDate = useMemo(() => {
@@ -133,14 +142,7 @@ export function CodClient() {
     };
 
     const handleDateRangeChange = (range: DateRange) => {
-        const start = new Date(range.from);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(range.to);
-        end.setHours(23, 59, 59, 999);
-        setDateRange({
-            startDate: start.toISOString(),
-            endDate: end.toISOString(),
-        });
+        setRange(range);
     };
 
     const handleTabChange = (tabKey: RemittanceTabKey) => {
@@ -245,7 +247,7 @@ export function CodClient() {
                 ]}
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker onRangeChange={handleDateRangeChange} />
+                        <DateRangePicker value={selectedDateRange} onRangeChange={handleDateRangeChange} />
                         <Button
                             onClick={handleRefresh}
                             variant="ghost"

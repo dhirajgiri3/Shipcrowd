@@ -77,36 +77,39 @@ export function IntegrationsClient() {
     const triggerSync = useTriggerSync();
     const [syncingStores, setSyncingStores] = useState<Set<string>>(new Set());
 
-    // Flatten connected stores from response
-    const connectedStores = data?.platforms ? [
-        ...(data.platforms.shopify?.stores?.map((s: any) => ({ ...s, platform: 'shopify' })) || []),
-        ...(data.platforms.woocommerce?.stores?.map((s: any) => ({ ...s, platform: 'woocommerce' })) || []),
-        ...(data.platforms.amazon?.stores?.map((s: any) => ({ ...s, platform: 'amazon' })) || []),
-        ...(data.platforms.flipkart?.stores?.map((s: any) => ({ ...s, platform: 'flipkart' })) || [])
-    ] : [];
+    // Flatten connected stores from response (null-safe)
+    // Exclude disconnected stores (isActive: false) - backend filters these, but defensive filter for cache/stale data
+    const connectedStores = (data?.platforms
+        ? [
+              ...(data.platforms.shopify?.stores?.map((s: any) => ({ ...s, platform: 'shopify' as const })) ?? []),
+              ...(data.platforms.woocommerce?.stores?.map((s: any) => ({ ...s, platform: 'woocommerce' as const })) ?? []),
+              ...(data.platforms.amazon?.stores?.map((s: any) => ({ ...s, platform: 'amazon' as const })) ?? []),
+              ...(data.platforms.flipkart?.stores?.map((s: any) => ({ ...s, platform: 'flipkart' as const })) ?? []),
+          ]
+        : []
+    ).filter((s) => s && s.isActive !== false);
 
-    // Get connected platform IDs
+    // Get connected platform IDs (platforms with at least one connected store)
     const connectedPlatformIds = new Set(connectedStores.map(s => s.platform));
 
-    // Separate available platforms into connected and not connected
-    const allPlatforms = Object.entries(PLATFORMS).map(([key, meta]) => ({
-        id: key,
-        ...meta,
-        isConnected: connectedPlatformIds.has(key)
-    }));
+    // Only show platforms that are NOT yet connected in Available Platforms
+    const availablePlatformsToConnect = Object.entries(PLATFORMS)
+        .filter(([key]) => !connectedPlatformIds.has(key))
+        .map(([key, meta]) => ({ id: key, ...meta }));
 
-    // Handle sync
+    // Handle sync (mutation shows toast on success/error; we only manage loading state)
     const handleSync = async (storeId: string, platform: string) => {
+        const type = platform.toUpperCase() as 'SHOPIFY' | 'WOOCOMMERCE' | 'AMAZON' | 'FLIPKART';
+        if (type === 'FLIPKART') {
+            addToast('Manual sync is not supported for Flipkart. Orders sync automatically.', 'info');
+            return;
+        }
         setSyncingStores(prev => new Set(prev).add(storeId));
         try {
-            await triggerSync.mutateAsync({
-                integrationId: storeId,
-                type: platform.toUpperCase() as any,
-            });
-            addToast('Sync started successfully', 'success');
-            setTimeout(() => refetch(), 2000); // Refresh after sync starts
-        } catch (err: any) {
-            addToast(err?.message || 'Failed to start sync', 'error');
+            await triggerSync.mutateAsync({ integrationId: storeId, type });
+            setTimeout(() => refetch(), 2000);
+        } catch {
+            // Error toast handled by useTriggerSync onError
         } finally {
             setSyncingStores(prev => {
                 const next = new Set(prev);
@@ -115,6 +118,9 @@ export function IntegrationsClient() {
             });
         }
     };
+
+    const isSyncSupported = (platform: string) =>
+        !['flipkart'].includes(platform.toLowerCase());
 
     if (isLoading) {
         return (
@@ -136,15 +142,17 @@ export function IntegrationsClient() {
     }
 
     if (error) {
+        const errorMessage =
+            (error as Error)?.message ||
+            (error as { error?: { message?: string } })?.error?.message ||
+            "We couldn't load your integrations. Please try again.";
         return (
             <div className="py-20 flex flex-col items-center justify-center min-h-[400px] text-center" role="alert">
                 <div className="w-16 h-16 bg-[var(--error-bg)] rounded-full flex items-center justify-center text-[var(--error)] mb-4 animate-scale-in">
                     <AlertCircle className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">Failed to load integrations</h3>
-                <p className="text-[var(--text-secondary)] mb-6 max-w-sm">
-                    {error.message || "We couldn't define your integrations. Please try again."}
-                </p>
+                <p className="text-[var(--text-secondary)] mb-6 max-w-sm">{errorMessage}</p>
                 <Button onClick={() => refetch()} variant="outline" className="min-w-[120px]">
                     Try Again
                 </Button>
@@ -202,14 +210,15 @@ export function IntegrationsClient() {
 
                     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-2">
                         {connectedStores.map((store, idx) => {
-                            const meta = PLATFORMS[store.platform as keyof typeof PLATFORMS];
+                            const meta = PLATFORMS[store.platform as keyof typeof PLATFORMS] ?? PLATFORMS.shopify;
                             const isSyncing = syncingStores.has(store.storeId);
+                            const canSync = store.isActive && isSyncSupported(store.platform);
 
                             return (
                                 <Card
                                     key={store.storeId}
                                     className={cn(
-                                        "group overflow-hidden border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 hover:shadow-brand-sm transition-all duration-300",
+                                        "group relative overflow-hidden border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 hover:shadow-brand-sm transition-all duration-300",
                                         `stagger-${(idx % 4) + 1}`
                                     )}
                                 >
@@ -249,7 +258,7 @@ export function IntegrationsClient() {
                                                     {meta?.name}
                                                 </h3>
                                                 <p className="text-sm text-[var(--text-secondary)] mt-1 truncate font-medium">
-                                                    {store.storeName}
+                                                    {store.storeName || store.shopDomain || store.storeUrl?.replace(/^https?:\/\//, '') || 'Store'}
                                                 </p>
 
                                                 {store.lastSyncAt && (
@@ -275,7 +284,8 @@ export function IntegrationsClient() {
                                                         variant="ghost"
                                                         size="sm"
                                                         isLoading={isSyncing}
-                                                        disabled={!store.isActive}
+                                                        disabled={!canSync}
+                                                        title={!store.isActive ? 'Store is inactive' : !isSyncSupported(store.platform) ? 'Manual sync not available for this platform' : undefined}
                                                         className={cn(
                                                             "flex-1 rounded-[var(--radius-full)] border transition-all font-medium",
                                                             meta.bgClass,
@@ -326,7 +336,8 @@ export function IntegrationsClient() {
                 </Card>
             )}
 
-            {/* Available Platforms */}
+            {/* Available Platforms - only show platforms not yet connected */}
+            {availablePlatformsToConnect.length > 0 && (
             <div id="available-platforms" className="space-y-4 pt-4">
                 <h2 className="text-xs font-bold tracking-widest text-[var(--text-tertiary)] uppercase flex items-center gap-2">
                     <Plug className="w-4 h-4" />
@@ -334,7 +345,7 @@ export function IntegrationsClient() {
                 </h2>
 
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-2">
-                    {allPlatforms.map((platform, idx) => (
+                    {availablePlatformsToConnect.map((platform, idx) => (
                         <Card
                             key={platform.id}
                             hover
@@ -410,6 +421,7 @@ export function IntegrationsClient() {
                     ))}
                 </div>
             </div>
+            )}
 
             {/* Help Section */}
             <Card className="bg-gradient-to-r from-[var(--bg-secondary)] to-[var(--bg-tertiary)] border-[var(--border-subtle)]">

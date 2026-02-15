@@ -256,9 +256,8 @@
    --shadow-xl: none;
    /* User explicitly requested no shadows */
 
-   /* Use Border as Mock Shadow/Depth if needed */
-   --shadow-card: 0 0 0 1px var(--border-default);
-   --shadow-card-hover: 0 0 0 1px var(--border-strong);
+   --shadow-card: none;
+   --shadow-card-hover: none;
 
    /* Glass */
    --glass-bg: hsla(240, 6%, 10%, 0.9);
@@ -374,22 +373,11 @@ input[type="number"] {
       padding-top: env(safe-area-inset-top);
    }
 
-   /* Accessible focus treatment */
-   .focus-ring:focus-visible {
-      outline: 2px solid var(--border-focus);
-      outline-offset: 2px;
-      box-shadow: 0 0 0 3px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.2);
-   }
-
-   :where(a, button, input, textarea, select, [role="button"], [tabindex]):focus-visible {
-      outline: 2px solid var(--border-focus);
-      outline-offset: 2px;
-      box-shadow: 0 0 0 3px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.2);
-   }
-
-   :where(a, button, input, textarea, select, [role="button"], [tabindex]):focus:not(:focus-visible) {
-      outline: none;
-      box-shadow: none;
+   /* No ring, outline, or shadow on focus - universal override */
+   *:focus,
+   *:focus-visible {
+      outline: none !important;
+      box-shadow: none !important;
    }
 
    .divider-soft {
@@ -407,7 +395,6 @@ input[type="number"] {
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--glass-border);
-      box-shadow: var(--glass-shadow);
    }
 
    /* Gradient Backgrounds */

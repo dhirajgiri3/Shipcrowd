@@ -7,6 +7,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuditLogs, useExportAuditLogs } from '@/src/core/api/hooks/security/useAuditLogs';
 import { FileOutput, Calendar, Filter, Loader2, Search } from 'lucide-react';
 import { formatDate, formatDateTime } from '@/src/lib/utils';
@@ -14,7 +15,32 @@ import { Button, Card, Input, Label, Select, Badge } from '@/src/components/ui';
 import type { AuditLogFilters, AuditAction, AuditResource, AuditLog } from '@/src/types/api/settings';
 
 export function AuditLogsViewer() {
-    const [filters, setFilters] = useState<AuditLogFilters>({});
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [filters, setFilters] = useState<AuditLogFilters>(() => ({
+        action: (searchParams.get('action') as AuditAction) || undefined,
+        resource: (searchParams.get('resource') as AuditResource) || undefined,
+        startDate: searchParams.get('startDate') || undefined,
+        endDate: searchParams.get('endDate') || undefined,
+    }));
+
+    const updateFilters = (updates: Partial<AuditLogFilters>) => {
+        const nextFilters = { ...filters, ...updates };
+        setFilters(nextFilters);
+
+        const params = new URLSearchParams(searchParams.toString());
+        const keys: Array<keyof AuditLogFilters> = ['action', 'resource', 'startDate', 'endDate'];
+        keys.forEach((key) => {
+            const value = nextFilters[key];
+            if (value) {
+                params.set(key, String(value));
+            } else {
+                params.delete(key);
+            }
+        });
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    };
 
     const { data: logsData, isLoading } = useAuditLogs(filters);
     const { mutate: exportLogs, isPending: isExporting } = useExportAuditLogs();
@@ -38,7 +64,7 @@ export function AuditLogsViewer() {
                         <Label>Action</Label>
                         <select
                             value={filters.action || ''}
-                            onChange={(e) => setFilters({ ...filters, action: e.target.value as AuditAction || undefined })}
+                            onChange={(e) => updateFilters({ action: e.target.value as AuditAction || undefined })}
                             className="w-full mt-1.5 px-3 py-2 rounded-md border border-[var(--border-input)] bg-[var(--bg-background)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                         >
                             <option value="">All Actions</option>
@@ -54,7 +80,7 @@ export function AuditLogsViewer() {
                         <Label>Resource</Label>
                         <select
                             value={filters.resource || ''}
-                            onChange={(e) => setFilters({ ...filters, resource: e.target.value as AuditResource || undefined })}
+                            onChange={(e) => updateFilters({ resource: e.target.value as AuditResource || undefined })}
                             className="w-full mt-1.5 px-3 py-2 rounded-md border border-[var(--border-input)] bg-[var(--bg-background)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                         >
                             <option value="">All Resources</option>
@@ -71,7 +97,7 @@ export function AuditLogsViewer() {
                         <Input
                             type="date"
                             value={filters.startDate || ''}
-                            onChange={(e) => setFilters({ ...filters, startDate: e.target.value || undefined })}
+                            onChange={(e) => updateFilters({ startDate: e.target.value || undefined })}
                             className="mt-1.5"
                         />
                     </div>
@@ -81,7 +107,7 @@ export function AuditLogsViewer() {
                         <Input
                             type="date"
                             value={filters.endDate || ''}
-                            onChange={(e) => setFilters({ ...filters, endDate: e.target.value || undefined })}
+                            onChange={(e) => updateFilters({ endDate: e.target.value || undefined })}
                             className="mt-1.5"
                         />
                     </div>

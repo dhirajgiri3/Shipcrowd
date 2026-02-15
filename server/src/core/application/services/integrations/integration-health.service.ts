@@ -147,7 +147,7 @@ export class IntegrationHealthService {
      */
     private static async getShopifyHealth(companyId: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await ShopifyStore.find({ companyId }).lean();
+            const stores = await ShopifyStore.find({ companyId, isActive: true }).lean();
 
             if (stores.length === 0) {
                 return null;
@@ -192,7 +192,7 @@ export class IntegrationHealthService {
 
                     return {
                         storeId: store._id.toString(),
-                        storeName: store.storeName || store.shopDomain,
+                        storeName: store.shopName || store.storeName || store.shopDomain,
                         storeUrl: `https://${store.shopDomain}`,
                         platform: 'shopify',
                         isActive: store.isActive,
@@ -240,7 +240,7 @@ export class IntegrationHealthService {
      */
     private static async getWooCommerceHealth(companyId: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await WooCommerceStore.find({ companyId }).lean();
+            const stores = await WooCommerceStore.find({ companyId, isActive: true }).lean();
 
             if (stores.length === 0) {
                 return null;
@@ -326,7 +326,7 @@ export class IntegrationHealthService {
      */
     private static async getAmazonHealth(companyId: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await AmazonStore.find({ companyId }).lean();
+            const stores = await AmazonStore.find({ companyId, isActive: true }).lean();
 
             if (stores.length === 0) {
                 return null;
@@ -412,7 +412,7 @@ export class IntegrationHealthService {
      */
     private static async getFlipkartHealth(companyId: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await FlipkartStore.find({ companyId }).lean();
+            const stores = await FlipkartStore.find({ companyId, isActive: true }).lean();
 
             if (stores.length === 0) {
                 return null;

@@ -12,6 +12,8 @@ interface AuditLogsQuery {
     endDate?: string;
     action?: string;
     entity?: string;
+    resource?: string;
+    search?: string;
 }
 
 interface ExportAuditLogsRequest {
@@ -28,8 +30,12 @@ export const useAuditLogs = (query: AuditLogsQuery = {}, options?: UseQueryOptio
     return useQuery<{ logs: AuditLog[]; total: number }, ApiError>({
         queryKey: queryKeys.settings.auditLogs(query),
         queryFn: async () => {
+            const params = {
+                ...query,
+                entity: query.entity || query.resource,
+            };
             const response = await apiClient.get<{ data: { logs: AuditLog[]; total: number } }>('/audit-logs', {
-                params: query,
+                params,
             });
             return response.data.data;
         },

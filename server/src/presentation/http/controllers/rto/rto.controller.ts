@@ -15,6 +15,7 @@ import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import cacheService from '../../../../core/application/services/analytics/analytics-cache.service';
 import StorageService from '../../../../infrastructure/external/storage/storage.service';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 import {
     listRTOEventsQuerySchema,
     triggerManualRTOSchema,
@@ -72,12 +73,13 @@ export class RTOController {
                 filter.warehouse = warehouseId;
             }
             if (startDate || endDate) {
+                const parsedRange = parseQueryDateRange(startDate, endDate);
                 filter.triggeredAt = {};
-                if (startDate) {
-                    filter.triggeredAt.$gte = new Date(startDate);
+                if (parsedRange.startDate) {
+                    filter.triggeredAt.$gte = parsedRange.startDate;
                 }
-                if (endDate) {
-                    filter.triggeredAt.$lte = new Date(endDate);
+                if (parsedRange.endDate) {
+                    filter.triggeredAt.$lte = parsedRange.endDate;
                 }
             }
 

@@ -169,14 +169,22 @@ export interface ShipmentStats {
     rto: number;
 }
 
+export interface ShipmentStatsFilters {
+    startDate?: string;
+    endDate?: string;
+}
+
 /**
  * Fetch shipment statistics
  */
-export const useShipmentStats = (options?: UseQueryOptions<ShipmentStats, ApiError>) => {
+export const useShipmentStats = (
+    filters: ShipmentStatsFilters = {},
+    options?: UseQueryOptions<ShipmentStats, ApiError>
+) => {
     return useQuery<ShipmentStats, ApiError>({
-        queryKey: queryKeys.shipments.stats(),
+        queryKey: [...queryKeys.shipments.stats(), filters],
         queryFn: async () => {
-            const response = await apiClient.get('/shipments/stats');
+            const response = await apiClient.get('/shipments/stats', { params: filters });
             return response.data.data || response.data;
         },
         staleTime: 0,

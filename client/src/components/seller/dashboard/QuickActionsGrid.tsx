@@ -37,7 +37,7 @@ export function QuickActionsGrid({ pendingPickups = 0 }: QuickActionsGridProps) 
             icon: Truck,
             title: 'Schedule Pickup',
             description: pendingPickups > 0 ? `${pendingPickups} pending` : 'No pending pickups',
-            url: '/seller/pickups',
+            url: '/seller/manifests',
             badge: pendingPickups > 0 ? pendingPickups : undefined,
             color: 'var(--warning)'
         },
@@ -62,7 +62,7 @@ export function QuickActionsGrid({ pendingPickups = 0 }: QuickActionsGridProps) 
             icon: FileOutput,
             title: 'Export Reports',
             description: 'Export your data',
-            url: '/seller/reports',
+            url: '/seller/analytics/reports',
             color: 'var(--text-secondary)'
         },
         {

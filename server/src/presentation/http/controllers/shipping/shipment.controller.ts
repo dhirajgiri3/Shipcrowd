@@ -29,6 +29,7 @@ import CacheService from '../../../../infrastructure/utilities/cache.service';
 import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import BookFromQuoteService from '../../../../core/application/services/shipping/book-from-quote.service';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 const toShipmentResponseWithCompat = (shipment: any) => {
     if (!shipment) return shipment;
@@ -260,9 +261,13 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
         }
 
         if (req.query.startDate || req.query.endDate) {
+            const { startDate, endDate } = parseQueryDateRange(
+                req.query.startDate as string | undefined,
+                req.query.endDate as string | undefined
+            );
             filter.createdAt = {};
-            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate as string);
-            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate as string);
+            if (startDate) filter.createdAt.$gte = startDate;
+            if (endDate) filter.createdAt.$lte = endDate;
         }
 
         if (req.query.search) {
@@ -721,6 +726,15 @@ export const getShipmentStats = async (req: Request, res: Response, next: NextFu
         const matchStage: Record<string, any> = { isDeleted: false };
         if (!auth.isAdmin) {
             matchStage.companyId = new mongoose.Types.ObjectId(auth.companyId);
+        }
+        if (req.query.startDate || req.query.endDate) {
+            const { startDate, endDate } = parseQueryDateRange(
+                req.query.startDate as string | undefined,
+                req.query.endDate as string | undefined
+            );
+            matchStage.createdAt = {};
+            if (startDate) matchStage.createdAt.$gte = startDate;
+            if (endDate) matchStage.createdAt.$lte = endDate;
         }
 
         const stats = await Shipment.aggregate([

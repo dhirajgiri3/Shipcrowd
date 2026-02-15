@@ -28,6 +28,10 @@ import type {
 } from '@/src/types/api/finance';
 
 type CODQueryOptions<T> = Omit<UseQueryOptions<T, ApiError>, 'queryKey' | 'queryFn'>;
+interface CODDashboardFilters {
+    startDate?: string;
+    endDate?: string;
+}
 
 export function useCODRemittances(filters?: RemittanceFilters, options?: CODQueryOptions<CODRemittanceResponse>): UseQueryResult<CODRemittanceResponse, ApiError> {
     const { isInitialized, user } = useAuth();
@@ -61,15 +65,15 @@ export function useCODRemittance(id: string, options?: CODQueryOptions<CODRemitt
     });
 }
 
-export function useCODStats(options?: CODQueryOptions<CODStats>): UseQueryResult<CODStats, ApiError> {
+export function useCODStats(filters?: CODDashboardFilters, options?: CODQueryOptions<CODStats>): UseQueryResult<CODStats, ApiError> {
     const { isInitialized, user } = useAuth();
     const hasCompanyContext = isInitialized && !!user?.companyId;
     const { enabled: optionsEnabled, ...restOptions } = options ?? {};
 
     return useQuery<CODStats, ApiError>({
-        queryKey: queryKeys.cod.analytics(),
+        queryKey: queryKeys.cod.analytics(filters),
         queryFn: async () => {
-            const response = await apiClient.get('/finance/cod-remittance/dashboard');
+            const response = await apiClient.get('/finance/cod-remittance/dashboard', { params: filters });
             return mapStatsEnvelope(response.data);
         },
         enabled: hasCompanyContext && (optionsEnabled !== false),

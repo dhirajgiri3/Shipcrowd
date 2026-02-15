@@ -6,6 +6,7 @@ import { sendSuccess, sendCreated, sendPaginated } from '../../../../shared/util
 import { ValidationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 import {
     createRemittanceSchema,
     approveRemittanceSchema,
@@ -118,10 +119,10 @@ export const listRemittances = async (
 
         const status = req.query.status as string | undefined;
         const search = req.query.search as string | undefined;
-        const startDate = req.query.startDate
-            ? new Date(req.query.startDate as string)
-            : undefined;
-        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+        const { startDate, endDate } = parseQueryDateRange(
+            req.query.startDate as string | undefined,
+            req.query.endDate as string | undefined
+        );
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
 
@@ -287,7 +288,14 @@ export const getDashboard = async (
     try {
         const auth = guardChecks(req);
         requireCompanyContext(auth);
-        const stats = await CODRemittanceService.getDashboardStats(auth.companyId);
+        const { startDate, endDate } = parseQueryDateRange(
+            req.query.startDate as string | undefined,
+            req.query.endDate as string | undefined
+        );
+        const stats = await CODRemittanceService.getDashboardStats(auth.companyId, {
+            startDate,
+            endDate,
+        });
         sendSuccess(res, stats, 'Dashboard stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching dashboard stats:', error);

@@ -1,9 +1,10 @@
 'use client';
 
-import { endOfDay, startOfDay, startOfMonth, startOfYear, subDays } from 'date-fns';
-import { useMemo, useState } from 'react';
+import { differenceInCalendarDays, endOfDay, isSameDay, startOfDay, startOfMonth, startOfYear, subDays } from 'date-fns';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AnalyticsFilters } from '@/src/types/api/analytics';
 import { ClientTimeRange as TimeRange, DateRange } from '@/src/types/analytics/client-analytics.types';
+import { useUrlDateRange } from './useUrlDateRange';
 
 const toRange = (timeRange: TimeRange): DateRange => {
     const now = new Date();
@@ -28,13 +29,66 @@ const toRange = (timeRange: TimeRange): DateRange => {
 };
 
 export function useAnalyticsParams() {
-    const [timeRange, setTimeRange] = useState<TimeRange>('30d');
-    const dateRange = useMemo(() => toRange(timeRange), [timeRange]);
+    const {
+        range,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
+    const [timeRange, setTimeRangeState] = useState<TimeRange>('30d');
+
+    useEffect(() => {
+        const today = endOfDay(new Date());
+        const days = differenceInCalendarDays(endOfDay(range.to), startOfDay(range.from)) + 1;
+        const current = isSameDay(endOfDay(range.to), today);
+
+        if (current && days === 7) {
+            setTimeRangeState('7d');
+            return;
+        }
+        if (current && days === 30) {
+            setTimeRangeState('30d');
+            return;
+        }
+        if (current && days === 90) {
+            setTimeRangeState('90d');
+            return;
+        }
+
+        const monthStart = startOfMonth(today);
+        if (isSameDay(startOfDay(range.from), monthStart)) {
+            setTimeRangeState('mtd');
+            return;
+        }
+
+        const yearStart = startOfYear(today);
+        if (isSameDay(startOfDay(range.from), yearStart)) {
+            setTimeRangeState('ytd');
+            return;
+        }
+
+        setTimeRangeState('30d');
+    }, [range.from, range.to]);
+
+    const setTimeRange = useCallback((nextRange: TimeRange) => {
+        setTimeRangeState(nextRange);
+        const target = toRange(nextRange);
+        setRange({
+            from: target.from,
+            to: target.to,
+            label: nextRange,
+        });
+    }, [setRange]);
+
+    const dateRange = useMemo<DateRange>(() => ({
+        from: startOfDay(range.from),
+        to: endOfDay(range.to),
+    }), [range.from, range.to]);
 
     const apiFilters = useMemo<AnalyticsFilters>(() => ({
-        startDate: dateRange.from.toISOString(),
-        endDate: dateRange.to.toISOString(),
-    }), [dateRange]);
+        startDate: startDateIso,
+        endDate: endDateIso,
+    }), [endDateIso, startDateIso]);
 
     return {
         timeRange,

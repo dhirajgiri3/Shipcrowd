@@ -70,6 +70,14 @@ router.post(
   ShopifyController.testConnection
 );
 
+// Diagnose permissions and scopes
+router.get(
+  '/stores/:id/diagnose',
+  authenticate,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  ShopifyController.diagnosePermissions
+);
+
 // Get sync logs
 router.get(
   '/stores/:id/sync/logs',

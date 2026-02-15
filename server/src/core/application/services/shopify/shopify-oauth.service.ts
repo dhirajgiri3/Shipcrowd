@@ -499,6 +499,74 @@ export class ShopifyOAuthService {
   }
 
   /**
+   * Verify scopes and diagnose permission issues
+   *
+   * @param storeId - ShopifyStore ID
+   * @returns Diagnostic information about scopes and permissions
+   */
+  static async diagnoseScopesAndPermissions(storeId: string): Promise<{
+    hasRequiredScopes: boolean;
+    currentScopes: string[];
+    requiredScopes: string[];
+    missingScopes: string[];
+    canReadOrders: boolean;
+    shopInfo: any;
+  }> {
+    const store = await ShopifyStore.findById(storeId).select('+accessToken');
+    if (!store) {
+      throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+    }
+
+    const client = new ShopifyClient({
+      shopDomain: store.shopDomain,
+      accessToken: store.decryptAccessToken(),
+    });
+
+    try {
+      // Test shop endpoint (should always work if token is valid)
+      const shopInfo = await client.getShopInfo();
+
+      // Parse current scopes from store
+      const currentScopes = store.scope ? store.scope.split(',') : [];
+      const requiredScopes = this.REQUIRED_SCOPES;
+      const missingScopes = requiredScopes.filter(scope => !currentScopes.includes(scope));
+
+      // Test if we can actually read orders (the failing endpoint)
+      let canReadOrders = false;
+      try {
+        await client.get('/orders.json', { limit: 1, status: 'any' });
+        canReadOrders = true;
+      } catch (error: any) {
+        logger.error('Cannot read orders', {
+          status: error.response?.status,
+          message: error.response?.data?.errors || error.message,
+        });
+      }
+
+      return {
+        hasRequiredScopes: missingScopes.length === 0,
+        currentScopes,
+        requiredScopes,
+        missingScopes,
+        canReadOrders,
+        shopInfo: {
+          name: shopInfo.name,
+          email: shopInfo.email,
+          domain: shopInfo.domain,
+          currency: shopInfo.currency,
+          planName: shopInfo.plan_name,
+        },
+      };
+    } catch (error: any) {
+      logger.error('Scope diagnosis failed', {
+        storeId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Get all active stores for a company
    *
    * @param companyId - Company ID

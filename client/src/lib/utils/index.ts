@@ -24,3 +24,6 @@ export * from './order-shipping-eligibility';
 
 // Pagination utilities
 export * from './pagination';
+
+// Date utilities
+export * from './date';

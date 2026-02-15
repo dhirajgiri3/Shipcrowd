@@ -236,6 +236,7 @@ export const useCreateIntegration = (options?: UseMutationOptions<EcommerceInteg
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
             showSuccessToast('Integration connected successfully');
         },
         onError: (error) => handleApiError(error),
@@ -293,6 +294,7 @@ export const useDeleteIntegration = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
             showSuccessToast('Integration disconnected');
         },
         onError: (error) => {
@@ -467,6 +469,7 @@ export const useReconnectIntegration = () => {
         onSuccess: (_, { integrationId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
             showSuccessToast('Integration reconnected successfully');
         },
         onError: (error) => {
@@ -531,6 +534,7 @@ export const useCompleteOAuth = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
             showSuccessToast('OAuth authentication successful');
         },
         onError: (error) => {
@@ -562,6 +566,8 @@ export const useToggleIntegrationSync = () => {
         },
         onSuccess: (_, { integrationId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.integrations.health() });
             showSuccessToast('Sync status updated');
         },
         onError: (error) => {

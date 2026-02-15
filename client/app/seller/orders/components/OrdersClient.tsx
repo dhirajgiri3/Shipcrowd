@@ -28,6 +28,7 @@ import { SmartFilterChips, FilterPreset } from '@/src/components/seller/orders/S
 import { ResponsiveOrderList } from '@/src/components/seller/orders/ResponsiveOrderList';
 import { useIsMobile } from '@/src/hooks/ux';
 import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
+import { useUrlDateRange } from '@/src/hooks';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
@@ -61,6 +62,7 @@ export function OrdersClient() {
     const [shipTargetOrder, setShipTargetOrder] = useState<Order | null>(null);
     const { addToast } = useToast();
     const limit = 20;
+    const { range: dateRange, startDateIso, endDateIso, setRange } = useUrlDateRange();
 
     // Hydrate/sync tab from URL for deep links (e.g. dashboard CTAs)
     useEffect(() => {
@@ -76,7 +78,7 @@ export function OrdersClient() {
     // Reset page when any filter changes
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, activeTab, smartFilter, paymentFilter]);
+    }, [debouncedSearch, activeTab, smartFilter, paymentFilter, startDateIso, endDateIso]);
 
     // --- REAL API INTEGRATION ---
     const {
@@ -91,6 +93,8 @@ export function OrdersClient() {
         search: debouncedSearch || undefined,
         smartFilter: smartFilter !== 'all' ? smartFilter : undefined,
         paymentStatus: paymentFilter !== 'all' ? paymentFilter : undefined,
+        startDate: startDateIso,
+        endDate: endDateIso,
     });
 
     // Use real data from API directly
@@ -167,7 +171,7 @@ export function OrdersClient() {
                 ]}
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker />
+                        <DateRangePicker value={dateRange} onRangeChange={setRange} />
                         <Button
                             onClick={refetch}
                             variant="ghost"

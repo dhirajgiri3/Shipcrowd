@@ -72,17 +72,17 @@ export function useCodDiscrepancies(
 /**
  * Fetch COD discrepancy counts by status (for stats cards)
  */
-export function useCodDiscrepancyStats(): {
+export function useCodDiscrepancyStats(filters: Pick<DiscrepancyFilters, 'startDate' | 'endDate'> = {}): {
     total: number;
     detected: number;
     under_review: number;
     resolved: number;
     isLoading: boolean;
 } {
-    const all = useCodDiscrepancies({ page: 1, limit: 1 }, { enabled: true });
-    const detected = useCodDiscrepancies({ page: 1, limit: 1, status: 'detected' }, { enabled: true });
-    const underReview = useCodDiscrepancies({ page: 1, limit: 1, status: 'under_review' }, { enabled: true });
-    const resolved = useCodDiscrepancies({ page: 1, limit: 1, status: 'resolved' }, { enabled: true });
+    const all = useCodDiscrepancies({ page: 1, limit: 1, ...filters }, { enabled: true });
+    const detected = useCodDiscrepancies({ page: 1, limit: 1, status: 'detected', ...filters }, { enabled: true });
+    const underReview = useCodDiscrepancies({ page: 1, limit: 1, status: 'under_review', ...filters }, { enabled: true });
+    const resolved = useCodDiscrepancies({ page: 1, limit: 1, status: 'resolved', ...filters }, { enabled: true });
 
     return {
         total: all.data?.pagination?.total ?? 0,

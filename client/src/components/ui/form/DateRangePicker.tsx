@@ -14,15 +14,26 @@ import { useDateRange, DateRange } from '@/src/lib/data';
 
 interface DateRangePickerProps {
     className?: string;
+    value?: DateRange;
     onRangeChange?: (range: DateRange) => void;
 }
 
-export const DateRangePicker = memo(function DateRangePicker({ className, onRangeChange }: DateRangePickerProps) {
+export const DateRangePicker = memo(function DateRangePicker({ className, value, onRangeChange }: DateRangePickerProps) {
     const { dateRange, setDateRange, presets } = useDateRange();
+    const [localRange, setLocalRange] = useState<DateRange>(value || dateRange);
     const [isOpen, setIsOpen] = useState(false);
     const [customFrom, setCustomFrom] = useState('');
     const [customTo, setCustomTo] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const activeRange = value || localRange;
+
+    useEffect(() => {
+        if (value) {
+            setLocalRange(value);
+            return;
+        }
+        setLocalRange(dateRange);
+    }, [dateRange, value]);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -34,9 +45,14 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const applyRange = (range: DateRange) => {
+        setLocalRange(range);
+        setDateRange(range);
+        onRangeChange?.(range);
+    };
+
     const handlePresetClick = (preset: DateRange) => {
-        setDateRange(preset);
-        onRangeChange?.(preset);
+        applyRange(preset);
         setIsOpen(false);
     };
 
@@ -47,8 +63,7 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                 to: new Date(customTo),
                 label: 'Custom Range'
             };
-            setDateRange(range);
-            onRangeChange?.(range);
+            applyRange(range);
             setIsOpen(false);
         }
     };
@@ -72,9 +87,9 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
             >
                 <Calendar className="h-4 w-4 text-[var(--text-secondary)]" />
                 <span className="text-sm font-medium whitespace-nowrap">
-                    {dateRange.label === 'Custom Range'
-                        ? `${formatDate(dateRange.from)} - ${formatDate(dateRange.to)}`
-                        : dateRange.label
+                    {activeRange.label === 'Custom Range'
+                        ? `${formatDate(activeRange.from)} - ${formatDate(activeRange.to)}`
+                        : activeRange.label
                     }
                 </span>
                 <ChevronDown className={cn(
@@ -106,13 +121,13 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                                     className={cn(
                                         "flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left",
                                         "transition-all duration-200",
-                                        dateRange.label === preset.label
+                                        activeRange.label === preset.label
                                             ? "bg-[var(--primary-blue)] text-white font-medium"
                                             : "hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                     )}
                                 >
                                     <span>{preset.label}</span>
-                                    {dateRange.label === preset.label && (
+                                    {activeRange.label === preset.label && (
                                         <Check className="h-3.5 w-3.5" />
                                     )}
                                 </button>

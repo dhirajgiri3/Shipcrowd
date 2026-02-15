@@ -346,6 +346,43 @@ export class ShopifyController {
   }
 
   /**
+   * GET /integrations/shopify/stores/:id/diagnose
+   *
+   * Diagnose scopes and permissions for order sync issues
+   */
+  static async diagnosePermissions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const auth = guardChecks(req);
+      requireCompanyContext(auth);
+      const { id } = req.params;
+
+      // Verify ownership
+      const store = await ShopifyStore.findOne({
+        _id: id,
+        companyId: auth.companyId,
+      });
+
+      if (!store) {
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+      }
+
+      // Run diagnostics
+      const diagnostics = await ShopifyOAuthService.diagnoseScopesAndPermissions(id);
+
+      logger.info('Shopify diagnostics completed', {
+        storeId: id,
+        hasRequiredScopes: diagnostics.hasRequiredScopes,
+        canReadOrders: diagnostics.canReadOrders,
+        missingScopes: diagnostics.missingScopes,
+      });
+
+      sendSuccess(res, diagnostics, 'Diagnostics completed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * POST /integrations/shopify/stores/:id/pause
    *
    * Pause sync for a store

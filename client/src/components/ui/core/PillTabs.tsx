@@ -7,7 +7,7 @@ interface PillTab {
 
 interface PillTabsProps<T extends PillTab> {
     tabs: readonly T[];
-    activeTab: T['key'];
+    activeTab?: T['key'];
     onTabChange: (key: T['key']) => void;
     className?: string;
 }

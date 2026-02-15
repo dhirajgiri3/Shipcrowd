@@ -168,17 +168,19 @@ function periodToDateRange(period: '7d' | '30d' | '90d' | '1y'): { startDate: st
  * Maps period to startDate/endDate for backend compatibility.
  */
 export const useAnalytics = (
-    params: { period?: '7d' | '30d' | '90d' | '1y' } = {},
+    params: { period?: '7d' | '30d' | '90d' | '1y'; startDate?: string; endDate?: string } = {},
     options?: UseQueryOptions<AnalyticsData, ApiError>
 ) => {
-    const { period = '30d' } = params;
+    const { period = '30d', startDate: explicitStartDate, endDate: explicitEndDate } = params;
+    const derivedDateRange = explicitStartDate && explicitEndDate
+        ? { startDate: explicitStartDate, endDate: explicitEndDate }
+        : periodToDateRange(period);
 
     return useQuery<AnalyticsData, ApiError>({
-        queryKey: queryKeys.analytics.dashboard(period as any),
+        queryKey: queryKeys.analytics.dashboard(derivedDateRange),
         queryFn: async () => {
-            const { startDate, endDate } = periodToDateRange(period);
             const response = await apiClient.get('/analytics/dashboard/seller', {
-                params: { startDate, endDate },
+                params: derivedDateRange,
             });
             return response.data.data as AnalyticsData;
         },

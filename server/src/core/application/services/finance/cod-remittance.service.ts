@@ -831,15 +831,25 @@ export class CODRemittanceService {
     /**
      * Get COD remittance dashboard stats
      */
-    static async getDashboardStats(companyId: string): Promise<any> {
+    static async getDashboardStats(
+        companyId: string,
+        dateRange?: { startDate?: Date; endDate?: Date }
+    ): Promise<any> {
         try {
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const createdAtFilter = dateRange?.startDate || dateRange?.endDate
+                ? {
+                    ...(dateRange.startDate ? { $gte: dateRange.startDate } : {}),
+                    ...(dateRange.endDate ? { $lte: dateRange.endDate } : {}),
+                }
+                : undefined;
+            const effectiveCutoffDate = dateRange?.endDate || now;
 
             // 1. Pending Collection (Delivered but not remitted)
             let eligible;
             try {
-                eligible = await this.getEligibleShipments(companyId, now);
+                eligible = await this.getEligibleShipments(companyId, effectiveCutoffDate);
             } catch (error) {
                 // If no eligible shipments, return zeros instead of throwing error
                 eligible = {
@@ -859,7 +869,8 @@ export class CODRemittanceService {
                     $match: {
                         companyId: new mongoose.Types.ObjectId(companyId),
                         status: { $in: ['pending_approval', 'approved'] },
-                        isDeleted: false
+                        isDeleted: false,
+                        ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
                     }
                 },
                 {
@@ -880,7 +891,8 @@ export class CODRemittanceService {
                         companyId: new mongoose.Types.ObjectId(companyId),
                         status: 'approved',
                         'payout.status': 'pending',
-                        isDeleted: false
+                        isDeleted: false,
+                        ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
                     }
                 },
                 {
@@ -897,7 +909,7 @@ export class CODRemittanceService {
                     $match: {
                         companyId: new mongoose.Types.ObjectId(companyId),
                         status: 'paid',
-                        createdAt: { $gte: startOfMonth },
+                        createdAt: createdAtFilter || { $gte: startOfMonth },
                         isDeleted: false
                     }
                 },

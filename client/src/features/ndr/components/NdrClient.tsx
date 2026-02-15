@@ -34,12 +34,19 @@ import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { useUrlDateRange } from '@/src/hooks';
 
 export function NDRClient() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<NDRStatus | 'all'>('all');
     const [selectedCases, setSelectedCases] = useState<string[]>([]);
     const [bulkActionConfirm, setBulkActionConfirm] = useState<'return_to_origin' | 'escalate' | null>(null);
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
 
     const { addToast } = useToast();
     const { mutate: takeAction, isPending: isActionPending } = useTakeNDRAction();
@@ -74,12 +81,14 @@ export function NDRClient() {
     } = useNDRCases({
         status: statusFilter !== 'all' ? statusFilter : undefined,
         search: searchTerm || undefined,
+        startDate: startDateIso,
+        endDate: endDateIso,
     });
 
     const {
         data: metrics,
         isLoading: metricsLoading
-    } = useNDRMetrics();
+    } = useNDRMetrics({ startDate: startDateIso, endDate: endDateIso });
 
     const cases = ndrCasesResponse?.cases || [];
 
@@ -186,7 +195,7 @@ export function NDRClient() {
                 }
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker />
+                        <DateRangePicker value={dateRange} onRangeChange={setRange} />
                         <Button
                             onClick={() => refetch()}
                             variant="ghost"

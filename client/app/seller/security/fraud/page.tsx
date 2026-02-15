@@ -14,6 +14,7 @@ import type { FraudAlert, FraudAlertFilters, FraudRiskLevel, FraudAlertStatus, B
 import { FRAUD_ALERT_TYPE_LABELS, RISK_LEVEL_COLORS, ALERT_STATUS_COLORS } from '@/src/types/api/security';
 
 export default function FraudDetectionPage() {
+    const isFeatureArchived = true;
     const [filters, setFilters] = useState<FraudAlertFilters>({});
     const [selectedAlert, setSelectedAlert] = useState<FraudAlert | null>(null);
 
@@ -97,12 +98,18 @@ export default function FraudDetectionPage() {
 
                 {/* Filters */}
                 <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-default)] p-4 mb-6">
+                    {isFeatureArchived && (
+                        <div className="mb-4 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
+                            Fraud detection is currently archived. Date and status filters are disabled until the feature is re-enabled.
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Risk Level</label>
                             <select
                                 value={filters.riskLevel || ''}
                                 onChange={(e) => setFilters({ ...filters, riskLevel: e.target.value as FraudRiskLevel || undefined })}
+                                disabled={isFeatureArchived}
                                 className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             >
                                 <option value="">All Levels</option>
@@ -118,6 +125,7 @@ export default function FraudDetectionPage() {
                             <select
                                 value={filters.status || ''}
                                 onChange={(e) => setFilters({ ...filters, status: e.target.value as FraudAlertStatus || undefined })}
+                                disabled={isFeatureArchived}
                                 className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             >
                                 <option value="">All Statuses</option>
@@ -135,6 +143,7 @@ export default function FraudDetectionPage() {
                                 type="date"
                                 value={filters.startDate || ''}
                                 onChange={(e) => setFilters({ ...filters, startDate: e.target.value || undefined })}
+                                disabled={isFeatureArchived}
                                 className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             />
                         </div>
@@ -145,6 +154,7 @@ export default function FraudDetectionPage() {
                                 type="date"
                                 value={filters.endDate || ''}
                                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value || undefined })}
+                                disabled={isFeatureArchived}
                                 className="w-full px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
                             />
                         </div>

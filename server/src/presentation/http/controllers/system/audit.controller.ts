@@ -8,12 +8,13 @@ import { sendSuccess, sendPaginated, calculatePagination } from '../../../../sha
 import { AuthenticationError, AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 const getAuditLogsSchema = z.object({
   page: z.string().optional().transform(val => (val ? parseInt(val, 10) : 1)),
   limit: z.string().optional().transform(val => (val ? parseInt(val, 10) : 20)),
-  startDate: z.string().optional().transform(val => (val ? new Date(val) : undefined)),
-  endDate: z.string().optional().transform(val => (val ? new Date(val) : undefined)),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   action: z.string().optional(),
   resource: z.string().optional(),
   resourceId: z.string().optional(),
@@ -37,13 +38,14 @@ export const getMyAuditLogs = async (req: Request, res: Response, next: NextFunc
     }
 
     const { page, limit, startDate, endDate, action, resource } = validation.data;
+    const parsedDateRange = parseQueryDateRange(startDate, endDate);
 
     const query: any = { userId: req.user._id, isDeleted: false };
 
-    if (startDate || endDate) {
+    if (parsedDateRange.startDate || parsedDateRange.endDate) {
       query.timestamp = {};
-      if (startDate) query.timestamp.$gte = startDate;
-      if (endDate) query.timestamp.$lte = endDate;
+      if (parsedDateRange.startDate) query.timestamp.$gte = parsedDateRange.startDate;
+      if (parsedDateRange.endDate) query.timestamp.$lte = parsedDateRange.endDate;
     }
 
     if (action) query.action = action;
@@ -93,13 +95,14 @@ export const getCompanyAuditLogs = async (req: Request, res: Response, next: Nex
     }
 
     const { page, limit, startDate, endDate, action, resource, resourceId, userId, search } = validation.data;
+    const parsedDateRange = parseQueryDateRange(startDate, endDate);
 
     const query: any = { companyId: auth.companyId, isDeleted: false };
 
-    if (startDate || endDate) {
+    if (parsedDateRange.startDate || parsedDateRange.endDate) {
       query.timestamp = {};
-      if (startDate) query.timestamp.$gte = startDate;
-      if (endDate) query.timestamp.$lte = endDate;
+      if (parsedDateRange.startDate) query.timestamp.$gte = parsedDateRange.startDate;
+      if (parsedDateRange.endDate) query.timestamp.$lte = parsedDateRange.endDate;
     }
 
     if (action) query.action = action;

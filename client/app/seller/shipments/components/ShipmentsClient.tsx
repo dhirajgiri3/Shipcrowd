@@ -26,6 +26,7 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { cn } from '@/src/lib/utils';
+import { useUrlDateRange } from '@/src/hooks';
 
 const SHIPMENT_TABS = [
     { key: 'all', label: 'All' },
@@ -46,6 +47,7 @@ export function ShipmentsClient() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_transit' | 'delivered' | 'rto' | 'ndr'>('all');
     const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const { range: dateRange, startDateIso, endDateIso, setRange } = useUrlDateRange();
 
     const { addToast } = useToast();
 
@@ -59,9 +61,11 @@ export function ShipmentsClient() {
         limit,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         search: debouncedSearch || undefined,
+        startDate: startDateIso,
+        endDate: endDateIso,
     });
 
-    const { data: stats } = useShipmentStats();
+    const { data: stats } = useShipmentStats({ startDate: startDateIso, endDate: endDateIso });
 
     // Hydrate/sync filters from URL for deep links from dashboard/order tracking actions
     useEffect(() => {
@@ -77,7 +81,7 @@ export function ShipmentsClient() {
 
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, statusFilter]);
+    }, [debouncedSearch, statusFilter, startDateIso, endDateIso]);
 
     const shipmentsData = shipmentsResponse?.shipments || [];
     const paginationMeta = shipmentsResponse?.pagination || { total: 0, pages: 1 };
@@ -188,7 +192,7 @@ export function ShipmentsClient() {
                 ]}
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker />
+                        <DateRangePicker value={dateRange} onRangeChange={setRange} />
                         <Button
                             size="sm"
                             variant="outline"

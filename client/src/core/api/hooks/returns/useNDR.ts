@@ -96,11 +96,13 @@ export function useNDRCase(caseId: string, options?: UseQueryOptions<NDRCase, Ap
 /**
  * Fetch NDR metrics
  */
-export function useNDRMetrics() {
+export function useNDRMetrics(filters?: { startDate?: string; endDate?: string }) {
     return useQuery<NDRMetrics>({
-        queryKey: queryKeys.ndr.metrics(),
+        queryKey: queryKeys.ndr.metrics(filters),
         queryFn: async () => {
-            const response = await apiClient.get<ApiEnvelope<NDRMetrics>>('/ndr/analytics/stats');
+            const response = await apiClient.get<ApiEnvelope<NDRMetrics>>('/ndr/analytics/stats', {
+                params: filters,
+            });
             const metrics = unwrapApiData<NDRMetrics>(response.data);
             return {
                 ...metrics,

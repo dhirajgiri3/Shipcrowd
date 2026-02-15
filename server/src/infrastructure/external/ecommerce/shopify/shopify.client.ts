@@ -61,7 +61,7 @@ export class ShopifyClient {
   constructor(config: ShopifyClientConfig) {
     this.shopDomain = config.shopDomain;
     this.accessToken = config.accessToken;
-    this.apiVersion = config.apiVersion || '2026-01';
+    this.apiVersion = config.apiVersion || '2025-01';
     this.maxRetries = config.maxRetries || 3;
 
     // Setup logger

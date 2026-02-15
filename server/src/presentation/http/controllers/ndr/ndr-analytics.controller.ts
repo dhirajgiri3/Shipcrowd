@@ -4,6 +4,7 @@ import { ValidationError } from '../../../../shared/errors/app.error';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
 import { z } from 'zod';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 export class NDRAnalyticsController {
 
@@ -28,7 +29,10 @@ export class NDRAnalyticsController {
             }
 
             const { startDate, endDate } = validation.data;
-            const dateRange = (startDate && endDate) ? { start: new Date(startDate), end: new Date(endDate) } : undefined;
+            const parsedRange = parseQueryDateRange(startDate, endDate);
+            const dateRange = (parsedRange.startDate && parsedRange.endDate)
+                ? { start: parsedRange.startDate, end: parsedRange.endDate }
+                : undefined;
 
             const stats = await NDRAnalyticsService.getNDRStats(companyId, dateRange);
 
@@ -73,7 +77,10 @@ export class NDRAnalyticsController {
             }
 
             const { startDate, endDate } = validation.data;
-            const dateRange = (startDate && endDate) ? { start: new Date(startDate), end: new Date(endDate) } : undefined;
+            const parsedRange = parseQueryDateRange(startDate, endDate);
+            const dateRange = (parsedRange.startDate && parsedRange.endDate)
+                ? { start: parsedRange.startDate, end: parsedRange.endDate }
+                : undefined;
 
             const metrics = await NDRAnalyticsService.getCustomerSelfServiceMetrics(companyId, dateRange);
             sendSuccess(res, { data: metrics });
@@ -100,7 +107,10 @@ export class NDRAnalyticsController {
             if (!validation.success) throw new ValidationError('Invalid query parameters');
 
             const { startDate, endDate } = validation.data;
-            const dateRange = (startDate && endDate) ? { start: new Date(startDate), end: new Date(endDate) } : undefined;
+            const parsedRange = parseQueryDateRange(startDate, endDate);
+            const dateRange = (parsedRange.startDate && parsedRange.endDate)
+                ? { start: parsedRange.startDate, end: parsedRange.endDate }
+                : undefined;
 
             const metrics = await NDRAnalyticsService.getPreventionLayerMetrics(companyId, dateRange);
             sendSuccess(res, { data: metrics });
@@ -127,7 +137,10 @@ export class NDRAnalyticsController {
             if (!validation.success) throw new ValidationError('Invalid query parameters');
 
             const { startDate, endDate } = validation.data;
-            const dateRange = (startDate && endDate) ? { start: new Date(startDate), end: new Date(endDate) } : undefined;
+            const parsedRange = parseQueryDateRange(startDate, endDate);
+            const dateRange = (parsedRange.startDate && parsedRange.endDate)
+                ? { start: parsedRange.startDate, end: parsedRange.endDate }
+                : undefined;
 
             const metrics = await NDRAnalyticsService.getROIMetrics(companyId, dateRange);
             sendSuccess(res, { data: metrics });

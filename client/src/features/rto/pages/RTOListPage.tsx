@@ -21,6 +21,7 @@ import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { RTODetailsPanel } from '@/src/components/seller/rto/RTODetailsPanel';
 import type { RTOEventDetail, RTOShipmentRef, RTOOrderRef, RTOWarehouseRef, RTOReturnStatus } from '@/src/types/api/rto.types';
 import { RTO_REASON_LABELS } from '@/src/types/api/rto.types';
+import { useUrlDateRange } from '@/src/hooks';
 
 const STATUS_TABS = [
     { key: 'all', label: 'All Statuses' },
@@ -46,9 +47,12 @@ export function RTOListPage() {
     // Pagination state
     const [page, setPage] = useState(1);
     const limit = 20;
-
-    const startDate = searchParams.get('startDate') || undefined;
-    const endDate = searchParams.get('endDate') || undefined;
+    const {
+        range: dateRange,
+        startDateIso: startDate,
+        endDateIso: endDate,
+        setRange,
+    } = useUrlDateRange();
 
     // Deep link from dashboard: /seller/rto?returnStatus=qc_pending
     useEffect(() => {
@@ -61,7 +65,7 @@ export function RTOListPage() {
     // Reset page when filters change
     useEffect(() => {
         setPage(1);
-    }, [statusFilter, debouncedSearch]);
+    }, [statusFilter, debouncedSearch, startDate, endDate]);
 
     const { data: listData, isLoading, refetch, error } = useRTOEvents({
         page,
@@ -185,7 +189,7 @@ export function RTOListPage() {
                 }
                 actions={
                     <div className="flex items-center gap-3">
-                        <DateRangePicker />
+                        <DateRangePicker value={dateRange} onRangeChange={setRange} />
                         <Button
                             onClick={() => refetch()}
                             variant="ghost"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAnalytics } from '@/src/core/api/hooks';
@@ -25,6 +25,8 @@ import {
     Truck,
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { differenceInCalendarDays, endOfDay, isSameDay, startOfDay, subDays, subYears } from 'date-fns';
+import { useUrlDateRange } from '@/src/hooks';
 
 // Expected shape for AnalyticsSection
 interface AnalyticsDisplayData {
@@ -54,6 +56,26 @@ const PERIOD_TABS = [
 ] as const;
 
 type PeriodKey = (typeof PERIOD_TABS)[number]['key'];
+type PeriodState = PeriodKey | 'custom';
+
+const PERIOD_TO_DAYS: Record<PeriodKey, number> = {
+    '7d': 7,
+    '30d': 30,
+    '90d': 90,
+    '1y': 365,
+};
+
+const getRangeForPeriod = (period: PeriodKey) => {
+    const today = new Date();
+    const to = endOfDay(today);
+    if (period === '1y') {
+        const from = startOfDay(subYears(today, 1));
+        return { from, to, label: 'Last 1 Year' };
+    }
+    const days = PERIOD_TO_DAYS[period];
+    const from = startOfDay(subDays(today, days - 1));
+    return { from, to, label: `Last ${days} Days` };
+};
 
 // Mock data for fallback when API returns incompatible or empty data for charts
 const MOCK_ANALYTICS_DATA: AnalyticsDisplayData = {
@@ -127,10 +149,52 @@ function normalizeToDisplayData(apiData: SellerDashboardResponse | null | undefi
 export function AnalyticsClient() {
     const router = useRouter();
     const { addToast } = useToast();
-    const [period, setPeriod] = useState<PeriodKey>('30d');
+    const [period, setPeriod] = useState<PeriodState>('30d');
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const {
+        range: dateRange,
+        startDateIso,
+        endDateIso,
+        setRange,
+    } = useUrlDateRange();
 
-    const { data: analyticsData, isLoading, refetch } = useAnalytics({ period });
+    useEffect(() => {
+        const from = startOfDay(dateRange.from);
+        const to = endOfDay(dateRange.to);
+        const today = endOfDay(new Date());
+        const days = differenceInCalendarDays(to, from) + 1;
+        const isCurrentRange = isSameDay(to, today);
+
+        if (isCurrentRange && days === 7) {
+            setPeriod('7d');
+            return;
+        }
+        if (isCurrentRange && days === 30) {
+            setPeriod('30d');
+            return;
+        }
+        if (isCurrentRange && days === 90) {
+            setPeriod('90d');
+            return;
+        }
+        if (days >= 365 && days <= 366) {
+            setPeriod('1y');
+            return;
+        }
+
+        setPeriod('custom');
+    }, [dateRange.from, dateRange.to]);
+
+    const handlePeriodChange = useCallback((nextPeriod: PeriodKey) => {
+        setPeriod(nextPeriod);
+        setRange(getRangeForPeriod(nextPeriod));
+    }, [setRange]);
+
+    const { data: analyticsData, isLoading, refetch } = useAnalytics({
+        period: period === 'custom' ? undefined : period,
+        startDate: startDateIso,
+        endDate: endDateIso,
+    });
 
     const apiData = analyticsData as SellerDashboardResponse | undefined;
     const displayData = useMemo(
@@ -157,7 +221,7 @@ export function AnalyticsClient() {
                 backUrl="/seller/dashboard"
                 actions={
                     <div className="flex flex-wrap items-center gap-3">
-                        <DateRangePicker />
+                        <DateRangePicker value={dateRange} onRangeChange={setRange} />
                         <Button
                             variant="ghost"
                             size="sm"
@@ -264,8 +328,8 @@ export function AnalyticsClient() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <PillTabs
                         tabs={PERIOD_TABS}
-                        activeTab={period}
-                        onTabChange={(key) => setPeriod(key as PeriodKey)}
+                        activeTab={period === 'custom' ? undefined : period}
+                        onTabChange={(key) => handlePeriodChange(key as PeriodKey)}
                     />
                 </div>
 

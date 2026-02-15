@@ -301,10 +301,16 @@ export function DashboardClient() {
     const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useWalletBalance();
 
     // Order Trends (30-day chart data)
-    const { data: orderTrendsData, isLoading: orderTrendsLoading, refetch: refetchTrends } = useOrderTrends(selectedDays);
+    const { data: orderTrendsData, isLoading: orderTrendsLoading, refetch: refetchTrends } = useOrderTrends({
+        startDate: dateParams.startDate,
+        endDate: dateParams.endDate,
+    });
 
     // COD Stats (for CODStatusCard)
-    const { data: codStatsData, isLoading: codStatsLoading, refetch: refetchCOD } = useCODStats();
+    const { data: codStatsData, isLoading: codStatsLoading, refetch: refetchCOD } = useCODStats({
+        startDate: dateParams.startDate,
+        endDate: dateParams.endDate,
+    });
 
     // Orders List (for urgent actions - pending pickups, RTO)
     const { pendingPickupCount, rtoCount, ndrActionRequiredCount, isLoading: urgentActionsLoading } = useUrgentActions();
@@ -746,8 +752,15 @@ export function DashboardClient() {
                             periodLabel={selectedPeriodLabel}
                             timeframeDays={selectedDays}
                             onDataPointClick={(dataPoint) => {
-                                // Navigate to orders filtered by date
-                                router.push(`/seller/orders?date=${dataPoint.date}`);
+                                const start = new Date(dataPoint.date);
+                                start.setHours(0, 0, 0, 0);
+                                const end = new Date(dataPoint.date);
+                                end.setHours(23, 59, 59, 999);
+                                const params = new URLSearchParams();
+                                params.set('startDate', start.toISOString());
+                                params.set('endDate', end.toISOString());
+                                params.set('page', '1');
+                                router.push(`/seller/orders?${params.toString()}`);
                             }}
                         />
                     </motion.section>

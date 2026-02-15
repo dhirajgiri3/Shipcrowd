@@ -20,17 +20,27 @@ export interface OrderAnalyticsResponse {
     period: { days: number; startDate: Date; endDate: Date };
 }
 
+interface UseOrderTrendsParams {
+    days?: number;
+    startDate?: string;
+    endDate?: string;
+}
+
 /**
  * Fetch order trends for specified number of days
  */
-export function useOrderTrends(days: number = 30) {
+export function useOrderTrends(params: UseOrderTrendsParams = {}) {
+    const { days = 30, startDate, endDate } = params;
     const safeDays = Math.max(1, Math.floor(days || 30));
+    const hasExplicitRange = Boolean(startDate && endDate);
 
     return useQuery({
-        queryKey: ['analytics', 'orders', { days: safeDays }],
+        queryKey: ['analytics', 'orders', { days: safeDays, startDate, endDate }],
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: OrderAnalyticsResponse }>(`/analytics/orders`, {
-                params: { days: safeDays }
+                params: hasExplicitRange
+                    ? { startDate, endDate }
+                    : { days: safeDays }
             });
             return data.data;
         },

@@ -24,6 +24,7 @@ import {
 } from '../../../../shared/validation/ndr-schemas';
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
+import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -109,12 +110,13 @@ export class NDRController {
             }
 
             if (startDate || endDate) {
+                const parsedRange = parseQueryDateRange(startDate, endDate);
                 filter.detectedAt = {};
-                if (startDate) {
-                    filter.detectedAt.$gte = new Date(startDate);
+                if (parsedRange.startDate) {
+                    filter.detectedAt.$gte = parsedRange.startDate;
                 }
-                if (endDate) {
-                    filter.detectedAt.$lte = new Date(endDate);
+                if (parsedRange.endDate) {
+                    filter.detectedAt.$lte = parsedRange.endDate;
                 }
             }
 
@@ -401,12 +403,13 @@ export class NDRController {
             }
 
             const { startDate, endDate, ndrType } = validation.data;
+            const parsedRange = parseQueryDateRange(startDate, endDate);
 
             let dateRange;
-            if (startDate && endDate) {
+            if (parsedRange.startDate && parsedRange.endDate) {
                 dateRange = {
-                    start: new Date(startDate),
-                    end: new Date(endDate),
+                    start: parsedRange.startDate,
+                    end: parsedRange.endDate,
                 };
             }
 
@@ -457,10 +460,11 @@ export class NDRController {
             }
 
             const { startDate, endDate, groupBy } = validation.data;
+            const parsedRange = parseQueryDateRange(startDate, endDate);
 
             const dateRange = {
-                start: startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                end: endDate ? new Date(endDate) : new Date(),
+                start: parsedRange.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                end: parsedRange.endDate || new Date(),
             };
 
             const trends = await NDRAnalyticsService.getNDRTrends(

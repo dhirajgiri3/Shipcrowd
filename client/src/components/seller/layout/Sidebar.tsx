@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
     LayoutDashboard,
     Package,
@@ -45,7 +45,7 @@ export interface SellerNavItem {
     label: string;
     href: string;
     icon: React.ComponentType<{ className?: string }>;
-    badgeKey?: 'orders_ready' | 'ndr_pending';
+    badgeKey?: 'orders_ready' | 'ndr_pending' | 'weight_dispute';
 }
 
 export interface SellerNavSection {
@@ -55,31 +55,29 @@ export interface SellerNavSection {
     defaultOpen?: boolean;
 }
 
+/** Priority-based nav structure: Core (daily) → Fulfillment → Financial → Insights → Tools & Setup */
 export const sellerNavSections: SellerNavSection[] = [
     {
-        id: 'shipping',
-        title: 'Shipping',
+        id: 'core',
+        title: 'Core',
         defaultOpen: true,
         items: [
             { label: 'Dashboard', href: '/seller', icon: LayoutDashboard },
             { label: 'Orders', href: '/seller/orders', icon: ShoppingCart, badgeKey: 'orders_ready' },
             { label: 'Shipments', href: '/seller/shipments', icon: Package },
-            { label: 'Manifests', href: '/seller/manifests', icon: ClipboardList },
-            { label: 'Shipping Labels', href: '/seller/label', icon: FileText },
             { label: 'Track & Trace', href: '/seller/tracking', icon: MapPin },
         ],
     },
     {
-        id: 'operations',
-        title: 'Operations',
-        defaultOpen: false,
+        id: 'fulfillment',
+        title: 'Fulfillment',
+        defaultOpen: true,
         items: [
+            { label: 'Manifests', href: '/seller/manifests', icon: ClipboardList },
+            { label: 'Shipping Labels', href: '/seller/label', icon: FileText },
             { label: 'NDR Management', href: '/seller/ndr', icon: PackageX, badgeKey: 'ndr_pending' },
             { label: 'Returns (RTO)', href: '/seller/rto', icon: RotateCcw },
             { label: 'Customer Returns', href: '/seller/returns', icon: CornerUpLeft },
-            { label: 'Warehouses', href: '/seller/warehouses', icon: Building2 },
-            { label: 'Weight Discrepancy', href: '/seller/weight', icon: ScaleIcon },
-            { label: 'Rate Calculator', href: '/seller/rates', icon: Calculator },
         ],
     },
     {
@@ -88,14 +86,14 @@ export const sellerNavSections: SellerNavSection[] = [
         defaultOpen: false,
         items: [
             { label: 'Wallet & Billing', href: '/seller/wallet', icon: Wallet },
-            { label: 'Bank Accounts', href: '/seller/bank-accounts', icon: Landmark },
             { label: 'COD Overview', href: '/seller/cod', icon: Banknote },
+            { label: 'Bank Accounts', href: '/seller/bank-accounts', icon: Landmark },
             { label: 'Discrepancies', href: '/seller/cod/discrepancies', icon: AlertTriangle },
         ],
     },
     {
-        id: 'analytics',
-        title: 'Analytics',
+        id: 'insights',
+        title: 'Insights',
         defaultOpen: false,
         items: [
             { label: 'Analytics Overview', href: '/seller/analytics', icon: TrendingUp },
@@ -106,19 +104,15 @@ export const sellerNavSections: SellerNavSection[] = [
         ],
     },
     {
-        id: 'tools',
-        title: 'Tools',
+        id: 'tools-setup',
+        title: 'Tools & Setup',
         defaultOpen: false,
         items: [
             { label: 'Pincode Checker', href: '/seller/tools/pincode-checker', icon: MapPin },
             { label: 'Address Validation', href: '/seller/tools/bulk-address-validation', icon: CheckSquare },
-        ],
-    },
-    {
-        id: 'communication',
-        title: 'Communication',
-        defaultOpen: false,
-        items: [
+            { label: 'Warehouses', href: '/seller/warehouses', icon: Building2 },
+            { label: 'Rate Calculator', href: '/seller/rates', icon: Calculator },
+            { label: 'Weight Discrepancy', href: '/seller/weight', icon: ScaleIcon, badgeKey: 'weight_dispute' },
             { label: 'Notification Rules', href: '/seller/communication/rules', icon: Wrench },
             { label: 'Templates', href: '/seller/communication/templates', icon: MessageSquare },
         ],
@@ -143,18 +137,46 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
     const { handleLogout } = useLogoutRedirect();
     const { data: actions } = useSellerActions();
 
+    const DEFAULT_EXPANDED: Record<string, boolean> = {
+        core: true,
+        fulfillment: true,
+        financial: false,
+        insights: false,
+        'tools-setup': false,
+    };
+
+    const migrateLegacySections = (parsed: Record<string, boolean>): Record<string, boolean> => {
+        const OLD_TO_NEW: Record<string, string> = {
+            shipping: 'core',
+            operations: 'fulfillment',
+            financial: 'financial',
+            analytics: 'insights',
+            tools: 'tools-setup',
+            communication: 'tools-setup',
+        };
+        const migrated: Record<string, boolean> = { ...DEFAULT_EXPANDED };
+        for (const [oldId, newId] of Object.entries(OLD_TO_NEW)) {
+            if (oldId in parsed) {
+                migrated[newId] = parsed[oldId];
+            }
+        }
+        return migrated;
+    };
+
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('seller-sidebar-sections');
             if (saved) {
                 try {
-                    return JSON.parse(saved);
+                    const parsed = JSON.parse(saved) as Record<string, boolean>;
+                    const hasNewIds = sellerNavSections.some((s) => s.id in parsed);
+                    return hasNewIds ? { ...DEFAULT_EXPANDED, ...parsed } : migrateLegacySections(parsed);
                 } catch {
-                    return { shipping: true, operations: false, financial: false, analytics: false, tools: false, communication: false };
+                    return DEFAULT_EXPANDED;
                 }
             }
         }
-        return { shipping: true, operations: false, financial: false, analytics: false, tools: false, communication: false };
+        return DEFAULT_EXPANDED;
     });
 
     const allNavItems = useMemo(
@@ -186,7 +208,7 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
         });
     }, [activeHref]);
 
-    const getBadgeCount = (badgeKey?: 'orders_ready' | 'ndr_pending'): number => {
+    const getBadgeCount = (badgeKey?: 'orders_ready' | 'ndr_pending' | 'weight_dispute'): number => {
         if (!badgeKey || !actions?.items) return 0;
         const action = actions.items.find((a) => a.type === badgeKey);
         return action?.count || 0;
@@ -207,6 +229,37 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
         }));
     };
 
+    const prefersReducedMotion = useReducedMotion();
+    const navContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleNavKeyDown = useCallback(
+        (e: React.KeyboardEvent) => {
+            const focusable = navContainerRef.current?.querySelectorAll<HTMLAnchorElement>(
+                'a[href]'
+            );
+            if (!focusable?.length) return;
+
+            const list = Array.from(focusable);
+            const current = document.activeElement as HTMLAnchorElement | null;
+            const idx = current ? list.indexOf(current) : -1;
+
+            if (e.key === 'ArrowDown' && idx < list.length - 1) {
+                e.preventDefault();
+                list[idx + 1]?.focus();
+            } else if (e.key === 'ArrowUp' && idx > 0) {
+                e.preventDefault();
+                list[idx - 1]?.focus();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                list[0]?.focus();
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                list[list.length - 1]?.focus();
+            }
+        },
+        []
+    );
+
     const renderNavItem = (item: SellerNavItem, showBadge = true) => {
         const isActive = item.href === activeHref;
         const badgeCount = showBadge ? getBadgeCount(item.badgeKey) : 0;
@@ -216,6 +269,7 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
                     'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group overflow-hidden',
                     isActive
@@ -270,7 +324,11 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                 />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 scrollbar-premium">
+            <div
+                ref={navContainerRef}
+                className="flex-1 overflow-y-auto p-4 scrollbar-premium"
+                onKeyDown={handleNavKeyDown}
+            >
                 <nav className="space-y-2" aria-label="Seller sections">
                     {sellerNavSections.map((section) => {
                         const isExpanded = expandedSections[section.id] ?? section.defaultOpen;
@@ -278,10 +336,16 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                             (sum, item) => sum + getBadgeCount(item.badgeKey),
                             0
                         );
+                        const sectionTitleId = `seller-nav-title-${section.id}`;
 
                         return (
-                            <div key={section.id} className="mb-2">
+                            <section
+                                key={section.id}
+                                className="mb-2"
+                                aria-labelledby={sectionTitleId}
+                            >
                                 <button
+                                    id={sectionTitleId}
                                     onClick={() => toggleSection(section.id)}
                                     className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider hover:text-[var(--text-secondary)] transition-colors rounded-lg hover:bg-[var(--bg-hover)]"
                                     aria-expanded={isExpanded}
@@ -297,7 +361,7 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                                     </span>
                                     <motion.div
                                         animate={{ rotate: isExpanded ? 180 : 0 }}
-                                        transition={{ duration: 0.2 }}
+                                        transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
                                     >
                                         <ChevronDown className="h-3.5 w-3.5" />
                                     </motion.div>
@@ -307,10 +371,10 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                                     {isExpanded && (
                                         <motion.div
                                             id={`seller-nav-${section.id}`}
-                                            initial={{ height: 0, opacity: 0 }}
+                                            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                            exit={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+                                            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: 'easeInOut' }}
                                             className="overflow-hidden"
                                         >
                                             <div className="space-y-1 mt-1">
@@ -319,29 +383,29 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                            </div>
+                            </section>
                         );
                     })}
 
-                    <div className="pt-4 mt-4 border-t border-[var(--border-subtle)]">
+                    <section className="pt-4 mt-4 border-t border-[var(--border-subtle)]" aria-labelledby="seller-nav-account">
                         <div className="px-3 mb-2">
-                            <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Account</span>
+                            <span id="seller-nav-account" className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Account</span>
                         </div>
                         <div className="space-y-1">
                             {sellerAccountItems.map((item) => renderNavItem(item, false))}
                         </div>
-                    </div>
+                    </section>
                 </nav>
 
-                <div className="mt-6 pt-6">
+                <section className="mt-6 pt-6" aria-labelledby="seller-nav-support">
                     <div className="divider-soft mb-4" />
                     <div className="px-3 mb-2">
-                        <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Support</span>
+                        <span id="seller-nav-support" className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Support</span>
                     </div>
                     <nav className="space-y-1">
                         {sellerSupportItems.map((item) => renderNavItem(item, false))}
                     </nav>
-                </div>
+                </section>
             </div>
 
             <div className="p-4 mt-auto">
