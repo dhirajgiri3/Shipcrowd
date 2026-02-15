@@ -12,6 +12,7 @@
 
 import { Order } from '@/src/types/domain/order';
 import { OrderStatus } from '@/src/components/seller/orders/MobileOrderCard';
+import { formatCurrency } from '@/src/lib/utils/common';
 
 export type OrderPriority = 'critical' | 'high' | 'medium' | 'low';
 
@@ -152,6 +153,13 @@ export function sortOrdersByPriority(orders: Order[]): Order[] {
  * Convert Order to MobileOrderCardData
  */
 export function orderToCardData(order: Order) {
+  const currency = String(order.currency || 'INR').toUpperCase();
+  const baseCurrency = String(order.totals?.baseCurrency || 'INR').toUpperCase();
+  const hasOperationalBase = currency !== 'INR' && Number.isFinite(Number(order.totals?.baseCurrencyTotal));
+  const operationalAmount = hasOperationalBase
+    ? Number(order.totals?.baseCurrencyTotal)
+    : (order.totals?.total || 0);
+
   return {
     id: order._id,
     awbNumber: order.shippingDetails?.trackingNumber || order.orderNumber,
@@ -161,7 +169,9 @@ export function orderToCardData(order: Order) {
     destination: `${order.customerInfo.address.city}, ${order.customerInfo.address.state}`,
     pincode: order.customerInfo.address.postalCode,
     paymentMode: (order.paymentMethod?.toUpperCase() || 'PREPAID') as 'COD' | 'PREPAID',
-    amount: order.totals?.total || 0,
+    amount: operationalAmount,
+    amountCurrency: hasOperationalBase ? baseCurrency : currency,
+    originalAmountLabel: hasOperationalBase ? formatCurrency(order.totals?.total || 0, currency) : undefined,
     createdAt: order.createdAt,
     courierName: order.shippingDetails?.provider,
     urgentReason: getUrgentReason(order),

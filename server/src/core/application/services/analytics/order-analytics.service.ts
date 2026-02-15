@@ -16,6 +16,7 @@
 
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { operationalOrderTotalExpression } from '../../../../shared/utils/order-currency.util';
 import AnalyticsService, { DateRange } from './analytics.service';
 
 export interface OrderStats {
@@ -55,7 +56,7 @@ export default class OrderAnalyticsService {
                     $group: {
                         _id: null,
                         totalOrders: { $sum: 1 },
-                        totalRevenue: { $sum: '$totals.total' },
+                        totalRevenue: { $sum: operationalOrderTotalExpression },
                         codOrders: {
                             $sum: { $cond: [{ $eq: ['$paymentMethod', 'cod'] }, 1, 0] }
                         },
@@ -63,10 +64,10 @@ export default class OrderAnalyticsService {
                             $sum: { $cond: [{ $eq: ['$paymentMethod', 'prepaid'] }, 1, 0] }
                         },
                         codRevenue: {
-                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'cod'] }, '$totals.total', 0] }
+                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'cod'] }, operationalOrderTotalExpression, 0] }
                         },
                         prepaidRevenue: {
-                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'prepaid'] }, '$totals.total', 0] }
+                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'prepaid'] }, operationalOrderTotalExpression, 0] }
                         }
                     }
                 }
@@ -114,7 +115,7 @@ export default class OrderAnalyticsService {
                     $group: {
                         _id: { $dateToString: { format: dateFormat, date: '$createdAt' } },
                         orders: { $sum: 1 },
-                        revenue: { $sum: '$totals.total' }
+                        revenue: { $sum: operationalOrderTotalExpression }
                     }
                 },
                 { $sort: { _id: 1 } },

@@ -27,7 +27,7 @@ import {
   Lightbulb,
   ArrowRight
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 
 export interface SpendCategory {
   name: string;
@@ -84,7 +84,7 @@ export function SpendingInsights({
                 This Week
               </p>
               <p className="text-3xl font-black text-[var(--text-primary)]">
-                ₹{thisWeekSpend.toLocaleString('en-IN')}
+                {formatCurrency(thisWeekSpend, 'INR')}
               </p>
             </div>
 
@@ -106,10 +106,10 @@ export function SpendingInsights({
           </div>
 
           <p className="text-xs text-[var(--text-secondary)]">
-            vs last week: ₹{lastWeekSpend.toLocaleString('en-IN')}
+            vs last week: {formatCurrency(lastWeekSpend, 'INR')}
             {isIncreased && (
               <span className="ml-2 text-orange-600 dark:text-orange-400 font-medium">
-                • You spent ₹{(thisWeekSpend - lastWeekSpend).toLocaleString('en-IN')} more
+                • You spent {formatCurrency(thisWeekSpend - lastWeekSpend, 'INR')} more
               </span>
             )}
           </p>
@@ -119,7 +119,7 @@ export function SpendingInsights({
             <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
               <Package className="w-4 h-4" />
               <span>
-                Average cost per order: <span className="font-bold text-[var(--text-primary)]">₹{avgOrderCost}</span>
+                Average cost per order: <span className="font-bold text-[var(--text-primary)]">{formatCurrency(avgOrderCost, 'INR')}</span>
               </span>
             </div>
           </div>
@@ -154,7 +154,7 @@ export function SpendingInsights({
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-[var(--text-primary)]">
-                    ₹{category.amount.toLocaleString('en-IN')}
+                    {formatCurrency(category.amount, 'INR')}
                   </p>
                   <p className="text-xs text-[var(--text-secondary)]">
                     {category.percentage}%

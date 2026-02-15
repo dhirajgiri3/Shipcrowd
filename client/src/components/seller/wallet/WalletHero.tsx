@@ -31,10 +31,10 @@ import { formatCurrency } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/core/Button';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
 
-const QUICK_ADD_PRESETS: Array<{ value: number; label: string; orders: string; popular?: boolean }> = [
-    { value: 1000, label: '₹1K', orders: '~20 orders' },
-    { value: 5000, label: '₹5K', orders: '~100 orders', popular: true },
-    { value: 10000, label: '₹10K', orders: '~200 orders' },
+const QUICK_ADD_PRESETS: Array<{ value: number; orders: string; popular?: boolean }> = [
+    { value: 1000, orders: '~20 orders' },
+    { value: 5000, orders: '~100 orders', popular: true },
+    { value: 10000, orders: '~200 orders' },
 ];
 
 interface WalletHeroProps {
@@ -278,7 +278,7 @@ export function WalletHero({
                                                 Enable Auto-Recharge
                                             </h4>
                                             <p className="text-[var(--text-secondary)] text-xs leading-relaxed mb-3">
-                                                Never run out of balance. Auto-recharge ₹5,000 when balance
+                                                Never run out of balance. Auto-recharge {formatCurrency(5000)} when balance
                                                 falls below {formatCurrency(lowBalanceThreshold)}.
                                             </p>
                                             <div className="flex flex-wrap items-center gap-2">
@@ -329,7 +329,7 @@ export function WalletHero({
                                         aria-label={`Add ${formatCurrency(preset.value)} to wallet`}
                                     >
                                         <span className="flex items-center gap-2">
-                                            {preset.label}
+                                            {formatCurrency(preset.value, 'INR', { compact: true })}
                                             {preset.popular && (
                                                 <span className="text-[10px] font-bold text-[var(--warning)] bg-[var(--warning-bg)] px-1.5 py-0.5 rounded">
                                                     Popular

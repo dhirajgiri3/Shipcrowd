@@ -8,6 +8,7 @@
  */
 
 import type { DashboardMetrics } from '@/src/types/api/analytics/analytics.types';
+import { formatCurrency as formatCurrencyShared } from '@/src/lib/utils/common';
 
 // Mock data support removed in Phase 4
 const USE_MOCK = false;
@@ -243,23 +244,19 @@ export function useDataWithFallback<T>(
 }
 
 /**
- * Format currency for Indian Rupees
+ * Dashboard currency formatter wrapper.
+ * Retains compact display behavior while delegating symbol/locale handling to shared utility.
  */
-export function formatCurrency(amount: number | null | undefined): string {
+export function formatCurrency(amount: number | null | undefined, currency: string = 'INR'): string {
     if (amount === undefined || amount === null || isNaN(amount)) {
-        return '₹0';
+        return formatCurrencyShared(0, currency);
     }
 
-    if (amount >= 10000000) {
-        return `₹${(amount / 10000000).toFixed(2)}Cr`;
+    if (Math.abs(amount) >= 1000) {
+        return formatCurrencyShared(amount, currency, { compact: true });
     }
-    if (amount >= 100000) {
-        return `₹${(amount / 100000).toFixed(2)}L`;
-    }
-    if (amount >= 1000) {
-        return `₹${(amount / 1000).toFixed(1)}K`;
-    }
-    return `₹${amount.toLocaleString('en-IN')}`;
+
+    return formatCurrencyShared(amount, currency);
 }
 
 /**

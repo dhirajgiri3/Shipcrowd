@@ -15,7 +15,7 @@ import {
     ArrowRight,
     Loader2
 } from 'lucide-react';
-import { formatCurrency } from '@/src/lib/dashboard/data-utils';
+import { formatCurrency } from '@/src/lib/utils/common';
 import { useRTOAnalytics, type RTOAnalyticsData } from '@/src/core/api/hooks/rto/useRTOAnalytics';
 
 /**

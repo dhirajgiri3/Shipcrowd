@@ -13,7 +13,7 @@ import {
     AlertCircle,
     Loader2
 } from 'lucide-react';
-import { formatCurrency } from '@/src/lib/dashboard/data-utils';
+import { formatCurrency } from '@/src/lib/utils/common';
 import { useCODTimeline, transformCODTimelineToComponent } from '@/src/core/api/hooks/finance';
 
 /**

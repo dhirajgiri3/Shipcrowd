@@ -32,6 +32,7 @@ import {
 import { endOfWeek, format, isThisWeek, isToday, startOfWeek } from 'date-fns';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import { useSellerExport } from '@/src/core/api/hooks/seller/useSellerExports';
+import { formatCurrency } from '@/src/lib/utils';
 
 export interface Transaction {
     id: string;
@@ -235,20 +236,20 @@ export function TransactionList({ transactions, isLoading = false, className = '
                 <div className="p-4 rounded-xl bg-[var(--success-bg)] border border-[var(--success)]/20">
                     <div className="text-xs text-[var(--text-secondary)] mb-1">Credits</div>
                     <div className="text-lg font-bold text-[var(--success)]">
-                        +₹{totals.credits.toLocaleString('en-IN')}
+                        +{formatCurrency(totals.credits, 'INR')}
                     </div>
                 </div>
                 <div className="p-4 rounded-xl bg-[var(--error-bg)] border border-[var(--error)]/20">
                     <div className="text-xs text-[var(--text-secondary)] mb-1">Debits</div>
                     <div className="text-lg font-bold text-[var(--error)]">
-                        -₹{totals.debits.toLocaleString('en-IN')}
+                        -{formatCurrency(totals.debits, 'INR')}
                     </div>
                 </div>
                 <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                     <div className="text-xs text-[var(--text-secondary)] mb-1">Net</div>
                     <div className={`text-lg font-bold ${totals.net >= 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'
                         }`}>
-                        {totals.net >= 0 ? '+' : ''}₹{totals.net.toLocaleString('en-IN')}
+                        {totals.net >= 0 ? '+' : '-'}{formatCurrency(Math.abs(totals.net), 'INR')}
                     </div>
                 </div>
             </div>
@@ -337,12 +338,12 @@ export function TransactionList({ transactions, isLoading = false, className = '
 
                                     {/* Amount & Balance */}
                                     <div className="text-right">
-                                        <div className={`text-lg font-bold ${isCredit ? 'text-[var(--success)]' : 'text-[var(--error)]'
+                                    <div className={`text-lg font-bold ${isCredit ? 'text-[var(--success)]' : 'text-[var(--error)]'
                                             }`}>
-                                            {isCredit ? '+' : '-'}₹{transaction.amount.toLocaleString('en-IN')}
+                                            {isCredit ? '+' : '-'}{formatCurrency(transaction.amount, 'INR')}
                                         </div>
                                         <div className="text-xs text-[var(--text-muted)] mt-1">
-                                            Balance: ₹{transaction.runningBalance.toLocaleString('en-IN')}
+                                            Balance: {formatCurrency(transaction.runningBalance, 'INR')}
                                         </div>
                                     </div>
                                 </motion.div>

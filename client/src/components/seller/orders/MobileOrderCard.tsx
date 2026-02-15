@@ -35,7 +35,7 @@ import {
   Eye
 } from 'lucide-react';
 import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
-import { cn } from '@/src/lib/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 import { trackEvent, EVENTS } from '@/src/lib/analytics';
 
 // Order status type
@@ -65,6 +65,8 @@ export interface MobileOrderCardData {
   pincode: string;
   paymentMode: PaymentMode;
   amount: number;
+  amountCurrency?: string;
+  originalAmountLabel?: string;
   createdAt: string; // ISO string
   courierName?: string;
   urgentReason?: string; // e.g., "Pickup in 2 hours", "Exception: Address incomplete"
@@ -383,8 +385,13 @@ export function MobileOrderCard({
         <div className="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
           <div>
             <div className="text-lg font-bold text-[var(--text-primary)]">
-              ₹{order.amount.toLocaleString('en-IN')}
+              {formatCurrency(order.amount, order.amountCurrency || 'INR')}
             </div>
+            {order.originalAmountLabel && (
+              <div className="text-[10px] text-[var(--text-muted)]">
+                {order.originalAmountLabel}
+              </div>
+            )}
             {order.courierName && (
               <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">
                 via {order.courierName}

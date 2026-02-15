@@ -14,7 +14,7 @@ import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 import { useUrlDateRange } from '@/src/hooks';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import type { Order } from '@/src/types/domain/order';
-import { cn, formatCurrency, formatPaginationRange, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
+import { cn, formatOrderAmount, formatPaginationRange, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { Clock, Package, RefreshCw, Send, Truck, Users } from 'lucide-react';
 import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
@@ -280,6 +280,12 @@ export function ShipQueueClient() {
                                 ) : (
                                     shippableOrders.map((order) => {
                                         const isSelected = selectedIds.includes(order._id);
+                                        const amountDisplay = formatOrderAmount({
+                                            amount: order.totals?.total || 0,
+                                            currency: order.currency,
+                                            baseCurrencyAmount: order.totals?.baseCurrencyTotal,
+                                            baseCurrency: order.totals?.baseCurrency,
+                                        });
                                         return (
                                             <tr key={order._id} className="hover:bg-[var(--bg-hover)] transition-colors">
                                                 <td className="px-4 py-3">
@@ -304,7 +310,12 @@ export function ShipQueueClient() {
                                                     {new Date(order.createdAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
-                                                    {formatCurrency(order.totals?.total || 0)}
+                                                    <div className="text-right">
+                                                        <div>{amountDisplay.primary}</div>
+                                                        {amountDisplay.secondary && (
+                                                            <div className="text-[10px] text-[var(--text-muted)]">{amountDisplay.secondary}</div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <StatusBadge domain="order" status={order.currentStatus} size="sm" />

@@ -21,6 +21,7 @@ import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import AmazonOAuthService from './amazon-oauth.service';
 import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
+import ExchangeRateService, { OperationalTotalsPatch } from '../finance/exchange-rate.service';
 
 // Amazon order statuses
 type AmazonOrderStatus =
@@ -405,6 +406,28 @@ export default class AmazonOrderSyncService {
         const amazonPaymentMethod = this.detectAmazonPaymentMethod(amazonOrder.PaymentMethod);
         const hasAddress = !!(shippingAddress.AddressLine1 || shippingAddress.City);
 
+        const currency = (amazonOrder.OrderTotal?.CurrencyCode || 'INR').toUpperCase();
+        const totals = {
+            subtotal,
+            tax,
+            shipping,
+            discount: 0,
+            total,
+        };
+
+        let operationalTotalsPatch: OperationalTotalsPatch = {};
+        if (currency !== 'INR') {
+            try {
+                operationalTotalsPatch = await ExchangeRateService.buildOperationalTotalsPatch(totals, currency);
+            } catch (error: any) {
+                logger.warn('Failed to convert Amazon order totals to INR base totals', {
+                    orderId: amazonOrder.AmazonOrderId,
+                    currency,
+                    error: error?.message,
+                });
+            }
+        }
+
         // Create order
         await Order.create({
             orderNumber: amazonOrder.AmazonOrderId,
@@ -434,7 +457,7 @@ export default class AmazonOrderSyncService {
             fulfillmentType: amazonOrder.FulfillmentChannel === 'AFN' ? 'FBA' : 'MFN',
             paymentStatus: amazonPaymentStatus,
             paymentMethod: amazonPaymentMethod,
-            currency: amazonOrder.OrderTotal?.CurrencyCode || 'INR',
+            currency,
             statusHistory: [
                 {
                     status: this.mapAmazonStatus(amazonOrder.OrderStatus),
@@ -444,11 +467,8 @@ export default class AmazonOrderSyncService {
             ],
             currentStatus: this.mapAmazonStatus(amazonOrder.OrderStatus),
             totals: {
-                subtotal,
-                tax,
-                shipping,
-                discount: 0,
-                total,
+                ...totals,
+                ...operationalTotalsPatch,
             },
         });
 
@@ -475,17 +495,53 @@ export default class AmazonOrderSyncService {
         amazonOrder: AmazonOrder,
         store: any
     ): Promise<void> {
+        const previousStatus = existingOrder.currentStatus;
         const newStatus = this.mapAmazonStatus(amazonOrder.OrderStatus);
+        const currency = String(existingOrder.currency || amazonOrder.OrderTotal?.CurrencyCode || 'INR').toUpperCase();
+        let shouldSave = false;
+
+        if (
+            currency !== 'INR' &&
+            (!existingOrder.totals?.baseCurrencyTotal || !existingOrder.totals?.baseCurrency)
+        ) {
+            try {
+                const baseTotals = await ExchangeRateService.buildOperationalTotalsPatch(
+                    {
+                        subtotal: Number(existingOrder.totals?.subtotal || 0),
+                        tax: Number(existingOrder.totals?.tax || 0),
+                        shipping: Number(existingOrder.totals?.shipping || 0),
+                        discount: Number(existingOrder.totals?.discount || 0),
+                        total: Number(existingOrder.totals?.total || 0),
+                    },
+                    currency
+                );
+
+                existingOrder.totals = {
+                    ...existingOrder.totals,
+                    ...baseTotals,
+                };
+                shouldSave = true;
+            } catch (error: any) {
+                logger.warn('Failed to backfill Amazon order base totals', {
+                    orderId: existingOrder._id,
+                    currency,
+                    error: error?.message,
+                });
+            }
+        }
 
         // Only update if status has changed
-        if (existingOrder.currentStatus !== newStatus) {
+        if (previousStatus !== newStatus) {
             existingOrder.statusHistory.push({
                 status: newStatus,
                 timestamp: new Date(),
                 comment: `Status updated from Amazon: ${amazonOrder.OrderStatus}`,
             });
             existingOrder.currentStatus = newStatus;
+            shouldSave = true;
+        }
 
+        if (shouldSave) {
             await existingOrder.save();
 
             // Invalidate order list cache so updates appear immediately
@@ -495,11 +551,13 @@ export default class AmazonOrderSyncService {
             } catch (cacheError) {
                 logger.warn('Failed to invalidate order cache after Amazon update', { error: cacheError });
             }
+        }
 
+        if (previousStatus !== newStatus) {
             logger.info('Updated order from Amazon', {
                 storeId: store._id,
                 amazonOrderId: amazonOrder.AmazonOrderId,
-                oldStatus: existingOrder.currentStatus,
+                oldStatus: previousStatus,
                 newStatus,
             });
         }

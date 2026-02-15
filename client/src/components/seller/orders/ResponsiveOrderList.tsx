@@ -29,7 +29,7 @@ import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
-import { formatCurrency, formatDateTime } from '@/src/lib/utils/common';
+import { formatDateTime, formatOrderAmount } from '@/src/lib/utils/common';
 import { isSellerOrderShippable } from '@/src/lib/utils/order-shipping-eligibility';
 
 interface ResponsiveOrderListProps {
@@ -148,11 +148,22 @@ const getDesktopColumns = (
     header: 'Total',
     accessorKey: 'totals.total',
     width: 'min-w-[80px]',
-    cell: (row: Order) => (
-      <div className="text-right font-bold text-[var(--text-primary)] whitespace-nowrap">
-        {formatCurrency(row.totals?.total || 0, row.currency)}
-      </div>
-    )
+    cell: (row: Order) => {
+      const amountDisplay = formatOrderAmount({
+        amount: row.totals?.total || 0,
+        currency: row.currency,
+        baseCurrencyAmount: row.totals?.baseCurrencyTotal,
+        baseCurrency: row.totals?.baseCurrency,
+      });
+      return (
+        <div className="text-right whitespace-nowrap">
+          <div className="font-bold text-[var(--text-primary)]">{amountDisplay.primary}</div>
+          {amountDisplay.secondary && (
+            <div className="text-[10px] text-[var(--text-muted)]">{amountDisplay.secondary}</div>
+          )}
+        </div>
+      );
+    }
   },
   {
     header: 'Actions',

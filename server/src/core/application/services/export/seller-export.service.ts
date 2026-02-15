@@ -11,6 +11,7 @@ import {
 } from '../../../../infrastructure/database/mongoose/models';
 import CODDiscrepancy from '../../../../infrastructure/database/mongoose/models/finance/cod-discrepancy.model';
 import ReturnOrder from '../../../../infrastructure/database/mongoose/models/logistics/returns/return-order.model';
+import { operationalOrderTotalExpression } from '../../../../shared/utils/order-currency.util';
 
 export type SellerExportModule =
   | 'orders'
@@ -325,8 +326,16 @@ export class SellerExportService {
       payment_method: order.paymentMethod || '',
       payment_status: order.paymentStatus || '',
       order_status: order.currentStatus || '',
-      total_amount: Number(order.totals?.total || 0),
-      currency: order.currency || 'INR',
+      total_amount: Number(order.totals?.total || 0), // Backward-compatible legacy column (original amount)
+      currency: order.currency || 'INR', // Backward-compatible legacy column (original currency)
+      original_total_amount: Number(order.totals?.total || 0),
+      original_currency: order.currency || 'INR',
+      base_currency_total_amount: Number(order.totals?.baseCurrencyTotal || 0),
+      base_currency: order.totals?.baseCurrency || '',
+      exchange_rate: Number(order.totals?.exchangeRate || 0),
+      exchange_rate_date: order.totals?.exchangeRateDate ? new Date(order.totals.exchangeRateDate).toISOString() : '',
+      operational_total_amount: Number(order.totals?.baseCurrencyTotal ?? order.totals?.total ?? 0),
+      operational_currency: 'INR',
     }));
   }
 
@@ -543,7 +552,7 @@ export class SellerExportService {
 
     const bySource = await Order.aggregate([
       { $match: match },
-      { $group: { _id: '$source', orders: { $sum: 1 }, revenue: { $sum: '$totals.total' } } },
+      { $group: { _id: '$source', orders: { $sum: 1 }, revenue: { $sum: operationalOrderTotalExpression } } },
       { $sort: { orders: -1 } },
     ]);
 
@@ -559,6 +568,20 @@ export class SellerExportService {
       dimension: 'source',
       dimension_value: row._id || 'unknown',
       value: Number(row.orders || 0),
+      value_currency: '',
+      generated_at: generatedAt,
+    }));
+
+    const revenueRows = bySource.map((row: any) => ({
+      section: 'orders',
+      metric_id: 'revenue_by_source_operational',
+      metric_label: 'Revenue by Source (Operational INR)',
+      period_start: startDate ? startDate.toISOString() : '',
+      period_end: endDate ? endDate.toISOString() : '',
+      dimension: 'source',
+      dimension_value: row._id || 'unknown',
+      value: Number(row.revenue || 0),
+      value_currency: 'INR',
       generated_at: generatedAt,
     }));
 
@@ -571,10 +594,11 @@ export class SellerExportService {
       dimension: 'all',
       dimension_value: 'all',
       value: totalShipments,
+      value_currency: '',
       generated_at: generatedAt,
     });
 
-    return rows;
+    return [...rows, ...revenueRows];
   }
 
   private static async exportPincodeChecker(filters: Record<string, unknown>): Promise<Record<string, unknown>[]> {

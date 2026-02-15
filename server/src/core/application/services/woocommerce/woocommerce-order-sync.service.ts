@@ -21,6 +21,7 @@ import { WooCommerceOrder } from '../../../../infrastructure/external/ecommerce/
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
+import ExchangeRateService, { OperationalTotalsPatch } from '../finance/exchange-rate.service';
 
 interface SyncResult {
   itemsProcessed: number;
@@ -137,7 +138,7 @@ export default class WooCommerceOrderSyncService {
           }
 
           // Transform WooCommerce order to Shipcrowd order
-          const mappedOrder = this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
+          const mappedOrder = await this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
 
           // Assign default warehouse for new orders
           if (!existingOrder && !mappedOrder.warehouseId) {
@@ -280,7 +281,7 @@ export default class WooCommerceOrderSyncService {
       });
 
       // Transform order
-      const mappedOrder = this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
+      const mappedOrder = await this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
 
       // Assign default warehouse for new orders
       if (!existingOrder && !mappedOrder.warehouseId) {
@@ -338,19 +339,41 @@ export default class WooCommerceOrderSyncService {
    * Transform WooCommerce order to Shipcrowd order format
    * Maps all fields from WooCommerce schema to Shipcrowd schema
    */
-  private static mapWooCommerceOrderToShipcrowd(
+  private static async mapWooCommerceOrderToShipcrowd(
     wooOrder: WooCommerceOrder,
     store: any
-  ): any {
+  ): Promise<any> {
     // Handle null billing/shipping (can happen with digital products, gift cards)
-    const billing = wooOrder.billing || {};
-    const shipping = wooOrder.shipping || {};
+    const billing: any = wooOrder.billing || {};
+    const shipping: any = wooOrder.shipping || {};
 
     const customerName = billing.first_name || billing.last_name
       ? `${billing.first_name || ''} ${billing.last_name || ''}`.trim()
       : 'No customer';
 
     const hasAddress = !!(shipping.address_1 || billing.address_1 || shipping.city || billing.city);
+
+    const currency = (wooOrder.currency || 'USD').toUpperCase();
+    const totals = {
+      subtotal: parseFloat(wooOrder.total) - parseFloat(wooOrder.total_tax) || 0,
+      tax: parseFloat(wooOrder.total_tax) || 0,
+      shipping: parseFloat(wooOrder.shipping_total) || 0,
+      discount: parseFloat(wooOrder.discount_total) || 0,
+      total: parseFloat(wooOrder.total) || 0,
+    };
+
+    let operationalTotalsPatch: OperationalTotalsPatch = {};
+    if (currency !== 'INR') {
+      try {
+        operationalTotalsPatch = await ExchangeRateService.buildOperationalTotalsPatch(totals, currency);
+      } catch (error: any) {
+        logger.warn('Failed to convert WooCommerce order totals to INR base totals', {
+          orderId: wooOrder.id,
+          currency,
+          error: error?.message,
+        });
+      }
+    }
 
     return {
       // Basic info
@@ -397,18 +420,15 @@ export default class WooCommerceOrderSyncService {
       paymentMethod: this.detectPaymentMethod(wooOrder.payment_method),
 
       // Currency from WooCommerce store settings
-      currency: wooOrder.currency || 'USD',
+      currency,
 
       // Order status
       currentStatus: this.mapOrderStatus(wooOrder.status),
 
       // Totals
       totals: {
-        subtotal: parseFloat(wooOrder.total) - parseFloat(wooOrder.total_tax) || 0,
-        tax: parseFloat(wooOrder.total_tax) || 0,
-        shipping: parseFloat(wooOrder.shipping_total) || 0,
-        discount: parseFloat(wooOrder.discount_total) || 0,
-        total: parseFloat(wooOrder.total) || 0,
+        ...totals,
+        ...operationalTotalsPatch,
       },
 
       // Metadata

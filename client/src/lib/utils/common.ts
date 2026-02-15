@@ -48,6 +48,54 @@ export function formatCurrency(
     }).format(amount);
 }
 
+interface OrderAmountOptions {
+    amount: number;
+    currency?: string;
+    baseCurrencyAmount?: number;
+    baseCurrency?: string;
+}
+
+/**
+ * Format order amount for India-first operational display:
+ * - Primary: operational/base currency amount (INR when available)
+ * - Secondary: original marketplace currency amount (if different)
+ */
+export function formatOrderAmount(options: OrderAmountOptions): { primary: string; secondary?: string } {
+    const originalCurrency = String(options.currency || 'INR').toUpperCase();
+    const baseCurrency = String(options.baseCurrency || 'INR').toUpperCase();
+    const hasOperationalBase = typeof options.baseCurrencyAmount === 'number' && Number.isFinite(options.baseCurrencyAmount);
+
+    if (hasOperationalBase && baseCurrency !== originalCurrency) {
+        return {
+            primary: formatCurrency(options.baseCurrencyAmount as number, baseCurrency),
+            secondary: formatCurrency(options.amount, originalCurrency),
+        };
+    }
+
+    return {
+        primary: formatCurrency(options.amount, originalCurrency),
+    };
+}
+
+interface CurrencyAwareTotalsLike {
+    total?: number;
+    baseCurrencyTotal?: number;
+}
+
+interface CurrencyAwareOrderLike {
+    currency?: string;
+    totals?: CurrencyAwareTotalsLike;
+}
+
+export function getOperationalOrderTotal(order: CurrencyAwareOrderLike): number {
+    const currency = String(order?.currency || 'INR').toUpperCase();
+    const baseCurrencyTotal = Number(order?.totals?.baseCurrencyTotal);
+    if (currency !== 'INR' && Number.isFinite(baseCurrencyTotal)) {
+        return baseCurrencyTotal;
+    }
+    return Number(order?.totals?.total || 0);
+}
+
 /**
  * Format currency with compact notation (K, L, Cr)
  * Useful for displaying large amounts in limited space

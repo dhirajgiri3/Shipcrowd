@@ -70,6 +70,13 @@ export interface OrderTotals {
   shipping: number;
   discount: number;
   total: number;
+  baseCurrencySubtotal?: number;
+  baseCurrencyTax?: number;
+  baseCurrencyShipping?: number;
+  baseCurrencyTotal?: number;
+  baseCurrency?: string;
+  exchangeRate?: number;
+  exchangeRateDate?: string;
 }
 
 /**

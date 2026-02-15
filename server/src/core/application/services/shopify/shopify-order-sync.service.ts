@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Order, ShopifyStore, SyncLog, Company } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { CacheRepository } from '../../../../infrastructure/redis/cache.repository';
+import ExchangeRateService, { OperationalTotalsPatch } from '../finance/exchange-rate.service';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -287,7 +288,7 @@ export class ShopifyOrderSyncService {
    * Create new order in Shipcrowd from Shopify order
    */
   private static async createNewOrder(shopifyOrder: ShopifyOrder, store: any): Promise<any> {
-    const mapped = this.mapShopifyOrderToShipcrowd(shopifyOrder, store);
+    const mapped = await this.mapShopifyOrderToShipcrowd(shopifyOrder, store);
 
     // Fetch company's default warehouse and assign it to the order
     try {
@@ -377,6 +378,37 @@ export class ShopifyOrderSyncService {
       updated = true;
     }
 
+    // Backfill operational totals for legacy non-INR orders if missing
+    if (
+      String(existingOrder.currency || '').toUpperCase() !== 'INR' &&
+      (!existingOrder.totals?.baseCurrencyTotal || !existingOrder.totals?.baseCurrency)
+    ) {
+      try {
+        const baseTotals = await ExchangeRateService.buildOperationalTotalsPatch(
+          {
+            subtotal: Number(existingOrder.totals?.subtotal || 0),
+            tax: Number(existingOrder.totals?.tax || 0),
+            shipping: Number(existingOrder.totals?.shipping || 0),
+            discount: Number(existingOrder.totals?.discount || 0),
+            total: Number(existingOrder.totals?.total || 0),
+          },
+          existingOrder.currency
+        );
+
+        existingOrder.totals = {
+          ...existingOrder.totals,
+          ...baseTotals,
+        };
+        updated = true;
+      } catch (error: any) {
+        logger.warn('Failed to backfill Shopify order base totals', {
+          orderId: existingOrder._id,
+          currency: existingOrder.currency,
+          error: error?.message,
+        });
+      }
+    }
+
     if (updated) {
       await existingOrder.save();
     }
@@ -395,7 +427,7 @@ export class ShopifyOrderSyncService {
   /**
    * Map Shopify order to Shipcrowd order schema
    */
-  private static mapShopifyOrderToShipcrowd(shopifyOrder: ShopifyOrder, store: any): any {
+  private static async mapShopifyOrderToShipcrowd(shopifyOrder: ShopifyOrder, store: any): Promise<any> {
     // Handle null customer (can happen with gift cards, digital products, warehouse fulfillment)
     const customer = shopifyOrder.customer || {};
 
@@ -414,6 +446,28 @@ export class ShopifyOrderSyncService {
     const orderStatus = shopifyOrder.cancelled_at
       ? 'cancelled'
       : this.mapFulfillmentStatus(shopifyOrder.fulfillment_status);
+
+    const currency = (shopifyOrder.currency || 'USD').toUpperCase();
+    const totals = {
+      subtotal: parseFloat(shopifyOrder.subtotal_price || shopifyOrder.total_line_items_price) || 0,
+      tax: parseFloat(shopifyOrder.total_tax || '0') || 0,
+      shipping: parseFloat(shopifyOrder.total_shipping_price || '0') || 0,
+      discount: parseFloat(shopifyOrder.total_discounts || '0') || 0,
+      total: parseFloat(shopifyOrder.total_price) || 0,
+    };
+
+    let operationalTotalsPatch: OperationalTotalsPatch = {};
+    if (currency !== 'INR') {
+      try {
+        operationalTotalsPatch = await ExchangeRateService.buildOperationalTotalsPatch(totals, currency);
+      } catch (error: any) {
+        logger.warn('Failed to convert Shopify order totals to INR base totals', {
+          orderId: shopifyOrder.id,
+          currency,
+          error: error?.message,
+        });
+      }
+    }
 
     return {
       orderNumber: this.generateOrderNumber(shopifyOrder),
@@ -451,7 +505,7 @@ export class ShopifyOrderSyncService {
       paymentStatus: this.mapPaymentStatus(shopifyOrder.financial_status),
       paymentMethod: this.detectPaymentMethod(shopifyOrder.payment_gateway_names),
 
-      currency: shopifyOrder.currency || 'USD',
+      currency,
 
       currentStatus: orderStatus,
       statusHistory: [
@@ -465,11 +519,8 @@ export class ShopifyOrderSyncService {
       ],
 
       totals: {
-        subtotal: parseFloat(shopifyOrder.subtotal_price || shopifyOrder.total_line_items_price) || 0,
-        tax: parseFloat(shopifyOrder.total_tax || '0') || 0,
-        shipping: parseFloat(shopifyOrder.total_shipping_price || '0') || 0,
-        discount: parseFloat(shopifyOrder.total_discounts || '0') || 0,
-        total: parseFloat(shopifyOrder.total_price) || 0,
+        ...totals,
+        ...operationalTotalsPatch,
       },
 
       notes: shopifyOrder.note || undefined,

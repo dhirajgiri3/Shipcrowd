@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn, formatPaginationRange, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
+import { formatCurrency, cn, formatPaginationRange, parsePaginationQuery, syncPaginationQuery, getOperationalOrderTotal } from '@/src/lib/utils';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/orders/OrderDetailsPanel';
 import {
@@ -210,7 +210,7 @@ export function OrdersClient() {
         }
         return {
             totalOrders: pagination?.total || 0,
-            totalRevenue: ordersData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0),
+            totalRevenue: ordersData.reduce((acc: number, curr: Order) => acc + getOperationalOrderTotal(curr), 0),
             pendingShipmentCount: ordersData.filter((o: Order) => ['pending', 'ready_to_ship'].includes(o.currentStatus)).length,
             pendingPaymentCount: ordersData.filter((o: Order) => o.paymentStatus === 'pending').length
         };
@@ -300,7 +300,7 @@ export function OrdersClient() {
                 />
                 <StatsCard
                     title="Revenue"
-                    value={formatCurrency(metrics.totalRevenue)}
+                    value={formatCurrency(metrics.totalRevenue, 'INR')}
                     icon={TrendingUp}
                     iconColor="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
                     trend={{ value: 8.4, label: 'vs last week', positive: true }}

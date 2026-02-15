@@ -17,6 +17,7 @@
 import mongoose from 'mongoose';
 import { Order, Shipment, WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { operationalOrderTotalExpression } from '../../../../shared/utils/order-currency.util';
 import WalletService from '../wallet/wallet.service';
 import AnalyticsService, { DateRange } from './analytics.service';
 
@@ -54,12 +55,12 @@ export default class RevenueAnalyticsService {
                 {
                     $group: {
                         _id: null,
-                        totalRevenue: { $sum: '$totals.total' },
+                        totalRevenue: { $sum: operationalOrderTotalExpression },
                         codRevenue: {
-                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'cod'] }, '$totals.total', 0] }
+                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'cod'] }, operationalOrderTotalExpression, 0] }
                         },
                         prepaidRevenue: {
-                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'prepaid'] }, '$totals.total', 0] }
+                            $sum: { $cond: [{ $eq: ['$paymentMethod', 'prepaid'] }, operationalOrderTotalExpression, 0] }
                         },
                         orderCount: { $sum: 1 }
                     }
@@ -191,7 +192,7 @@ export default class RevenueAnalyticsService {
                 {
                     $group: {
                         _id: null,
-                        pendingAmount: { $sum: '$totals.total' },
+                        pendingAmount: { $sum: operationalOrderTotalExpression },
                         pendingCount: { $sum: 1 }
                     }
                 }
@@ -261,7 +262,7 @@ export default class RevenueAnalyticsService {
                 },
                 {
                     $project: {
-                        revenue: '$totals.total',
+                        revenue: operationalOrderTotalExpression,
                     }
                 },
                 {
@@ -341,7 +342,7 @@ export default class RevenueAnalyticsService {
                     {
                         $group: {
                             _id: null,
-                            totalRevenue: { $sum: '$totals.total' }
+                            totalRevenue: { $sum: operationalOrderTotalExpression }
                         }
                     }
                 ]).then(rows => rows[0]),

@@ -165,11 +165,26 @@ export class ShopifyController {
         .limit(10);
 
       // Calculate actual order count from Order collection
-      const totalOrdersSynced = await Order.countDocuments({
+      // Include legacy orders (no shopifyStoreId) when company has only one Shopify store
+      const storeCount = await ShopifyStore.countDocuments({ companyId: auth.companyId });
+      const isSingleStore = storeCount === 1;
+
+      const orderCountQuery: Record<string, unknown> = {
         source: 'shopify',
-        shopifyStoreId: id,
         companyId: auth.companyId,
-      });
+      };
+
+      if (isSingleStore) {
+        orderCountQuery.$or = [
+          { shopifyStoreId: id },
+          { shopifyStoreId: null },
+          { shopifyStoreId: { $exists: false } },
+        ];
+      } else {
+        orderCountQuery.shopifyStoreId = id;
+      }
+
+      const totalOrdersSynced = await Order.countDocuments(orderCountQuery);
 
       const stats = store.stats || {
         ordersSynced: 0,

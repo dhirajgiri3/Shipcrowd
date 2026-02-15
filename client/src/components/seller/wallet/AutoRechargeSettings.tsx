@@ -8,7 +8,7 @@ import {
     Lock
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
-import { cn } from '@/src/lib/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 import { AutoRechargeSettings as IAutoRechargeSettings } from '@/src/core/api/clients/finance/walletApi';
 
 interface AutoRechargeSettingsProps {
@@ -18,6 +18,9 @@ interface AutoRechargeSettingsProps {
     currentSettings?: IAutoRechargeSettings;
     isLoading?: boolean;
 }
+
+const MIN_AUTO_RECHARGE_AMOUNT = 100;
+const DAILY_AUTO_RECHARGE_LIMIT = 100000;
 
 export function AutoRechargeSettings({
     isOpen,
@@ -72,12 +75,12 @@ export function AutoRechargeSettings({
                 setError('Recharge threshold must be less than recharge amount');
                 return;
             }
-            if (threshold < 100) {
-                setError('Threshold must be at least ₹100');
+            if (threshold < MIN_AUTO_RECHARGE_AMOUNT) {
+                setError(`Threshold must be at least ${formatCurrency(MIN_AUTO_RECHARGE_AMOUNT, 'INR')}`);
                 return;
             }
-            if (amount < 100) {
-                setError('Recharge amount must be at least ₹100');
+            if (amount < MIN_AUTO_RECHARGE_AMOUNT) {
+                setError(`Recharge amount must be at least ${formatCurrency(MIN_AUTO_RECHARGE_AMOUNT, 'INR')}`);
                 return;
             }
 
@@ -179,7 +182,7 @@ export function AutoRechargeSettings({
                                                 value={threshold}
                                                 onChange={(e) => setDraftSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))}
                                                 className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)]/20 focus:border-[var(--primary-blue)] transition-all outline-none"
-                                                min="100"
+                                                min={String(MIN_AUTO_RECHARGE_AMOUNT)}
                                                 step="100"
                                             />
                                         </div>
@@ -196,7 +199,7 @@ export function AutoRechargeSettings({
                                                 value={amount}
                                                 onChange={(e) => setDraftSettings((prev) => ({ ...prev, amount: Number(e.target.value) }))}
                                                 className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-default)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-blue)]/20 focus:border-[var(--primary-blue)] transition-all outline-none"
-                                                min="100"
+                                                min={String(MIN_AUTO_RECHARGE_AMOUNT)}
                                                 step="500"
                                             />
                                         </div>
@@ -236,7 +239,7 @@ export function AutoRechargeSettings({
                                 <div className="p-3 rounded-lg bg-[var(--bg-secondary)] text-xs text-[var(--text-secondary)] flex items-start gap-2">
                                     <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
                                     <p>
-                                        Daily limit of ₹1,00,000 applies. Auto-recharge will pause if payment fails 4 times.
+                                        Daily limit of {formatCurrency(DAILY_AUTO_RECHARGE_LIMIT, 'INR')} applies. Auto-recharge will pause if payment fails 4 times.
                                     </p>
                                 </div>
                             </motion.div>

@@ -38,7 +38,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
-import { cn } from '@/src/lib/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 
 export type PaymentMethod = 'upi' | 'card' | 'netbanking';
 
@@ -55,27 +55,26 @@ interface QuickAddMoneyProps {
 
 interface PresetAmount {
     value: number;
-    label: string;
     subtext: string;
     badge?: { text: string; color: string };
 }
 
+const MIN_RECHARGE_AMOUNT = 100;
+const MAX_RECHARGE_AMOUNT = 100000;
+
 const PRESET_AMOUNTS: PresetAmount[] = [
     {
         value: 1000,
-        label: '₹1,000',
         subtext: '~3 orders',
         badge: { text: 'Starter', color: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300' }
     },
     {
         value: 5000,
-        label: '₹5,000',
         subtext: '~15 orders',
         badge: { text: 'Popular', color: 'bg-[var(--primary-blue)] text-white' }
     },
     {
         value: 10000,
-        label: '₹10,000',
         subtext: '~30 orders',
         badge: { text: 'Best Value', color: 'bg-[var(--success)] text-white' }
     },
@@ -147,13 +146,13 @@ export function QuickAddMoney({
         }
 
         // Validation
-        if (!finalAmount || finalAmount < 100) {
-            setError('Minimum recharge amount is ₹100');
+        if (!finalAmount || finalAmount < MIN_RECHARGE_AMOUNT) {
+            setError(`Minimum recharge amount is ${formatCurrency(MIN_RECHARGE_AMOUNT, 'INR')}`);
             return;
         }
 
-        if (finalAmount > 100000) {
-            setError('Maximum recharge amount is ₹1,00,000');
+        if (finalAmount > MAX_RECHARGE_AMOUNT) {
+            setError(`Maximum recharge amount is ${formatCurrency(MAX_RECHARGE_AMOUNT, 'INR')}`);
             return;
         }
 
@@ -289,7 +288,7 @@ export function QuickAddMoney({
                                             )}
 
                                             <div className="text-xl font-black text-[var(--text-primary)] leading-tight">
-                                                {preset.label}
+                                                {formatCurrency(preset.value, 'INR')}
                                             </div>
                                             <div className="text-[11px] text-[var(--text-secondary)] font-medium">
                                                 {preset.subtext}
@@ -317,13 +316,13 @@ export function QuickAddMoney({
                                             'text-[var(--text-primary)] placeholder:text-[var(--text-muted)] placeholder:font-medium placeholder:text-base',
                                             'focus:outline-none'
                                         )}
-                                        min="100"
-                                        max="100000"
+                                        min={String(MIN_RECHARGE_AMOUNT)}
+                                        max={String(MAX_RECHARGE_AMOUNT)}
                                         step="100"
                                     />
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mt-2 ml-1">
-                                    Min: ₹100 • Max: ₹1,00,000
+                                    Min: {formatCurrency(MIN_RECHARGE_AMOUNT, 'INR')} • Max: {formatCurrency(MAX_RECHARGE_AMOUNT, 'INR')}
                                 </p>
                             </div>
 
@@ -416,7 +415,7 @@ export function QuickAddMoney({
                             <Button
                                 onClick={handleSubmit}
                                 isLoading={isLoading}
-                                disabled={!finalAmount || finalAmount < 100 || isLoading || !isGatewayReady || !!gatewayError}
+                                disabled={!finalAmount || finalAmount < MIN_RECHARGE_AMOUNT || isLoading || !isGatewayReady || !!gatewayError}
                                 className={cn(
                                     'w-full min-h-[48px] h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg transition-all',
                                     'text-base sm:text-lg font-semibold sm:font-bold',
@@ -430,13 +429,13 @@ export function QuickAddMoney({
                                     <span className="truncate">Payment gateway unavailable</span>
                                 ) : !isGatewayReady ? (
                                     <span className="truncate">Loading payment gateway...</span>
-                                ) : finalAmount && finalAmount >= 100 ? (
+                                ) : finalAmount && finalAmount >= MIN_RECHARGE_AMOUNT ? (
                                     <>
                                         <span className="sm:hidden truncate">
-                                            Pay ₹{finalAmount.toLocaleString('en-IN')}
+                                            Pay {formatCurrency(finalAmount, 'INR')}
                                         </span>
                                         <span className="hidden sm:inline truncate">
-                                            Proceed to Pay ₹{finalAmount.toLocaleString('en-IN')}
+                                            Proceed to Pay {formatCurrency(finalAmount, 'INR')}
                                         </span>
                                     </>
                                 ) : (

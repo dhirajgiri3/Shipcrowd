@@ -7,7 +7,7 @@ import { X, User, Phone, Mail, MapPin, Package, Truck, Loader2 } from 'lucide-re
 import { Button } from '@/src/components/ui/core/Button';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { SourceBadge } from '@/src/components/ui/data/SourceBadge';
-import { formatCurrency } from '@/src/lib/utils';
+import { formatCurrency, formatOrderAmount } from '@/src/lib/utils';
 import { Order } from '@/src/types/domain/order';
 import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
 import { isSellerOrderShippable } from '@/src/lib/utils/order-shipping-eligibility';
@@ -45,6 +45,30 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
     const shipmentStatus = linkedShipment?.currentStatus || null;
     const shipmentCarrier = linkedShipment?.carrier || order.shippingDetails?.provider || null;
     const hasShipmentContext = Boolean(trackingNumber || shipmentStatus || shipmentCarrier);
+    const subtotalDisplay = formatOrderAmount({
+        amount: order.totals.subtotal,
+        currency: order.currency,
+        baseCurrencyAmount: order.totals.baseCurrencySubtotal,
+        baseCurrency: order.totals.baseCurrency,
+    });
+    const taxDisplay = formatOrderAmount({
+        amount: order.totals.tax,
+        currency: order.currency,
+        baseCurrencyAmount: order.totals.baseCurrencyTax,
+        baseCurrency: order.totals.baseCurrency,
+    });
+    const shippingDisplay = formatOrderAmount({
+        amount: order.totals.shipping,
+        currency: order.currency,
+        baseCurrencyAmount: order.totals.baseCurrencyShipping,
+        baseCurrency: order.totals.baseCurrency,
+    });
+    const totalDisplay = formatOrderAmount({
+        amount: order.totals.total,
+        currency: order.currency,
+        baseCurrencyAmount: order.totals.baseCurrencyTotal,
+        baseCurrency: order.totals.baseCurrency,
+    });
 
     return (
         <AnimatePresence>
@@ -236,19 +260,31 @@ function OrderDetailsPanelComponent({ order, onClose, onShipOrder }: OrderDetail
                             <div className="bg-[var(--bg-secondary)]/30 rounded-xl p-4 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-secondary)]">Subtotal</span>
-                                    <span className="font-medium">{formatCurrency(order.totals.subtotal, order.currency)}</span>
+                                    <div className="text-right">
+                                        <span className="font-medium">{subtotalDisplay.primary}</span>
+                                        {subtotalDisplay.secondary && <div className="text-xs text-[var(--text-muted)]">{subtotalDisplay.secondary}</div>}
+                                    </div>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-secondary)]">Tax</span>
-                                    <span className="font-medium">{formatCurrency(order.totals.tax, order.currency)}</span>
+                                    <div className="text-right">
+                                        <span className="font-medium">{taxDisplay.primary}</span>
+                                        {taxDisplay.secondary && <div className="text-xs text-[var(--text-muted)]">{taxDisplay.secondary}</div>}
+                                    </div>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-secondary)]">Shipping</span>
-                                    <span className="font-medium">{formatCurrency(order.totals.shipping, order.currency)}</span>
+                                    <div className="text-right">
+                                        <span className="font-medium">{shippingDisplay.primary}</span>
+                                        {shippingDisplay.secondary && <div className="text-xs text-[var(--text-muted)]">{shippingDisplay.secondary}</div>}
+                                    </div>
                                 </div>
                                 <div className="border-t border-[var(--border-subtle)] my-2 pt-2 flex justify-between text-base font-bold text-[var(--text-primary)]">
                                     <span>Total</span>
-                                    <span>{formatCurrency(order.totals.total, order.currency)}</span>
+                                    <div className="text-right">
+                                        <span>{totalDisplay.primary}</span>
+                                        {totalDisplay.secondary && <div className="text-xs text-[var(--text-muted)]">{totalDisplay.secondary}</div>}
+                                    </div>
                                 </div>
                             </div>
                         </div>
