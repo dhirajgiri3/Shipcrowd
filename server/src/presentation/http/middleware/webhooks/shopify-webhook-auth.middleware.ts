@@ -194,21 +194,6 @@ export const verifyShopifyWebhook = async (
           topic,
           note: 'HMAC implementation is correct, but Shopify uses unknown secret',
         });
-
-        // Save failed webhook for offline analysis if needed
-        const fs = require('fs');
-        const path = require('path');
-        const captureFile = path.join(__dirname, '../../../../../failed-webhook-capture.json');
-        const captureData = {
-          timestamp: new Date().toISOString(),
-          topic,
-          shopDomain,
-          webhookId,
-          hmacReceived: hmacHeader,
-          rawBodyBase64: rawBody.toString('base64'),
-          rawBodyLength: rawBody.length,
-        };
-        fs.writeFileSync(captureFile, JSON.stringify(captureData, null, 2));
       } else {
         throw new AppError('Invalid webhook signature', 'ERROR_CODE', 403);
       }
