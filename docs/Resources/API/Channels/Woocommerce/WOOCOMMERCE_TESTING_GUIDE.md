@@ -90,7 +90,7 @@ BACKEND_URL=https://abc123.ngrok-free.app
 10. [ ] Confirm store appears in integrations list with:
     - [ ] Green "Connected" badge
     - [ ] Store name and URL
-    - [ ] Connection date
+    - [ ] Connection date here
 
 **API Test:**
 
