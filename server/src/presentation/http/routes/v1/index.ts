@@ -44,6 +44,7 @@ import courierServiceRoutes from './shipping/courier-service.routes';
 import orderRoutes from './shipping/order.routes';
 import quoteRoutes from './shipping/quote.routes';
 import sellerCourierPolicyRoutes from './shipping/seller-courier-policy.routes';
+import sellerRateCardRoutes from './shipping/seller-ratecard.routes';
 import serviceRateCardRoutes from './shipping/service-ratecard.routes';
 import shipmentRoutes from './shipping/shipment.routes';
 import zoneRoutes from './shipping/zone.routes';
@@ -120,6 +121,7 @@ import impersonationRoutes from './admin/impersonation.routes';
 import platformSettingsRoutes from './admin/platform-settings.routes';
 import adminSalesRepRoutes from './admin/sales-rep.routes';
 import adminSellerCourierPolicyRoutes from './admin/seller-courier-policy.routes';
+import adminSellerRateCardRoutes from './admin/seller-ratecard.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
 import userManagementRoutes from './admin/user-management.routes';
 
@@ -177,7 +179,9 @@ router.use('/quotes', quoteRoutes);
 router.use('/admin/courier-services', courierServiceRoutes);
 router.use('/admin/service-ratecards', serviceRateCardRoutes);
 router.use('/sellers', sellerCourierPolicyRoutes);
+router.use('/sellers', sellerRateCardRoutes);
 router.use('/admin/sellers', adminSellerCourierPolicyRoutes);
+router.use('/admin/sellers', adminSellerRateCardRoutes);
 router.use('/admin/carriers', courierRoutes); // Backward compatibility
 router.use('/admin/couriers', courierRoutes); // New standard route
 router.use('/courier', courierRoutes);

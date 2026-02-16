@@ -7,6 +7,8 @@ export interface ISellerCourierPolicy extends Document {
     allowedServiceIds: mongoose.Types.ObjectId[];
     blockedProviders: Array<'velocity' | 'delhivery' | 'ekart'>;
     blockedServiceIds: mongoose.Types.ObjectId[];
+    rateCardType: 'default' | 'custom';
+    rateCardCategory: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     selectionMode: 'manual_with_recommendation' | 'manual_only' | 'auto';
     autoPriority: 'price' | 'speed' | 'balanced';
     balancedDeltaPercent: number;
@@ -56,6 +58,16 @@ const SellerCourierPolicySchema = new Schema<ISellerCourierPolicy>(
                 ref: 'CourierService',
             },
         ],
+        rateCardType: {
+            type: String,
+            enum: ['default', 'custom'],
+            default: 'default',
+        },
+        rateCardCategory: {
+            type: String,
+            enum: ['default', 'basic', 'standard', 'advanced', 'custom'],
+            default: 'default',
+        },
         selectionMode: {
             type: String,
             enum: ['manual_with_recommendation', 'manual_only', 'auto'],

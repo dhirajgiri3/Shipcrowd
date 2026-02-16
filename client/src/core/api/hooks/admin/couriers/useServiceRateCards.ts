@@ -8,6 +8,8 @@ export interface ServiceRateCardItem {
     _id: string;
     serviceId: string;
     cardType: 'cost' | 'sell';
+    flowType?: 'forward' | 'reverse';
+    category?: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     status: 'draft' | 'active' | 'inactive';
     sourceMode: 'LIVE_API' | 'TABLE' | 'HYBRID';
     currency?: 'INR';
@@ -146,6 +148,8 @@ export const useSimulateServiceRateCard = (
             paymentMode?: 'cod' | 'prepaid';
             orderValue?: number;
             provider?: 'velocity' | 'delhivery' | 'ekart';
+            flowType?: 'forward' | 'reverse';
+            category?: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
             fromPincode?: string;
             toPincode?: string;
         }
@@ -162,6 +166,8 @@ export const useSimulateServiceRateCard = (
             paymentMode?: 'cod' | 'prepaid';
             orderValue?: number;
             provider?: 'velocity' | 'delhivery' | 'ekart';
+            flowType?: 'forward' | 'reverse';
+            category?: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
             fromPincode?: string;
             toPincode?: string;
         }

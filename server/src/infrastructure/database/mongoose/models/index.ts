@@ -92,6 +92,8 @@ export * from './logistics/shipping/configuration/routing-rule.model';
 export { default as RoutingRule } from './logistics/shipping/configuration/routing-rule.model';
 export * from './logistics/shipping/configuration/seller-courier-policy.model';
 export { default as SellerCourierPolicy } from './logistics/shipping/configuration/seller-courier-policy.model';
+export * from './logistics/shipping/configuration/seller-rate-card.model';
+export { default as SellerRateCard } from './logistics/shipping/configuration/seller-rate-card.model';
 export * from './logistics/shipping/configuration/service-rate-card.model';
 export { default as ServiceRateCard } from './logistics/shipping/configuration/service-rate-card.model';
 export * from './logistics/shipping/configuration/zone.model';

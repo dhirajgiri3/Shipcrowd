@@ -1,9 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IServiceRateCard extends Document {
-    companyId: mongoose.Types.ObjectId;
+    companyId?: mongoose.Types.ObjectId | null;
     serviceId: mongoose.Types.ObjectId;
     cardType: 'cost' | 'sell';
+    flowType: 'forward' | 'reverse';
+    category?: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     sourceMode: 'LIVE_API' | 'TABLE' | 'HYBRID';
     currency: 'INR';
     effectiveDates: {
@@ -67,7 +69,8 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
         companyId: {
             type: Schema.Types.ObjectId,
             ref: 'Company',
-            required: true,
+            required: false,
+            default: null,
         },
         serviceId: {
             type: Schema.Types.ObjectId,
@@ -78,6 +81,17 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
             type: String,
             enum: ['cost', 'sell'],
             required: true,
+        },
+        flowType: {
+            type: String,
+            enum: ['forward', 'reverse'],
+            required: true,
+            default: 'forward',
+        },
+        category: {
+            type: String,
+            enum: ['default', 'basic', 'standard', 'advanced', 'custom'],
+            default: 'default',
         },
         sourceMode: {
             type: String,
@@ -194,17 +208,34 @@ const ServiceRateCardSchema = new Schema<IServiceRateCard>(
     }
 );
 
+ServiceRateCardSchema.pre('validate', function (next) {
+    if (this.cardType === 'sell' && !this.category) {
+        this.category = 'default';
+    }
+    if (this.cardType === 'cost' && !this.category) {
+        this.category = 'default';
+    }
+    next();
+});
+
 ServiceRateCardSchema.index(
-    { companyId: 1, serviceId: 1, cardType: 1, status: 1 },
-    { name: 'idx_service_rate_card_company_service_type_status' }
+    { companyId: 1, serviceId: 1, cardType: 1, flowType: 1, status: 1 },
+    { name: 'idx_service_rate_card_company_service_type_flow_status' }
 );
 ServiceRateCardSchema.index(
-    { companyId: 1, cardType: 1, 'effectiveDates.startDate': 1 },
-    { name: 'idx_service_rate_card_company_card_type_start_date' }
+    { companyId: 1, serviceId: 1, cardType: 1, flowType: 1, category: 1, status: 1 },
+    { name: 'idx_service_rate_card_company_service_sell_resolution' }
 );
 ServiceRateCardSchema.index(
     { companyId: 1, isDeleted: 1, createdAt: -1 },
     { name: 'idx_service_rate_card_company_deleted_created_at' }
+);
+ServiceRateCardSchema.index(
+    { serviceId: 1, cardType: 1, flowType: 1, category: 1, status: 1 },
+    {
+        name: 'idx_service_rate_card_platform_resolution',
+        partialFilterExpression: { companyId: null, isDeleted: false },
+    }
 );
 
 const ServiceRateCard = mongoose.model<IServiceRateCard>('ServiceRateCard', ServiceRateCardSchema);

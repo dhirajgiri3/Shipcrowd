@@ -10,51 +10,50 @@ const router = express.Router();
 router.get(
     '/',
     authenticate,
-    requireAccess({ tier: AccessTier.SANDBOX }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     asyncHandler(courierServiceController.listCourierServices)
 );
 
 router.post(
     '/',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(courierServiceController.createCourierService)
 );
 
 router.get(
     '/:id',
     authenticate,
-    requireAccess({ tier: AccessTier.SANDBOX }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     asyncHandler(courierServiceController.getCourierServiceById)
 );
 
 router.put(
     '/:id',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(courierServiceController.updateCourierService)
 );
 
 router.delete(
     '/:id',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(courierServiceController.deleteCourierService)
 );
 
 router.post(
     '/:id/toggle-status',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(courierServiceController.toggleCourierServiceStatus)
 );
 
 router.post(
     '/:provider/services/sync',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(courierServiceController.syncProviderServices)
 );
 
 export default router;
-

@@ -4,7 +4,7 @@ import { fieldEncryption } from 'mongoose-field-encryption';
 
 // Define the interface for Integration document
 export interface IIntegration extends Document {
-  companyId: mongoose.Types.ObjectId;
+  companyId?: mongoose.Types.ObjectId | null;
   type: 'courier' | 'ecommerce' | 'payment' | 'other';
   provider: string;
   credentials: {
@@ -50,7 +50,8 @@ const IntegrationSchema = new Schema<IIntegration>(
     companyId: {
       type: Schema.Types.ObjectId,
       ref: 'Company',
-      required: true,
+      required: false,
+      default: null,
     },
     type: {
       type: String,
@@ -108,6 +109,17 @@ const IntegrationSchema = new Schema<IIntegration>(
 IntegrationSchema.index({ companyId: 1 });
 IntegrationSchema.index({ type: 1 });
 IntegrationSchema.index({ provider: 1 });
+IntegrationSchema.index(
+  { companyId: 1, type: 1, provider: 1 },
+  { name: 'idx_integration_company_type_provider' }
+);
+IntegrationSchema.index(
+  { type: 1, provider: 1 },
+  {
+    name: 'idx_integration_platform_type_provider',
+    partialFilterExpression: { companyId: null },
+  }
+);
 IntegrationSchema.index({ isDeleted: 1 });
 IntegrationSchema.index({ 'settings.isActive': 1 });
 

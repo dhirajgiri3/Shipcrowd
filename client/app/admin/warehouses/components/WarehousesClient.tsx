@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
     Plus,
@@ -10,9 +10,11 @@ import {
     Filter,
     FileOutput,
     CheckSquare,
-    MapPin
+    MapPin,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAdminWarehouses, useAdminDeleteWarehouse } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
 import { Card } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
@@ -29,25 +31,74 @@ import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { WarehouseCard } from './WarehouseCard';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import { parsePaginationQuery, syncPaginationQuery, formatPaginationRange } from '@/src/lib/utils';
+
+const DEFAULT_LIMIT = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export function WarehousesClient() {
     const router = useRouter();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const { page: urlPage, limit: urlLimit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
 
-    // Use the NEW Admin Hook
-    const { data: warehouses = [], isLoading } = useAdminWarehouses({
-        search: searchQuery
+    const [page, setPage] = useState(urlPage);
+    const [limit, setLimit] = useState(urlLimit);
+    const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
+    const hasInitializedFilterReset = useRef(false);
+
+    const debouncedSearch = useDebouncedValue(searchInput, 300);
+
+    useEffect(() => {
+        const { page: nextPage, limit: nextLimit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+        const nextSearch = searchParams.get('search') || '';
+        setPage((p) => (p === nextPage ? p : nextPage));
+        setLimit((l) => (l === nextLimit ? l : nextLimit));
+        setSearchInput((s) => (s === nextSearch ? s : nextSearch));
+        setIsUrlHydrated(true);
+    }, [searchParams]);
+
+    useEffect(() => {
+        if (!isUrlHydrated || !hasInitializedFilterReset.current) {
+            if (isUrlHydrated) hasInitializedFilterReset.current = true;
+            return;
+        }
+        setPage(1);
+    }, [debouncedSearch, isUrlHydrated]);
+
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+        const params = new URLSearchParams(searchParams.toString());
+        if (debouncedSearch) params.set('search', debouncedSearch);
+        else params.delete('search');
+        syncPaginationQuery(params, { page, limit }, { defaultLimit: DEFAULT_LIMIT });
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [page, limit, debouncedSearch, isUrlHydrated, searchParams, pathname, router]);
+
+    const { data, isLoading, isFetching, isError, error } = useAdminWarehouses({
+        search: debouncedSearch || undefined,
+        page,
+        limit,
     });
+
+    const warehouses = data?.warehouses ?? [];
+    const pagination = data?.pagination;
 
     const { mutate: deleteWarehouse, isPending: isDeleting } = useAdminDeleteWarehouse();
 
-    // Derived stats
+    const totalCount = pagination?.total ?? warehouses.length;
     const stats = {
-        total: warehouses.length,
+        total: totalCount,
         capacity: warehouses.reduce((acc, w) => acc + (w.capacity?.storageCapacity || 10000), 0),
         active: warehouses.filter(w => w.isActive).length,
-        default: warehouses.find(w => w.isDefault)?.name || 'None'
+        default: warehouses.find(w => w.isDefault)?.name || '—'
     };
 
     const containerVariants = {
@@ -129,8 +180,8 @@ export function WarehousesClient() {
                         <div className="flex-1">
                             <SearchInput
                                 placeholder="Search warehouses by name, city, or pincode..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
                                 widthClass="w-full"
                             />
                         </div>
@@ -149,11 +200,16 @@ export function WarehousesClient() {
                 animate="visible"
                 className="grid grid-cols-1 lg:grid-cols-2 gap-6"
             >
-                {isLoading ? (
-                    // Skeleton loading
+                {isLoading || (isFetching && warehouses.length === 0) ? (
+                    // Skeleton loading - show when loading or fetching with no data yet
                     [...Array(4)].map((_, i) => (
                         <div key={i} className="h-48 rounded-2xl bg-[var(--bg-secondary)] animate-pulse" />
                     ))
+                ) : isError ? (
+                    <div className="col-span-full py-20 text-center bg-[var(--bg-secondary)] rounded-2xl border-2 border-dashed border-[var(--border-subtle)]">
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">Failed to load warehouses</h3>
+                        <p className="mt-1 text-[var(--text-secondary)]">{error?.message ?? 'Please try again later.'}</p>
+                    </div>
                 ) : warehouses.length === 0 ? (
                     <div className="col-span-full py-20 text-center bg-[var(--bg-secondary)] rounded-2xl border-2 border-dashed border-[var(--border-subtle)]">
                         <div className="h-16 w-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mb-4 mx-auto">
@@ -179,6 +235,60 @@ export function WarehousesClient() {
                     ))
                 )}
             </motion.div>
+
+            {/* Pagination */}
+            {pagination && totalCount > 0 && (
+                <Card className="border-[var(--border-subtle)] overflow-hidden">
+                    <div className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-4 text-sm">
+                            <p className="text-[var(--text-muted)]">
+                                {formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'warehouses')}
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[var(--text-secondary)] hidden sm:inline">Per page:</span>
+                                <select
+                                    value={limit}
+                                    onChange={(e) => {
+                                        const newLimit = Number(e.target.value);
+                                        setLimit(newLimit);
+                                        setPage(1);
+                                    }}
+                                    className="h-8 rounded-md border border-[var(--border-default)] bg-[var(--bg-tertiary)] text-[var(--text-primary)] text-sm px-2 focus:ring-1 focus:ring-[var(--primary-blue)] cursor-pointer"
+                                >
+                                    {PAGE_SIZE_OPTIONS.map((opt) => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={pagination.page <= 1 || isFetching}
+                                className="h-9 px-4"
+                            >
+                                <ChevronLeft className="w-4 h-4 mr-1" />
+                                Previous
+                            </Button>
+                            <span className="text-sm font-medium text-[var(--text-primary)] bg-[var(--bg-secondary)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
+                                Page {pagination.page} / {pagination.totalPages}
+                            </span>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                                disabled={pagination.page >= pagination.totalPages || isFetching}
+                                className="h-9 px-4"
+                            >
+                                Next
+                                <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            )}
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

@@ -20,6 +20,7 @@ jest.mock('@/core/application/services/communication/email.service', () => ({
 
 const TEST_USER_ID = new mongoose.Types.ObjectId().toString();
 const TEST_COMPANY_ID = new mongoose.Types.ObjectId().toString();
+let TEST_USER_ROLE: 'seller' | 'admin' = 'seller';
 
 jest.mock('@/presentation/http/middleware/auth/auth', () => {
     const actual = jest.requireActual('@/presentation/http/middleware/auth/auth');
@@ -28,7 +29,7 @@ jest.mock('@/presentation/http/middleware/auth/auth', () => {
         authenticate: (req: any, _res: any, next: any) => {
             req.user = {
                 _id: TEST_USER_ID,
-                role: 'seller',
+                role: TEST_USER_ROLE,
                 companyId: TEST_COMPANY_ID,
                 isEmailVerified: true,
                 kycStatus: {
@@ -62,6 +63,7 @@ describe('Service-Level Pricing API Integration', () => {
     });
 
     afterEach(async () => {
+        TEST_USER_ROLE = 'seller';
         jest.restoreAllMocks();
         await clearTestDb();
     });
@@ -390,12 +392,15 @@ describe('Service-Level Pricing API Integration', () => {
     });
 
     it('POST /api/v1/admin/service-ratecards/:id/simulate returns formula pricing breakdown', async () => {
+        TEST_USER_ROLE = 'admin';
         await seedAccessContext();
 
         const card = await ServiceRateCard.create({
-            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
+            companyId: null,
             serviceId: new mongoose.Types.ObjectId(),
             cardType: 'sell',
+            flowType: 'forward',
+            category: 'default',
             sourceMode: 'TABLE',
             currency: 'INR',
             effectiveDates: { startDate: new Date(Date.now() - 60_000) },
@@ -519,11 +524,14 @@ describe('Service-Level Pricing API Integration', () => {
     });
 
     it('POST /api/v1/admin/service-ratecards/:id/simulate rejects invalid request payload', async () => {
+        TEST_USER_ROLE = 'admin';
         await seedAccessContext();
         const card = await ServiceRateCard.create({
-            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
+            companyId: null,
             serviceId: new mongoose.Types.ObjectId(),
             cardType: 'sell',
+            flowType: 'forward',
+            category: 'default',
             sourceMode: 'TABLE',
             currency: 'INR',
             effectiveDates: { startDate: new Date(Date.now() - 60_000) },
@@ -544,13 +552,16 @@ describe('Service-Level Pricing API Integration', () => {
     });
 
     it('POST /api/v1/admin/service-ratecards rejects overlapping active effective windows', async () => {
+        TEST_USER_ROLE = 'admin';
         await seedAccessContext();
 
         const serviceId = new mongoose.Types.ObjectId();
         await ServiceRateCard.create({
-            companyId: new mongoose.Types.ObjectId(TEST_COMPANY_ID),
+            companyId: null,
             serviceId,
             cardType: 'sell',
+            flowType: 'forward',
+            category: 'default',
             sourceMode: 'TABLE',
             currency: 'INR',
             effectiveDates: { startDate: new Date('2026-01-01T00:00:00.000Z') },
@@ -575,6 +586,8 @@ describe('Service-Level Pricing API Integration', () => {
             .send({
                 serviceId: String(serviceId),
                 cardType: 'sell',
+                flowType: 'forward',
+                category: 'default',
                 sourceMode: 'TABLE',
                 currency: 'INR',
                 effectiveDates: { startDate: '2026-01-15T00:00:00.000Z' },
@@ -597,11 +610,10 @@ describe('Service-Level Pricing API Integration', () => {
     });
 
     it('GET /api/v1/admin/courier-services returns providerServiceId and constraint fields', async () => {
+        TEST_USER_ROLE = 'admin';
         await seedAccessContext();
-        const companyObjectId = new mongoose.Types.ObjectId(TEST_COMPANY_ID);
-
         const integration = await Integration.create({
-            companyId: companyObjectId,
+            companyId: null,
             type: 'courier',
             provider: 'ekart',
             settings: {
@@ -614,13 +626,14 @@ describe('Service-Level Pricing API Integration', () => {
         });
 
         await CourierService.create({
-            companyId: companyObjectId,
+            companyId: null,
             provider: 'ekart',
             integrationId: integration._id,
             serviceCode: 'EK_SURF',
             providerServiceId: 'SURFACE',
             displayName: 'Ekart Surface',
             serviceType: 'surface',
+            flowType: 'forward',
             status: 'active',
             constraints: {
                 maxCodValue: 30000,
@@ -653,12 +666,15 @@ describe('Service-Level Pricing API Integration', () => {
     });
 
     it('POST /api/v1/admin/service-ratecards stores COD/Fuel/RTO rules with effective window', async () => {
+        TEST_USER_ROLE = 'admin';
         await seedAccessContext();
 
         const serviceId = new mongoose.Types.ObjectId();
         const payload = {
             serviceId: String(serviceId),
             cardType: 'sell',
+            flowType: 'forward',
+            category: 'default',
             sourceMode: 'TABLE',
             currency: 'INR',
             effectiveDates: {

@@ -1,13 +1,14 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ICourierService extends Document {
-    companyId: mongoose.Types.ObjectId;
+    companyId?: mongoose.Types.ObjectId | null;
     provider: 'velocity' | 'delhivery' | 'ekart';
     integrationId: mongoose.Types.ObjectId;
     serviceCode: string;
     providerServiceId?: string;
     displayName: string;
     serviceType: 'surface' | 'express' | 'air' | 'standard';
+    flowType: 'forward' | 'reverse' | 'both';
     status: 'active' | 'inactive' | 'hidden';
     constraints: {
         minWeightKg?: number;
@@ -43,7 +44,8 @@ const CourierServiceSchema = new Schema<ICourierService>(
         companyId: {
             type: Schema.Types.ObjectId,
             ref: 'Company',
-            required: true,
+            required: false,
+            default: null,
         },
         provider: {
             type: String,
@@ -73,6 +75,12 @@ const CourierServiceSchema = new Schema<ICourierService>(
         serviceType: {
             type: String,
             enum: ['surface', 'express', 'air', 'standard'],
+            required: true,
+        },
+        flowType: {
+            type: String,
+            enum: ['forward', 'reverse', 'both'],
+            default: 'forward',
             required: true,
         },
         status: {
@@ -187,6 +195,10 @@ CourierServiceSchema.index(
     { name: 'idx_courier_service_company_provider_status' }
 );
 CourierServiceSchema.index(
+    { companyId: 1, flowType: 1, status: 1 },
+    { name: 'idx_courier_service_company_flow_status' }
+);
+CourierServiceSchema.index(
     { companyId: 1, serviceCode: 1 },
     { unique: true, name: 'uidx_courier_service_company_service_code' }
 );
@@ -197,6 +209,13 @@ CourierServiceSchema.index(
 CourierServiceSchema.index(
     { companyId: 1, isDeleted: 1, createdAt: -1 },
     { name: 'idx_courier_service_company_deleted_created_at' }
+);
+CourierServiceSchema.index(
+    { flowType: 1, status: 1 },
+    {
+        name: 'idx_courier_service_platform_flow_status',
+        partialFilterExpression: { companyId: null, isDeleted: false },
+    }
 );
 
 const CourierService = mongoose.model<ICourierService>('CourierService', CourierServiceSchema);

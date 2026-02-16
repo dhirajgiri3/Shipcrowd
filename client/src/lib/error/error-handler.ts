@@ -47,7 +47,32 @@ const reportCriticalError = (message: string, code?: string, originalError?: any
  * Handle API errors with user-friendly toast notifications or critical modal
  */
 export function handleApiError(error: unknown | ApiError, fallbackMessage = ERROR_MESSAGES.DEFAULT) {
-    console.error('API Error:', error);
+    const extractMessage = (input: unknown): string | null => {
+        if (!input) return null;
+        if (typeof input === 'string') return input;
+        if (input instanceof Error) return input.message || null;
+        if (typeof input === 'object') {
+            const value = input as Record<string, unknown>;
+            const nestedError = value.error as Record<string, unknown> | string | undefined;
+            if (typeof value.message === 'string' && value.message.trim()) return value.message;
+            if (typeof nestedError === 'string' && nestedError.trim()) return nestedError;
+            if (
+                nestedError &&
+                typeof nestedError === 'object' &&
+                typeof nestedError.message === 'string' &&
+                nestedError.message.trim()
+            ) {
+                return nestedError.message;
+            }
+        }
+        return null;
+    };
+
+    const debugMessage = extractMessage(error) || fallbackMessage;
+    console.error('API Error:', {
+        message: debugMessage,
+        raw: error,
+    });
 
     // 1. Handle normalized ApiError from our API client
     if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
@@ -100,12 +125,13 @@ export function handleApiError(error: unknown | ApiError, fallbackMessage = ERRO
 
     // 3. Handle Generic Errors
     if (error instanceof Error) {
-        const msg = error.message || fallbackMessage;
+        const msg = extractMessage(error) || fallbackMessage;
         toast.error(msg, { id: msg });
         return;
     }
 
-    toast.error(fallbackMessage, { id: fallbackMessage });
+    const msg = extractMessage(error) || fallbackMessage;
+    toast.error(msg, { id: msg });
 }
 
 /**

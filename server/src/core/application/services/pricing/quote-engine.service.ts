@@ -3,6 +3,7 @@ import {
 CourierService,
 QuoteSession,
 SellerCourierPolicy,
+SellerRateCard,
 ServiceRateCard,
 } from '../../../../infrastructure/database/mongoose/models';
 import { ICourierService } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/courier-service.model';
@@ -70,6 +71,7 @@ type CourierServiceLean = {
     constraints?: ICourierService['constraints'];
     sla?: ICourierService['sla'];
     zoneSupport?: ICourierService['zoneSupport'];
+    flowType?: ICourierService['flowType'];
 };
 
 type SellerPolicyLean = Pick<
@@ -81,11 +83,14 @@ type SellerPolicyLean = Pick<
     | 'blockedProviders'
     | 'allowedServiceIds'
     | 'blockedServiceIds'
+    | 'rateCardType'
+    | 'rateCardCategory'
 >;
 
 type ServiceRateCardLean = Pick<
     IServiceRateCard,
     'sourceMode' | 'zoneRules' | 'calculation' | 'cardType' | 'currency'
+    | 'flowType' | 'category'
 >;
 
 type QuoteSessionLean = {
@@ -168,7 +173,13 @@ class QuoteEngineService {
     async generateQuotes(input: QuoteEngineInput): Promise<QuoteSessionOutput> {
         // Wiring point for phased rollout flags. Behavior remains unchanged in this PR.
         const pricingFeatureFlags = this.getPricingFeatureFlags();
-        void pricingFeatureFlags;
+        if (input.shipmentType === 'reverse' && !pricingFeatureFlags.reverseQuoteEnabled) {
+            throw new AppError(
+                'Reverse shipping not yet configured',
+                ErrorCode.VAL_INVALID_INPUT,
+                422
+            );
+        }
 
         const startedAt = Date.now();
         let providerEntries: Provider[] = [];
@@ -186,10 +197,39 @@ class QuoteEngineService {
             }).lean<SellerPolicyLean | null>();
 
             let services = await CourierService.find({
-                companyId: companyObjectId,
+                companyId: null,
                 status: 'active',
                 isDeleted: false,
             }).lean<CourierServiceLean[]>();
+
+            services = services.filter((service) =>
+                this.matchesShipmentFlow(service.flowType || 'forward', input.shipmentType)
+            );
+
+            if (input.shipmentType === 'reverse') {
+                const hasReverseConfigured = services.length > 0;
+                if (!hasReverseConfigured) {
+                    throw new AppError(
+                        'Reverse shipping not yet configured',
+                        ErrorCode.VAL_INVALID_INPUT,
+                        422
+                    );
+                }
+
+                const reverseCardCount = await ServiceRateCard.countDocuments({
+                    companyId: null,
+                    flowType: 'reverse',
+                    status: 'active',
+                    isDeleted: false,
+                });
+                if (reverseCardCount === 0) {
+                    throw new AppError(
+                        'Reverse shipping not yet configured',
+                        ErrorCode.VAL_INVALID_INPUT,
+                        422
+                    );
+                }
+            }
 
             services = this.applyPolicyFilters(services, policy || undefined);
             logger.debug('Quote engine service pool prepared', {
@@ -255,7 +295,13 @@ class QuoteEngineService {
                         }
 
                         const providerOptions = await this.withTimeout(
-                            this.buildProviderOptions(provider, providerServices, input, now),
+                            this.buildProviderOptions(
+                                provider,
+                                providerServices,
+                                input,
+                                now,
+                                policy || undefined
+                            ),
                             PROVIDER_TIMEOUT_MS[provider],
                             provider
                         );
@@ -580,7 +626,8 @@ class QuoteEngineService {
         provider: Provider,
         services: CourierServiceLean[],
         input: QuoteEngineInput,
-        now: Date
+        now: Date,
+        policy?: SellerPolicyLean
     ): Promise<QuoteOptionOutput[]> {
         const providerKey = PROVIDER_TO_FACTORY_KEY[provider];
         const providerClient = (await CourierFactory.getProvider(
@@ -705,7 +752,8 @@ class QuoteEngineService {
                         input,
                         cost.amount,
                         liveRateZone,
-                        now
+                        now,
+                        policy
                     );
                     const estimatedMargin = sell.amount - cost.amount;
                     const estimatedMarginPercent =
@@ -751,6 +799,16 @@ class QuoteEngineService {
         );
 
         return candidates.filter((item): item is QuoteOptionOutput => item !== null);
+    }
+
+    private matchesShipmentFlow(
+        serviceFlowType: 'forward' | 'reverse' | 'both',
+        shipmentType: 'forward' | 'reverse'
+    ): boolean {
+        if (shipmentType === 'forward') {
+            return serviceFlowType === 'forward' || serviceFlowType === 'both';
+        }
+        return serviceFlowType === 'reverse' || serviceFlowType === 'both';
     }
 
     private async getLiveRateForService(
@@ -921,7 +979,17 @@ class QuoteEngineService {
         defaultConfidence: PricingConfidence,
         now: Date
     ): Promise<ResolvedCost> {
-        const card = await this.findActiveRateCard(serviceId, 'cost', now);
+        const flowType = input.shipmentType === 'reverse' ? 'reverse' : 'forward';
+        const card = await this.findActiveRateCard({
+            serviceId,
+            cardType: 'cost',
+            flowType,
+            now,
+            category: 'default',
+            sellerCompanyId: input.companyId,
+            sellerId: input.sellerId,
+            rateCardType: 'default',
+        });
         const strategy = PricingStrategyService.resolveCost({
             hasCard: Boolean(card),
             cardSourceMode: card?.sourceMode,
@@ -999,9 +1067,26 @@ class QuoteEngineService {
         input: QuoteEngineInput,
         fallbackFromCost: number,
         zone: string | undefined,
-        now: Date
+        now: Date,
+        policy?: SellerPolicyLean
     ): Promise<ResolvedSell> {
-        const card = await this.findActiveRateCard(serviceId, 'sell', now);
+        const flowType = input.shipmentType === 'reverse' ? 'reverse' : 'forward';
+        const preferredCategory = (policy?.rateCardCategory || 'default') as
+            | 'default'
+            | 'basic'
+            | 'standard'
+            | 'advanced'
+            | 'custom';
+        const card = await this.findActiveRateCard({
+            serviceId,
+            cardType: 'sell',
+            flowType,
+            now,
+            category: preferredCategory,
+            sellerCompanyId: input.companyId,
+            sellerId: input.sellerId,
+            rateCardType: (policy?.rateCardType || 'default') as 'default' | 'custom',
+        });
         const strategy = PricingStrategyService.resolveSell({
             hasCard: Boolean(card),
             cardSourceMode: card?.sourceMode,
@@ -1065,44 +1150,157 @@ class QuoteEngineService {
         };
     }
 
-    private buildRateCardQuery(
-        serviceId: mongoose.Types.ObjectId,
-        cardType: 'cost' | 'sell',
-        now: Date
-    ) {
+    private buildPlatformRateCardQuery(params: {
+        serviceId: mongoose.Types.ObjectId;
+        cardType: 'cost' | 'sell';
+        flowType: 'forward' | 'reverse';
+        now: Date;
+        category?: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
+    }) {
         return {
-            serviceId,
-            cardType,
+            companyId: null,
+            serviceId: params.serviceId,
+            cardType: params.cardType,
+            flowType: params.flowType,
+            ...(params.cardType === 'sell'
+                ? { category: params.category || 'default' }
+                : {}),
             status: 'active',
             isDeleted: false,
-            'effectiveDates.startDate': { $lte: now },
+            'effectiveDates.startDate': { $lte: params.now },
             $or: [
                 { 'effectiveDates.endDate': { $exists: false } },
-                { 'effectiveDates.endDate': { $gte: now } },
+                { 'effectiveDates.endDate': { $gte: params.now } },
             ],
         };
     }
 
-    private async findActiveRateCard(
-        serviceId: mongoose.Types.ObjectId,
-        cardType: 'cost' | 'sell',
-        now: Date
-    ): Promise<ServiceRateCardLean | null> {
-        const query = this.buildRateCardQuery(serviceId, cardType, now);
-        const cards = await ServiceRateCard.find(query)
+    private buildSellerRateCardQuery(params: {
+        companyId: string;
+        sellerId: string;
+        serviceId: mongoose.Types.ObjectId;
+        flowType: 'forward' | 'reverse';
+        now: Date;
+    }) {
+        return {
+            companyId: new mongoose.Types.ObjectId(params.companyId),
+            sellerId: new mongoose.Types.ObjectId(params.sellerId),
+            serviceId: params.serviceId,
+            cardType: 'sell',
+            flowType: params.flowType,
+            status: 'active',
+            isDeleted: false,
+            'effectiveDates.startDate': { $lte: params.now },
+            $or: [
+                { 'effectiveDates.endDate': { $exists: false } },
+                { 'effectiveDates.endDate': { $gte: params.now } },
+            ],
+        };
+    }
+
+    private getSellCategoryFallbackChain(
+        category: 'default' | 'basic' | 'standard' | 'advanced' | 'custom'
+    ): Array<'default' | 'basic' | 'standard' | 'advanced' | 'custom'> {
+        switch (category) {
+            case 'basic':
+                return ['basic', 'default'];
+            case 'standard':
+                return ['standard', 'basic', 'default'];
+            case 'advanced':
+                return ['advanced', 'standard', 'basic', 'default'];
+            case 'custom':
+                return ['custom', 'advanced', 'standard', 'basic', 'default'];
+            case 'default':
+            default:
+                return ['default'];
+        }
+    }
+
+    private async findTopCard<T>(
+        queryModel: { find: (query: any) => any },
+        query: Record<string, unknown>
+    ): Promise<T | null> {
+        const cards = (await queryModel
+            .find(query)
             .sort({ 'effectiveDates.startDate': -1, createdAt: -1 })
             .limit(2)
-            .lean<ServiceRateCardLean[]>();
-
+            .lean()) as T[];
         if (cards.length > 1) {
-            logger.warn('Multiple active service rate cards matched deterministic selection', {
-                serviceId: String(serviceId),
-                cardType,
+            logger.warn('Multiple active rate cards matched deterministic selection', {
+                query,
                 selectedBy: ['effectiveDates.startDate desc', 'createdAt desc'],
             });
         }
-
         return cards[0] || null;
+    }
+
+    private async findActiveRateCard(
+        params: {
+            serviceId: mongoose.Types.ObjectId;
+            cardType: 'cost' | 'sell';
+            flowType: 'forward' | 'reverse';
+            now: Date;
+            category: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
+            sellerCompanyId: string;
+            sellerId: string;
+            rateCardType: 'default' | 'custom';
+        }
+    ): Promise<ServiceRateCardLean | null> {
+        if (params.cardType === 'cost') {
+            return this.findTopCard<ServiceRateCardLean>(
+                ServiceRateCard,
+                this.buildPlatformRateCardQuery({
+                    serviceId: params.serviceId,
+                    cardType: 'cost',
+                    flowType: params.flowType,
+                    now: params.now,
+                    category: 'default',
+                })
+            );
+        }
+
+        if (params.rateCardType === 'custom') {
+            const sellerCard = await this.findTopCard<ServiceRateCardLean>(
+                SellerRateCard,
+                this.buildSellerRateCardQuery({
+                    companyId: params.sellerCompanyId,
+                    sellerId: params.sellerId,
+                    serviceId: params.serviceId,
+                    flowType: params.flowType,
+                    now: params.now,
+                })
+            );
+            if (sellerCard) {
+                return sellerCard;
+            }
+        }
+
+        const chain = this.getSellCategoryFallbackChain(params.category);
+        for (const category of chain) {
+            const platformCard = await this.findTopCard<ServiceRateCardLean>(
+                ServiceRateCard,
+                this.buildPlatformRateCardQuery({
+                    serviceId: params.serviceId,
+                    cardType: 'sell',
+                    flowType: params.flowType,
+                    now: params.now,
+                    category,
+                })
+            );
+            if (platformCard) {
+                if (category !== params.category) {
+                    logger.info('Sell rate card category fallback applied', {
+                        serviceId: String(params.serviceId),
+                        flowType: params.flowType,
+                        requestedCategory: params.category,
+                        appliedCategory: category,
+                    });
+                }
+                return platformCard;
+            }
+        }
+
+        return null;
     }
 
     private normalizeZoneKey(zone?: string): string | null {

@@ -14,37 +14,42 @@ const courierController = new CourierController();
 router.get(
     '/',
     authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     courierController.getCouriers
 );
 
 router.post(
     '/:provider/services/sync',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(courierServiceController.syncProviderServices)
 );
 
 router.get(
     '/:id',
     authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     courierController.getCourier
 );
 
 router.put(
     '/:id',
     authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     courierController.updateCourier
 );
 
 router.post(
     '/:id/toggle-status',
     authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     courierController.toggleStatus
 );
 
 router.get(
     '/:id/performance',
     authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     courierController.getPerformance
 );
 
@@ -52,6 +57,7 @@ router.get(
 router.post(
     '/:id/performance',
     authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     courierController.getPerformance
 );
 

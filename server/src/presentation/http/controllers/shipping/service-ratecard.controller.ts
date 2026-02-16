@@ -1,16 +1,16 @@
 import { NextFunction, Request, Response } from 'express';
-import mongoose from 'mongoose';
 import ServiceRateCardFormulaService from '../../../../core/application/services/pricing/service-rate-card-formula.service';
 import { ServiceRateCard } from '../../../../infrastructure/database/mongoose/models';
 import { ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
+import { guardChecks, requireCompanyContext, validateObjectId } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import {
 importServiceRateCardSchema,
 simulateServiceRateCardSchema,
+updateServiceRateCardSchema,
 upsertServiceRateCardSchema,
 } from '../../../../shared/validation/schemas';
 
@@ -28,6 +28,28 @@ const toDate = (value: string | Date | undefined): Date | undefined => {
     const parsed = value instanceof Date ? value : new Date(value);
     if (!Number.isFinite(parsed.getTime())) return undefined;
     return parsed;
+};
+
+const resolveRateCardScope = (req: Request, isAdmin: boolean, authCompanyId?: string): string | null => {
+    const bodyCompanyId = typeof req.body?.companyId === 'string' ? req.body.companyId.trim() : undefined;
+    const queryCompanyId = typeof req.query?.companyId === 'string' ? req.query.companyId.trim() : undefined;
+    const requestedCompanyId = bodyCompanyId || queryCompanyId;
+
+    if (isAdmin) {
+        if (requestedCompanyId) {
+            throw new ValidationError(
+                'companyId is not allowed for platform rate card endpoints',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+        return null;
+    }
+
+    if (!authCompanyId) {
+        throw new ValidationError('companyId is required', ErrorCode.VAL_MISSING_FIELD);
+    }
+    validateObjectId(authCompanyId, 'company');
+    return authCompanyId;
 };
 
 const validateZoneRuleSlabs = (zoneRules: ZoneRuleInput[]): Array<{ field: string; message: string }> => {
@@ -70,9 +92,11 @@ const validateZoneRuleSlabs = (zoneRules: ZoneRuleInput[]): Array<{ field: strin
 };
 
 const ensureNoActiveWindowOverlap = async (params: {
-    companyId: string;
+    companyId: string | null;
     serviceId: string;
     cardType: 'cost' | 'sell';
+    flowType: 'forward' | 'reverse';
+    category?: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     status: 'draft' | 'active' | 'inactive';
     startDate?: Date;
     endDate?: Date;
@@ -93,9 +117,13 @@ const ensureNoActiveWindowOverlap = async (params: {
         companyId: params.companyId,
         serviceId: params.serviceId,
         cardType: params.cardType,
+        flowType: params.flowType,
         status: 'active',
         isDeleted: false,
     };
+    if (params.cardType === 'sell') {
+        query.category = params.category || 'default';
+    }
 
     if (params.excludeId) {
         query._id = { $ne: params.excludeId };
@@ -124,30 +152,22 @@ export const listServiceRateCards = async (req: Request, res: Response, next: Ne
     try {
         const auth = guardChecks(req, { requireCompany: false });
         const isAdmin = isPlatformAdmin(req.user ?? {});
-        const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId : undefined;
 
         if (!isAdmin) {
             requireCompanyContext(auth);
-        } else if (requestedCompanyId && !mongoose.isValidObjectId(requestedCompanyId)) {
-            throw new ValidationError('Validation failed', [
-                { field: 'companyId', message: 'Invalid companyId' },
-            ]);
         }
+        const companyScope = resolveRateCardScope(req, isAdmin, auth.companyId);
 
         const page = Math.max(1, Number(req.query.page || 1));
         const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
         const skip = (page - 1) * limit;
 
         const query: any = { isDeleted: false };
-        if (isAdmin) {
-            if (requestedCompanyId) {
-                query.companyId = requestedCompanyId;
-            }
-        } else {
-            query.companyId = auth.companyId;
-        }
+        query.companyId = companyScope;
         if (req.query.serviceId) query.serviceId = req.query.serviceId;
         if (req.query.cardType) query.cardType = req.query.cardType;
+        if (req.query.flowType) query.flowType = req.query.flowType;
+        if (req.query.category) query.category = req.query.category;
         if (req.query.status) query.status = req.query.status;
 
         const [items, total] = await Promise.all([
@@ -166,16 +186,7 @@ export const createServiceRateCard = async (req: Request, res: Response, next: N
     try {
         const auth = guardChecks(req);
         const admin = isPlatformAdmin(req.user ?? {});
-        let targetCompanyId = auth.companyId;
-        if (admin) {
-            const bodyCompanyId = typeof req.body?.companyId === 'string' ? req.body.companyId : undefined;
-            targetCompanyId = bodyCompanyId || auth.companyId;
-            if (!targetCompanyId) {
-                throw new ValidationError('Validation failed', [{ field: 'companyId', message: 'companyId is required' }]);
-            }
-        } else {
-            requireCompanyContext(auth);
-        }
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
 
         const validation = upsertServiceRateCardSchema.safeParse(req.body);
         if (!validation.success) {
@@ -197,6 +208,8 @@ export const createServiceRateCard = async (req: Request, res: Response, next: N
             companyId: targetCompanyId,
             serviceId: validation.data.serviceId,
             cardType: validation.data.cardType,
+            flowType: validation.data.flowType || 'forward',
+            category: validation.data.category,
             status: validation.data.status || 'draft',
             startDate,
             endDate,
@@ -218,11 +231,12 @@ export const createServiceRateCard = async (req: Request, res: Response, next: N
 export const getServiceRateCardById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const admin = isPlatformAdmin(req.user ?? {});
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
 
         const card = await ServiceRateCard.findOne({
             _id: req.params.id,
-            companyId: auth.companyId,
+            companyId: targetCompanyId,
             isDeleted: false,
         }).lean();
 
@@ -241,44 +255,33 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
     try {
         const auth = guardChecks(req);
         const admin = isPlatformAdmin(req.user ?? {});
-        let targetCompanyId = auth.companyId;
-        if (!admin) {
-            requireCompanyContext(auth);
-        }
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
 
-        const validation = upsertServiceRateCardSchema.partial().safeParse(req.body);
+        const validation = updateServiceRateCardSchema.safeParse(req.body);
         if (!validation.success) {
-            const errors = validation.error.errors.map((err) => ({
+            const errors = validation.error.errors.map((err: { path: Array<string | number>; message: string }) => ({
                 field: err.path.join('.'),
                 message: err.message,
             }));
             throw new ValidationError('Validation failed', errors);
         }
 
-        const adminCompanyId = typeof req.body?.companyId === 'string'
-            ? req.body.companyId
-            : (typeof req.query?.companyId === 'string' ? req.query.companyId : undefined);
-
         const existingQuery: any = {
             _id: req.params.id,
+            companyId: targetCompanyId,
             isDeleted: false,
         };
-        if (admin) {
-            if (adminCompanyId) existingQuery.companyId = adminCompanyId;
-        } else {
-            existingQuery.companyId = auth.companyId;
-        }
 
         const existing = await ServiceRateCard.findOne(existingQuery).lean();
 
         if (!existing) {
             throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
         }
-        targetCompanyId = String(existing.companyId);
-
         const merged = {
             serviceId: String(validation.data.serviceId || existing.serviceId),
             cardType: (validation.data.cardType || existing.cardType) as 'cost' | 'sell',
+            flowType: (validation.data.flowType || existing.flowType || 'forward') as 'forward' | 'reverse',
+            category: (validation.data.category || existing.category || 'default') as 'default' | 'basic' | 'standard' | 'advanced' | 'custom',
             status: (validation.data.status || existing.status) as 'draft' | 'active' | 'inactive',
             effectiveDates: {
                 startDate:
@@ -299,6 +302,8 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
             companyId: targetCompanyId,
             serviceId: merged.serviceId,
             cardType: merged.cardType,
+            flowType: merged.flowType,
+            category: merged.category,
             status: merged.status,
             startDate,
             endDate,
@@ -330,10 +335,7 @@ export const importServiceRateCard = async (req: Request, res: Response, next: N
     try {
         const auth = guardChecks(req);
         const admin = isPlatformAdmin(req.user ?? {});
-        let targetCompanyId = auth.companyId;
-        if (!admin) {
-            requireCompanyContext(auth);
-        }
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
 
         const validation = importServiceRateCardSchema.safeParse(req.body);
         if (!validation.success) {
@@ -342,21 +344,6 @@ export const importServiceRateCard = async (req: Request, res: Response, next: N
                 message: err.message,
             }));
             throw new ValidationError('Validation failed', errors);
-        }
-
-        const adminCompanyId = typeof req.body?.companyId === 'string'
-            ? req.body.companyId
-            : (typeof req.query?.companyId === 'string' ? req.query.companyId : undefined);
-        if (admin && adminCompanyId) {
-            targetCompanyId = adminCompanyId;
-        } else if (admin && !targetCompanyId) {
-            const existing = await ServiceRateCard.findOne({ _id: req.params.id, isDeleted: false })
-                .select('companyId')
-                .lean();
-            if (!existing) {
-                throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
-            }
-            targetCompanyId = String(existing.companyId);
         }
 
         const { zoneRules, metadata } = validation.data;
@@ -391,10 +378,7 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
     try {
         const auth = guardChecks(req);
         const admin = isPlatformAdmin(req.user ?? {});
-        let targetCompanyId = auth.companyId;
-        if (!admin) {
-            requireCompanyContext(auth);
-        }
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
 
         const validation = simulateServiceRateCardSchema.safeParse(req.body);
         if (!validation.success) {
@@ -403,21 +387,6 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
                 message: err.message,
             }));
             throw new ValidationError('Validation failed', errors);
-        }
-
-        const adminCompanyId = typeof req.body?.companyId === 'string'
-            ? req.body.companyId
-            : (typeof req.query?.companyId === 'string' ? req.query.companyId : undefined);
-        if (admin && adminCompanyId) {
-            targetCompanyId = adminCompanyId;
-        } else if (admin && !targetCompanyId) {
-            const existing = await ServiceRateCard.findOne({ _id: req.params.id, isDeleted: false })
-                .select('companyId')
-                .lean();
-            if (!existing) {
-                throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
-            }
-            targetCompanyId = String(existing.companyId);
         }
 
         const {

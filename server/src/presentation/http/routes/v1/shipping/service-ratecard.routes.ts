@@ -10,42 +10,42 @@ const router = express.Router();
 router.get(
     '/',
     authenticate,
-    requireAccess({ tier: AccessTier.SANDBOX }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     asyncHandler(serviceRateCardController.listServiceRateCards)
 );
 
 router.post(
     '/',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(serviceRateCardController.createServiceRateCard)
 );
 
 router.get(
     '/:id',
     authenticate,
-    requireAccess({ tier: AccessTier.SANDBOX }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     asyncHandler(serviceRateCardController.getServiceRateCardById)
 );
 
 router.put(
     '/:id',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(serviceRateCardController.updateServiceRateCard)
 );
 
 router.post(
     '/:id/import',
     authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(serviceRateCardController.importServiceRateCard)
 );
 
 router.post(
     '/:id/simulate',
     authenticate,
-    requireAccess({ tier: AccessTier.SANDBOX }),
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.SANDBOX }),
     asyncHandler(serviceRateCardController.simulateServiceRateCard)
 );
 

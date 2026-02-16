@@ -86,6 +86,11 @@ async function main() {
                 await new SellerBankAccountCutoverMigration(dryRun).run();
                 break;
             }
+            case 'platform-courier-scope-flow': {
+                const { PlatformCourierScopeAndFlowMigration } = await import('./phase-4/platform-courier-scope-and-flow.migration');
+                await new PlatformCourierScopeAndFlowMigration(dryRun).run();
+                break;
+            }
             default:
                 console.log('Available migrations:');
                 console.log('  wallet-soft-delete      -- Run WalletTransaction soft delete migration');
@@ -97,6 +102,7 @@ async function main() {
                 console.log('  service-level-pricing-foundation -- Create/sync collections and indexes for new service-level pricing models');
                 console.log('  service-level-pricing-index-hygiene -- Drop stale duplicate index names and restore canonical service-level indexes');
                 console.log('  seller-bank-account-cutover -- Backfill SellerBankAccount from legacy Company bank fields and unset legacy fields');
+                console.log('  platform-courier-scope-flow -- Migrate courier integration/services/rate cards to platform scope with flow/category defaults');
                 console.log('\nOptions:');
                 console.log('  --dry-run               -- Simulate migration without writes');
                 break;

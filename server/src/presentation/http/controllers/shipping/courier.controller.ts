@@ -31,13 +31,25 @@ const RTO_SHIPMENT_STATUSES = ['rto', 'returned', 'rto_delivered', 'return_initi
 const NDR_SHIPMENT_STATUSES = ['ndr', 'NDR'];
 const SLA_MIN_SAMPLE_SIZE = Number(process.env.COURIER_SLA_MIN_SAMPLE_SIZE || 10);
 
-function getCompanyId(req: Request, options?: { required?: boolean }): string {
-    const required = options?.required !== false;
-    const companyId = (req as any).user?.companyId || (req.query?.companyId as string | undefined);
-    if (!companyId && required) {
+function resolveCourierConfigScope(req: Request): string | null {
+    const role = String((req as any).user?.role || '');
+    const isPlatformAdmin = role === 'admin' || role === 'super_admin';
+    const queryCompanyId = typeof req.query?.companyId === 'string' ? req.query.companyId.trim() : '';
+    const bodyCompanyId = typeof (req.body as any)?.companyId === 'string' ? String((req.body as any).companyId).trim() : '';
+    const requestedCompanyId = queryCompanyId || bodyCompanyId;
+
+    if (isPlatformAdmin) {
+        if (requestedCompanyId) {
+            throw new ValidationError('companyId is not allowed for platform courier endpoints');
+        }
+        return null;
+    }
+
+    const authCompanyId = String((req as any).user?.companyId || '').trim();
+    if (!authCompanyId) {
         throw new ValidationError('Company ID required');
     }
-    return String(companyId || '');
+    return authCompanyId;
 }
 
 async function getPlatformCourierCatalog(): Promise<any[]> {
@@ -67,7 +79,7 @@ function toIntegrationProvider(provider: string): string {
     return CourierProviderRegistry.getIntegrationProvider(provider);
 }
 
-function integrationInsertFields(companyId: string, _provider: string) {
+function integrationInsertFields(companyId: string | null, _provider: string) {
     return { companyId, type: 'courier', isDeleted: false };
 }
 
@@ -75,7 +87,7 @@ function integrationProviderPatch(provider: string) {
     return CourierProviderRegistry.buildIntegrationPatch(provider);
 }
 
-function buildIntegrationQuery(companyId: string, provider: string) {
+function buildIntegrationQuery(companyId: string | null, provider: string) {
     return {
         companyId,
         type: 'courier',
@@ -422,7 +434,7 @@ async function buildPerformanceFromShipments(params: {
     };
 }
 
-async function getProviderSnapshot(companyId: string, provider: string) {
+async function getProviderSnapshot(companyId: string | null, provider: string) {
     const supportedProvider = toSupportedProvider(provider);
     if (!supportedProvider) {
         return null;
@@ -435,8 +447,10 @@ async function getProviderSnapshot(companyId: string, provider: string) {
             isDeleted: false,
         }).lean(),
         Integration.findOne(buildIntegrationQuery(companyId, supportedProvider)).lean(),
-        getActiveShipmentsCount(companyId, supportedProvider),
-        getSlaCompliance(companyId, supportedProvider),
+        companyId ? getActiveShipmentsCount(companyId, supportedProvider) : Promise.resolve(0),
+        companyId
+            ? getSlaCompliance(companyId, supportedProvider)
+            : Promise.resolve({ today: null, week: null, month: null }),
     ]);
 
     const activeServices = services.filter(isServiceActive);
@@ -521,7 +535,7 @@ async function getProviderSnapshot(companyId: string, provider: string) {
 
 export class CourierController {
     getCouriers = asyncHandler(async (req: Request, res: Response) => {
-        const companyId = getCompanyId(req, { required: false });
+        const companyId = resolveCourierConfigScope(req);
         const isPlatformAdmin = ['admin', 'super_admin'].includes(String((req as any).user?.role || ''));
 
         if (!companyId && isPlatformAdmin) {
@@ -605,7 +619,7 @@ export class CourierController {
     });
 
     getCourier = asyncHandler(async (req: Request, res: Response) => {
-        const companyId = getCompanyId(req, { required: false });
+        const companyId = resolveCourierConfigScope(req);
         const isPlatformAdmin = ['admin', 'super_admin'].includes(String((req as any).user?.role || ''));
         const provider = requireSupportedProvider(req.params.id);
 
@@ -665,10 +679,9 @@ export class CourierController {
     });
 
     updateCourier = asyncHandler(async (req: Request, res: Response) => {
-        const companyId = getCompanyId(req);
+        const companyId = resolveCourierConfigScope(req);
         const provider = requireSupportedProvider(req.params.id);
         const { name, apiEndpoint, apiKey, isActive, credentials } = req.body || {};
-        const companyObjectId = new mongoose.Types.ObjectId(companyId);
 
         if (typeof isActive === 'boolean') {
             await CourierService.updateMany(
@@ -726,10 +739,8 @@ export class CourierController {
             );
         }
 
-        CourierFactory.clearCache(companyObjectId, toIntegrationProvider(provider));
-        if (provider === 'velocity') {
-            CourierFactory.clearCache(companyObjectId, 'velocity');
-        }
+        CourierFactory.clearCache(companyId, toIntegrationProvider(provider));
+        if (provider === 'velocity') CourierFactory.clearCache(companyId, 'velocity');
 
         const snapshot = await getProviderSnapshot(companyId, provider);
         if (!snapshot) {
@@ -743,9 +754,8 @@ export class CourierController {
     });
 
     toggleStatus = asyncHandler(async (req: Request, res: Response) => {
-        const companyId = getCompanyId(req);
+        const companyId = resolveCourierConfigScope(req);
         const provider = requireSupportedProvider(req.params.id);
-        const companyObjectId = new mongoose.Types.ObjectId(companyId);
 
         const services = await CourierService.find({
             companyId,
@@ -783,10 +793,8 @@ export class CourierController {
             ),
         ]);
 
-        CourierFactory.clearCache(companyObjectId, toIntegrationProvider(provider));
-        if (provider === 'velocity') {
-            CourierFactory.clearCache(companyObjectId, 'velocity');
-        }
+        CourierFactory.clearCache(companyId, toIntegrationProvider(provider));
+        if (provider === 'velocity') CourierFactory.clearCache(companyId, 'velocity');
 
         res.status(200).json({
             success: true,
@@ -800,9 +808,8 @@ export class CourierController {
 
     getPerformance = asyncHandler(async (req: Request, res: Response) => {
         const provider = requireSupportedProvider(req.params.id);
-        const companyId = getCompanyId(req, { required: false });
-        const isPlatformAdmin = ['admin', 'super_admin'].includes(String((req as any).user?.role || ''));
-        if (!companyId && isPlatformAdmin) {
+        const companyId = resolveCourierConfigScope(req);
+        if (!companyId) {
             return res.status(200).json({
                 success: true,
                 data: {

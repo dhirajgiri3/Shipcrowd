@@ -11,6 +11,7 @@ export interface CourierServiceItem {
     providerServiceId?: string;
     displayName: string;
     serviceType: 'surface' | 'express' | 'air' | 'standard';
+    flowType?: 'forward' | 'reverse' | 'both';
     status: 'active' | 'inactive' | 'hidden';
     zoneSupport?: string[];
     constraints?: {

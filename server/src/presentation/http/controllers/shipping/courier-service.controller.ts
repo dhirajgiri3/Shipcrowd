@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from 'express';
-import mongoose from 'mongoose';
 import CourierProviderRegistry from '../../../../core/application/services/courier/courier-provider-registry';
 import { CourierService, Integration } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
@@ -16,19 +15,36 @@ const parseServiceTypeFromProvider = (provider: string): Array<'surface' | 'expr
     return ['surface'];
 };
 
+const resolveCourierConfigScope = (req: Request, isAdmin: boolean, authCompanyId?: string): string | null => {
+    const bodyCompanyId = typeof req.body?.companyId === 'string' ? req.body.companyId.trim() : undefined;
+    const queryCompanyId = typeof req.query?.companyId === 'string' ? req.query.companyId.trim() : undefined;
+    const requestedCompanyId = bodyCompanyId || queryCompanyId;
+
+    if (isAdmin) {
+        if (requestedCompanyId) {
+            throw new ValidationError(
+                'companyId is not allowed for platform courier configuration endpoints',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+        return null;
+    }
+
+    if (!authCompanyId) {
+        throw new ValidationError('companyId is required', ErrorCode.VAL_MISSING_FIELD);
+    }
+    return authCompanyId;
+};
+
 export const listCourierServices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, { requireCompany: false });
         const isAdmin = isPlatformAdmin(req.user ?? {});
-        const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId : undefined;
 
         if (!isAdmin) {
             requireCompanyContext(auth);
-        } else if (requestedCompanyId && !mongoose.isValidObjectId(requestedCompanyId)) {
-            throw new ValidationError('Validation failed', [
-                { field: 'companyId', message: 'Invalid companyId' },
-            ]);
         }
+        const companyScope = resolveCourierConfigScope(req, isAdmin, auth.companyId);
 
         const page = Math.max(1, Number(req.query.page || 1));
         const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
@@ -36,17 +52,11 @@ export const listCourierServices = async (req: Request, res: Response, next: Nex
 
         const query: any = {
             isDeleted: false,
+            companyId: companyScope,
         };
 
-        if (isAdmin) {
-            if (requestedCompanyId) {
-                query.companyId = requestedCompanyId;
-            }
-        } else {
-            query.companyId = auth.companyId;
-        }
-
         if (req.query.provider) query.provider = req.query.provider;
+        if (req.query.flowType) query.flowType = req.query.flowType;
         if (req.query.status) query.status = req.query.status;
         if (req.query.search) {
             const regex = { $regex: req.query.search, $options: 'i' };
@@ -83,10 +93,7 @@ export const createCourierService = async (req: Request, res: Response, next: Ne
         if (!isAdmin) {
             requireCompanyContext(auth);
         }
-        const companyId = isAdmin ? (typeof req.body.companyId === 'string' ? req.body.companyId : auth.companyId) : auth.companyId;
-        if (!companyId) {
-            throw new ValidationError('companyId is required', ErrorCode.VAL_MISSING_FIELD);
-        }
+        const companyScope = resolveCourierConfigScope(req, isAdmin, auth.companyId);
 
         const validation = createCourierServiceSchema.safeParse(req.body);
         if (!validation.success) {
@@ -118,12 +125,12 @@ export const createCourierService = async (req: Request, res: Response, next: Ne
         const activeIntegration = integrationId
             ? await Integration.findOne({
                 _id: integrationId,
-                companyId,
+                companyId: companyScope,
                 type: 'courier',
                 isDeleted: false,
             }).lean()
             : await Integration.findOne({
-                companyId,
+                companyId: companyScope,
                 type: 'courier',
                 'settings.isActive': true,
                 isDeleted: false,
@@ -135,13 +142,14 @@ export const createCourierService = async (req: Request, res: Response, next: Ne
         }
 
         const service = await CourierService.create({
-            companyId,
+            companyId: companyScope,
             provider: normalizedProvider,
             integrationId: activeIntegration._id,
             serviceCode,
             providerServiceId,
             displayName,
             serviceType,
+            flowType: validation.data.flowType || 'forward',
             constraints,
             sla,
             zoneSupport,
@@ -164,14 +172,13 @@ export const getCourierServiceById = async (req: Request, res: Response, next: N
         if (!isAdmin) {
             requireCompanyContext(auth);
         }
+        const companyScope = resolveCourierConfigScope(req, isAdmin, auth.companyId);
 
         const query: any = {
             _id: req.params.id,
             isDeleted: false,
+            companyId: companyScope,
         };
-        if (!isAdmin) {
-            query.companyId = auth.companyId;
-        }
 
         const item = await CourierService.findOne(query).lean();
 
@@ -193,6 +200,7 @@ export const updateCourierService = async (req: Request, res: Response, next: Ne
         if (!isAdmin) {
             requireCompanyContext(auth);
         }
+        const companyScope = resolveCourierConfigScope(req, isAdmin, auth.companyId);
 
         const validation = updateCourierServiceSchema.safeParse(req.body);
         if (!validation.success) {
@@ -206,10 +214,8 @@ export const updateCourierService = async (req: Request, res: Response, next: Ne
         const query: any = {
             _id: req.params.id,
             isDeleted: false,
+            companyId: companyScope,
         };
-        if (!isAdmin) {
-            query.companyId = auth.companyId;
-        }
 
         const updated = await CourierService.findOneAndUpdate(
             query,
@@ -237,14 +243,13 @@ export const toggleCourierServiceStatus = async (req: Request, res: Response, ne
         if (!isAdmin) {
             requireCompanyContext(auth);
         }
+        const companyScope = resolveCourierConfigScope(req, isAdmin, auth.companyId);
 
         const query: any = {
             _id: req.params.id,
             isDeleted: false,
+            companyId: companyScope,
         };
-        if (!isAdmin) {
-            query.companyId = auth.companyId;
-        }
 
         const item = await CourierService.findOne(query);
 
@@ -269,10 +274,7 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
         if (!isAdmin) {
             requireCompanyContext(auth);
         }
-        const companyId = isAdmin ? (typeof req.query.companyId === 'string' ? req.query.companyId : auth.companyId) : auth.companyId;
-        if (!companyId) {
-            throw new ValidationError('companyId is required', ErrorCode.VAL_MISSING_FIELD);
-        }
+        const companyScope = resolveCourierConfigScope(req, isAdmin, auth.companyId);
 
         const provider = String(req.params.provider || '').toLowerCase();
         const canonicalProvider = CourierProviderRegistry.toCanonical(provider);
@@ -281,7 +283,7 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
         }
 
         const integration = await Integration.findOne({
-            companyId,
+            companyId: companyScope,
             type: 'courier',
             'settings.isActive': true,
             ...CourierProviderRegistry.buildIntegrationMatch(canonicalProvider),
@@ -297,7 +299,7 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
         for (const serviceType of serviceTypes) {
             const code = `${canonicalProvider}-${serviceType}`.toUpperCase();
             const existing = await CourierService.findOne({
-                companyId,
+                companyId: companyScope,
                 provider: canonicalProvider,
                 serviceCode: code,
                 isDeleted: false,
@@ -306,12 +308,13 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
             if (existing) continue;
 
             const created = await CourierService.create({
-                companyId: new mongoose.Types.ObjectId(companyId),
+                companyId: companyScope,
                 provider: canonicalProvider,
                 integrationId: integration._id,
                 serviceCode: code,
                 displayName: `${canonicalProvider.toUpperCase()} ${serviceType.toUpperCase()}`,
                 serviceType,
+                flowType: 'forward',
                 status: 'active',
                 zoneSupport: ['A', 'B', 'C', 'D', 'E'],
                 source: 'synced',
@@ -344,14 +347,13 @@ export const deleteCourierService = async (req: Request, res: Response, next: Ne
         if (!isAdmin) {
             requireCompanyContext(auth);
         }
+        const companyScope = resolveCourierConfigScope(req, isAdmin, auth.companyId);
 
         const query: any = {
             _id: req.params.id,
             isDeleted: false,
+            companyId: companyScope,
         };
-        if (!isAdmin) {
-            query.companyId = auth.companyId;
-        }
 
         const item = await CourierService.findOneAndUpdate(
             query,

@@ -40,6 +40,8 @@ export default function PricingStudioPage() {
     const [provider, setProvider] = useState<'velocity' | 'delhivery' | 'ekart'>('delhivery');
     const [fromPincode, setFromPincode] = useState('560001');
     const [toPincode, setToPincode] = useState('110001');
+    const [flowType, setFlowType] = useState<'forward' | 'reverse'>('forward');
+    const [category, setCategory] = useState<'default' | 'basic' | 'standard' | 'advanced' | 'custom'>('default');
 
     const [costPricing, setCostPricing] = useState<PricingPayload | null>(null);
     const [sellPricing, setSellPricing] = useState<PricingPayload | null>(null);
@@ -71,6 +73,8 @@ export default function PricingStudioPage() {
                 paymentMode,
                 orderValue,
                 provider,
+                flowType,
+                category,
                 fromPincode,
                 toPincode,
             };
@@ -217,6 +221,34 @@ export default function PricingStudioPage() {
                                 >
                                     <option value="prepaid">Prepaid</option>
                                     <option value="cod">COD</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-[var(--text-muted)]">Flow</label>
+                                <select
+                                    value={flowType}
+                                    onChange={(e) => setFlowType(e.target.value as 'forward' | 'reverse')}
+                                    className="w-full h-9 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 text-sm"
+                                >
+                                    <option value="forward">Forward</option>
+                                    <option value="reverse">Reverse</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-[var(--text-muted)]">Category</label>
+                                <select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value as 'default' | 'basic' | 'standard' | 'advanced' | 'custom')}
+                                    className="w-full h-9 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 text-sm"
+                                >
+                                    <option value="default">Default</option>
+                                    <option value="basic">Basic</option>
+                                    <option value="standard">Standard</option>
+                                    <option value="advanced">Advanced</option>
+                                    <option value="custom">Custom</option>
                                 </select>
                             </div>
                         </div>

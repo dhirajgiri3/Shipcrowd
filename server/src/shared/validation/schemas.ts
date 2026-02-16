@@ -206,6 +206,9 @@ export const bookFromQuoteSchema = z.object({
 export type BookFromQuoteInput = z.infer<typeof bookFromQuoteSchema>;
 
 const courierProviderSchema = z.enum(['velocity', 'delhivery', 'ekart']);
+const serviceFlowTypeSchema = z.enum(['forward', 'reverse', 'both']);
+const rateCardFlowTypeSchema = z.enum(['forward', 'reverse']);
+const rateCardCategorySchema = z.enum(['default', 'basic', 'standard', 'advanced', 'custom']);
 
 export const createCourierServiceSchema = z.object({
     provider: courierProviderSchema,
@@ -214,6 +217,7 @@ export const createCourierServiceSchema = z.object({
     providerServiceId: z.string().max(100).optional(),
     displayName: z.string().min(2).max(120),
     serviceType: z.enum(['surface', 'express', 'air', 'standard']),
+    flowType: serviceFlowTypeSchema.optional().default('forward'),
     status: z.enum(['active', 'inactive', 'hidden']).optional(),
     constraints: z.object({
         minWeightKg: z.number().min(0).optional(),
@@ -352,9 +356,11 @@ const serviceRateCardZoneRuleSchema = z.object({
     rtoRule: rtoRuleSchema.optional(),
 });
 
-export const upsertServiceRateCardSchema = z.object({
+const upsertServiceRateCardBaseSchema = z.object({
     serviceId: z.string().min(1),
     cardType: z.enum(['cost', 'sell']),
+    flowType: rateCardFlowTypeSchema.optional().default('forward'),
+    category: rateCardCategorySchema.optional(),
     sourceMode: z.enum(['LIVE_API', 'TABLE', 'HYBRID']).optional(),
     currency: z.enum(['INR']).optional(),
     effectiveDates: z.object({
@@ -375,6 +381,31 @@ export const upsertServiceRateCardSchema = z.object({
         importedAt: z.union([z.string(), z.date()]).optional(),
     }).optional(),
 });
+
+export const upsertServiceRateCardSchema = upsertServiceRateCardBaseSchema.superRefine((value, ctx) => {
+    if (value.cardType === 'sell' && !value.category) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['category'],
+            message: 'category is required when cardType is sell',
+        });
+    }
+});
+
+export const updateServiceRateCardSchema = upsertServiceRateCardBaseSchema
+    .partial()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: 'At least one field is required for update',
+    })
+    .superRefine((value, ctx) => {
+        if (value.cardType === 'sell' && value.category === undefined) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['category'],
+                message: 'category is required when cardType is sell',
+            });
+        }
+    });
 
 export type UpsertServiceRateCardInput = z.infer<typeof upsertServiceRateCardSchema>;
 
@@ -398,6 +429,8 @@ export const simulateServiceRateCardSchema = z.object({
     paymentMode: z.enum(['cod', 'prepaid']).optional(),
     orderValue: z.number().min(0).optional(),
     provider: courierProviderSchema.optional(),
+    flowType: rateCardFlowTypeSchema.optional(),
+    category: rateCardCategorySchema.optional(),
     fromPincode: z.string().regex(/^[1-9][0-9]{5}$/).optional(),
     toPincode: z.string().regex(/^[1-9][0-9]{5}$/).optional(),
 });
@@ -409,6 +442,8 @@ export const upsertSellerCourierPolicySchema = z.object({
     allowedServiceIds: z.array(z.string()).optional(),
     blockedProviders: z.array(courierProviderSchema).optional(),
     blockedServiceIds: z.array(z.string()).optional(),
+    rateCardType: z.enum(['default', 'custom']).optional(),
+    rateCardCategory: rateCardCategorySchema.optional(),
     selectionMode: z.enum(['manual_with_recommendation', 'manual_only', 'auto']).optional(),
     autoPriority: z.enum(['price', 'speed', 'balanced']).optional(),
     balancedDeltaPercent: z.number().min(0).max(100).optional(),
@@ -419,6 +454,35 @@ export const upsertSellerCourierPolicySchema = z.object({
 });
 
 export type UpsertSellerCourierPolicyInput = z.infer<typeof upsertSellerCourierPolicySchema>;
+
+export const upsertSellerRateCardSchema = z.object({
+    serviceId: z.string().min(1),
+    flowType: rateCardFlowTypeSchema.optional().default('forward'),
+    sourceMode: z.enum(['LIVE_API', 'TABLE', 'HYBRID']).optional(),
+    currency: z.enum(['INR']).optional(),
+    effectiveDates: z.object({
+        startDate: z.union([z.string(), z.date()]),
+        endDate: z.union([z.string(), z.date()]).optional(),
+    }).optional(),
+    status: z.enum(['draft', 'active', 'inactive']).optional(),
+    calculation: z.object({
+        weightBasis: z.enum(['actual', 'volumetric', 'max']).optional(),
+        roundingUnitKg: z.number().min(0.1).optional(),
+        roundingMode: z.enum(['ceil', 'floor', 'nearest']).optional(),
+        dimDivisor: z.number().min(1).optional(),
+    }).optional(),
+    zoneRules: z.array(serviceRateCardZoneRuleSchema).min(1),
+});
+
+export type UpsertSellerRateCardInput = z.infer<typeof upsertSellerRateCardSchema>;
+
+export const updateSellerRateCardSchema = upsertSellerRateCardSchema
+    .partial()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: 'At least one field is required for update',
+    });
+
+export type UpdateSellerRateCardInput = z.infer<typeof updateSellerRateCardSchema>;
 
 export const carrierBillingImportSchema = z.object({
     thresholdPercent: z.number().min(0).max(100).optional(),

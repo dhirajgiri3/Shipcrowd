@@ -61,7 +61,8 @@ export default function OrdersClient() {
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(searchParams.get('warehouse') || 'all');
 
     // -- Hooks --
-    const { data: warehouses = [] } = useAdminWarehouses();
+    const { data: warehousesData } = useAdminWarehouses({ limit: 100 });
+    const warehouses = warehousesData?.warehouses ?? [];
 
     // Shipping Modal State
     const [isShipModalOpen, setIsShipModalOpen] = useState(false);

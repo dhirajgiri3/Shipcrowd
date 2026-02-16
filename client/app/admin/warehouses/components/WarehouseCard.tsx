@@ -33,6 +33,8 @@ export function WarehouseCard({
     const capacity = warehouse.capacity?.storageCapacity?.toLocaleString() || '10,000';
     const unit = warehouse.capacity?.storageUnit || 'units';
     const partner = warehouse.carrierDetails?.velocityWarehouseId ? 'Velocity' : 'Standard';
+    const address = warehouse.address ?? { city: '', state: '' };
+    const contactInfo = warehouse.contactInfo ?? { name: '', phone: '' };
 
     return (
         <Card
@@ -52,7 +54,7 @@ export function WarehouseCard({
                             </h3>
                             <div className="flex items-center gap-2 mt-1 text-sm text-[var(--text-secondary)]">
                                 <MapPin className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
-                                <span>{warehouse.address.city}, {warehouse.address.state}</span>
+                                <span>{address.city}, {address.state}</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 mt-3">
                                 {warehouse.isDefault && (
@@ -90,10 +92,10 @@ export function WarehouseCard({
                             <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Contact</p>
                         </div>
                         <p className="text-sm font-semibold text-[var(--text-primary)] truncate mt-1">
-                            {warehouse.contactInfo.phone}
+                            {contactInfo.phone}
                         </p>
                         <p className="text-xs text-[var(--text-secondary)] truncate">
-                            {warehouse.contactInfo.name}
+                            {contactInfo.name}
                         </p>
                     </div>
                 </div>

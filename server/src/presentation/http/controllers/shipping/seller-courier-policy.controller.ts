@@ -22,7 +22,7 @@ export const getSellerCourierPolicy = async (req: Request, res: Response, next: 
             sellerId,
             isActive: true,
         })
-            .select('companyId sellerId allowedProviders allowedServiceIds blockedProviders blockedServiceIds selectionMode autoPriority balancedDeltaPercent isActive')
+            .select('companyId sellerId allowedProviders allowedServiceIds blockedProviders blockedServiceIds rateCardType rateCardCategory selectionMode autoPriority balancedDeltaPercent isActive')
             .hint({ companyId: 1, sellerId: 1, isActive: 1 }) // Index hint for performance
             .lean();
 
@@ -50,6 +50,8 @@ export const getSellerCourierPolicy = async (req: Request, res: Response, next: 
                 allowedServiceIds: [],
                 blockedProviders: [],
                 blockedServiceIds: [],
+                rateCardType: 'default',
+                rateCardCategory: 'default',
                 selectionMode: 'manual_with_recommendation',
                 autoPriority: 'balanced',
                 balancedDeltaPercent: 5,
@@ -137,6 +139,8 @@ export const getSellerCourierPolicyAdmin = async (req: Request, res: Response, n
                 allowedServiceIds: [],
                 blockedProviders: [],
                 blockedServiceIds: [],
+                rateCardType: 'default',
+                rateCardCategory: 'default',
                 selectionMode: 'manual_with_recommendation',
                 autoPriority: 'balanced',
                 balancedDeltaPercent: 5,
@@ -156,7 +160,7 @@ export const getSellerCourierPolicyAdmin = async (req: Request, res: Response, n
             sellerId,
             isActive: true,
         })
-            .select('companyId sellerId allowedProviders allowedServiceIds blockedProviders blockedServiceIds selectionMode autoPriority balancedDeltaPercent isActive')
+            .select('companyId sellerId allowedProviders allowedServiceIds blockedProviders blockedServiceIds rateCardType rateCardCategory selectionMode autoPriority balancedDeltaPercent isActive')
             .hint({ companyId: 1, sellerId: 1, isActive: 1 })
             .lean();
 
@@ -180,6 +184,8 @@ export const getSellerCourierPolicyAdmin = async (req: Request, res: Response, n
                 allowedServiceIds: [],
                 blockedProviders: [],
                 blockedServiceIds: [],
+                rateCardType: 'default',
+                rateCardCategory: 'default',
                 selectionMode: 'manual_with_recommendation',
                 autoPriority: 'balanced',
                 balancedDeltaPercent: 5,

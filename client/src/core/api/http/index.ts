@@ -24,6 +24,20 @@ export interface ApiError {
     details?: any;
 }
 
+export class ApiClientError extends Error implements ApiError {
+    code: string;
+    field?: string;
+    details?: any;
+
+    constructor(params: ApiError) {
+        super(params.message);
+        this.name = 'ApiClientError';
+        this.code = params.code;
+        this.field = params.field;
+        this.details = params.details;
+    }
+}
+
 /**
  * Get and validate base API URL
  * @throws Error if API URL is missing or invalid in production
@@ -328,10 +342,12 @@ const createApiClient = (): AxiosInstance => {
                             originalRequest.headers['X-CSRF-Token'] = newToken;
                             return client(originalRequest);
                         } catch (tokenError) {
-                            return Promise.reject({
-                                code: 'CSRF_FETCH_ERROR',
-                                message: 'Failed to fetch CSRF token. Please refresh the page.',
-                            } as ApiError);
+                            return Promise.reject(
+                                new ApiClientError({
+                                    code: 'CSRF_FETCH_ERROR',
+                                    message: 'Failed to fetch CSRF token. Please refresh the page.',
+                                })
+                            );
                         }
                     }
 
@@ -365,11 +381,13 @@ const createApiClient = (): AxiosInstance => {
                 }
 
                 // Return error with user-friendly message
-                return Promise.reject({
-                    code: responseData?.code || 'HTTP_403',
-                    message: userMessage,
-                    field: responseData?.field,
-                } as ApiError);
+                return Promise.reject(
+                    new ApiClientError({
+                        code: responseData?.code || 'HTTP_403',
+                        message: userMessage,
+                        field: responseData?.field,
+                    })
+                );
             }
 
             // Only log unexpected errors (skip 401 auth and 404 not-found which are expected)
@@ -418,25 +436,25 @@ const createApiClient = (): AxiosInstance => {
 export const normalizeError = (error: AxiosError | any): ApiError => {
     // ✅ Idempotency: Input is already a normalized ApiError
     if (error && typeof error === 'object' && 'code' in error && 'message' in error && !axios.isAxiosError(error) && !(error instanceof Error)) {
-        return error as ApiError;
+        return new ApiClientError(error as ApiError);
     }
 
     // Handle Axios Errors
     if (axios.isAxiosError(error)) {
         // Timeout
         if (error.code === 'ECONNABORTED') {
-            return {
+            return new ApiClientError({
                 code: 'TIMEOUT',
                 message: ERROR_MESSAGES.TIMEOUT,
-            };
+            });
         }
 
         // Network Error
         if (error.code === 'ERR_NETWORK' || !error.response) {
-            return {
+            return new ApiClientError({
                 code: 'NETWORK_ERROR',
                 message: ERROR_MESSAGES.NETWORK_ERROR,
-            };
+            });
         }
 
         // Response Error
@@ -445,10 +463,10 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
 
         // Rate Limit
         if (status === 429) {
-            return {
+            return new ApiClientError({
                 code: 'RATE_LIMIT',
                 message: ERROR_MESSAGES.HTTP_429,
-            };
+            });
         }
 
         // Generic HTTP error messages fallback
@@ -479,27 +497,27 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
             data?.code ||            // Fallback to top-level code
             `HTTP_${status}`;
 
-        return {
+        return new ApiClientError({
             code,
             message,
             field: data?.field || data?.error?.field,
             details: data?.details // Capture validation details if present
-        };
+        });
     }
 
     // Handle generic Error objects
     if (error instanceof Error) {
-        return {
+        return new ApiClientError({
             code: 'CLIENT_ERROR',
             message: error.message,
-        };
+        });
     }
 
     // Fallback for unknown error types
-    return {
+    return new ApiClientError({
         code: 'UNKNOWN_ERROR',
         message: ERROR_MESSAGES.DEFAULT,
-    };
+    });
 };
 
 /**

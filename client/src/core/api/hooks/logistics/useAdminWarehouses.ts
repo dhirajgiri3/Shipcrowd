@@ -20,11 +20,25 @@ export interface AdminWarehouseFilters {
     companyId?: string;
 }
 
+export interface PaginationMeta {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext?: boolean;
+    hasPrev?: boolean;
+}
+
+export interface AdminWarehousesResponse {
+    warehouses: Warehouse[];
+    pagination: PaginationMeta;
+}
+
 export const useAdminWarehouses = (
     filters: AdminWarehouseFilters = {},
-    options?: UseQueryOptions<Warehouse[], ApiError>
+    options?: UseQueryOptions<AdminWarehousesResponse, ApiError>
 ) => {
-    return useQuery<Warehouse[], ApiError>({
+    return useQuery<AdminWarehousesResponse, ApiError>({
         queryKey: adminWarehouseKeys.list(JSON.stringify(filters)),
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -34,12 +48,27 @@ export const useAdminWarehouses = (
             if (filters.companyId) params.append('companyId', filters.companyId);
 
             const response = await apiClient.get(`/admin/warehouses?${params.toString()}`);
-            // Handle both paginated structure and direct array if backend changes
-            return response.data.data || response.data.warehouses || [];
+            const raw = response.data;
+            const items = raw?.data ?? raw?.warehouses ?? (Array.isArray(raw) ? raw : []);
+            const warehouses = Array.isArray(items) ? items : [];
+
+            const pag = raw?.pagination;
+            const pagination: PaginationMeta = pag
+                ? {
+                    page: pag.page ?? 1,
+                    limit: pag.limit ?? 10,
+                    total: pag.total ?? 0,
+                    totalPages: pag.pages ?? pag.totalPages ?? 1,
+                    hasNext: pag.hasNext,
+                    hasPrev: pag.hasPrev,
+                }
+                : { page: 1, limit: 10, total: warehouses.length, totalPages: 1 };
+
+            return { warehouses, pagination };
         },
-        ...CACHE_TIMES.MEDIUM, // Use medium cache for lists
+        ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
-        placeholderData: (previousData) => previousData ?? [],
+        placeholderData: (previousData) => previousData, // Keep previous data during pagination for smooth UX
         ...options,
     });
 };
