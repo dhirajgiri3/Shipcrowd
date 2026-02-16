@@ -4,7 +4,9 @@ export const dynamic = "force-dynamic";
 import { useState } from 'react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { Loader } from '@/src/components/ui/feedback/Loader';
@@ -12,7 +14,6 @@ import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
 import {
     Ticket,
     Plus,
-    Search,
     Copy,
     Edit2,
     Trash2,
@@ -114,24 +115,27 @@ export function CouponsClient() {
         return <Loader message="Loading coupons..." />;
     }
 
+    const STATUS_TABS = [
+        { key: 'all', label: 'All' },
+        { key: 'active', label: 'Active' },
+        { key: 'expired', label: 'Expired' },
+    ];
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                        <Ticket className="h-6 w-6 text-[var(--primary-blue)]" />
-                        Coupons & Promotions
-                    </h1>
-                    <p className="text-sm mt-1 text-[var(--text-secondary)]">
-                        Manage discount codes and promotional offers
-                    </p>
-                </div>
-                <Button onClick={handleCreate}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Coupon
-                </Button>
-            </div>
+            <PageHeader
+                title="Coupons & Promotions"
+                description="Manage discount codes and promotional offers"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Coupons', active: true }]}
+                actions={
+                    <Button variant="primary" onClick={handleCreate}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Coupon
+                    </Button>
+                }
+            />
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -178,30 +182,17 @@ export function CouponsClient() {
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div className="flex gap-2 bg-[var(--bg-secondary)] p-1 rounded-lg">
-                    {(['all', 'active', 'expired'] as const).map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setSelectedStatus(status)}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-md transition-all capitalize",
-                                selectedStatus === status
-                                    ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm"
-                                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                            )}
-                        >
-                            {status}
-                        </button>
-                    ))}
-                </div>
-                <div className="w-full sm:w-72">
-                    <Input
-                        placeholder="Search coupons..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        icon={<Search className="h-4 w-4" />}
-                    />
-                </div>
+                <PillTabs
+                    tabs={STATUS_TABS}
+                    activeTab={selectedStatus}
+                    onTabChange={(key) => setSelectedStatus(key as 'all' | 'active' | 'expired')}
+                />
+                <SearchInput
+                    placeholder="Search coupons..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    widthClass="w-full sm:w-72"
+                />
             </div>
 
             {/* Content */}

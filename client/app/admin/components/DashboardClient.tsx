@@ -89,8 +89,13 @@ const itemVariants = {
     }
 };
 
-/** Sleek donut palette (order: Pending, Delivered, RTO, In Transit) — indigo, teal, slate, violet */
-const ORDER_PIPELINE_DONUT_PALETTE = ['#6366f1', '#0d9488', '#64748b', '#a78bfa'];
+/** Donut palette (order: Pending, Delivered, RTO, In Transit) — uses design system tokens */
+const ORDER_PIPELINE_DONUT_PALETTE = [
+    'var(--chart-pending)',
+    'var(--chart-delivered)',
+    'var(--chart-rto)',
+    'var(--chart-transit)',
+];
 
 // --- COMPONENTS ---
 

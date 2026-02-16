@@ -4,7 +4,9 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { Loader2 } from 'lucide-react';
+import { Loader } from '@/src/components/ui/feedback/Loader';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { showSuccessToast } from '@/src/lib/error';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     ComposedChart, Line, ResponsiveContainer
@@ -50,37 +52,40 @@ export function IntelligenceClient() {
     };
 
     return (
-        <motion.div
-            className="space-y-6 pb-10"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-        >
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <motion.div variants={itemVariants}>
-                    <div className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-1 bg-[var(--primary-blue-soft)] w-fit px-3 py-1 rounded-full">
-                        <BrainCircuit className="w-3.5 h-3.5" />
-                        <span>AI Command Center</span>
+        <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
+            <PageHeader
+                title="Intelligence & Insights"
+                description="Real-time predictive analytics and anomaly detection powered by machine learning models to optimize your logistics."
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Intelligence', active: true }]}
+                actions={
+                    <div className="flex gap-3">
+                        <Button
+                            variant="outline"
+                            className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-subtle)]"
+                            onClick={() => showSuccessToast('Feature coming soon')}
+                        >
+                            <Activity className="h-4 w-4 mr-2" />
+                            Live Monitor
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => showSuccessToast('Feature coming soon')}
+                        >
+                            <Zap className="h-4 w-4 mr-2" />
+                            Run Deep Analysis
+                        </Button>
                     </div>
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
-                        Intelligence & Insights
-                    </h1>
-                    <p className="text-[var(--text-secondary)] mt-1 max-w-2xl">
-                        Real-time predictive analytics and anomaly detection powered by machine learning models to optimize your logistics.
-                    </p>
-                </motion.div>
-                <motion.div variants={itemVariants} className="flex gap-3">
-                    <Button variant="outline" className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-subtle)]">
-                        <Activity className="h-4 w-4 mr-2" />
-                        Live Monitor
-                    </Button>
-                    <Button className="bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all">
-                        <Zap className="h-4 w-4 mr-2" />
-                        Run Deep Analysis
-                    </Button>
-                </motion.div>
-            </div>
+                }
+            />
+
+            <motion.div
+                className="space-y-6 pb-10"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+            >
 
             {/* 1. AI Insights Cards */}
             <motion.div variants={containerVariants} className="grid gap-6 lg:grid-cols-3">
@@ -94,8 +99,8 @@ export function IntelligenceClient() {
                             className={cn(
                                 "relative overflow-hidden rounded-2xl border bg-[var(--bg-primary)] p-6 transition-all duration-300",
                                 isCritical
-                                    ? "border-[var(--warning-border)] shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-                                    : "border-[var(--border-subtle)] hover:border-[var(--primary-blue)] hover:shadow-lg hover:shadow-blue-500/5"
+                                    ? "border-[var(--warning-border)] shadow-[0_0_15px_var(--warning-bg)]"
+                                    : "border-[var(--border-subtle)] hover:border-[var(--primary-blue)] hover:shadow-[0_0_20px_var(--primary-blue-soft)]"
                             )}
                         >
                             {/* Background Glow */}
@@ -128,6 +133,7 @@ export function IntelligenceClient() {
                                     size="sm"
                                     variant="ghost"
                                     className="w-full justify-between group/btn bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:text-[var(--primary-blue)] rounded-xl border border-transparent hover:border-[var(--border-subtle)]"
+                                    onClick={() => showSuccessToast('Feature coming soon')}
                                 >
                                     {insight.action}
                                     <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
@@ -158,7 +164,7 @@ export function IntelligenceClient() {
                             </div>
                             {isForecastLoading ? (
                                 <div className="flex items-center justify-center h-full">
-                                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                    <Loader variant="spinner" size="lg" />
                                 </div>
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
@@ -238,7 +244,7 @@ export function IntelligenceClient() {
                         <CardContent className="flex-1 overflow-y-auto pt-6 space-y-4 pr-2 custom-scrollbar">
                             {isAnomaliesLoading ? (
                                 <div className="flex items-center justify-center h-full">
-                                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                    <Loader variant="spinner" size="lg" />
                                 </div>
                             ) : anomalies.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-center py-8">
@@ -265,7 +271,11 @@ export function IntelligenceClient() {
                                             <span className="text-[10px] font-mono text-[var(--text-muted)]">{new Date(anomaly.detectedAt).toLocaleTimeString()}</span>
                                         </div>
                                         <p className="text-sm text-[var(--text-primary)] font-medium leading-relaxed mb-1">{anomaly.description}</p>
-                                        <Button variant="link" className="p-0 h-auto text-xs text-[var(--primary-blue)] hover:no-underline opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                        <Button
+                                            variant="link"
+                                            className="p-0 h-auto text-xs text-[var(--primary-blue)] hover:no-underline opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                                            onClick={() => showSuccessToast('Feature coming soon')}
+                                        >
                                             Investigate <ArrowRight className="h-3 w-3" />
                                         </Button>
                                     </motion.div>
@@ -273,7 +283,11 @@ export function IntelligenceClient() {
                             )}
                         </CardContent>
                         <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50">
-                            <Button variant="outline" className="w-full text-xs text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-primary)]">
+                            <Button
+                                variant="outline"
+                                className="w-full text-xs text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-primary)]"
+                                onClick={() => showSuccessToast('Feature coming soon')}
+                            >
                                 View Full System Logs
                             </Button>
                         </div>
@@ -281,35 +295,99 @@ export function IntelligenceClient() {
                 </motion.div>
             </div>
 
-            {/* 4. Feature Showcase: Smart Routing */}
+            {/* 4. Smart Routing Hero - WalletHero-style */}
             <motion.div variants={itemVariants}>
-                <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-r from-[#0f172a] via-[#1e1b4b] to-[#172554] p-1">
-                    <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
-                    <div className="absolute top-0 right-0 p-12 bg-[var(--primary-blue)]/20 rounded-full blur-3xl" />
+                <div
+                    className={cn(
+                        'relative overflow-hidden rounded-[var(--radius-2xl)] p-6 sm:p-8',
+                        'bg-gradient-to-br from-[var(--wallet-hero-from)] via-[var(--wallet-hero-via)] to-[var(--wallet-hero-to)]',
+                        'border border-[var(--wallet-hero-border)]'
+                    )}
+                >
+                    {/* Gradient orbs - WalletHero style */}
+                    <div className="absolute -top-20 -right-20 w-72 h-72 sm:w-80 sm:h-80 bg-[var(--primary-blue)]/20 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute top-1/2 -left-24 w-48 h-48 sm:w-56 sm:h-56 bg-[var(--info)]/15 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute -bottom-12 right-1/3 w-40 h-40 sm:w-48 sm:h-48 bg-[var(--wallet-hero-orb-pink)] rounded-full blur-3xl pointer-events-none" />
 
-                    <div className="relative bg-[var(--bg-primary)]/10 backdrop-blur-sm rounded-xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 h-full">
-                        <div className="space-y-4 max-w-2xl">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--primary-blue)]/10 text-[var(--primary-blue)] border border-[var(--primary-blue)]/20 text-xs font-semibold uppercase tracking-wider">
-                                <Target className="h-3.5 w-3.5" />
-                                <span>Smart Routing Engine</span>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-stretch gap-6 md:gap-8">
+                        {/* Left: Content + CTA (with accent bar) */}
+                        <div className="flex-1 min-w-0 space-y-6 border-l-4 border-[var(--primary-blue)] pl-4 sm:pl-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-[var(--primary-blue)]/10">
+                                    <Target className="w-6 h-6 text-[var(--primary-blue)]" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        Smart Routing Engine
+                                    </h3>
+                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                                        AI-powered carrier selection
+                                    </p>
+                                </div>
                             </div>
-                            <h3 className="text-3xl font-bold text-white tracking-tight">Optimize Your Logistics with AI</h3>
-                            <p className="text-blue-100/80 text-lg leading-relaxed">
-                                Our machine learning models analyze <span className="text-white font-semibold">50+ parameters</span> (traffic, weather, courier performance) to automatically select the best carrier for every shipment, saving you up to <span className="text-emerald-400 font-bold">18%</span> on shipping costs.
-                            </p>
+
+                            <div>
+                                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
+                                    Optimize Your Logistics with AI
+                                </h3>
+                                <p className="mt-3 text-[var(--text-secondary)] text-base leading-relaxed">
+                                    Our machine learning models analyze <span className="font-semibold text-[var(--text-primary)]">50+ parameters</span> (traffic, weather, courier performance) to automatically select the best carrier for every shipment, saving you up to <span className="font-bold text-[var(--success)]">18%</span> on shipping costs.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <Button
+                                    onClick={() => showSuccessToast('Feature coming soon')}
+                                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 h-12 px-6 rounded-xl bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white hover:opacity-95 font-bold text-sm border-0"
+                                >
+                                    Enable Auto-Switch
+                                    <ArrowUpRight className="w-5 h-5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => showSuccessToast('Feature coming soon')}
+                                    className="h-12 px-5 rounded-xl bg-[var(--wallet-hero-card)] hover:bg-[var(--wallet-hero-card-hover)] text-[var(--text-primary)] border border-[var(--wallet-hero-card-border)] font-medium text-sm"
+                                >
+                                    Configure Rules
+                                </Button>
+                            </div>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 hover:text-white backdrop-blur-md h-12 px-6">
-                                Configure Rules
-                            </Button>
-                            <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white border-none h-12 px-6 shadow-xl shadow-[var(--primary-blue)]/20">
-                                Enable Auto-Switch
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
-                            </Button>
+
+                        {/* Right: Feature highlights - WalletHero card style */}
+                        <div className="md:w-72 lg:w-80 shrink-0 flex flex-col gap-4">
+                            <div className="rounded-xl bg-[var(--wallet-hero-card)] border border-[var(--wallet-hero-card-border)] p-4">
+                                <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+                                    Key Benefits
+                                </p>
+                                <ul className="space-y-2 text-sm text-[var(--text-primary)]">
+                                    <li className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+                                        Auto-select best carrier per shipment
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+                                        Real-time traffic & weather data
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+                                        Up to 18% cost savings
+                                    </li>
+                                </ul>
+                            </div>
+                            <div className="rounded-xl bg-[var(--wallet-hero-card)] border border-[var(--wallet-hero-card-border)] p-4">
+                                <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                                    Model Status
+                                </p>
+                                <p className="text-sm font-medium text-[var(--success)] flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse" />
+                                    Ready to enable
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </motion.div>
         </motion.div>
+        </div>
     );
 }

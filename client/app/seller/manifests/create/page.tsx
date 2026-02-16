@@ -32,6 +32,7 @@ import {
     ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
+import { formatCurrency } from '@/src/lib/utils';
 import type {
     CourierPartner,
     CreateManifestPayload,
@@ -436,7 +437,7 @@ export default function CreateManifestPage() {
                                         <div>
                                             <p className="text-sm text-[var(--text-muted)]">COD Amount</p>
                                             <p className="text-xl font-bold text-[var(--text-primary)]">
-                                                ₹{totalCod.toLocaleString()}
+                                                {formatCurrency(totalCod, 'INR')}
                                             </p>
                                         </div>
                                     </div>
@@ -577,7 +578,7 @@ export default function CreateManifestPage() {
                                     <div className="flex items-center justify-between">
                                         <span className="text-[var(--text-muted)]">COD Amount</span>
                                         <span className="font-medium text-[var(--text-primary)]">
-                                            ₹{totalCod.toLocaleString()}
+                                            {formatCurrency(totalCod, 'INR')}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">

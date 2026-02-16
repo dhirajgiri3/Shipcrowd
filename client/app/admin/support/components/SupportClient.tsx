@@ -4,11 +4,11 @@ export const dynamic = "force-dynamic";
 import { useState } from 'react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Select } from '@/src/components/ui/form/Select';
 import {
-    Search,
     MessageSquare,
     AlertCircle,
     CheckCircle,
@@ -106,21 +106,23 @@ export function SupportClient() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">Help & Support</h1>
-                    <p className="text-[var(--text-muted)] text-sm">Manage support tickets and inquiries</p>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="outline">
-                        <FileOutput className="w-4 h-4 mr-2" /> Export
-                    </Button>
-                    <Button>
-                        <Plus className="w-4 h-4 mr-2" /> New Ticket
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                title="Help & Support"
+                description="Manage support tickets and inquiries"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Support', active: true }]}
+                actions={
+                    <>
+                        <Button variant="outline">
+                            <FileOutput className="w-4 h-4 mr-2" /> Export
+                        </Button>
+                        <Button variant="primary">
+                            <Plus className="w-4 h-4 mr-2" /> New Ticket
+                        </Button>
+                    </>
+                }
+            />
 
             {/* Stats Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -147,15 +149,12 @@ export function SupportClient() {
 
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4 bg-[var(--bg-primary)] p-4 rounded-xl border border-[var(--border-subtle)]">
-                <div className="relative w-full md:w-96">
-                    <Input
-                        placeholder="Search tickets..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        icon={<Search className="w-4 h-4" />}
-                        className="bg-[var(--bg-secondary)] border-transparent"
-                    />
-                </div>
+                <SearchInput
+                    placeholder="Search tickets..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    widthClass="w-full md:w-96"
+                />
                 <div className="flex flex-wrap gap-3">
                     <Select
                         className="w-[140px]"

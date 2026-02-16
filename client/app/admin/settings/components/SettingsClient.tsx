@@ -1,94 +1,94 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
-import { User, Bell, Lock, Globe, CreditCard, Loader2, Settings2, ChevronRight } from 'lucide-react';
+import { Building2, Globe, Loader2, Settings2, Shield, User, Wallet } from 'lucide-react';
 import { useProfile, useProfileUpdate } from '@/src/core/api/hooks/identity/useProfile';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-import { cn } from '@/src/lib/utils';
+import { RoleAvatar } from '@/src/components/shared/RoleAvatar';
+
+const SETTINGS_LINKS = [
+    {
+        title: 'Feature Flags',
+        description: 'View and control backend feature switches',
+        href: '/admin/settings/features',
+        icon: Settings2,
+    },
+    {
+        title: 'Platform Settings',
+        description: 'Manage live serviceability and platform config',
+        href: '/admin/settings/platform',
+        icon: Globe,
+    },
+    {
+        title: 'Integrations',
+        description: 'Monitor ecommerce integration health and sync',
+        href: '/admin/integrations',
+        icon: Building2,
+    },
+    {
+        title: 'Billing',
+        description: 'Open billing and financial administration',
+        href: '/admin/billing',
+        icon: Wallet,
+    },
+    {
+        title: 'Security',
+        description: 'Review fraud and security operations controls',
+        href: '/admin/security/fraud',
+        icon: Shield,
+    },
+];
 
 export function SettingsClient() {
-    const [activeTab, setActiveTab] = useState('profile');
     const { data: user, isLoading } = useProfile();
     const { mutate: updateProfile, isPending: isUpdating } = useProfileUpdate();
-    const { addToast } = useToast();
 
-    // Form State
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
-        email: '' // Read-only usually
+        email: '',
     });
 
-    // Sync form data when user loads
     useEffect(() => {
         if (user) {
             setFormData({
                 name: user.name || '',
                 phone: user.profile?.phone || '',
-                email: user.email || ''
+                email: user.email || '',
             });
         }
     }, [user]);
 
+    const dirty = useMemo(() => {
+        if (!user) return false;
+        return formData.name !== (user.name || '') || formData.phone !== (user.profile?.phone || '');
+    }, [formData, user]);
+
     const handleSaveProfile = () => {
-        if (!user) return;
-
-        // Basic validation
-        if (!formData.name.trim()) {
-            addToast('Name is required', 'error');
-            return;
-        }
-
+        if (!user || !dirty) return;
         updateProfile({
             name: formData.name,
-            phone: formData.phone
+            phone: formData.phone,
         });
     };
-
-    const tabs = [
-        { id: 'profile', label: 'Profile', icon: User },
-        { id: 'notifications', label: 'Notifications', icon: Bell },
-        { id: 'security', label: 'Security', icon: Lock },
-        { id: 'integrations', label: 'Integrations', icon: Globe },
-        { id: 'billing', label: 'Billing', icon: CreditCard },
-    ];
-
-    const settingsNavItems = [
-        { label: 'Profile', href: '/admin/settings', icon: User },
-        { label: 'Feature Flags', href: '/admin/settings/features', icon: Settings2 },
-        { label: 'Platform', href: '/admin/settings/platform', icon: Globe },
-    ];
 
     if (isLoading) {
         return (
             <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
-                <div className="flex flex-col gap-6">
-                    <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-4 w-4" />
-                        <Skeleton className="h-4 w-40" />
-                    </div>
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <Skeleton className="h-9 w-48" />
-                    </div>
+                <div className="space-y-4">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-5 w-80" />
                 </div>
-                <div className="flex flex-col md:flex-row gap-8 max-w-5xl">
-                    <aside className="w-full md:w-64 space-y-2">
-                        <Skeleton className="h-8 w-32 mb-6" />
-                        {[1, 2, 3, 4, 5].map((i) => (
-                            <Skeleton key={i} className="h-11 w-full rounded-lg mb-2" />
-                        ))}
-                    </aside>
-                    <div className="flex-1">
-                        <Skeleton className="h-64 w-full rounded-2xl" />
-                    </div>
+                <Skeleton className="h-64 w-full rounded-2xl" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-28 w-full rounded-xl" />
+                    ))}
                 </div>
             </div>
         );
@@ -102,163 +102,80 @@ export function SettingsClient() {
                     { label: 'Dashboard', href: '/admin' },
                     { label: 'Settings', active: true },
                 ]}
-                subtitle="Manage your admin profile and preferences"
+                subtitle="Manage your profile and open operational settings modules"
                 showBack={false}
             />
 
-            <div className="flex flex-col md:flex-row gap-8 max-w-5xl">
-                {/* Sidebar Navigation for Settings */}
-                <aside className="w-full md:w-64 space-y-2 shrink-0">
-                    <div className="flex flex-col gap-1">
-                        {tabs.map((tab) => (
-                            <Button
-                                key={tab.id}
-                                variant="ghost"
-                                onClick={() => setActiveTab(tab.id)}
-                                className={cn(
-                                    "w-full justify-start gap-3 px-4 py-2 font-medium",
-                                    activeTab === tab.id
-                                        ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] hover:text-[var(--primary-blue)]"
-                                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
-                                )}
-                            >
-                                <tab.icon className="w-4 h-4" />
-                                {tab.label}
-                            </Button>
-                        ))}
-                        <div className="my-2 h-px bg-[var(--border-subtle)]" />
-                        {settingsNavItems.slice(1).map((item) => (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    "flex items-center gap-3 px-4 py-2 font-medium rounded-lg text-sm transition-colors",
-                                    "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
-                                )}
-                            >
-                                <item.icon className="w-4 h-4" />
-                                {item.label}
-                                <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-                            </Link>
-                        ))}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Profile Information</CardTitle>
+                    <CardDescription>Update your admin account details.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="flex items-center gap-4 pb-5 border-b border-[var(--border-subtle)]">
+                        <RoleAvatar
+                            role={user?.role || 'admin'}
+                            name={user?.name || 'Admin'}
+                            size="lg"
+                        />
+                        <div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{user?.name}</p>
+                            <p className="text-xs text-[var(--text-muted)]">Default role-based avatar</p>
+                        </div>
                     </div>
-                </aside>
 
-                {/* Main Content Area */}
-                <div className="flex-1 space-y-6">
-                    {activeTab === 'profile' && (
-                        <Card>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2 space-y-2">
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Full Name</label>
+                            <Input
+                                value={formData.name}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                                placeholder="John Doe"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Phone Number</label>
+                            <Input
+                                value={formData.phone}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                                placeholder="+91 98765 43210"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Email Address</label>
+                            <Input value={formData.email} disabled className="bg-[var(--bg-secondary)] text-[var(--text-muted)]" />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                        <Button onClick={handleSaveProfile} disabled={isUpdating || !dirty} className="min-w-[120px]">
+                            {isUpdating ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                'Save Changes'
+                            )}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
+                {SETTINGS_LINKS.map((item) => (
+                    <Link key={item.href} href={item.href}>
+                        <Card className="h-full hover:bg-[var(--bg-secondary)]/60 transition-colors cursor-pointer">
                             <CardHeader>
-                                <CardTitle>Profile Information</CardTitle>
-                                <CardDescription>Update your account details and public profile.</CardDescription>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <item.icon className="w-4 h-4" />
+                                    {item.title}
+                                </CardTitle>
+                                <CardDescription>{item.description}</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="flex items-center gap-6 pb-6 border-b border-[var(--border-subtle)]">
-                                    <div className="h-20 w-20 rounded-full bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] text-2xl font-bold">
-                                        {user?.name?.substring(0, 2).toUpperCase() || 'US'}
-                                    </div>
-                                    <div>
-                                        <Button variant="outline" size="sm">Change Avatar</Button>
-                                        <p className="text-xs text-[var(--text-muted)] mt-2">JPG, GIF or PNG. Max size of 800K</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2 space-y-2">
-                                        <label className="text-sm font-medium text-[var(--text-primary)]">Full Name</label>
-                                        <Input
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder="John Doe"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-[var(--text-primary)]">Phone Number</label>
-                                        <Input
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                            placeholder="+91 98765 43210"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-[var(--text-primary)]">Email Address</label>
-                                        <Input
-                                            value={formData.email}
-                                            disabled
-                                            className="bg-[var(--bg-secondary)] text-[var(--text-muted)]"
-                                        />
-                                        <p className="text-xs text-[var(--text-muted)]">Email cannot be changed directly.</p>
-                                    </div>
-                                </div>
-
-                                <div className="pt-4 flex justify-end">
-                                    <Button
-                                        onClick={handleSaveProfile}
-                                        disabled={isUpdating}
-                                        className="min-w-[120px]"
-                                    >
-                                        {isUpdating ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Saving...
-                                            </>
-                                        ) : (
-                                            'Save Changes'
-                                        )}
-                                    </Button>
-                                </div>
-                            </CardContent>
                         </Card>
-                    )}
-
-                    {activeTab === 'integrations' && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Connected Platforms</CardTitle>
-                                <CardDescription>Manage your store integrations and API keys.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                {[
-                                    { name: 'Shopify', status: 'Connected', icon: 'https://cdn.worldvectorlogo.com/logos/shopify.svg' },
-                                    { name: 'WooCommerce', status: 'Disconnected', icon: 'https://cdn.worldvectorlogo.com/logos/woocommerce.svg' },
-                                    { name: 'Magento', status: 'Disconnected', icon: 'https://cdn.worldvectorlogo.com/logos/magento.svg' },
-                                ].map((platform) => (
-                                    <div key={platform.name} className="flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--bg-secondary)]/50 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 p-1 flex items-center justify-center bg-[var(--bg-primary)] rounded-lg border border-[var(--border-subtle)]">
-                                                <img src={platform.icon} className="w-6 h-6 object-contain" alt="" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold text-[var(--text-primary)]">{platform.name}</h4>
-                                                <p className="text-xs text-[var(--text-muted)]">Sync orders and inventory</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <Badge variant={platform.status === 'Connected' ? 'success' : 'neutral'}>
-                                                {platform.status}
-                                            </Badge>
-                                            <Button variant="outline" size="sm">Configure</Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Placeholder for other tabs */}
-                    {(activeTab !== 'profile' && activeTab !== 'integrations') && (
-                        <Card>
-                            <CardContent className="py-12 flex flex-col items-center justify-center text-center">
-                                <div className="h-12 w-12 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mb-4">
-                                    <Lock className="w-6 h-6 text-[var(--text-disabled)]" />
-                                </div>
-                                <h3 className="text-lg font-medium text-[var(--text-primary)]">{tabs.find(t => t.id === activeTab)?.label} Section</h3>
-                                <p className="text-[var(--text-muted)] max-w-sm mt-2">
-                                    This section is currently under development. Please check back later for updates.
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
+                    </Link>
+                ))}
             </div>
         </div>
     );

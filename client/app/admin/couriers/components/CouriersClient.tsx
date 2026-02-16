@@ -3,13 +3,14 @@ export const dynamic = "force-dynamic";
 
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import {
     Truck,
-    Search,
     RotateCw,
     AlertCircle,
 } from 'lucide-react';
@@ -148,21 +149,22 @@ export function CouriersClient() {
         );
     }
 
+    const STATUS_TABS = [
+        { key: 'all', label: 'All' },
+        { key: 'active', label: 'Active' },
+        { key: 'inactive', label: 'Inactive' },
+    ];
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                            <Truck className="h-6 w-6 text-[var(--primary-blue)]" />
-                            Courier Partners
-                        </h1>
-                        <p className="text-sm mt-1 text-[var(--text-secondary)]">
-                            Manage your shipping partners and configurations
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
+            <PageHeader
+                title="Courier Partners"
+                description="Manage your shipping partners and configurations"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Couriers', active: true }]}
+                actions={
+                    <>
                         <Button variant="outline" onClick={() => router.push('/admin/couriers/services')}>
                             Manage Courier Services
                         </Button>
@@ -176,35 +178,25 @@ export function CouriersClient() {
                             <RotateCw className="h-4 w-4 mr-2" />
                             Sync Partners
                         </Button>
-                    </div>
-                </div>
-            </div>
+                    </>
+                }
+            />
 
             {/* Filters */}
             <Card>
                 <CardContent className="p-4">
                     <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
-                        <div className="flex-1 w-full lg:w-auto">
-                            <Input
-                                placeholder="Search couriers..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                icon={<Search className="h-4 w-4" />}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            {(['all', 'active', 'inactive'] as const).map((status) => (
-                                <Button
-                                    key={status}
-                                    variant={selectedStatus === status ? 'primary' : 'outline'}
-                                    size="sm"
-                                    onClick={() => setSelectedStatus(status)}
-                                    className="capitalize"
-                                >
-                                    {status}
-                                </Button>
-                            ))}
-                        </div>
+                        <SearchInput
+                            placeholder="Search couriers..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            widthClass="flex-1 w-full lg:w-auto"
+                        />
+                        <PillTabs
+                            tabs={STATUS_TABS}
+                            activeTab={selectedStatus}
+                            onTabChange={(key) => setSelectedStatus(key as 'all' | 'active' | 'inactive')}
+                        />
                     </div>
                 </CardContent>
             </Card>

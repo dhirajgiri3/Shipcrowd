@@ -311,10 +311,27 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<TeamRole, string[]> = {
 // ==================== Platform Settings ====================
 
 export interface PlatformSettings {
-    business: BusinessSettings;
-    financial: FinancialSettings;
-    integrations: SystemIntegrationSettings;
-    notifications: NotificationSettings;
+    serviceability: {
+        metroCities: string[];
+    };
+    integrations: {
+        email: {
+            configured: boolean;
+            provider: string;
+        };
+        sms: {
+            configured: boolean;
+            provider: string;
+        };
+        payment: {
+            configured: boolean;
+            provider: string;
+        };
+    };
+    security: {
+        corsAllowedOrigins: string[];
+        csrfAllowedOrigins: string[];
+    };
     updatedAt?: string;
     updatedBy?: string;
 }
@@ -393,42 +410,31 @@ export interface NotificationSettings {
     notifyOnKYCStatusChange: boolean;
 }
 
-export interface FeatureFlags {
-    returnsEnabled: boolean;
-    codEnabled: boolean;
-    integrationsEnabled: boolean;
-    trackingEnabled: boolean;
-    fraudDetectionEnabled: boolean;
-    ndrEnabled: boolean;
-    rateCardManagement: boolean;
-    bulkOperations: boolean;
-    apiAccess: boolean;
-    maintenanceMode: boolean;
+export interface FeatureFlagItem {
+    _id: string;
+    key: string;
+    name: string;
+    description: string;
+    isEnabled: boolean;
+    category?: 'feature' | 'experiment' | 'ops' | 'billing';
     updatedAt?: string;
-    updatedBy?: string;
+    createdAt?: string;
+    environments?: {
+        development?: boolean;
+        sandbox?: boolean;
+        production?: boolean;
+    };
 }
 
 export interface UpdatePlatformSettingsRequest {
-    business?: Partial<BusinessSettings>;
-    financial?: Partial<FinancialSettings>;
-    integrations?: Partial<SystemIntegrationSettings>;
-    notifications?: Partial<NotificationSettings>;
+    serviceability: {
+        metroCities: string[];
+    };
 }
 
 export interface ToggleFeatureRequest {
-    feature: keyof FeatureFlags;
-    enabled: boolean;
-}
-
-export interface TestIntegrationRequest {
-    type: 'email' | 'sms' | 'storage' | 'payment';
-    testData?: any;
-}
-
-export interface TestIntegrationResponse {
-    success: boolean;
-    message: string;
-    details?: any;
+    key: string;
+    isEnabled: boolean;
 }
 
 export interface PlatformSettingsResponse {
@@ -438,5 +444,8 @@ export interface PlatformSettingsResponse {
 
 export interface FeatureFlagsResponse {
     success: boolean;
-    data: FeatureFlags;
+    data: {
+        flags: FeatureFlagItem[];
+        total: number;
+    };
 }

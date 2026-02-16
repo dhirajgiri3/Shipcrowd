@@ -12,6 +12,7 @@ import {
     Shield
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { RoleAvatar } from './RoleAvatar';
 
 import type { User as AuthUser } from '@/src/types/auth'; // Alias to avoid collision with Lucide User icon
 
@@ -33,14 +34,6 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
 
     // Dynamic role label based on current dashboard
     const currentRoleLabel = isAdminDashboard ? 'Admin' : isSellerDashboard ? 'Seller' : user.role.replace('_', ' ');
-
-    // Get user initials
-    const initials = user.name
-        .split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -75,17 +68,12 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
             >
                 {/* Avatar with Status Dot */}
                 <div className="relative">
-                    {user.avatar ? (
-                        <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className="h-8 w-8 rounded-lg object-cover ring-2 ring-[var(--bg-primary)] group-hover:ring-[var(--bg-secondary)] transition-all"
-                        />
-                    ) : (
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[var(--primary-blue)] to-blue-700 flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-[var(--bg-primary)] group-hover:ring-[var(--bg-secondary)] transition-all">
-                            {initials}
-                        </div>
-                    )}
+                    <RoleAvatar
+                        role={user.role}
+                        name={user.name}
+                        size="sm"
+                        className="ring-2 ring-[var(--bg-primary)] group-hover:ring-[var(--bg-secondary)] transition-all"
+                    />
                     <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-[var(--bg-primary)] flex items-center justify-center">
                         <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     </span>
@@ -116,17 +104,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                     {/* User Info Header */}
                     <div className="px-4 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/30">
                         <div className="flex items-center gap-3">
-                            {user.avatar ? (
-                                <img
-                                    src={user.avatar}
-                                    alt={user.name}
-                                    className="h-10 w-10 rounded-xl object-cover shadow-sm"
-                                />
-                            ) : (
-                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[var(--primary-blue)] to-blue-700 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                                    {initials}
-                                </div>
-                            )}
+                            <RoleAvatar role={user.role} name={user.name} />
                             <div className="flex-1 overflow-hidden">
                                 <p className="text-sm font-bold text-[var(--text-primary)] truncate">{user.name}</p>
                                 <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">{user.email}</p>

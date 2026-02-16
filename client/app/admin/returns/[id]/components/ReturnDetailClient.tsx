@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useAdminReturn, useAdminUpdateReturnStatus, useAdminProcessRefund } from '@/src/core/api/hooks/logistics/useAdminReturns';
@@ -59,29 +60,18 @@ export function ReturnDetailClient({ returnId }: ReturnDetailClientProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push('/admin/returns')}
-                        className="gap-2"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Back
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                            Return {returnData.returnId}
-                        </h1>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">
-                            Order: <code className="text-[var(--text-primary)] font-mono">{returnData.orderId}</code>
-                        </p>
-                    </div>
-                </div>
-                <StatusBadge domain="return" status={returnData.status} />
-            </div>
+            <PageHeader
+                title={`Return ${returnData.returnId}`}
+                description={`Order: ${returnData.orderId}`}
+                showBack={true}
+                backUrl="/admin/returns"
+                breadcrumbs={[
+                    { label: 'Admin', href: '/admin' },
+                    { label: 'Returns', href: '/admin/returns' },
+                    { label: returnData.returnId, active: true }
+                ]}
+                actions={<StatusBadge domain="return" status={returnData.status} />}
+            />
 
             {/* Overview Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -336,6 +326,7 @@ export function ReturnDetailClient({ returnId }: ReturnDetailClientProps) {
                     <div className="flex gap-3 flex-wrap">
                         {returnData.refund?.status !== 'completed' && (
                             <Button
+                                variant="primary"
                                 onClick={() => {
                                     if (confirm('Process refund for this return?')) {
                                         processRefund(returnId, {
@@ -346,7 +337,6 @@ export function ReturnDetailClient({ returnId }: ReturnDetailClientProps) {
                                     }
                                 }}
                                 disabled={isProcessing}
-                                className="bg-[var(--success)] hover:bg-[var(--success)]/90"
                             >
                                 {isProcessing ? 'Processing...' : 'Process Refund'}
                             </Button>

@@ -14,6 +14,7 @@ import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useProfile, useUpdateProfile, useCompany, useUpdateCompany } from '@/src/core/api/hooks';
 import { Loader } from '@/src/components/ui';
 import { cn } from '@/src/lib/utils';
+import { RoleAvatar } from '@/src/components/shared/RoleAvatar';
 
 export function SettingsClient() {
     const router = useRouter();
@@ -175,14 +176,9 @@ export function SettingsClient() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="flex items-center gap-6 pb-6 border-b border-[var(--border-subtle)]">
-                                            <div className="h-20 w-20 rounded-xl bg-[var(--primary-blue)] flex items-center justify-center text-white text-2xl font-bold">
-                                                {profileData?.name?.charAt(0).toUpperCase() || 'U'}
-                                            </div>
-                                            <div>
-                                                <Button variant="outline" size="sm">Change Avatar</Button>
-                                                <p className="text-xs text-[var(--text-muted)] mt-2">JPG, GIF or PNG. Max size of 800K</p>
-                                            </div>
+                                        <div className="flex items-center gap-4 pb-6 border-b border-[var(--border-subtle)]">
+                                            <RoleAvatar role="seller" name={profileData?.name || 'User'} size="lg" />
+                                            <p className="text-xs text-[var(--text-muted)]">Default role-based avatar is used.</p>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Full Name</label>

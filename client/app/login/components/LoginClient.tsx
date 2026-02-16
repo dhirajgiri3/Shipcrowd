@@ -28,6 +28,7 @@ import { useLogin } from '@/src/core/api/hooks/auth/useLogin';
 import { OAUTH_CONFIG } from '@/src/config/oauth';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { Button } from '@/src/components/ui/core/Button';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
 import { Input } from '@/src/components/ui/core/Input';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { getAuthErrorMessage } from '@/src/lib/error';
@@ -58,6 +59,8 @@ function LoginForm() {
         setEmail,
         password,
         setPassword,
+        rememberMe,
+        setRememberMe,
         isLoading,
         showPassword,
         togglePasswordVisibility,
@@ -215,13 +218,12 @@ function LoginForm() {
 
                         {/* Remember & Forgot */}
                         <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)] focus:ring-offset-0 bg-[var(--bg-elevated)]"
-                                />
-                                <span className="text-sm text-[var(--text-secondary)]">Remember me for 30 days</span>
-                            </label>
+                            <div className="flex items-center gap-2">
+                                <Checkbox id="remember" checked={rememberMe} onCheckedChange={setRememberMe} disabled={isLoading} />
+                                <label htmlFor="remember" className="text-sm text-[var(--text-secondary)] cursor-pointer">
+                                    Remember me for 30 days
+                                </label>
+                            </div>
                             <Link href="/forgot-password" className="text-sm font-medium text-[var(--primary-blue)] hover:brightness-110 transition-all">
                                 Forgot password?
                             </Link>

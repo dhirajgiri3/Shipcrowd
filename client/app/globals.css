@@ -108,6 +108,12 @@
    --border-strong: hsl(220, 15%, 85%);
    --border-focus: var(--primary-blue);
 
+   /* Chart Palette - Order pipeline donut (Pending, Delivered, RTO, In Transit) */
+   --chart-pending: var(--primary-blue);
+   --chart-delivered: var(--success);
+   --chart-rto: hsl(215, 14%, 47%);
+   --chart-transit: var(--primary-purple);
+
    /* Status Colors */
    --success: hsl(142, 76%, 36%);
    --success-bg: hsl(142, 70%, 96%);

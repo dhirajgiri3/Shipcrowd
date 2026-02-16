@@ -9,7 +9,7 @@
  *
  * Psychology Applied:
  * - Progressive Disclosure: Show one decision at a time
- * - Default Bias: Pre-select most popular option (₹5000 + UPI)
+ * - Default Bias: Pre-select most popular option (5,000 INR + UPI)
  * - Visual Hierarchy: Larger = more important
  * - Immediate Feedback: Real-time validation, clear states
  * - Trust Signals: Security badges, instant credit promise

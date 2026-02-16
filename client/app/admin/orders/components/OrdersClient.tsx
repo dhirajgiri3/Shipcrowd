@@ -5,14 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Package, Truck, CheckCircle, AlertCircle, Clock,
-    Search, Filter, MoreVertical, FileText, ArrowUpRight,
+    MoreVertical, FileText, ArrowUpRight,
     RefreshCw, Calendar as CalendarIcon, XCircle,
     LayoutDashboard, RefreshCcw, Box, Loader2, ArrowRight,
     ChevronDown
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
-import { OrderTable } from './OrderTable'; // New component
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
+import { OrderTable } from './OrderTable';
 import { useAdminOrders, useGetCourierRates, useShipOrder, useAdminDeleteOrder, useOrderExport } from '@/src/core/api/hooks/admin';
 import { useWarehouses } from '@/src/core/api/hooks/logistics';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
@@ -24,15 +27,14 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 
-// Tabs configuration
 const ORDER_TABS = [
-    { id: 'all', label: 'All' },
-    { id: 'unshipped', label: 'To Ship' },
-    { id: 'shipped', label: 'Shipped' },
-    { id: 'delivered', label: 'Delivered' },
-    { id: 'rto', label: 'RTO' },
-    { id: 'cancelled', label: 'Cancelled' },
-];
+    { key: 'all', label: 'All' },
+    { key: 'unshipped', label: 'To Ship' },
+    { key: 'shipped', label: 'Shipped' },
+    { key: 'delivered', label: 'Delivered' },
+    { key: 'rto', label: 'RTO' },
+    { key: 'cancelled', label: 'Cancelled' },
+] as const;
 const DEFAULT_LIMIT = 10;
 
 export default function OrdersClient() {
@@ -310,39 +312,34 @@ export default function OrdersClient() {
 
     return (
         <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Order Management</h1>
-                    <p className="text-[var(--text-secondary)] mt-1">Monitor, fulfil and track orders across all your sellers in real-time.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleRefresh}
-                        disabled={isFetching}
-                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
-                    >
-                        <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
-                        Refresh Data
-                    </button>
-                    <button
-                        onClick={handleExport}
-                        disabled={exportOrderMutation.isPending}
-                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
-                    >
-                        {exportOrderMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
-                        {exportOrderMutation.isPending ? 'Exporting...' : 'Export Data'}
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                title="Order Management"
+                breadcrumbs={[
+                    { label: 'Admin', href: '/admin' },
+                    { label: 'Orders', active: true },
+                ]}
+                description="Monitor, fulfil and track orders across all your sellers in real-time."
+                actions={
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
+                            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+                            Refresh
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleExport} disabled={exportOrderMutation.isPending}>
+                            {exportOrderMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
+                            {exportOrderMutation.isPending ? 'Exporting...' : 'Export'}
+                        </Button>
+                    </div>
+                }
+            />
 
-            {/* Stats Grid - Bento Style */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                     title="Total Orders"
                     value={stats['all'] || pagination?.total || 0}
                     icon={Package}
-                    iconColor="bg-blue-600 text-white"
+                    variant="default"
                     trend={{ value: 12, label: 'vs last week', positive: true }}
                     delay={0}
                 />
@@ -350,7 +347,7 @@ export default function OrdersClient() {
                     title="Orders to Ship"
                     value={(stats['pending'] || 0) + (stats['ready_to_ship'] || 0)}
                     icon={Clock}
-                    iconColor="bg-orange-500 text-white"
+                    variant="warning"
                     trend={{ value: 5, label: 'vs yesterday', positive: false }}
                     delay={1}
                 />
@@ -358,7 +355,7 @@ export default function OrdersClient() {
                     title="RTO Rate"
                     value="2.4%"
                     icon={XCircle}
-                    iconColor="bg-red-500 text-white"
+                    variant="critical"
                     description="Calculated from last 30 days"
                     delay={2}
                 />
@@ -366,29 +363,22 @@ export default function OrdersClient() {
                     title="Delivered Today"
                     value={stats['delivered'] || 0}
                     icon={CheckCircle}
-                    iconColor="bg-emerald-500 text-white"
+                    variant="success"
                     trend={{ value: 8, label: 'vs yesterday', positive: true }}
                     delay={3}
                 />
             </div>
 
-            {/* Controls & Filters - Matched with Sellers Page */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-default)]">
-                {/* Search */}
-                <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search by Order ID, Customer, Phone..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-muted)] text-[var(--text-primary)]"
-                    />
-                </div>
+            {/* Controls & Filters */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-xl border border-[var(--border-default)]">
+                <SearchInput
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by Order ID, Customer, Phone..."
+                    widthClass="w-full md:w-96"
+                />
 
                 <div className="flex items-center gap-4">
-                    {/* Warehouse Filter */}
-
                     <div className="relative">
                         <select
                             value={selectedWarehouseId}
@@ -408,40 +398,16 @@ export default function OrdersClient() {
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={16} />
                     </div>
 
-                    {/* Date Picker Integrated */}
                     <div className="hidden md:block">
-                            <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
+                        <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
                     </div>
 
-                    {/* Filter Tabs */}
-                    <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide max-w-[500px]">
-                        {ORDER_TABS.map((tab) => {
-                            const isActive = status === tab.id;
-                            const count = tab.id === 'all'
-                                ? (pagination?.total || 0)
-                                : tab.id === 'unshipped'
-                                    ? ((stats['pending'] || 0) + (stats['ready_to_ship'] || 0))
-                                    : (stats[tab.id] || 0);
-
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => handleTabChange(tab.id)}
-                                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${isActive
-                                        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
-                                        : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
-                                        }`}
-                                >
-                                    {tab.label}
-                                    {count > 0 && (
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[var(--bg-secondary)] text-[var(--text-primary)]' : 'bg-[var(--bg-primary)]/50'}`}>
-                                            {count}
-                                        </span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <PillTabs
+                        tabs={ORDER_TABS}
+                        activeTab={status}
+                        onTabChange={(key) => handleTabChange(key)}
+                        className="max-w-[500px]"
+                    />
                 </div>
             </div>
 
@@ -556,7 +522,7 @@ export default function OrdersClient() {
                                             <div className="flex items-center gap-4 relative z-10">
                                                 <div className={cn(
                                                     "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
-                                                    selectedCourier === (courier.optionId || courier.courierId) ? "bg-white text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                                                    selectedCourier === (courier.optionId || courier.courierId) ? "bg-[var(--bg-primary)] text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
                                                 )}>
                                                     <Truck className="h-5 w-5" />
                                                 </div>
@@ -611,12 +577,9 @@ export default function OrdersClient() {
                                 Cancel
                             </Button>
                             <Button
+                                variant={selectedCourier ? 'primary' : 'secondary'}
                                 onClick={handleCreateShipment}
                                 disabled={!selectedCourier || (quoteExpiresAt ? quoteExpiresAt.getTime() <= Date.now() : false)}
-                                className={cn(
-                                    "transition-all duration-300",
-                                    selectedCourier ? "bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
-                                )}
                             >
                                 Create Shipment
                                 <ArrowRight className="h-4 w-4 ml-1.5" />

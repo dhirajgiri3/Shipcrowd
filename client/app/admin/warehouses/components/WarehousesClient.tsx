@@ -26,7 +26,9 @@ import {
 } from '@/src/components/ui/feedback/Dialog';
 import { toast } from 'sonner';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
-import { WarehouseCard } from './WarehouseCard'; // Import new component
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { WarehouseCard } from './WarehouseCard';
 
 export function WarehousesClient() {
     const router = useRouter();
@@ -65,29 +67,29 @@ export function WarehousesClient() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                        <Building2 className="h-6 w-6 text-[var(--primary-blue)]" />
-                        Warehouses
-                    </h1>
-                    <p className="text-sm mt-1 text-[var(--text-secondary)]">Manage network fulfillment centers</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" className="gap-2">
-                        <FileOutput className="w-4 h-4" />
-                        <span>Export</span>
-                    </Button>
-                    <Button
-                        onClick={() => router.push('/admin/warehouses/new')}
-                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20 gap-2"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>Add Warehouse</span>
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                title="Warehouses"
+                description="Manage network fulfillment centers"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Warehouses', active: true }]}
+                actions={
+                    <>
+                        <Button variant="outline" className="gap-2">
+                            <FileOutput className="w-4 h-4" />
+                            <span>Export</span>
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => router.push('/admin/warehouses/new')}
+                            className="gap-2"
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span>Add Warehouse</span>
+                        </Button>
+                    </>
+                }
+            />
 
             {/* Stats Cards - Flat Design */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -124,14 +126,12 @@ export function WarehousesClient() {
             <Card className="border-[var(--border-subtle)] overflow-hidden">
                 <div className="p-1">
                     <div className="flex flex-col lg:flex-row gap-3 p-2">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                            <input
-                                type="text"
+                        <div className="flex-1">
+                            <SearchInput
                                 placeholder="Search warehouses by name, city, or pincode..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-10 pl-9 pr-4 rounded-lg bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] border border-[var(--border-default)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)]/20 transition-all placeholder-[var(--text-muted)]"
+                                widthClass="w-full"
                             />
                         </div>
                         <Button variant="ghost" className="gap-2">

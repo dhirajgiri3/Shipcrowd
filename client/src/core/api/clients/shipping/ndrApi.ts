@@ -54,11 +54,20 @@ export interface NdrListResponse {
 }
 
 class NdrApiService {
+    private sanitizeFilters(filters?: NdrFilters): NdrFilters | undefined {
+        if (!filters) return filters;
+        const normalized: NdrFilters = { ...filters };
+        if (typeof normalized.search === 'string' && normalized.search.trim() === '') {
+            delete normalized.search;
+        }
+        return normalized;
+    }
+
     /**
      * Get admin NDR list with stats
      */
     async getAdminNDRList(filters?: NdrFilters): Promise<NdrListResponse> {
-        const response = await apiClient.get('/admin/ndr/events', { params: filters });
+        const response = await apiClient.get('/admin/ndr/events', { params: this.sanitizeFilters(filters) });
         const payload = response.data?.data || {};
         const cases = Array.isArray(payload.cases) ? payload.cases : [];
         const pagination = payload.pagination || {};
@@ -106,9 +115,10 @@ class NdrApiService {
      * Get NDR resolution funnel
      */
     async getFunnel(filters?: NdrFilters): Promise<NdrFunnelData[]> {
+        const normalizedFilters = this.sanitizeFilters(filters);
         const [statsResponse, trendsResponse] = await Promise.all([
-            apiClient.get('/admin/ndr/analytics/stats', { params: filters }),
-            apiClient.get('/admin/ndr/analytics/trends', { params: { ...filters, groupBy: 'day' } }),
+            apiClient.get('/admin/ndr/analytics/stats', { params: normalizedFilters }),
+            apiClient.get('/admin/ndr/analytics/trends', { params: { ...normalizedFilters, groupBy: 'day' } }),
         ]);
         const metrics = statsResponse.data?.data || {};
         const trendRows = Array.isArray(trendsResponse.data?.data?.data)

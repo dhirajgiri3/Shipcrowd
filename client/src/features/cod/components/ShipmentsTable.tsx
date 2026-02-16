@@ -36,11 +36,11 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
 
     if (!shipments || shipments.length === 0) {
         return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
                     Shipments in Batch
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                <p className="text-[var(--text-muted)] text-center py-8">
                     No shipments found in this batch
                 </p>
             </div>
@@ -48,69 +48,69 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
     }
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <div className="bg-[var(--bg-primary)] rounded-lg shadow">
+            <div className="p-6 border-b border-[var(--border-subtle)]">
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">
                     Shipments in Batch ({shipments.length})
                 </h2>
             </div>
 
             <div className="overflow-x-auto">
                 <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-700/50">
+                    <thead className="bg-[var(--bg-secondary)]">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 AWB / Order
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 Customer
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 Source
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 Delivered
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 COD Amount
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 Deductions
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 Net Amount
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 Status
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                 Details
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-[var(--border-subtle)]">
                         {shipments.map((shipment) => {
                             const isExpanded = expandedRows.has(shipment.awb);
 
                             return (
                                 <React.Fragment key={shipment.awb}>
-                                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <tr className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm">
-                                                <div className="font-mono font-medium text-gray-900 dark:text-white">
+                                                <div className="font-mono font-medium text-[var(--text-primary)]">
                                                     {shipment.shipmentId?.awb || shipment.awb}
                                                 </div>
-                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                <div className="text-xs text-[var(--text-muted)]">
                                                     {shipment.shipmentId?.orderId?.orderNumber || 'N/A'}
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900 dark:text-white">
+                                            <div className="text-sm text-[var(--text-primary)]">
                                                 {shipment.shipmentId?.orderId?.customerDetails?.name || 'N/A'}
                                             </div>
                                             {shipment.shipmentId?.orderId?.customerDetails?.phone && (
-                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                <div className="text-xs text-[var(--text-muted)]">
                                                     {shipment.shipmentId.orderId.customerDetails.phone}
                                                 </div>
                                             )}
@@ -118,10 +118,10 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <SourceBadge source={(shipment.shipmentId as any)?.orderId?.source} size="sm" />
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-primary)]">
                                             {formatDate(shipment.deliveredAt)}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">
                                             {formatCurrency(shipment.codAmount)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400">
@@ -153,55 +153,55 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
 
                                     {/* Expanded Row - Deduction Breakdown */}
                                     {isExpanded && (
-                                        <tr className="bg-gray-50 dark:bg-gray-700/30">
+                                        <tr className="bg-[var(--bg-secondary)]/30">
                                             <td colSpan={9} className="px-6 py-4">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     {/* Left Column - Deduction Details */}
                                                     <div>
-                                                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                                                        <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
                                                             Deduction Breakdown
                                                         </h4>
                                                         <div className="space-y-2">
                                                             <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-600 dark:text-gray-400">Shipping Charge:</span>
-                                                                <span className="font-medium text-gray-900 dark:text-white">
+                                                                <span className="text-[var(--text-muted)]">Shipping Charge:</span>
+                                                                <span className="font-medium text-[var(--text-primary)]">
                                                                     {formatCurrency(shipment.deductions.shippingCharge)}
                                                                 </span>
                                                             </div>
                                                             {shipment.deductions.weightDispute && shipment.deductions.weightDispute > 0 && (
                                                                 <div className="flex justify-between text-sm">
-                                                                    <span className="text-gray-600 dark:text-gray-400">Weight Dispute:</span>
-                                                                    <span className="font-medium text-gray-900 dark:text-white">
+                                                                    <span className="text-[var(--text-muted)]">Weight Dispute:</span>
+                                                                    <span className="font-medium text-[var(--text-primary)]">
                                                                         {formatCurrency(shipment.deductions.weightDispute)}
                                                                     </span>
                                                                 </div>
                                                             )}
                                                             {shipment.deductions.rtoCharge && shipment.deductions.rtoCharge > 0 && (
                                                                 <div className="flex justify-between text-sm">
-                                                                    <span className="text-gray-600 dark:text-gray-400">RTO Charge:</span>
-                                                                    <span className="font-medium text-gray-900 dark:text-white">
+                                                                    <span className="text-[var(--text-muted)]">RTO Charge:</span>
+                                                                    <span className="font-medium text-[var(--text-primary)]">
                                                                         {formatCurrency(shipment.deductions.rtoCharge)}
                                                                     </span>
                                                                 </div>
                                                             )}
                                                             {shipment.deductions.platformFee && shipment.deductions.platformFee > 0 && (
                                                                 <div className="flex justify-between text-sm">
-                                                                    <span className="text-gray-600 dark:text-gray-400">Platform Fee:</span>
-                                                                    <span className="font-medium text-gray-900 dark:text-white">
+                                                                    <span className="text-[var(--text-muted)]">Platform Fee:</span>
+                                                                    <span className="font-medium text-[var(--text-primary)]">
                                                                         {formatCurrency(shipment.deductions.platformFee)}
                                                                     </span>
                                                                 </div>
                                                             )}
                                                             {shipment.deductions.otherFees && shipment.deductions.otherFees > 0 && (
                                                                 <div className="flex justify-between text-sm">
-                                                                    <span className="text-gray-600 dark:text-gray-400">Other Fees:</span>
-                                                                    <span className="font-medium text-gray-900 dark:text-white">
+                                                                    <span className="text-[var(--text-muted)]">Other Fees:</span>
+                                                                    <span className="font-medium text-[var(--text-primary)]">
                                                                         {formatCurrency(shipment.deductions.otherFees)}
                                                                     </span>
                                                                 </div>
                                                             )}
-                                                            <div className="flex justify-between text-sm pt-2 border-t border-gray-200 dark:border-gray-600">
-                                                                <span className="font-semibold text-gray-900 dark:text-white">Total Deductions:</span>
+                                                            <div className="flex justify-between text-sm pt-2 border-t border-[var(--border-subtle)]">
+                                                                <span className="font-semibold text-[var(--text-primary)]">Total Deductions:</span>
                                                                 <span className="font-bold text-red-600 dark:text-red-400">
                                                                     {formatCurrency(shipment.deductions.total)}
                                                                 </span>
@@ -211,14 +211,14 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
 
                                                     {/* Right Column - Shipment Details */}
                                                     <div>
-                                                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                                                        <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
                                                             Shipment Details
                                                         </h4>
                                                         <div className="space-y-2">
                                                             {shipment.shipmentId?.courierPartner && (
                                                                 <div className="flex justify-between text-sm">
-                                                                    <span className="text-gray-600 dark:text-gray-400">Courier:</span>
-                                                                    <span className="font-medium text-gray-900 dark:text-white">
+                                                                    <span className="text-[var(--text-muted)]">Courier:</span>
+                                                                    <span className="font-medium text-[var(--text-primary)]">
                                                                         {shipment.shipmentId.courierPartner}
                                                                     </span>
                                                                 </div>
@@ -226,14 +226,14 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
                                                             {shipment.shipmentId?.weight && (
                                                                 <>
                                                                     <div className="flex justify-between text-sm">
-                                                                        <span className="text-gray-600 dark:text-gray-400">Actual Weight:</span>
-                                                                        <span className="font-medium text-gray-900 dark:text-white">
+                                                                        <span className="text-[var(--text-muted)]">Actual Weight:</span>
+                                                                        <span className="font-medium text-[var(--text-primary)]">
                                                                             {shipment.shipmentId.weight.actual} kg
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex justify-between text-sm">
-                                                                        <span className="text-gray-600 dark:text-gray-400">Charged Weight:</span>
-                                                                        <span className="font-medium text-gray-900 dark:text-white">
+                                                                        <span className="text-[var(--text-muted)]">Charged Weight:</span>
+                                                                        <span className="font-medium text-[var(--text-primary)]">
                                                                             {shipment.shipmentId.weight.charged} kg
                                                                         </span>
                                                                     </div>
@@ -241,8 +241,8 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
                                                             )}
                                                             {shipment.shipmentId?.orderId?.productDetails && (
                                                                 <div className="flex justify-between text-sm">
-                                                                    <span className="text-gray-600 dark:text-gray-400">Product:</span>
-                                                                    <span className="font-medium text-gray-900 dark:text-white">
+                                                                    <span className="text-[var(--text-muted)]">Product:</span>
+                                                                    <span className="font-medium text-[var(--text-primary)]">
                                                                         {shipment.shipmentId.orderId.productDetails.name}
                                                                         {shipment.shipmentId.orderId.productDetails.quantity > 1 &&
                                                                             ` (x${shipment.shipmentId.orderId.productDetails.quantity})`
@@ -264,26 +264,26 @@ export function ShipmentsTable({ shipments }: ShipmentsTableProps) {
             </div>
 
             {/* Summary Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+            <div className="px-6 py-4 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/30">
                 <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-[var(--text-muted)]">
                         Total {shipments.length} shipments
                     </div>
                     <div className="flex gap-6 text-sm">
                         <div>
-                            <span className="text-gray-600 dark:text-gray-400">Total COD: </span>
-                            <span className="font-semibold text-gray-900 dark:text-white">
+                            <span className="text-[var(--text-muted)]">Total COD: </span>
+                            <span className="font-semibold text-[var(--text-primary)]">
                                 {formatCurrency(shipments.reduce((sum, s) => sum + s.codAmount, 0))}
                             </span>
                         </div>
                         <div>
-                            <span className="text-gray-600 dark:text-gray-400">Total Deductions: </span>
+                            <span className="text-[var(--text-muted)]">Total Deductions: </span>
                             <span className="font-semibold text-red-600 dark:text-red-400">
                                 -{formatCurrency(shipments.reduce((sum, s) => sum + s.deductions.total, 0))}
                             </span>
                         </div>
                         <div>
-                            <span className="text-gray-600 dark:text-gray-400">Net Total: </span>
+                            <span className="text-[var(--text-muted)]">Net Total: </span>
                             <span className="font-bold text-green-600 dark:text-green-400">
                                 {formatCurrency(shipments.reduce((sum, s) => sum + s.netAmount, 0))}
                             </span>

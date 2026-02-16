@@ -7,6 +7,29 @@ const CSRF_TOKEN_EXPIRY = 900; // 15 minutes
 const CSRF_TOKEN_LENGTH = 64;
 void CSRF_TOKEN_LENGTH; // 64 hex characters = 256 bits
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+const getAnonymousSessionId = (req: Request): string => {
+    const identifier = `${req.ip || 'unknown'}-${req.headers['user-agent'] || 'unknown'}`;
+    return crypto.createHash('sha256').update(identifier).digest('hex');
+};
+
+const parseOrigins = (value?: string): string[] =>
+    (value || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+const getAllowedOrigins = (): string[] => Array.from(
+    new Set(
+        [
+            process.env.CLIENT_URL || '',
+            process.env.FRONTEND_URL || '',
+            ...parseOrigins(process.env.CSRF_ALLOWED_ORIGINS),
+        ].filter(Boolean)
+    )
+);
+
 /**
  * Generate and store CSRF token in Redis
  * Token is one-time use for sensitive operations
@@ -88,31 +111,15 @@ export const validateCSRFToken = async (
  * Check if origin/referer is allowed
  */
 const isValidOrigin = (origin: string, referer: string): boolean => {
-    // ✅ DEVELOPMENT: Allow requests without origin/referer for API testing (Postman, etc.)
-    // This is safe because CSRF token validation still applies
-    if (process.env.NODE_ENV === 'development') {
-        // If both origin and referer are missing/empty, allow it (Postman scenario)
-        if (!origin && !referer) {
-            return true;
-        }
+    const allowedOrigins = getAllowedOrigins();
+    if (allowedOrigins.length === 0) {
+        return false;
     }
 
-    const allowedOrigins = [
-        process.env.CLIENT_URL || 'http://localhost:3000',
-        process.env.CLIENT_URL_STAGING || '',
-    ].filter(Boolean);
-
-    // Check origin header
-    if (origin && allowedOrigins.includes(origin)) {
-        return true;
-    }
-
-    // Check referer header
-    if (referer) {
-        return allowedOrigins.some((allowed) => referer.startsWith(allowed));
-    }
-
-    return false;
+    return (
+        (!!origin && allowedOrigins.includes(origin)) ||
+        (!!referer && allowedOrigins.some((allowed) => referer.startsWith(allowed)))
+    );
 };
 
 /**
@@ -136,19 +143,17 @@ export const csrfProtection = async (
         return;
     }
 
+    // Development/staging convenience mode for faster manual testing.
+    // Production remains strict and fully validated.
+    if (!isProduction) {
+        next();
+        return;
+    }
+
     try {
         const csrfToken = req.headers['x-csrf-token'] as string;
-        const sessionId = (req as any).session?.id || (req as any).user?._id;
+        const sessionId = (req as any).user?._id || (req as any).session?.id || getAnonymousSessionId(req);
 
-        // Keep CSRF debug logs minimal to avoid leaking user payloads.
-        logger.debug('CSRF Debug', {
-            hasSession: !!(req as any).session,
-            hasUser: !!(req as any).user,
-            userId: (req as any).user?._id ? String((req as any).user._id).slice(0, 8) : undefined,
-            hasSessionId: !!sessionId,
-        });
-
-        // Session is required for CSRF validation
         if (!sessionId) {
             logger.warn('CSRF protection: No session found', {
                 method: req.method,
@@ -165,7 +170,6 @@ export const csrfProtection = async (
             return;
         }
 
-        // Validate CSRF token
         const isValidToken = await validateCSRFToken(sessionId, csrfToken);
 
         if (!isValidToken) {
@@ -232,14 +236,14 @@ export const csrfProtectionMonitor = async (
     _res: Response,
     next: NextFunction
 ): Promise<void> => {
-    if (process.env.NODE_ENV === 'test' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    if (!isProduction || process.env.NODE_ENV === 'test' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
         next();
         return;
     }
 
     try {
         const csrfToken = req.headers['x-csrf-token'] as string;
-        const sessionId = (req as any).session?.id || (req as any).user?.id;
+        const sessionId = (req as any).user?._id || (req as any).session?.id || getAnonymousSessionId(req);
 
         if (sessionId && csrfToken) {
             const isValid = await validateCSRFToken(sessionId, csrfToken);

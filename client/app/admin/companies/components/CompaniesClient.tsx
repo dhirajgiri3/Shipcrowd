@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Search,
     Plus,
     Mail,
     Building2,
@@ -31,23 +30,24 @@ import {
 import { Company } from '@/src/core/api/clients/general/companyApi';
 import { Button } from '@/src/components/ui/core/Button';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
-import { Input } from '@/src/components/ui/core/Input';
-import { Card } from '@/src/components/ui/core/Card';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { useDebouncedValue } from '@/src/hooks/data';
 import { cn } from '@/src/lib/utils';
-import { showSuccessToast } from '@/src/lib/error';
 
-const statusTabs = [
-    { id: 'all', label: 'All Companies' },
-    { id: 'approved', label: 'Approved' },
-    { id: 'pending_verification', label: 'Pending Verification' },
-    { id: 'suspended', label: 'Suspended' }
-];
+const COMPANY_TABS = [
+    { key: 'all', label: 'All Companies' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'pending_verification', label: 'Pending Verification' },
+    { key: 'suspended', label: 'Suspended' },
+] as const;
 
 export function CompaniesClient() {
     const [activeTab, setActiveTab] = useState('all');
@@ -192,94 +192,55 @@ export function CompaniesClient() {
     }
 
     return (
-        <div className="space-y-6 p-6 animate-in fade-in duration-500 pb-10">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] shadow-lg shadow-blue-500/20">
-                        <Building2 className="h-6 w-6" />
+        <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen pb-10">
+            <PageHeader
+                title="Company Management"
+                description="Monitor performance and manage accounts"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Companies', active: true }]}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" className="hidden md:flex">
+                            <FileOutput className="h-4 w-4 mr-1.5" />
+                            Export
+                        </Button>
+                        <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+                            <Plus className="h-4 w-4 mr-1.5" />
+                            Create Company
+                        </Button>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Company Management</h1>
-                        <p className="text-[var(--text-muted)] text-sm">Monitor performance and manage accounts</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="hidden md:flex">
-                        <FileOutput className="h-4 w-4 mr-1.5" />
-                        Export
-                    </Button>
-                    <Button
-                        onClick={() => setShowCreateModal(true)}
-                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25 border-0"
-                    >
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        Create Company
-                    </Button>
-                </div>
-            </div>
+                }
+            />
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                    { label: 'Total Companies', value: stats.total, icon: Users, color: 'blue' },
-                    { label: 'Active Companies', value: stats.active, icon: CheckCircle2, color: 'emerald' },
-                    { label: 'Pending Approval', value: stats.pending, icon: Clock, color: 'amber' },
-                    { label: 'Suspended', value: stats.suspended, icon: Ban, color: 'red' },
-                ].map((stat, i) => (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        key={stat.label}
-                        className="p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 transition-colors group"
-                    >
-                        <div className="flex items-start justify-between mb-2">
-                            <div className={cn(
-                                "p-2 rounded-lg",
-                                stat.color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
-                                    stat.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                        stat.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                            "bg-[var(--error-bg)] text-[var(--error)]"
-                            )}>
-                                <stat.icon className="w-5 h-5" />
-                            </div>
-                        </div>
-                        <p className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</p>
-                        <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide mt-1">{stat.label}</p>
-                    </motion.div>
-                ))}
+                <StatsCard title="Total Companies" value={stats.total} icon={Users} variant="info" />
+                <StatsCard title="Active Companies" value={stats.active} icon={CheckCircle2} variant="success" />
+                <StatsCard
+                    title="Pending Approval"
+                    value={stats.pending}
+                    icon={Clock}
+                    variant={stats.pending > 0 ? "warning" : "default"}
+                />
+                <StatsCard title="Suspended" value={stats.suspended} icon={Ban} variant="critical" />
             </div>
 
             {/* Filters & Controls */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-subtle)] w-full md:w-auto overflow-x-auto">
-                    {statusTabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={cn(
-                                "px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-                                activeTab === tab.id
-                                    ? "bg-[var(--primary-blue)] text-white shadow-md"
-                                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-                            )}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                <PillTabs
+                    tabs={COMPANY_TABS}
+                    activeTab={activeTab}
+                    onTabChange={(key) => setActiveTab(key)}
+                />
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                        <Input
-                            placeholder="Search companies..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 rounded-xl"
-                        />
-                    </div>
+                    <SearchInput
+                        placeholder="Search companies..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        widthClass="flex-1 md:w-64"
+                    />
                     <div className="flex bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] p-1">
                         <button
                             onClick={() => setViewMode('table')}
@@ -350,7 +311,7 @@ export function CompaniesClient() {
                                 <div className="grid grid-cols-2 gap-4 mb-6">
                                     <div className="p-3 rounded-xl bg-[var(--bg-secondary)]">
                                         <p className="text-xs text-[var(--text-muted)]">Wallet</p>
-                                        <p className="font-bold text-[var(--text-primary)]">--</p>
+                                        <p className="font-bold text-[var(--text-primary)]">N/A</p>
                                     </div>
                                     <div className="p-3 rounded-xl bg-[var(--bg-secondary)]">
                                         <p className="text-xs text-[var(--text-muted)]">Joined</p>
@@ -430,7 +391,7 @@ export function CompaniesClient() {
                             {/* Quick Actions */}
                             <div className="flex flex-col gap-3">
                                 <div className="flex gap-3">
-                                    <Button className="flex-1 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
+                                    <Button variant="primary" className="flex-1">
                                         Login as Admin
                                     </Button>
                                     <Button
@@ -445,7 +406,7 @@ export function CompaniesClient() {
 
                                 {selectedCompany.status === 'pending_verification' || selectedCompany.status === 'kyc_submitted' ? (
                                     <Button
-                                        className="w-full bg-[var(--success)] hover:bg-[var(--success)]/90 text-white"
+                                        variant="primary"
                                         onClick={() => handleAction('approved')}
                                         disabled={isActionPending}
                                     >
@@ -636,7 +597,7 @@ function InviteOwnerModal({ company, isOpen, onClose }: { company: Company; isOp
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         rows={3}
-                        className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-[var(--radius-lg)] px-4 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-focus)] resize-none"
+                        className="w-full bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-[var(--radius-lg)] px-4 py-2 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue-soft)] focus:border-[var(--border-focus)] resize-none"
                     />
                 </div>
                 <div className="flex gap-3 pt-4">

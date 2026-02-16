@@ -3,7 +3,8 @@ export const dynamic = "force-dynamic";
 
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
-import { Input } from '@/src/components/ui/core/Input';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
@@ -35,13 +36,14 @@ export function ProfitClient() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">Profit Management</h1>
-                    <p className="text-sm text-[var(--text-secondary)]">Read-only analytics mode for this release.</p>
-                </div>
-                <DateRangePicker value={range} onRangeChange={setRange} />
-            </div>
+            <PageHeader
+                title="Profit Management"
+                description="Read-only analytics mode for this release."
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Profit', active: true }]}
+                actions={<DateRangePicker value={range} onRangeChange={setRange} />}
+            />
 
             <Card className="border-[var(--warning)]/30 bg-[var(--warning-bg)]/50">
                 <CardContent className="py-4 flex items-center gap-3 text-[var(--text-primary)]">
@@ -61,10 +63,11 @@ export function ProfitClient() {
                     <CardTitle>Seller Revenue Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Input
+                    <SearchInput
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder="Search seller..."
+                        widthClass="w-full max-w-sm"
                     />
                     {isLoading ? (
                         <p className="text-sm text-[var(--text-secondary)]">Loading...</p>

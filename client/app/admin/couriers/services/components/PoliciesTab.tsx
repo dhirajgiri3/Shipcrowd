@@ -3,9 +3,9 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { useSellerCourierPolicy, useUpdateSellerCourierPolicy, useUserList } from '@/src/core/api/hooks/admin';
-import { Save, Search, User, ShieldCheck } from 'lucide-react';
+import { Save, User, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Select } from '@/src/components/ui/form/Select';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
@@ -151,14 +151,12 @@ export function PoliciesTab() {
                         <CardDescription>Configure policies for a specific seller.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col gap-3 min-h-0 pb-4">
-                        <div className="relative shrink-0">
-                            {/* Improved Search Input styling */}
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                            <Input
-                                className="pl-9 bg-[var(--bg-tertiary)] border-[var(--border-subtle)] focus:bg-[var(--bg-primary)] transition-all"
+                        <div className="shrink-0">
+                            <SearchInput
                                 placeholder="Search seller..."
                                 value={sellerSearchInput}
                                 onChange={(e) => setSellerSearchInput(e.target.value)}
+                                widthClass="w-full"
                             />
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-premium">

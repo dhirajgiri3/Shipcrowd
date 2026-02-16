@@ -31,9 +31,11 @@ import { useSignup } from '@/src/core/api/hooks/auth/useSignup';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { getAuthErrorMessage } from '@/src/lib/error';
 import { Button } from '@/src/components/ui/core/Button';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
 import { Input } from '@/src/components/ui/core/Input';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { PasswordStrengthIndicator } from '@/src/components/ui/form/PasswordStrengthIndicator';
+import { OAUTH_CONFIG } from '@/src/config/oauth';
 
 export function SignupClient() {
   const router = useRouter();
@@ -117,7 +119,7 @@ export function SignupClient() {
           <div className="mb-6">
             <button
               type="button"
-              onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
+              onClick={() => window.location.href = OAUTH_CONFIG.google.authUrl}
               className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-[var(--radius-lg)] hover:bg-[var(--bg-hover)] transition-all group"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -249,12 +251,10 @@ export function SignupClient() {
 
             {/* Terms Checkbox */}
             <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="terms"
                 checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)] focus:ring-offset-0 bg-[var(--bg-elevated)]"
+                onCheckedChange={setTermsAccepted}
                 disabled={isLoading}
               />
               <label htmlFor="terms" className="text-sm text-[var(--text-secondary)] cursor-pointer">

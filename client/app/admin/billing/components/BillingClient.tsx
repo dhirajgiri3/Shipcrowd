@@ -3,13 +3,14 @@ export const dynamic = "force-dynamic";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import {
     Receipt,
-    Search,
     FileOutput,
     IndianRupee,
     Users,
@@ -120,28 +121,25 @@ export function BillingClient() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                        <Receipt className="h-6 w-6 text-[var(--primary-blue)]" />
-                        Billing & Recharges
-                    </h1>
-                    <p className="text-sm mt-1 text-[var(--text-secondary)]">
-                        Manage seller recharges and manual billing entries
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => addToast('Downloading report...', 'info')}>
-                        <FileOutput className="h-4 w-4 mr-2" />
-                        Export
-                    </Button>
-                    <Button onClick={() => setShowAddManual(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Manual Entry
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                title="Billing & Recharges"
+                description="Manage seller recharges and manual billing entries"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Billing', active: true }]}
+                actions={
+                    <>
+                        <Button variant="outline" onClick={() => addToast('Downloading report...', 'info')}>
+                            <FileOutput className="h-4 w-4 mr-2" />
+                            Export
+                        </Button>
+                        <Button variant="primary" onClick={() => setShowAddManual(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Manual Entry
+                        </Button>
+                    </>
+                }
+            />
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -294,11 +292,11 @@ export function BillingClient() {
             {/* Content Area */}
             <div className="flex flex-col sm:flex-row gap-4 mb-4">
                 <div className="flex-1">
-                    <Input
+                    <SearchInput
                         placeholder="Search by seller name or transaction ID..."
                         value={searchQuery}
                         onChange={(e) => handleSearchChange(e.target.value)}
-                        icon={<Search className="h-4 w-4" />}
+                        widthClass="w-full"
                     />
                 </div>
                 {activeTab === 'recharges' && (
@@ -323,12 +321,20 @@ export function BillingClient() {
 
             <Card>
                 <CardContent className="p-0">
-                    <DataTable
-                        columns={columns}
-                        data={transactions}
-                        isLoading={isLoading}
-                        searchKey="companyName" // Optional, since we have api search
-                    />
+                    {!isLoading && transactions.length === 0 ? (
+                        <EmptyState
+                            icon={Receipt}
+                            title="No transactions found"
+                            description="No billing transactions match your filters. Try adjusting your search or filters."
+                        />
+                    ) : (
+                        <DataTable
+                            columns={columns}
+                            data={transactions}
+                            isLoading={isLoading}
+                            searchKey="companyName"
+                        />
+                    )}
                 </CardContent>
             </Card>
         </div>

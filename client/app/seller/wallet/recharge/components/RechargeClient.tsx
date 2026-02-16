@@ -30,6 +30,7 @@ import { useProfile } from '@/src/core/api/hooks/settings/useProfile';
 import { useValidatePromoCode } from '@/src/core/api/hooks/marketing/usePromoCodes';
 
 const quickAmounts = [1000, 2000, 5000, 10000, 25000, 50000];
+const MIN_RECHARGE_AMOUNT = 100;
 
 const paymentMethods = [
     { id: 'upi', name: 'UPI', description: 'GPay, PhonePe, Paytm', icon: QrCode },
@@ -82,8 +83,8 @@ export function RechargeClient() {
     };
 
     const handleApplyPromo = async () => {
-        if (rechargeAmount < 100) {
-            addToast('Enter recharge amount first (minimum ₹100)', 'warning');
+        if (rechargeAmount < MIN_RECHARGE_AMOUNT) {
+            addToast(`Enter recharge amount first (minimum ${formatCurrency(MIN_RECHARGE_AMOUNT, 'INR')})`, 'warning');
             return;
         }
 
@@ -123,8 +124,8 @@ export function RechargeClient() {
     };
 
     const handleProceed = async () => {
-        if (!amount || rechargeAmount < 100) {
-            addToast('Minimum recharge amount is ₹100', 'warning');
+        if (!amount || rechargeAmount < MIN_RECHARGE_AMOUNT) {
+            addToast(`Minimum recharge amount is ${formatCurrency(MIN_RECHARGE_AMOUNT, 'INR')}`, 'warning');
             return;
         }
 
@@ -282,7 +283,7 @@ export function RechargeClient() {
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-xs text-[var(--text-muted)]">Minimum recharge: ₹100</p>
+                            <p className="text-xs text-[var(--text-muted)]">Minimum recharge: {formatCurrency(MIN_RECHARGE_AMOUNT, 'INR')}</p>
                         </CardContent>
                     </Card>
 
@@ -385,7 +386,7 @@ export function RechargeClient() {
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-secondary)]">You Pay</span>
-                                    <span className="font-medium">{amount ? formatCurrency(rechargeAmount) : '₹0'}</span>
+                                    <span className="font-medium">{amount ? formatCurrency(rechargeAmount, 'INR') : formatCurrency(0, 'INR')}</span>
                                 </div>
                                 {appliedPromo && (
                                     <div className="flex justify-between text-sm text-[var(--success)]">
@@ -395,14 +396,14 @@ export function RechargeClient() {
                                 )}
                                 <div className="flex justify-between text-sm font-medium">
                                     <span className="text-[var(--text-secondary)]">Total Wallet Credit</span>
-                                    <span>{formatCurrency(totalWalletCredit)}</span>
+                                    <span>{formatCurrency(totalWalletCredit, 'INR')}</span>
                                 </div>
                             </div>
 
                             <div className="border-t pt-4">
                                 <div className="flex justify-between text-lg font-bold">
                                     <span>Total Pay</span>
-                                    <span>{formatCurrency(rechargeAmount)}</span>
+                                    <span>{formatCurrency(rechargeAmount, 'INR')}</span>
                                 </div>
                             </div>
 
@@ -410,7 +411,7 @@ export function RechargeClient() {
                                 className="w-full h-12"
                                 onClick={handleProceed}
                                 isLoading={isRecharging}
-                                disabled={!amount || Number(amount) < 100 || isRecharging}
+                                disabled={!amount || Number(amount) < MIN_RECHARGE_AMOUNT || isRecharging}
                             >
                                 <Zap className="h-4 w-4 mr-2" />
                                 {isRecharging ? 'Processing...' : 'Proceed to Pay'}

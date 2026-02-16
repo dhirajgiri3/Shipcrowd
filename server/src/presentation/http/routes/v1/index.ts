@@ -112,6 +112,7 @@ import disputeMetricsRoutes from './admin/dispute-metrics.routes';
 import emailQueueRoutes from './admin/email-queue.routes';
 import featureFlagRoutes from './admin/feature-flag.routes';
 import impersonationRoutes from './admin/impersonation.routes';
+import platformSettingsRoutes from './admin/platform-settings.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
 import userManagementRoutes from './admin/user-management.routes';
 
@@ -238,6 +239,7 @@ router.use('/admin/seller-health', sellerHealthRoutes);
 router.use('/admin/users', userManagementRoutes);
 router.use('/admin/impersonation', impersonationRoutes);
 router.use('/admin/feature-flags', featureFlagRoutes);
+router.use('/admin/settings', platformSettingsRoutes);
 router.use('/admin/sku-weight-profiles', skuWeightProfileRoutes);
 router.use('/admin/disputes/weight', disputeMetricsRoutes);
 router.use('/admin/company-groups', companyGroupRoutes);

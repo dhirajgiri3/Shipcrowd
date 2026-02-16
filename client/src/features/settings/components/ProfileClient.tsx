@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Card, CardContent, CardHeader, CardTitle, CardDescription,
     Button,
@@ -18,15 +18,13 @@ import {
     Mail,
     Phone,
     MapPin,
-    Camera,
     Save,
     Shield,
     Globe,
-    Trash2
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useProfile, useUpdateProfile, useCompany, useUpdateCompany } from '@/src/core/api/hooks/settings/useProfile';
+import { RoleAvatar } from '@/src/components/shared/RoleAvatar';
 
 export function ProfileClient() {
     // API Hooks
@@ -59,8 +57,6 @@ export function ProfileClient() {
             pincode: '',
         }
     });
-    const [logoPreview, setLogoPreview] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const { addToast } = useToast();
 
     // Sync API data with form state
@@ -83,10 +79,6 @@ export function ProfileClient() {
                     pincode: companyData.address?.postalCode || '',
                 }
             });
-
-            if (profileData.avatar) {
-                setLogoPreview(profileData.avatar);
-            }
         }
     }, [profileData, companyData]);
 
@@ -101,44 +93,15 @@ export function ProfileClient() {
         }));
     };
 
-    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (!file.type.startsWith('image/')) {
-                addToast('Please upload an image file', 'warning');
-                return;
-            }
-            if (file.size > 2 * 1024 * 1024) {
-                addToast('Image size should be less than 2MB', 'warning');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setLogoPreview(e.target?.result as string);
-            };
-            reader.readAsDataURL(file);
-            addToast('Logo uploaded successfully!', 'success');
-        }
-    };
-
-    const handleRemoveLogo = () => {
-        setLogoPreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-        addToast('Logo removed', 'info');
-    };
-
     const handleSave = async () => {
         if (!profileData || !companyData) return;
 
         startLoading();
         try {
-            // Update profile (name, phone, avatar)
+            // Update profile (name, phone)
             await updateProfile.mutateAsync({
                 name: formData.displayName,
                 phone: formData.phone,
-                avatar: logoPreview || undefined,
             });
 
             // Update company details (name, address)
@@ -207,54 +170,18 @@ export function ProfileClient() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
-                {/* Logo & Branding */}
+                {/* Profile Identity */}
                 <Card className="lg:col-span-1">
                     <CardHeader>
-                        <CardTitle className="text-lg">Company Logo</CardTitle>
-                        <CardDescription>Upload your company logo for invoices and labels</CardDescription>
+                        <CardTitle className="text-lg">Profile Identity</CardTitle>
+                        <CardDescription>Default role-based avatar is applied automatically</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex flex-col items-center">
-                            <div
-                                onClick={() => fileInputRef.current?.click()}
-                                className={cn(
-                                    "w-32 h-32 rounded-2xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all overflow-hidden",
-                                    logoPreview
-                                        ? "border-transparent"
-                                        : "border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:bg-[var(--primary-blue)]/5"
-                                )}
-                            >
-                                {logoPreview ? (
-                                    <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="text-center">
-                                        <Camera className="h-8 w-8 text-[var(--text-muted)] mx-auto mb-2" />
-                                        <p className="text-xs text-[var(--text-muted)]">Click to upload</p>
-                                    </div>
-                                )}
-                            </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleLogoUpload}
-                            />
-                            <p className="text-xs text-[var(--text-muted)] mt-3 text-center">
-                                PNG, JPG up to 2MB<br />
-                                Recommended: 200x200px
+                        <div className="flex flex-col items-center gap-3">
+                            <RoleAvatar role="seller" name={formData.displayName || formData.name || 'Seller'} size="lg" />
+                            <p className="text-xs text-[var(--text-muted)] text-center">
+                                Avatar uploads are disabled for now.
                             </p>
-                            {logoPreview && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="mt-2 text-[var(--error)]"
-                                    onClick={handleRemoveLogo}
-                                >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Remove
-                                </Button>
-                            )}
                         </div>
 
                         <div className="border-t pt-4 space-y-3">

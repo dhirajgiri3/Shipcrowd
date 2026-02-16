@@ -3,6 +3,7 @@ import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import featureFlagController from '../../../controllers/admin/feature-flag.controller';
 import { requireAccess } from '../../../middleware';
 import { authenticate } from '../../../middleware/auth/auth';
+import { csrfProtection } from '../../../middleware/auth/csrf';
 
 const router = express.Router();
 
@@ -41,6 +42,7 @@ router.get(
 router.post(
     '/',
     authenticate,
+    csrfProtection,
     requireAccess({ roles: ['super_admin'] }),
     asyncHandler(featureFlagController.createFlag)
 );
@@ -53,6 +55,7 @@ router.post(
 router.patch(
     '/:key',
     authenticate,
+    csrfProtection,
     requireAccess({ roles: ['super_admin'] }),
     asyncHandler(featureFlagController.updateFlag)
 );
@@ -65,6 +68,7 @@ router.patch(
 router.post(
     '/:key/toggle',
     authenticate,
+    csrfProtection,
     requireAccess({ roles: ['super_admin'] }),
     asyncHandler(featureFlagController.toggleFlag)
 );
@@ -77,6 +81,7 @@ router.post(
 router.delete(
     '/:key',
     authenticate,
+    csrfProtection,
     requireAccess({ roles: ['super_admin'] }),
     asyncHandler(featureFlagController.deleteFlag)
 );
@@ -89,6 +94,7 @@ router.delete(
 router.post(
     '/evaluate',
     authenticate,
+    csrfProtection,
     requireAccess({ roles: ['super_admin', 'admin'] }),
     asyncHandler(featureFlagController.evaluateFlag)
 );
@@ -101,6 +107,7 @@ router.post(
 router.post(
     '/clear-cache',
     authenticate,
+    csrfProtection,
     requireAccess({ roles: ['super_admin'] }),
     asyncHandler(featureFlagController.clearCache)
 );

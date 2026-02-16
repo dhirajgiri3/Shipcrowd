@@ -7,6 +7,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 import { createCourierServiceSchema, updateCourierServiceSchema } from '../../../../shared/validation/schemas';
 
 const parseServiceTypeFromProvider = (provider: string): Array<'surface' | 'express' | 'air' | 'standard'> => {
@@ -17,17 +18,33 @@ const parseServiceTypeFromProvider = (provider: string): Array<'surface' | 'expr
 
 export const listCourierServices = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
+        const isAdmin = isPlatformAdmin(req.user ?? {});
+        const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId : undefined;
+
+        if (!isAdmin) {
+            requireCompanyContext(auth);
+        } else if (requestedCompanyId && !mongoose.isValidObjectId(requestedCompanyId)) {
+            throw new ValidationError('Validation failed', [
+                { field: 'companyId', message: 'Invalid companyId' },
+            ]);
+        }
 
         const page = Math.max(1, Number(req.query.page || 1));
         const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
         const skip = (page - 1) * limit;
 
         const query: any = {
-            companyId: auth.companyId,
             isDeleted: false,
         };
+
+        if (isAdmin) {
+            if (requestedCompanyId) {
+                query.companyId = requestedCompanyId;
+            }
+        } else {
+            query.companyId = auth.companyId;
+        }
 
         if (req.query.provider) query.provider = req.query.provider;
         if (req.query.status) query.status = req.query.status;

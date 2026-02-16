@@ -30,6 +30,7 @@ export interface ApiError {
  */
 const getBaseURL = (): string => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const isDevelopment = process.env.NODE_ENV === 'development';
 
     // ✅ Require API URL in production
     if (process.env.NODE_ENV === 'production' && !apiUrl) {
@@ -95,7 +96,13 @@ const getBaseURL = (): string => {
         }
     }
 
-    return apiUrl || 'http://localhost:5005/api/v1';
+    // In development always use Next.js same-origin proxy.
+    // This avoids CORS/cookie issues when switching between localhost and tunnel URLs.
+    if (isDevelopment) {
+        return '/api/v1';
+    }
+
+    return apiUrl || '/api/v1';
 };
 
 const createApiClient = (): AxiosInstance => {
@@ -186,13 +193,23 @@ const createApiClient = (): AxiosInstance => {
                 if (process.env.NODE_ENV === 'development' && sessionState !== 'valid') {
                     console.warn(`[API] Session state (client-visible cookies): ${sessionState}. Attempting refresh anyway.`);
                 }
-                // ✅ Fix #7: Check for terminal error codes that shouldn't trigger refresh
+                // Check terminal/non-refreshable codes from both response shapes:
+                // { code } and { error: { code } }.
                 const responseData = error.response?.data as any;
-                const terminalCodes = ['SESSION_EXPIRED', 'SESSION_TIMEOUT', 'REFRESH_TOKEN_REQUIRED'];
+                const errorCode = responseData?.code || responseData?.error?.code;
+                const terminalCodes = [
+                    'SESSION_EXPIRED',
+                    'SESSION_TIMEOUT',
+                    'REFRESH_TOKEN_REQUIRED',
+                    'AUTH_REQUIRED',
+                    'AUTHENTICATION_REQUIRED',
+                    'AUTH_TOKEN_INVALID',
+                    'AUTH_TOKEN_EXPIRED',
+                ];
 
-                if (terminalCodes.includes(responseData?.code)) {
+                if (terminalCodes.includes(errorCode)) {
                     if (process.env.NODE_ENV === 'development') {
-                        console.warn(`[API] Terminal error code: ${responseData.code}, skipping refresh`);
+                        console.warn(`[API] Terminal error code: ${errorCode}, skipping refresh`);
                     }
 
                     if (typeof window !== 'undefined') {
@@ -274,16 +291,14 @@ const createApiClient = (): AxiosInstance => {
                 const responseData = error.response.data as any;
                 let userMessage = 'You do not have permission to perform this action.';
 
-                // ✅ NEW: Handle CSRF token invalid/expired
-                if (responseData?.code === 'CSRF_TOKEN_INVALID' || responseData?.code === 'CSRF_ORIGIN_INVALID') {
-                    // Clear cached token and fetch new one
+                // ✅ Handle CSRF token invalid/expired (retry once with a fresh token)
+                if (responseData?.code === 'CSRF_TOKEN_INVALID') {
                     csrfManager.clearToken();
 
                     if (process.env.NODE_ENV === 'development') {
                         console.warn('[CSRF] Token consumed or invalid, fetching new one');
                     }
 
-                    // Retry with new token
                     if (!originalRequest._retry) {
                         originalRequest._retry = true;
                         try {
@@ -299,6 +314,10 @@ const createApiClient = (): AxiosInstance => {
                     }
 
                     userMessage = 'Security token expired. Please try again.';
+                }
+                // ✅ Handle CSRF origin mismatch (token refresh cannot fix this)
+                else if (responseData?.code === 'CSRF_ORIGIN_INVALID') {
+                    userMessage = 'Request origin is not allowed. Please try again after reconnecting.';
                 }
                 // Check for specific 403 reasons in response
                 else if (responseData?.code === 'KYC_REQUIRED' || responseData?.message?.toLowerCase().includes('kyc')) {

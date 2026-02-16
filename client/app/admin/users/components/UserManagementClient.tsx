@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users,
-    Search,
     UserCheck,
     UserX,
     Shield,
@@ -15,6 +14,9 @@ import {
     LogIn
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { cn, formatDate } from '@/src/lib/utils';
@@ -129,61 +131,53 @@ export function UserManagementClient() {
                 animate="visible"
                 className="max-w-[1600px] mx-auto space-y-6"
             >
-                {/* Header Section */}
-                <motion.div variants={itemVariants} className="flex flex-col gap-1 pb-6">
-                    <h1 className="text-2xl font-semibold text-[var(--text-primary)] tracking-tight">
-                        User Management
-                    </h1>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                        Overview of platform users, role distribution, and permissions.
-                    </p>
-                </motion.div>
+                <PageHeader
+                    title="User Management"
+                    description="Overview of platform users, role distribution, and permissions."
+                    breadcrumbs={[
+                        { label: 'Admin', href: '/admin' },
+                        { label: 'Users', active: true },
+                    ]}
+                />
 
-                {/* Stats Grid - Enhanced Visuals */}
                 <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatsCard
                         title="Total Users"
                         value={data?.stats?.totalUsers || 0}
                         icon={Users}
-                        trend="+12%" // Example trend
-                        trendUp
+                        variant="default"
+                        trend={{ value: 12, label: 'this week', positive: true }}
                     />
                     <StatsCard
                         title="Super Admins"
                         value={data?.stats?.superAdmins || 0}
                         icon={ShieldAlert}
-                        accentColor="purple"
+                        variant="info"
                     />
                     <StatsCard
                         title="Admins"
                         value={data?.stats?.admins || 0}
                         icon={Shield}
-                        accentColor="blue"
+                        variant="info"
                     />
                     <StatsCard
                         title="Sellers"
                         value={data?.stats?.sellers || 0}
                         icon={Building2}
-                        accentColor="green"
+                        variant="success"
                     />
-
                 </motion.div>
 
                 {/* Controls & Table Container */}
                 <motion.div variants={itemVariants} className="space-y-4">
                     {/* Toolbar */}
                     <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--bg-primary)] p-1 rounded-xl">
-                        {/* Search */}
-                        <div className="relative w-full sm:w-80 group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)] group-focus-within:text-[var(--primary-blue)] transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="Search by name, email..."
-                                value={filters.search}
-                                onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })}
-                                className="w-full pl-10 pr-4 py-2 bg-[var(--bg-tertiary)] border-none rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:ring-2 focus:ring-[var(--primary-blue)]/20 transition-all"
-                            />
-                        </div>
+                        <SearchInput
+                            value={filters.search}
+                            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}
+                            placeholder="Search by name, email..."
+                            widthClass="w-full sm:w-80"
+                        />
 
                         <div className="flex bg-[var(--bg-tertiary)] p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
                             {['all', 'super_admin', 'admin', 'seller', 'staff'].map((role) => (
@@ -364,44 +358,6 @@ export function UserManagementClient() {
                     }
                 }}
             />
-        </div>
-    );
-}
-
-// --- Components ---
-
-function StatsCard({ title, value, icon: Icon, accentColor, trend, trendUp }: any) {
-    const colorStyles = {
-        purple: "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]",
-        blue: "bg-[var(--info-bg)] text-[var(--info)]",
-        green: "bg-[var(--success-bg)] text-[var(--success)]",
-        orange: "bg-[var(--warning-bg)] text-[var(--warning)]",
-        default: "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
-    };
-
-    const activeStyle = colorStyles[accentColor as keyof typeof colorStyles] || colorStyles.default;
-
-    return (
-        <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start mb-2">
-                <div className={cn("p-2 rounded-lg", activeStyle)}>
-                    <Icon className="w-5 h-5" />
-                </div>
-                {trend && (
-                    <span className={cn(
-                        "text-xs font-medium px-1.5 py-0.5 rounded",
-                        trendUp ? "text-[var(--success)] bg-[var(--success-bg)]" : "text-[var(--error)] bg-[var(--error-bg)]"
-                    )}>
-                        {trend}
-                    </span>
-                )}
-            </div>
-            <div>
-                <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-                    {value?.toLocaleString() || 0}
-                </p>
-                <p className="text-xs font-medium text-[var(--text-secondary)] mt-0.5">{title}</p>
-            </div>
         </div>
     );
 }

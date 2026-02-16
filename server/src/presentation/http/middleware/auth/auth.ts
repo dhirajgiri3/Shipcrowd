@@ -5,6 +5,7 @@ import Company from '../../../../infrastructure/database/mongoose/models/organiz
 import { getAccessTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
 import { verifyAccessToken } from '../../../../shared/helpers/jwt';
 import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { csrfProtection as strictCsrfProtection } from './csrf';
 
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -210,61 +211,9 @@ export const loginRateLimiter = rateLimit({
   message: { message: 'Too many login attempts, please try again later' },
 });
 
-/**
- * ⚠️ DEPRECATED: Use csrfProtection from /middleware/auth/csrf.ts instead
- * This function is kept only for backwards compatibility
- *
- * CSRF protection middleware (legacy - origin/referer check only)
- */
-export const csrfProtection = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  // Skip for test environment
-  if (process.env.NODE_ENV === 'test') {
-    next();
-    return;
-  }
-
-  // Skip for GET, HEAD, OPTIONS requests
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    next();
-    return;
-  }
-
-  const csrfToken = req.headers['x-csrf-token'];
-  const origin = req.headers.origin || '';
-  const referer = req.headers.referer || '';
-
-  // ✅ REMOVED: Development Postman bypass (security fix)
-  // Development bypasses are NOT allowed - use proper CSRF tokens everywhere
-
-  // Check if request is coming from our frontend
-  const allowedOrigins = [
-    process.env.CLIENT_URL || 'http://localhost:3000',
-    // Add other allowed origins here
-  ];
-
-  const isValidOrigin = allowedOrigins.some(
-    (allowed) => origin === allowed || referer.startsWith(allowed)
-  );
-
-  if (!isValidOrigin || !csrfToken) {
-    const userAgent = req.headers['user-agent'];
-    logger.warn('CSRF protection triggered', {
-      origin,
-      referer,
-      csrfToken: !!csrfToken,
-      userAgent,
-      ip: req.ip,
-    });
-    res.status(403).json({ message: 'CSRF protection: Invalid request origin' });
-    return;
-  }
-
-  next();
-};
+// Keep export name for backward compatibility with existing route imports,
+// but delegate to the centralized Redis-backed middleware.
+export const csrfProtection = strictCsrfProtection;
 
 export default {
   authenticate,

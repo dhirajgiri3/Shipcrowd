@@ -30,6 +30,9 @@ interface PayoutSchedule {
     isEnabled: boolean;
 }
 
+const MIN_PAYOUT_THRESHOLD = 100;
+const QUICK_PAYOUT_THRESHOLDS = [500, 1000, 5000, 10000] as const;
+
 const DAYS_OF_WEEK = [
     { value: 0, label: 'Sunday' },
     { value: 1, label: 'Monday' },
@@ -293,12 +296,12 @@ export default function CODSettingsPage() {
                                     value={schedule.minimumAmount}
                                     onChange={(e) => setSchedule(s => ({ ...s, minimumAmount: parseInt(e.target.value) || 0 }))}
                                     className="w-full pl-8 pr-4 py-3 border border-[var(--border-default)] rounded-lg focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent bg-[var(--bg-secondary)] text-[var(--text-primary)]"
-                                    min="100"
+                                    min={String(MIN_PAYOUT_THRESHOLD)}
                                     step="100"
                                 />
                             </div>
                             <div className="mt-4 flex gap-2">
-                                {[500, 1000, 5000, 10000].map((amount) => (
+                                {QUICK_PAYOUT_THRESHOLDS.map((amount) => (
                                     <button
                                         key={amount}
                                         onClick={() => setSchedule(s => ({ ...s, minimumAmount: amount }))}
@@ -307,7 +310,7 @@ export default function CODSettingsPage() {
                                             : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
                                             }`}
                                     >
-                                        {formatCurrency(amount)}
+                                        {formatCurrency(amount, 'INR')}
                                     </button>
                                 ))}
                             </div>

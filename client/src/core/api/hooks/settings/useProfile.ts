@@ -88,7 +88,11 @@ export const useCompany = (companyId: string, options?: UseQueryOptions<Company,
         queryKey: queryKeys.settings.company(companyId),
         queryFn: async () => {
             const response = await apiClient.get(`/companies/${companyId}`);
-            return response.data.company;
+            const company = response.data?.data?.company;
+            if (!company) {
+                throw new Error('Company not found');
+            }
+            return company;
         },
         enabled: !!companyId,
         staleTime: 60000,
@@ -105,10 +109,14 @@ export const useUpdateCompany = (options?: UseMutationOptions<Company, ApiError,
     return useMutation<Company, ApiError, { companyId: string; data: UpdateCompanyPayload }>({
         mutationFn: async ({ companyId, data }) => {
             const response = await apiClient.patch(`/companies/${companyId}`, data);
-            return response.data.company;
+            const company = response.data?.data?.company;
+            if (!company) {
+                throw new Error('Company update failed');
+            }
+            return company;
         },
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['company', variables.companyId] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings.company(variables.companyId) });
             showSuccessToast('Company details updated successfully');
         },
         onError: (error) => {

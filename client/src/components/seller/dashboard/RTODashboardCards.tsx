@@ -10,6 +10,7 @@ import {
     ArrowRight,
 } from 'lucide-react';
 import { useRTOAnalytics } from '@/src/core/api/hooks/rto/useRTOAnalytics';
+import { formatCurrency } from '@/src/lib/utils';
 
 const cardVariants = {
     hidden: { opacity: 0, y: 12 },
@@ -88,7 +89,7 @@ export function RTODashboardCards({
         {
             key: 'charges',
             label: `${periodLabel} Cost`,
-            value: `₹${totalCharges.toLocaleString('en-IN')}`,
+            value: formatCurrency(totalCharges, 'INR'),
             subtext: 'RTO charges (period)',
             icon: IndianRupee,
             color: 'slate',

@@ -144,28 +144,59 @@ async function proxyRequest(request: NextRequest, path: string[]) {
       redirect: 'manual', // Don't auto-follow redirects, let client handle
     });
 
-    // Get response body (handle empty responses)
+    const status = backendResponse.status;
+    const noBodyStatus = status === 204 || status === 205 || status === 304;
+    const noBodyMethod = request.method === 'HEAD';
+
+    // Get response body only when HTTP semantics allow it
     let data: string | null = null;
-    try {
-      data = await backendResponse.text();
-    } catch (e) {
-      // Empty body, that's ok
-      data = '';
+    if (!noBodyStatus && !noBodyMethod) {
+      try {
+        data = await backendResponse.text();
+      } catch {
+        data = '';
+      }
     }
 
-    // Create response with same status and headers
-    const response = new NextResponse(data, {
-      status: backendResponse.status,
-      statusText: backendResponse.statusText,
-    });
+    // Create response with same status and headers.
+    // 204/205/304 and HEAD responses cannot include a body.
+    const response = noBodyStatus || noBodyMethod
+      ? new NextResponse(null, {
+          status,
+          statusText: backendResponse.statusText,
+        })
+      : new NextResponse(data, {
+          status,
+          statusText: backendResponse.statusText,
+        });
 
-    // Copy all response headers (except hop-by-hop)
+    // Copy all response headers (except hop-by-hop).
+    // `Set-Cookie` must be handled separately because multiple cookies
+    // are sent as distinct headers and must not be collapsed/overwritten.
     backendResponse.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
-      if (!HOP_BY_HOP_HEADERS.includes(lowerKey) && lowerKey !== 'content-encoding') {
+      if (
+        !HOP_BY_HOP_HEADERS.includes(lowerKey) &&
+        lowerKey !== 'content-encoding' &&
+        lowerKey !== 'set-cookie'
+      ) {
         response.headers.set(key, value);
       }
     });
+
+    // Forward all Set-Cookie headers individually (access + refresh, etc.)
+    const hasGetSetCookie = typeof (backendResponse.headers as any).getSetCookie === 'function';
+    const setCookies = hasGetSetCookie ? (backendResponse.headers as any).getSetCookie() : [];
+    if (setCookies.length > 0) {
+      for (const cookie of setCookies) {
+        response.headers.append('set-cookie', cookie);
+      }
+    } else {
+      const fallbackSetCookie = backendResponse.headers.get('set-cookie');
+      if (fallbackSetCookie) {
+        response.headers.append('set-cookie', fallbackSetCookie);
+      }
+    }
 
     return response;
   } catch (error) {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAdminWarehouse } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
 import { useDeleteWarehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
 import { Button } from '@/src/components/ui/core/Button';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { ArrowLeft, Edit2, Trash2, MapPin, Phone, Mail, Package, Building2, Truck, Box, AlertTriangle, Clock } from 'lucide-react';
@@ -90,39 +91,35 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="-ml-2">
-                        <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)]" />
-                    </Button>
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-[var(--text-primary)]">{warehouse.name}</h1>
-                            <StatusBadge
-                                // @ts-ignore
-                                domain="warehouse"
-                                status={warehouse.isActive ? 'active' : 'inactive'}
-                                size="sm"
-                            />
-                            {warehouse.isDefault && (
-                                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">Default</Badge>
-                            )}
-                        </div>
-                        <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-2">
-                            <span className="font-mono text-xs bg-[var(--bg-secondary)] px-1.5 py-0.5 rounded text-[var(--text-tertiary)]">ID: {warehouse._id}</span>
-                            <span>•</span>
-                            <span>{partner} Warehouse</span>
-                        </p>
+            <PageHeader
+                title={
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <span>{warehouse.name}</span>
+                        <StatusBadge
+                            domain="warehouse"
+                            status={warehouse.isActive ? 'active' : 'inactive'}
+                            size="sm"
+                        />
+                        {warehouse.isDefault && (
+                            <Badge variant="secondary" className="bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20">Default</Badge>
+                        )}
                     </div>
-                </div>
-                <div className="flex gap-2">
+                }
+                description={`${partner} Warehouse • ID: ${warehouse._id}`}
+                showBack={true}
+                backUrl="/admin/warehouses"
+                breadcrumbs={[
+                    { label: 'Admin', href: '/admin' },
+                    { label: 'Warehouses', href: '/admin/warehouses' },
+                    { label: warehouse.name, active: true }
+                ]}
+                actions={
                     <Button variant="outline" className="gap-2" onClick={() => router.push(`/admin/warehouses/${warehouseId}/edit`)}>
                         <Edit2 className="w-4 h-4" />
                         <span>Edit Warehouse</span>
                     </Button>
-                </div>
-            </div>
+                }
+            />
 
             {/* Content Tabs */}
             <Tabs defaultValue="overview" className="w-full">
@@ -138,7 +135,7 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Card>
                                 <CardContent className="p-6 flex items-center gap-4">
-                                    <div className="p-3 rounded-full bg-blue-50 text-blue-600">
+                                    <div className="p-3 rounded-full bg-[var(--info-bg)] text-[var(--info)]">
                                         <Package className="w-6 h-6" />
                                     </div>
                                     <div>
@@ -314,7 +311,7 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
                                             <p className="text-sm text-[var(--text-secondary)]">Set this as the default warehouse for your company.</p>
                                         </div>
                                         {warehouse.isDefault ? (
-                                            <Badge variant="secondary" className="bg-blue-50 text-blue-700">Default</Badge>
+                                            <Badge variant="secondary" className="bg-[var(--info-bg)] text-[var(--info)]">Default</Badge>
                                         ) : (
                                             <Button variant="outline" size="sm" disabled>Set as Default</Button>
                                         )}
@@ -322,29 +319,29 @@ export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProp
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-red-200 bg-red-50/10">
+                            <Card className="border-[var(--error)]/30 bg-[var(--error-bg)]/30">
                                 <CardHeader>
-                                    <CardTitle className="text-lg text-red-600 flex items-center gap-2">
+                                    <CardTitle className="text-lg text-[var(--error)] flex items-center gap-2">
                                         <AlertTriangle className="w-5 h-5" />
                                         Danger Zone
                                     </CardTitle>
                                     <CardDescription>Destructive actions that cannot be undone.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-white">
+                                    <div className="flex items-center justify-between p-4 border border-[var(--error)]/20 rounded-lg bg-[var(--bg-primary)]">
                                         <div>
-                                            <h4 className="font-medium text-red-900">Delete Warehouse</h4>
-                                            <p className="text-sm text-red-700">Permanently remove this warehouse and all its specific data.</p>
+                                            <h4 className="font-medium text-[var(--text-primary)]">Delete Warehouse</h4>
+                                            <p className="text-sm text-[var(--text-secondary)]">Permanently remove this warehouse and all its specific data.</p>
                                         </div>
                                         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                                             <DialogTrigger asChild>
-                                                <Button variant="danger" className="bg-red-600 hover:bg-red-700 text-white border-none shadow-none">
+                                                <Button variant="danger">
                                                     Delete Warehouse
                                                 </Button>
                                             </DialogTrigger>
                                             <DialogContent>
                                                 <DialogHeader>
-                                                    <DialogTitle className="flex items-center gap-2 text-red-600">
+                                                    <DialogTitle className="flex items-center gap-2 text-[var(--error)]">
                                                         <AlertTriangle className="w-5 h-5" />
                                                         Delete Warehouse
                                                     </DialogTitle>

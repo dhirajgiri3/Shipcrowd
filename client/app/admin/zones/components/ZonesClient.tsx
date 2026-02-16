@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Button } from '@/src/components/ui/core/Button';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { useZones, useDeleteZone } from '@/src/core/api/hooks/logistics/useZones';
 import type { ZoneType } from '@/src/types/api/logistics';
 import { ZoneStatsCards, ZoneFilters, ZoneListTable, ZonesSkeleton } from '@/src/features/admin/zones';
@@ -33,21 +34,21 @@ export function ZonesClient() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Zone Management</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Configure pricing zones and pincode mappings
-                    </p>
-                </div>
-                <Link href="/admin/zones/create">
-                    <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Zone
-                    </Button>
-                </Link>
-            </div>
+            <PageHeader
+                title="Zone Management"
+                description="Configure pricing zones and pincode mappings"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Zones', active: true }]}
+                actions={
+                    <Link href="/admin/zones/create">
+                        <Button variant="primary">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Zone
+                        </Button>
+                    </Link>
+                }
+            />
 
             <Suspense fallback={<ZonesSkeleton />}>
                 {/* Stats Cards */}

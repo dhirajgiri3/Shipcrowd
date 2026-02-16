@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
     CheckCircle2,
     XCircle,
-    Search,
-    Filter,
     MoreVertical,
     FileText,
     FileOutput,
@@ -20,6 +18,8 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
@@ -82,33 +82,31 @@ export function CommissionListClient() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Commission Management</h1>
-                    <p className="text-sm text-[var(--text-secondary)] mt-1">Review and approve sales commissions</p>
-                </div>
-                <div className="flex items-center gap-3">
+            <PageHeader
+                title="Commission Management"
+                description="Review and approve sales commissions"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Commission', active: true }]}
+                actions={
                     <Button variant="outline" className="gap-2">
                         <FileOutput className="h-4 w-4" />
                         Export
                     </Button>
-                </div>
-            </div>
+                }
+            />
 
             <Card className="border-[var(--border-default)]">
                 <CardHeader className="pb-4 border-b border-[var(--border-subtle)]">
                     <div className="flex flex-col md:flex-row gap-4 justify-between">
                         {/* Filters */}
                         <div className="flex items-center gap-2 flex-1">
-                            <div className="relative flex-1 max-w-sm">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                                <Input
-                                    placeholder="Search sales rep..."
-                                    className="pl-9 bg-[var(--bg-primary)]"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
+                            <SearchInput
+                                placeholder="Search sales rep..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                widthClass="flex-1 max-w-sm"
+                            />
                             <select
                                 className="h-10 rounded-md border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 text-sm"
                                 value={statusFilter}
@@ -151,7 +149,7 @@ export function CommissionListClient() {
                             </Button>
                             <Button
                                 size="sm"
-                                className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
+                                variant="primary"
                                 onClick={() => setShowApproveDialog(true)}
                                 disabled={isApproving}
                             >

@@ -18,6 +18,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useWeightDispute, useResolveDispute } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { Button } from '@/src/components/ui/core/Button';
 import { DisputeTimeline } from '@/src/features/disputes';
 import type { ResolutionOutcome } from '@/src/types/api/returns';
 
@@ -47,7 +49,7 @@ const RESOLUTION_OUTCOMES = [
         value: 'waived' as ResolutionOutcome,
         label: 'Waived',
         description: 'No financial adjustment, dispute closed',
-        color: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600',
+        color: 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-subtle)]',
         icon: '○'
     },
 ];
@@ -82,13 +84,13 @@ export default function AdminDisputeReviewPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+            <div className="min-h-screen bg-[var(--bg-secondary)] p-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="animate-pulse space-y-6">
-                        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                        <div className="h-10 bg-[var(--bg-tertiary)] rounded w-1/3"></div>
                         <div className="grid grid-cols-2 gap-6">
-                            <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                            <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                            <div className="h-96 bg-[var(--bg-tertiary)] rounded"></div>
+                            <div className="h-96 bg-[var(--bg-tertiary)] rounded"></div>
                         </div>
                     </div>
                 </div>
@@ -98,11 +100,11 @@ export default function AdminDisputeReviewPage() {
 
     if (isError || !dispute) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+            <div className="min-h-screen bg-[var(--bg-secondary)] p-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <p className="text-red-600 dark:text-red-400">Failed to load dispute</p>
-                        <button onClick={() => router.back()} className="mt-4 text-primary-600">← Back</button>
+                    <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6">
+                        <p className="text-[var(--error)]">Failed to load dispute</p>
+                        <Button variant="outline" onClick={() => router.back()} className="mt-4">← Back</Button>
                     </div>
                 </div>
             </div>
@@ -133,83 +135,78 @@ export default function AdminDisputeReviewPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="min-h-screen bg-[var(--bg-secondary)] p-6">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-6">
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back to Disputes
-                    </button>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {dispute.disputeId}
-                                </h1>
-                                <StatusBadge domain="dispute" status={dispute.status} className="text-base" />
-                            </div>
-                            <p className="text-gray-600 dark:text-gray-400 mt-1 font-mono">
-                                AWB: {shipment?.trackingNumber || 'N/A'} | Detected: {formatDate(dispute.detectedAt)}
-                            </p>
-                        </div>
-                        {!isResolved && (
+                <PageHeader
+                    title={dispute.disputeId}
+                    breadcrumbs={[
+                        { label: 'Admin', href: '/admin' },
+                        { label: 'Disputes', href: '/admin/disputes/weight' },
+                        { label: dispute.disputeId, active: true },
+                    ]}
+                    backUrl="/admin/disputes/weight"
+                    description={`AWB: ${shipment?.trackingNumber || 'N/A'} | Detected: ${formatDate(dispute.detectedAt)}`}
+                    actions={
+                        !isResolved && (
                             <div className="flex gap-2">
-                                <button
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => {
                                         setSelectedOutcome('seller_favor');
                                         setReasonCode('SELLER_PROVIDED_VALID_PROOF');
                                         setRefundAmount(dispute.financialImpact.difference.toString());
                                     }}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                                    className="border-[var(--success)]/50 text-[var(--success)] hover:bg-[var(--success-bg)]"
                                 >
                                     Quick: Seller Favor
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => {
                                         setSelectedOutcome('Shipcrowd_favor');
                                         setReasonCode('INSUFFICIENT_EVIDENCE');
                                         setDeductionAmount(dispute.financialImpact.difference.toString());
                                     }}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                                    className="border-[var(--error)]/50 text-[var(--error)] hover:bg-[var(--error-bg)]"
                                 >
                                     Quick: Shipcrowd Favor
-                                </button>
+                                </Button>
                             </div>
-                        )}
-                    </div>
+                        )
+                    }
+                />
+
+                <div className="flex items-center gap-3 mb-6">
+                    <StatusBadge domain="dispute" status={dispute.status} className="text-base" />
                 </div>
 
                 {/* Quick Stats Bar */}
                 <div className="grid grid-cols-5 gap-4 mb-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Declared</p>
-                        <p className="text-xl font-bold text-gray-900 dark:text-white">{dispute.declaredWeight.value} {dispute.declaredWeight.unit}</p>
+                    <div className="bg-[var(--bg-primary)] rounded-lg shadow p-4 text-center">
+                        <p className="text-sm text-[var(--text-muted)]">Declared</p>
+                        <p className="text-xl font-bold text-[var(--text-primary)]">{dispute.declaredWeight.value} {dispute.declaredWeight.unit}</p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Actual</p>
-                        <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{dispute.actualWeight.value} {dispute.actualWeight.unit}</p>
+                    <div className="bg-[var(--bg-primary)] rounded-lg shadow p-4 text-center">
+                        <p className="text-sm text-[var(--text-muted)]">Actual</p>
+                        <p className="text-xl font-bold text-[var(--warning)]">{dispute.actualWeight.value} {dispute.actualWeight.unit}</p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Discrepancy</p>
-                        <p className={`text-xl font-bold ${dispute.discrepancy.thresholdExceeded ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                    <div className="bg-[var(--bg-primary)] rounded-lg shadow p-4 text-center">
+                        <p className="text-sm text-[var(--text-muted)]">Discrepancy</p>
+                        <p className={`text-xl font-bold ${dispute.discrepancy.thresholdExceeded ? 'text-[var(--error)]' : 'text-[var(--warning)]'}`}>
                             {dispute.discrepancy.percentage.toFixed(1)}%
                         </p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Impact</p>
-                        <p className={`text-xl font-bold ${dispute.financialImpact.chargeDirection === 'debit' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                    <div className="bg-[var(--bg-primary)] rounded-lg shadow p-4 text-center">
+                        <p className="text-sm text-[var(--text-muted)]">Impact</p>
+                        <p className={`text-xl font-bold ${dispute.financialImpact.chargeDirection === 'debit' ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}>
                             {formatCurrency(dispute.financialImpact.difference)}
                         </p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Carrier</p>
-                        <p className="text-xl font-bold text-gray-900 dark:text-white">{shipment?.carrier || 'N/A'}</p>
+                    <div className="bg-[var(--bg-primary)] rounded-lg shadow p-4 text-center">
+                        <p className="text-sm text-[var(--text-muted)]">Carrier</p>
+                        <p className="text-xl font-bold text-[var(--text-primary)]">{shipment?.carrier || 'N/A'}</p>
                     </div>
                 </div>
 
@@ -217,10 +214,10 @@ export default function AdminDisputeReviewPage() {
                     {/* Left: Evidence Comparison */}
                     <div className="space-y-6">
                         {/* Carrier Evidence */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-                            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Carrier Evidence</h2>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                        <div className="bg-[var(--bg-primary)] rounded-lg shadow">
+                            <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Carrier Evidence</h2>
+                                <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)] px-2 py-1 rounded">
                                     {dispute.detectedBy}
                                 </span>
                             </div>
@@ -232,32 +229,32 @@ export default function AdminDisputeReviewPage() {
                                         className="w-full rounded-lg mb-4"
                                     />
                                 ) : (
-                                    <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-8 text-center mb-4">
-                                        <svg className="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="bg-[var(--bg-secondary)] rounded-lg p-8 text-center mb-4">
+                                        <svg className="w-12 h-12 text-[var(--text-muted)] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">No scan photo available</p>
+                                        <p className="text-sm text-[var(--text-muted)] mt-2">No scan photo available</p>
                                     </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <p className="text-gray-500 dark:text-gray-400">Location</p>
-                                        <p className="font-medium text-gray-900 dark:text-white">{dispute.carrierEvidence?.scanLocation || 'N/A'}</p>
+                                        <p className="text-[var(--text-muted)]">Location</p>
+                                        <p className="font-medium text-[var(--text-primary)]">{dispute.carrierEvidence?.scanLocation || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-gray-500 dark:text-gray-400">Scan Time</p>
-                                        <p className="font-medium text-gray-900 dark:text-white">{dispute.carrierEvidence?.scanTimestamp ? formatDateTime(dispute.carrierEvidence.scanTimestamp) : 'N/A'}</p>
+                                        <p className="text-[var(--text-muted)]">Scan Time</p>
+                                        <p className="font-medium text-[var(--text-primary)]">{dispute.carrierEvidence?.scanTimestamp ? formatDateTime(dispute.carrierEvidence.scanTimestamp) : 'N/A'}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Seller Evidence */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-                            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Seller Evidence</h2>
+                        <div className="bg-[var(--bg-primary)] rounded-lg shadow">
+                            <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Seller Evidence</h2>
                                 {dispute.evidence?.submittedAt && (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    <span className="text-xs text-[var(--text-muted)]">
                                         Submitted: {formatDateTime(dispute.evidence.submittedAt)}
                                     </span>
                                 )}
@@ -267,7 +264,7 @@ export default function AdminDisputeReviewPage() {
                                     <div className="space-y-4">
                                         {dispute.evidence.sellerPhotos && dispute.evidence.sellerPhotos.length > 0 && (
                                             <div>
-                                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Photos ({dispute.evidence.sellerPhotos.length})</p>
+                                                <p className="text-sm font-medium text-[var(--text-secondary)] mb-2">Photos ({dispute.evidence.sellerPhotos.length})</p>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {dispute.evidence.sellerPhotos.map((photo, idx) => (
                                                         <img key={idx} src={photo} alt={`Evidence ${idx + 1}`} className="w-full rounded-lg" />
@@ -277,15 +274,15 @@ export default function AdminDisputeReviewPage() {
                                         )}
                                         {dispute.evidence.sellerDocuments && dispute.evidence.sellerDocuments.length > 0 && (
                                             <div>
-                                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Documents</p>
+                                                <p className="text-sm font-medium text-[var(--text-secondary)] mb-2">Documents</p>
                                                 <div className="space-y-2">
                                                     {dispute.evidence.sellerDocuments.map((doc, idx) => (
                                                         <a key={idx} href={doc} target="_blank" rel="noopener noreferrer"
-                                                            className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                            className="flex items-center gap-2 p-2 bg-[var(--bg-secondary)] rounded hover:bg-[var(--bg-tertiary)]">
                                                             <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
                                                             </svg>
-                                                            <span className="text-sm text-gray-900 dark:text-white">Document {idx + 1}</span>
+                                                            <span className="text-sm text-[var(--text-primary)]">Document {idx + 1}</span>
                                                         </a>
                                                     ))}
                                                 </div>
@@ -293,8 +290,8 @@ export default function AdminDisputeReviewPage() {
                                         )}
                                         {dispute.evidence.notes && (
                                             <div>
-                                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seller Notes</p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700 rounded italic">
+                                                <p className="text-sm font-medium text-[var(--text-secondary)] mb-2">Seller Notes</p>
+                                                <p className="text-sm text-[var(--text-muted)] p-3 bg-[var(--bg-secondary)] rounded italic">
                                                     "{dispute.evidence.notes}"
                                                 </p>
                                             </div>
@@ -302,18 +299,18 @@ export default function AdminDisputeReviewPage() {
                                     </div>
                                 ) : (
                                     <div className="text-center py-8">
-                                        <svg className="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-12 h-12 text-[var(--text-muted)] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">No evidence submitted by seller</p>
+                                        <p className="text-sm text-[var(--text-muted)] mt-2">No evidence submitted by seller</p>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Timeline */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Timeline</h2>
+                        <div className="bg-[var(--bg-primary)] rounded-lg shadow p-4">
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Timeline</h2>
                             <DisputeTimeline timeline={dispute.timeline} />
                         </div>
                     </div>
@@ -323,12 +320,12 @@ export default function AdminDisputeReviewPage() {
                         {!isResolved ? (
                             <>
                                 {/* Resolution Form */}
-                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Resolution</h2>
+                                <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6">
+                                    <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Resolution</h2>
 
                                     {/* Outcome Selection */}
                                     <div className="mb-6">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Outcome</label>
+                                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-3">Outcome</label>
                                         <div className="grid grid-cols-2 gap-3">
                                             {RESOLUTION_OUTCOMES.map((outcome) => (
                                                 <button
@@ -336,7 +333,7 @@ export default function AdminDisputeReviewPage() {
                                                     onClick={() => setSelectedOutcome(outcome.value)}
                                                     className={`p-3 rounded-lg border-2 text-left transition-all ${selectedOutcome === outcome.value
                                                         ? `${outcome.color} border-current`
-                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                                        : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)]'
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-2">
@@ -354,14 +351,14 @@ export default function AdminDisputeReviewPage() {
                                         <div className="mb-6 grid grid-cols-2 gap-4">
                                             {(selectedOutcome === 'seller_favor' || selectedOutcome === 'split') && (
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Refund Amount</label>
+                                                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Refund Amount</label>
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
                                                         <input
                                                             type="number"
                                                             value={refundAmount}
                                                             onChange={(e) => setRefundAmount(e.target.value)}
-                                                            className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                            className="w-full pl-8 pr-4 py-2 border border-[var(--border-subtle)] rounded-lg bg-white dark:bg-gray-700 text-[var(--text-primary)]"
                                                             placeholder="0.00"
                                                         />
                                                     </div>
@@ -369,14 +366,14 @@ export default function AdminDisputeReviewPage() {
                                             )}
                                             {(selectedOutcome === 'Shipcrowd_favor' || selectedOutcome === 'split') && (
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Deduction Amount</label>
+                                                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Deduction Amount</label>
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
                                                         <input
                                                             type="number"
                                                             value={deductionAmount}
                                                             onChange={(e) => setDeductionAmount(e.target.value)}
-                                                            className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                            className="w-full pl-8 pr-4 py-2 border border-[var(--border-subtle)] rounded-lg bg-white dark:bg-gray-700 text-[var(--text-primary)]"
                                                             placeholder="0.00"
                                                         />
                                                     </div>
@@ -387,11 +384,11 @@ export default function AdminDisputeReviewPage() {
 
                                     {/* Reason Code */}
                                     <div className="mb-6">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason Code</label>
+                                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Reason Code</label>
                                         <select
                                             value={reasonCode}
                                             onChange={(e) => setReasonCode(e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                            className="w-full px-4 py-2 border border-[var(--border-subtle)] rounded-lg bg-white dark:bg-gray-700 text-[var(--text-primary)]"
                                         >
                                             <option value="">Select reason...</option>
                                             {REASON_CODES.map((code) => (
@@ -402,40 +399,42 @@ export default function AdminDisputeReviewPage() {
 
                                     {/* Notes */}
                                     <div className="mb-6">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Resolution Notes</label>
+                                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Resolution Notes</label>
                                         <textarea
                                             value={notes}
                                             onChange={(e) => setNotes(e.target.value)}
                                             rows={4}
-                                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                            className="w-full px-4 py-2 border border-[var(--border-subtle)] rounded-lg bg-white dark:bg-gray-700 text-[var(--text-primary)]"
                                             placeholder="Explain the resolution decision..."
                                         />
                                     </div>
 
                                     {/* Submit */}
-                                    <button
+                                    <Button
+                                        variant="primary"
+                                        className="w-full"
                                         onClick={handleResolve}
                                         disabled={!selectedOutcome || !reasonCode || !notes || resolveDispute.isPending}
-                                        className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                                        isLoading={resolveDispute.isPending}
                                     >
                                         {resolveDispute.isPending ? 'Resolving...' : 'Resolve Dispute'}
-                                    </button>
+                                    </Button>
                                 </div>
 
                                 {/* Financial Summary */}
-                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Financial Summary</h3>
+                                <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6">
+                                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Financial Summary</h3>
                                     <div className="space-y-3 text-sm">
                                         <div className="flex justify-between">
-                                            <span className="text-gray-500 dark:text-gray-400">Original Charge</span>
-                                            <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(dispute.financialImpact.originalCharge)}</span>
+                                            <span className="text-[var(--text-muted)]">Original Charge</span>
+                                            <span className="font-medium text-[var(--text-primary)]">{formatCurrency(dispute.financialImpact.originalCharge)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-gray-500 dark:text-gray-400">Revised Charge</span>
-                                            <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(dispute.financialImpact.revisedCharge)}</span>
+                                            <span className="text-[var(--text-muted)]">Revised Charge</span>
+                                            <span className="font-medium text-[var(--text-primary)]">{formatCurrency(dispute.financialImpact.revisedCharge)}</span>
                                         </div>
-                                        <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between">
-                                            <span className="font-semibold text-gray-900 dark:text-white">Difference</span>
+                                        <div className="pt-3 border-t border-[var(--border-subtle)] flex justify-between">
+                                            <span className="font-semibold text-[var(--text-primary)]">Difference</span>
                                             <span className={`font-bold ${dispute.financialImpact.chargeDirection === 'debit' ? 'text-red-600' : 'text-green-600'}`}>
                                                 {formatCurrency(dispute.financialImpact.difference)}
                                             </span>
@@ -445,32 +444,32 @@ export default function AdminDisputeReviewPage() {
                             </>
                         ) : (
                             /* Already Resolved */
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Resolution Details</h2>
+                            <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6">
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Resolution Details</h2>
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-gray-500 dark:text-gray-400">Outcome</span>
+                                        <span className="text-[var(--text-muted)]">Outcome</span>
                                         <StatusBadge domain="dispute" status={dispute.resolution?.outcome || 'unknown'} />
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-gray-500 dark:text-gray-400">Resolved By</span>
-                                        <span className="font-medium text-gray-900 dark:text-white capitalize">{dispute.resolution?.resolvedBy}</span>
+                                        <span className="text-[var(--text-muted)]">Resolved By</span>
+                                        <span className="font-medium text-[var(--text-primary)] capitalize">{dispute.resolution?.resolvedBy}</span>
                                     </div>
                                     {dispute.resolution?.refundAmount && (
                                         <div className="flex justify-between items-center">
-                                            <span className="text-gray-500 dark:text-gray-400">Refund</span>
+                                            <span className="text-[var(--text-muted)]">Refund</span>
                                             <span className="font-medium text-green-600">+{formatCurrency(dispute.resolution.refundAmount)}</span>
                                         </div>
                                     )}
                                     {dispute.resolution?.deductionAmount && (
                                         <div className="flex justify-between items-center">
-                                            <span className="text-gray-500 dark:text-gray-400">Deduction</span>
+                                            <span className="text-[var(--text-muted)]">Deduction</span>
                                             <span className="font-medium text-red-600">-{formatCurrency(dispute.resolution.deductionAmount)}</span>
                                         </div>
                                     )}
-                                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Notes</p>
-                                        <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 p-3 rounded">{dispute.resolution?.notes}</p>
+                                    <div className="pt-4 border-t border-[var(--border-subtle)]">
+                                        <p className="text-sm text-[var(--text-muted)] mb-2">Notes</p>
+                                        <p className="text-sm text-[var(--text-primary)] bg-[var(--bg-secondary)] p-3 rounded">{dispute.resolution?.notes}</p>
                                     </div>
                                 </div>
                             </div>

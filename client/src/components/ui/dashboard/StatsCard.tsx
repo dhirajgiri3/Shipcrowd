@@ -131,7 +131,7 @@ export function StatsCard({
                     </div>
                     {trend && (
                         <div
-                            className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${trend.positive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}
+                            className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${trend.positive ? 'bg-[var(--success-bg)] text-[var(--success)]' : 'bg-[var(--error-bg)] text-[var(--error)]'}`}
                             title={trend.label}
                         >
                             {trend.positive ? '+' : ''}{trend.value}%

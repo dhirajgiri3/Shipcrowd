@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -12,38 +12,39 @@ import {
     LazyCartesianGrid as CartesianGrid,
     LazyTooltip as Tooltip,
     LazyResponsiveContainer as ResponsiveContainer,
-    LazyAreaChart as AreaChart,
-    LazyArea as Area,
     LazyCell as Cell
 } from '@/src/components/features/charts/LazyCharts';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
+import { cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import {
     PackageX,
-    Search,
-    Filter,
-    Phone,
     RefreshCw,
     RotateCcw,
     AlertTriangle,
-    CheckCircle,
-    MapPin,
-    ArrowRight,
     Building2,
-    TrendingDown,
-    X
 } from 'lucide-react';
 
 import { useAdminNDRList, useNdrFunnel } from '@/src/core/api/hooks/admin/useAdminNDR';
 import { useDebouncedValue } from '@/src/hooks/data';
-import { Loader2 } from 'lucide-react';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 const DEFAULT_LIMIT = 10;
+
+const NDR_TABS = [
+    { key: 'all', label: 'All' },
+    { key: 'detected', label: 'Detected' },
+    { key: 'in_progress', label: 'In Progress' },
+    { key: 'rto_triggered', label: 'RTO Triggered' },
+    { key: 'resolved', label: 'Resolved' },
+] as const;
 
 // Status mapping helper
 const getStatusColor = (status: string) => {
@@ -58,8 +59,10 @@ export function NdrClient() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { page, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+    const { page: urlPage, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+    const [page, setPage] = useState(urlPage);
     const [activeTab, setActiveTab] = useState('all');
+    const hasInitializedFilterReset = useRef(false);
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 500);
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
@@ -80,8 +83,20 @@ export function NdrClient() {
 
         const nextSearch = searchParams.get('search') || '';
         setSearch((current) => (current === nextSearch ? current : nextSearch));
+
+        const { page: nextPage } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+        setPage((current) => (current === nextPage ? current : nextPage));
         setIsUrlHydrated(true);
     }, [searchParams]);
+
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+        if (!hasInitializedFilterReset.current) {
+            hasInitializedFilterReset.current = true;
+            return;
+        }
+        setPage(1);
+    }, [debouncedSearch, activeTab, isUrlHydrated]);
 
     useEffect(() => {
         if (!isUrlHydrated) return;
@@ -106,7 +121,7 @@ export function NdrClient() {
     }, [activeTab, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
 
     // API Hooks
-    const { data: ndrResponse, isLoading: isLoadingList } = useAdminNDRList({
+    const { data: ndrResponse, isLoading: isLoadingList, isError: isListError, error: listError, refetch: refetchList } = useAdminNDRList({
         status: statusFilter,
         search: debouncedSearch,
         startDate: startDateIso,
@@ -132,25 +147,23 @@ export function NdrClient() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] shadow-lg shadow-blue-500/20">
-                        <PackageX className="h-6 w-6" />
+            <PageHeader
+                title="NDR Management"
+                breadcrumbs={[
+                    { label: 'Admin', href: '/admin' },
+                    { label: 'NDR', active: true },
+                ]}
+                description="Monitor and resolve non-delivery reports"
+                actions={
+                    <div className="flex flex-wrap items-center gap-3">
+                        <DateRangePicker value={dateRange} onRangeChange={setRange} />
+                        <Button variant="outline" className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)] hover:text-[var(--error)]">
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            View High Risk ({stats.actionRequired})
+                        </Button>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">NDR Management</h1>
-                        <p className="text-[var(--text-muted)] text-sm">Monitor and resolve non-delivery reports</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <DateRangePicker value={dateRange} onRangeChange={setRange} />
-                    <Button variant="outline" className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)] hover:text-[var(--error)]">
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        View High Risk ({stats.actionRequired})
-                    </Button>
-                </div>
-            </div>
+                }
+            />
 
             {/* Funnel & Stats */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -191,7 +204,7 @@ export function NdrClient() {
                             <div className="p-2 rounded-lg bg-[var(--error-bg)] text-[var(--error)]">
                                 <AlertTriangle className="w-5 h-5" />
                             </div>
-                            <span className="text-xs font-bold text-[var(--error)] bg-white/50 px-2 py-1 rounded-full">+12 Today</span>
+                            <span className="text-xs font-bold text-[var(--error)] bg-[var(--bg-primary)]/50 px-2 py-1 rounded-full">+12 Today</span>
                         </div>
                         <p className="text-3xl font-bold text-[var(--text-primary)]">{stats.actionRequired}</p>
                         <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Action Required</p>
@@ -224,37 +237,47 @@ export function NdrClient() {
 
                 {/* Toolbar */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-2xl border border-[var(--border-subtle)]">
-                    <div className="flex gap-1 bg-[var(--bg-secondary)] p-1 rounded-xl">
-                        {['all', 'detected', 'in_progress', 'rto_triggered', 'resolved'].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-xs font-bold transition-all capitalize",
-                                    activeTab === tab ? "bg-white text-black shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                                )}
-                            >
-                                {tab.replace('_', ' ')}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-                        <Input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search NDRs..."
-                            className="bg-[var(--bg-secondary)] border-0 focus:ring-0 pl-9"
-                        />
-                    </div>
+                    <PillTabs
+                        tabs={NDR_TABS}
+                        activeTab={activeTab}
+                        onTabChange={(key) => setActiveTab(key)}
+                    />
+                    <SearchInput
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search NDRs..."
+                        widthClass="w-full md:w-80"
+                    />
                 </div>
 
-                {/* Cards Grid */}
-                <div className="grid gap-4">
+                {/* NDR List - Cards Grid */}
+                <div className="grid gap-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden">
                     {isLoadingList ? (
                         <div className="flex justify-center p-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
+                            <Loader variant="spinner" size="lg" centered />
                         </div>
+                    ) : isListError ? (
+                        <EmptyState
+                            variant="error"
+                            title="Failed to load NDR events"
+                            description={(listError as Error)?.message || 'An error occurred while fetching NDR data.'}
+                            action={{
+                                label: 'Retry',
+                                onClick: () => refetchList(),
+                                variant: 'outline',
+                                icon: <RefreshCw className="w-4 h-4" />,
+                            }}
+                        />
+                    ) : ndrList.length === 0 ? (
+                        <EmptyState
+                            variant="noItems"
+                            title="No NDR events found"
+                            description={
+                                debouncedSearch || statusFilter
+                                    ? 'Try adjusting your filters or search to find NDR events.'
+                                    : 'No non-delivery reports in the selected date range. NDRs will appear here when delivery attempts fail.'
+                            }
+                        />
                     ) : (
                         <AnimatePresence>
                             {ndrList.map((ndr, i) => (
@@ -306,7 +329,7 @@ export function NdrClient() {
                                             </div>
 
                                             {ndr.status === 'action_required' ? (
-                                                <Button size="sm" className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white min-w-[120px]">
+                                                <Button size="sm" variant="danger" className="min-w-[120px]">
                                                     Fix Now
                                                 </Button>
                                             ) : (

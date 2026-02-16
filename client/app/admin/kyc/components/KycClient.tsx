@@ -5,9 +5,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Shield, Search, CheckCircle2, XCircle, Clock,
-    FileText, User, Building2, Calendar, MoreHorizontal,
-    ExternalLink, RefreshCw, Filter, Download
+    CheckCircle2, XCircle, Clock,
+    FileText, User, Building2, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
@@ -15,13 +14,17 @@ import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
-import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 import { formatDate, cn, parsePaginationQuery } from '@/src/lib/utils';
+import { handleApiError } from '@/src/lib/error';
 import { useAllKYCs, useVerifyKYC, useRejectKYC, KYCFilters } from '@/src/core/api/hooks/security/useKYC';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
+import { useDebouncedValue } from '@/src/hooks/data';
 
 // --- CONSTANTS ---
 const STATUS_TABS = [
@@ -49,24 +52,15 @@ export function KycClient() {
     } = useUrlDateRange();
 
     const [searchTerm, setSearchTerm] = useState(search);
-    const [debouncedSearch, setDebouncedSearch] = useState(search);
+    const debouncedSearch = useDebouncedValue(searchTerm, 500);
     const [selectedRequest, setSelectedRequest] = useState<any>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [isRejecting, setIsRejecting] = useState(false);
 
-    // -- Debounce Search --
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
-
     // Keep local search in sync with URL (back/forward/share links)
     useEffect(() => {
         setSearchTerm((current) => (current === search ? current : search));
-        setDebouncedSearch((current) => (current === search ? current : search));
     }, [search]);
 
     // -- URL Helper --
@@ -87,7 +81,7 @@ export function KycClient() {
         if (debouncedSearch !== search) {
             updateUrl({ search: debouncedSearch, page: 1 });
         }
-    }, [debouncedSearch]);
+    }, [debouncedSearch, search]);
 
     // -- API Params --
     const queryParams: KYCFilters = useMemo(() => ({
@@ -144,8 +138,11 @@ export function KycClient() {
                     documentType: 'gstin'
                 });
             }
+            addToast('KYC verified', 'success', { description: 'Application approved successfully' });
             setIsDetailOpen(false);
-        } catch (error) { }
+        } catch (error) {
+            handleApiError(error as Error, 'Failed to verify KYC');
+        }
     };
 
     const handleReject = async () => {
@@ -164,8 +161,11 @@ export function KycClient() {
                 kycId: selectedRequest._id,
                 reason: rejectionReason
             });
+            addToast('KYC rejected', 'success', { description: 'Application rejected' });
             setIsDetailOpen(false);
-        } catch (error) { }
+        } catch (error) {
+            handleApiError(error as Error, 'Failed to reject KYC');
+        }
     };
 
     // -- Columns for DataTable --
@@ -241,13 +241,13 @@ export function KycClient() {
 
     return (
         <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">KYC Management</h1>
-                    <p className="text-[var(--text-secondary)] mt-1">Verify identities and approve merchant documentation.</p>
-                </div>
-                <div className="flex items-center gap-3">
+            <PageHeader
+                title="KYC Management"
+                description="Verify identities and approve merchant documentation."
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'KYC', active: true }]}
+                actions={
                     <Button
                         variant="outline"
                         onClick={handleRefresh}
@@ -257,75 +257,42 @@ export function KycClient() {
                         <RefreshCw className={cn("w-4 h-4 mr-2", isFetching && "animate-spin")} />
                         Refresh
                     </Button>
-                </div>
-            </div>
+                }
+            />
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard
-                    title="Total Requests"
-                    value={stats.total}
-                    icon={FileText}
-                    iconColor="bg-blue-500 text-white"
-                />
-                <StatsCard
-                    title="Verified Merchants"
-                    value={stats.verified}
-                    icon={CheckCircle2}
-                    iconColor="bg-emerald-500 text-white"
-                />
+                <StatsCard title="Total Requests" value={stats.total} icon={FileText} variant="info" />
+                <StatsCard title="Verified Merchants" value={stats.verified} icon={CheckCircle2} variant="success" />
                 <StatsCard
                     title="Pending Review"
                     value={stats.pending}
                     icon={Clock}
-                    iconColor="bg-amber-500 text-white"
                     variant={stats.pending > 0 ? "warning" : "default"}
                 />
-                <StatsCard
-                    title="Rejected"
-                    value={stats.rejected}
-                    icon={XCircle}
-                    iconColor="bg-red-500 text-white"
-                />
+                <StatsCard title="Rejected" value={stats.rejected} icon={XCircle} variant="critical" />
             </div>
 
             {/* Filters */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-default)]">
-                <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search by Name, Email, Company..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-muted)] text-[var(--text-primary)]"
-                    />
-                </div>
+                <SearchInput
+                    placeholder="Search by Name, Email, Company..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    widthClass="w-full md:w-96"
+                />
 
                 <div className="flex items-center gap-4">
                     <div className="hidden md:block">
                         <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
                     </div>
 
-                    <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide">
-                        {STATUS_TABS.map((tab) => {
-                            const isActive = status === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => handleTabChange(tab.id)}
-                                    className={cn(
-                                        "px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap",
-                                        isActive
-                                            ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm"
-                                            : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                                    )}
-                                >
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <PillTabs
+                        tabs={STATUS_TABS.map((t) => ({ key: t.id, label: t.label }))}
+                        activeTab={status}
+                        onTabChange={handleTabChange}
+                        className="overflow-x-auto scrollbar-hide"
+                    />
                 </div>
             </div>
 
@@ -421,7 +388,7 @@ export function KycClient() {
                             {selectedRequest.status !== 'rejected' && (
                                 <Button
                                     variant="outline"
-                                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-900/30 dark:hover:bg-red-900/20"
+                                    className="flex-1 border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)]"
                                     onClick={handleReject}
                                     disabled={rejectKYC.isPending || verifyKYC.isPending}
                                 >
@@ -438,7 +405,8 @@ export function KycClient() {
                             )}
                             {selectedRequest.status !== 'verified' && !isRejecting && (
                                 <Button
-                                    className="flex-1 bg-[var(--success)] hover:bg-[var(--success)]/90 text-white"
+                                    variant="primary"
+                                    className="flex-1"
                                     onClick={handleApprove}
                                     disabled={verifyKYC.isPending || rejectKYC.isPending}
                                 >

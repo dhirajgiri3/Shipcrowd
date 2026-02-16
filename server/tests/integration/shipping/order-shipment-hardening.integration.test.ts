@@ -66,8 +66,30 @@ describe('Order + Shipment Hardening Integration', () => {
         warehouseId: mongoose.Types.ObjectId;
         status?: string;
         orderNumberSuffix: string;
+        paymentMethod?: 'prepaid' | 'cod';
+        currency?: string;
+        totals?: {
+            subtotal: number;
+            tax: number;
+            shipping: number;
+            discount: number;
+            total: number;
+            baseCurrency?: string;
+            baseCurrencySubtotal?: number;
+            baseCurrencyTax?: number;
+            baseCurrencyShipping?: number;
+            baseCurrencyTotal?: number;
+        };
     }) => {
-        const { companyId, warehouseId, status = 'pending', orderNumberSuffix } = args;
+        const {
+            companyId,
+            warehouseId,
+            status = 'pending',
+            orderNumberSuffix,
+            paymentMethod = 'prepaid',
+            currency = 'INR',
+            totals,
+        } = args;
         return Order.create({
             orderNumber: `HDR-ORDER-${orderNumberSuffix}-${Date.now()}`,
             companyId,
@@ -92,12 +114,13 @@ describe('Order + Shipment Hardening Integration', () => {
             ],
             shippingDetails: { shippingCost: 0 },
             paymentStatus: 'pending',
-            paymentMethod: 'prepaid',
+            paymentMethod,
+            currency,
             source: 'manual',
             warehouseId,
             currentStatus: status,
             statusHistory: [],
-            totals: {
+            totals: totals || {
                 subtotal: 500,
                 tax: 0,
                 shipping: 0,
@@ -413,5 +436,107 @@ describe('Order + Shipment Hardening Integration', () => {
         expect(refreshedCompany?.wallet?.balance).toBe(1000);
         expect(walletTxCount).toBe(0);
         expect(shipmentCount).toBe(0);
+    });
+
+    it('rejects shipment creation when non-INR order is missing operational INR base totals', async () => {
+        const company = await createCompany();
+        const warehouse = await createWarehouse(company._id as mongoose.Types.ObjectId, '560001');
+
+        const order = await createBaseOrderDocument({
+            companyId: company._id as mongoose.Types.ObjectId,
+            warehouseId: warehouse._id as mongoose.Types.ObjectId,
+            status: 'pending',
+            orderNumberSuffix: 'USD-NO-BASE',
+            currency: 'USD',
+            paymentMethod: 'cod',
+            totals: {
+                subtotal: 100,
+                tax: 5,
+                shipping: 0,
+                discount: 0,
+                total: 105,
+            },
+        });
+
+        await expect(
+            ShipmentService.createShipment({
+                order,
+                companyId: company._id as mongoose.Types.ObjectId,
+                userId,
+                payload: {
+                    serviceType: 'standard',
+                    warehouseId: String(warehouse._id),
+                },
+                idempotencyKey: `currency-guard-${Date.now()}`,
+            })
+        ).rejects.toMatchObject({
+            code: ErrorCode.BIZ_INVALID_STATE,
+            statusCode: 400,
+        });
+
+        const refreshedCompany = await Company.findById(company._id).lean();
+        const walletTxCount = await WalletTransaction.countDocuments({ company: company._id });
+        expect(refreshedCompany?.wallet?.balance).toBe(1000);
+        expect(walletTxCount).toBe(0);
+    });
+
+    it('uses operational INR base totals for COD and declared values on non-INR orders', async () => {
+        const company = await createCompany();
+        const warehouse = await createWarehouse(company._id as mongoose.Types.ObjectId, '560001');
+
+        const order = await createBaseOrderDocument({
+            companyId: company._id as mongoose.Types.ObjectId,
+            warehouseId: warehouse._id as mongoose.Types.ObjectId,
+            status: 'pending',
+            orderNumberSuffix: 'USD-BASE',
+            currency: 'USD',
+            paymentMethod: 'cod',
+            totals: {
+                subtotal: 100,
+                tax: 5,
+                shipping: 0,
+                discount: 0,
+                total: 105,
+                baseCurrency: 'INR',
+                baseCurrencySubtotal: 8300,
+                baseCurrencyTax: 415,
+                baseCurrencyShipping: 0,
+                baseCurrencyTotal: 8715,
+            },
+        });
+
+        jest.spyOn(ShipmentService, 'selectCarrierForShipment').mockResolvedValue({
+            selectedCarrier: 'manual_carrier',
+            selectedOption: {
+                carrier: 'manual_carrier',
+                rate: 120,
+                deliveryTime: 3,
+                optionId: 'opt-currency',
+                quoteSessionId: 'session-currency',
+            },
+            carrierResult: {
+                selectedCarrier: 'manual_carrier',
+                alternativeOptions: [
+                    { carrier: 'manual_carrier', rate: 120, deliveryTime: 3 },
+                ],
+            } as any,
+        });
+
+        const result = await ShipmentService.createShipment({
+            order,
+            companyId: company._id as mongoose.Types.ObjectId,
+            userId,
+            payload: {
+                serviceType: 'standard',
+                warehouseId: String(warehouse._id),
+            },
+            idempotencyKey: `currency-base-${Date.now()}`,
+        });
+
+        expect(result.shipment.paymentDetails.codAmount).toBe(8715);
+        expect(result.shipment.packageDetails.declaredValue).toBe(8715);
+        expect(result.updatedOrder.totals.total).toBe(105);
+        expect(result.updatedOrder.totals.baseCurrencyShipping).toBe(120);
+        expect(result.updatedOrder.totals.baseCurrencyTotal).toBe(8835);
     });
 });

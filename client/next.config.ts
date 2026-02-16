@@ -15,11 +15,23 @@ const resolveApiOrigin = (): string => {
 };
 
 const apiOrigin = resolveApiOrigin();
+const appOrigin = process.env.NEXT_PUBLIC_APP_URL || '';
+const allowedDevOrigins = Array.from(
+  new Set(
+    [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      appOrigin,
+      apiOrigin,
+    ].filter(Boolean)
+  )
+);
 
 const nextConfig: NextConfig = {
   // Production optimizations
   reactStrictMode: true,
   output: "standalone",
+  allowedDevOrigins,
 
   // Compiler optimizations
   compiler: {

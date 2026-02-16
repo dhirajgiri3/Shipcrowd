@@ -8,6 +8,7 @@ export function useLogin() {
     const searchParams = useSearchParams();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const { login } = useAuth();
@@ -17,7 +18,7 @@ export function useLogin() {
         setIsLoading(true);
 
         try {
-            const result = await login({ email, password });
+            const result = await login({ email, password, rememberMe });
 
             if (!result.success) {
                 // Error is set in AuthContext; LoginClient displays it inline via Alert
@@ -40,6 +41,8 @@ export function useLogin() {
         setEmail,
         password,
         setPassword,
+        rememberMe,
+        setRememberMe,
         isLoading,
         showPassword,
         togglePasswordVisibility,

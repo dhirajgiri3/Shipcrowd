@@ -40,15 +40,50 @@ app.use(compression({
     },
 }));
 
-// CORS configuration
-const corsOptions = {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With', 'X-Skip-Refresh', 'X-API-Key', 'Accept', 'Origin'],
-    maxAge: 86400,
-};
-app.use(cors(corsOptions));
+const isProduction = process.env.NODE_ENV === 'production';
+const parseOrigins = (value?: string): string[] =>
+    (value || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+const allowedOrigins = Array.from(
+    new Set(
+        [
+            process.env.CLIENT_URL || '',
+            process.env.FRONTEND_URL || '',
+            ...parseOrigins(process.env.CORS_ALLOWED_ORIGINS),
+        ].filter(Boolean)
+    )
+);
+
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            // Allow server-to-server and non-browser requests (no Origin header).
+            if (!origin) {
+                callback(null, true);
+                return;
+            }
+
+            if (!isProduction) {
+                callback(null, true);
+                return;
+            }
+
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+                return;
+            }
+
+            callback(new Error(`CORS blocked for origin: ${origin}`));
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With', 'X-Skip-Refresh', 'X-API-Key', 'Accept', 'Origin'],
+        maxAge: 86400,
+    })
+);
 
 // Apply global rate limiter
 app.use(globalRateLimiter);

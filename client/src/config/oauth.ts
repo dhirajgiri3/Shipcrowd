@@ -15,7 +15,17 @@ if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
     }
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
+const resolveOAuthApiBase = (): string => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (process.env.NODE_ENV === 'development') {
+        return '/api/v1';
+    }
+
+    return apiUrl || 'http://localhost:5005/api/v1';
+};
+
+const API_URL = resolveOAuthApiBase();
 
 /**
  * OAuth Provider Configuration

@@ -32,6 +32,7 @@ import {
 import Link from 'next/link';
 import type { ManifestStatus } from '@/src/types/api/orders';
 import { ConfirmationModal } from '@/src/components/ui/ConfirmationModal';
+import { formatCurrency } from '@/src/lib/utils';
 
 // ==================== Status Config ====================
 
@@ -253,7 +254,7 @@ export default function ManifestDetailPage() {
                             <div>
                                 <p className="text-xs text-[var(--text-muted)]">Weight / COD</p>
                                 <p className="font-semibold text-[var(--text-primary)]">
-                                    {manifest.summary.totalWeight.toFixed(2)} kg / ₹{manifest.summary.totalCODAmount.toLocaleString()}
+                                    {manifest.summary.totalWeight.toFixed(2)} kg / {formatCurrency(manifest.summary.totalCODAmount, 'INR')}
                                 </p>
                             </div>
                         </div>
@@ -380,7 +381,7 @@ export default function ManifestDetailPage() {
                                             {shipment.packages}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-[var(--text-primary)]">
-                                            ₹{(shipment.codAmount || 0).toLocaleString()}
+                                            {formatCurrency(shipment.codAmount || 0, 'INR')}
                                         </td>
                                     </tr>
                                 ))}

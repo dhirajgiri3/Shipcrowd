@@ -97,6 +97,8 @@ router.post('/verify-magic-link', authController.verifyMagicLink);
 // ✅ FEATURE 9: Account Recovery (Email Verification)
 import recoveryController from '../../../controllers/auth/recovery.controller';
 
+const oauthFailureRedirectBase = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+
 /**
  * @route POST /auth/recovery/request-unlock
  * @desc Request account recovery email for locked accounts
@@ -225,7 +227,7 @@ router.get('/google', passport.authenticate('google', {
  */
 router.get('/google/callback',
   passport.authenticate('google', {
-    failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=google-auth-failed`,
+    failureRedirect: `${oauthFailureRedirectBase}/login?error=google-auth-failed`,
     session: false
   }),
   authController.googleCallback

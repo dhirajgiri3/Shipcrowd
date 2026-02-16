@@ -115,6 +115,7 @@ import { QuickActionsFAB } from '@/src/components/seller/dashboard/QuickActionsF
 import { transformDashboardToKPIs } from '@/src/lib/dashboard/data-utils';
 import { transformOrderTrendsToChart } from '@/src/lib/dashboard/order-trends';
 import { useDashboardDate } from '@/src/contexts/DashboardDateContext';
+import { formatCurrency } from '@/src/lib/utils';
 
 // Phase 4: Keyboard Shortcuts
 import { useKeyboardShortcuts } from '@/src/hooks';
@@ -408,7 +409,7 @@ export function DashboardClient() {
             id: 'wallet-1',
             type: 'wallet' as const,
             title: 'Low Wallet Balance',
-            description: `Balance ₹${walletData.balance.toLocaleString('en-IN')} below ₹1,000 threshold`,
+            description: `Balance ${formatCurrency(walletData.balance, 'INR')} below ${formatCurrency(1000, 'INR')} threshold`,
             ctaLabel: 'Recharge Now',
             ctaUrl: '/seller/wallet',
             severity: 'high' as const
@@ -582,7 +583,7 @@ export function DashboardClient() {
                                     type: 'settlement_delayed',
                                     severity: 'warning',
                                     title: 'COD Settlement Delayed',
-                                    message: `Your COD settlement of ₹${inProcessStage.amount.toLocaleString('en-IN')} is ${daysOverdue} days overdue.`,
+                                    message: `Your COD settlement of ${formatCurrency(inProcessStage.amount, 'INR')} is ${daysOverdue} days overdue.`,
                                     ctaLabel: 'Contact Support',
                                     ctaUrl: '/seller/support',
                                     dismissable: true,

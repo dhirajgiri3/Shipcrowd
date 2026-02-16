@@ -312,7 +312,7 @@ export function CodClient() {
                     icon={TrendingUp}
                     variant="info"
                     iconColor="text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400"
-                    description={`₹${(stats?.thisMonth?.deducted || 0).toLocaleString('en-IN')} deducted`}
+                    description={`${formatCurrency(stats?.thisMonth?.deducted || 0, 'INR')} deducted`}
                     delay={3}
                 />
             </div>

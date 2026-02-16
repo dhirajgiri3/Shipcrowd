@@ -4,14 +4,11 @@ import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import type {
     PlatformSettings,
-    FeatureFlags,
+    FeatureFlagItem,
     UpdatePlatformSettingsRequest,
     ToggleFeatureRequest,
-    TestIntegrationRequest,
-    TestIntegrationResponse,
     PlatformSettingsResponse,
     FeatureFlagsResponse,
-    Webhook,
 } from '@/src/types/api/settings';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 
@@ -57,37 +54,17 @@ export const useUpdatePlatformSettings = (options?: UseMutationOptions<PlatformS
     });
 };
 
-export const useTestIntegration = (options?: UseMutationOptions<TestIntegrationResponse, ApiError, TestIntegrationRequest>) => {
-    return useMutation<TestIntegrationResponse, ApiError, TestIntegrationRequest>({
-        mutationFn: async (request: TestIntegrationRequest) => {
-            const response = await apiClient.post<TestIntegrationResponse>(
-                '/admin/settings/test-integration',
-                request
-            );
-            return response.data;
-        },
-        onSuccess: (data) => {
-            if (data.success) {
-                showSuccessToast(data.message || 'Integration test successful');
-            }
-        },
-        onError: (error) => handleApiError(error),
-        retry: RETRY_CONFIG.NO_RETRY,
-        ...options,
-    });
-};
-
 // ==================== FEATURE FLAGS ====================
 
 /**
  * Fetch feature flags
  */
-export const useFeatureFlags = (options?: UseQueryOptions<FeatureFlags, ApiError>) => {
-    return useQuery<FeatureFlags, ApiError>({
+export const useFeatureFlags = (options?: UseQueryOptions<FeatureFlagItem[], ApiError>) => {
+    return useQuery<FeatureFlagItem[], ApiError>({
         queryKey: queryKeys.settings.featureFlags(),
         queryFn: async () => {
-            const response = await apiClient.get<FeatureFlagsResponse>('/admin/settings/features');
-            return response.data.data;
+            const response = await apiClient.get<FeatureFlagsResponse>('/admin/feature-flags');
+            return response.data.data.flags || [];
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
@@ -103,41 +80,20 @@ export const useToggleFeature = () => {
 
     return useMutation({
         mutationFn: async (request: ToggleFeatureRequest) => {
-            const response = await apiClient.post<FeatureFlagsResponse>(
-                '/admin/settings/features/toggle',
-                request
+            const response = await apiClient.post<{ success: boolean; data: { flag: FeatureFlagItem } }>(
+                `/admin/feature-flags/${request.key}/toggle`,
+                { isEnabled: request.isEnabled }
             );
-            return response.data.data;
+            return response.data.data.flag;
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.settings.featureFlags() });
             showSuccessToast(
-                `${variables.feature} ${variables.enabled ? 'enabled' : 'disabled'} successfully`
+                `${variables.key} ${variables.isEnabled ? 'enabled' : 'disabled'} successfully`
             );
         },
         onError: (error: any) => {
             handleApiError(error, 'Failed to toggle feature');
-        },
-    });
-};
-
-export const useBulkUpdateFeatures = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (features: Partial<FeatureFlags>) => {
-            const response = await apiClient.put<FeatureFlagsResponse>(
-                '/admin/settings/features',
-                features
-            );
-            return response.data.data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.featureFlags() });
-            showSuccessToast('Feature flags updated successfully');
-        },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to update feature flags');
         },
     });
 };

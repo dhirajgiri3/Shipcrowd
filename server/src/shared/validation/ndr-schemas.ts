@@ -69,7 +69,14 @@ export const listNDREventsQuerySchema = z.object({
     limit: z.string().optional().transform(val => Math.max(1, Math.min(100, parseInt(val || '20', 10)))),
     status: ndrStatusSchema.optional(),
     ndrType: ndrTypeSchema.optional(),
-    search: z.string().trim().min(1).max(100).optional(),
+    search: z.preprocess(
+        (value) => {
+            if (typeof value !== 'string') return value;
+            const trimmed = value.trim();
+            return trimmed === '' ? undefined : trimmed;
+        },
+        z.string().max(100).optional()
+    ),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     sortBy: z.enum(['detectedAt', 'resolutionDeadline', 'createdAt']).optional().default('detectedAt'),

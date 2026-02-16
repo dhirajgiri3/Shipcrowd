@@ -30,6 +30,9 @@ import { UserDTO } from '../../dtos/user.dto';
 import { generateCSRFToken } from '../../middleware/auth/csrf';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
+const getFrontendBaseUrl = (): string =>
+  process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
@@ -1136,7 +1139,7 @@ export const googleCallback = async (req: Request, res: Response, _next: NextFun
 
     if (!user) {
       logger.error('Google OAuth: No user in request');
-      const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=oauth_failed`;
+      const redirectUrl = `${getFrontendBaseUrl()}/login?error=oauth_failed`;
       res.redirect(redirectUrl);
       return;
     }
@@ -1188,7 +1191,7 @@ export const googleCallback = async (req: Request, res: Response, _next: NextFun
 
     // Redirect to frontend without tokens in URL
     // Determine redirect URL based on user state
-    const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const baseUrl = getFrontendBaseUrl();
     let redirectUrl = `${baseUrl}/seller`;
 
     if (!user.companyId && !isPlatformAdmin(user)) {
@@ -1200,7 +1203,7 @@ export const googleCallback = async (req: Request, res: Response, _next: NextFun
     res.redirect(redirectUrl);
   } catch (error) {
     logger.error('Google OAuth callback error:', error);
-    const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=server_error`;
+    const redirectUrl = `${getFrontendBaseUrl()}/login?error=server_error`;
     res.redirect(redirectUrl);
   }
 };

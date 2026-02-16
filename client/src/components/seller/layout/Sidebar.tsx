@@ -41,6 +41,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 import { useSellerActions } from '@/src/core/api/hooks/seller/useSellerActions';
+import { RoleAvatar } from '@/src/components/shared/RoleAvatar';
 
 export interface SellerNavItem {
     label: string;
@@ -215,10 +216,6 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
         const action = actions.items.find((a) => a.type === badgeKey);
         return action?.count || 0;
     };
-
-    const initials = user?.name
-        ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-        : 'SL';
 
     const handleSignOut = async () => {
         await handleLogout();
@@ -414,9 +411,7 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
                 <div className="h-px bg-[var(--border-subtle)] mb-4" />
 
                 <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-all duration-200 cursor-pointer">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-primary)] font-bold text-xs">
-                        {initials}
-                    </div>
+                    <RoleAvatar role={user?.role || 'seller'} name={user?.name || 'Seller'} size="sm" />
                     <div className="flex-1 overflow-hidden">
                         <p className="text-sm font-medium text-[var(--text-primary)] truncate">{user?.name || 'Seller'}</p>
                         <p className="text-xs text-[var(--text-muted)] truncate capitalize">{user?.role || 'seller'}</p>

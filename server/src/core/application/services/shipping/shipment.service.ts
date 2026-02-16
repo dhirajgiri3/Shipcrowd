@@ -8,6 +8,7 @@ import logger from '../../../../shared/logger/winston.logger';
 import {
     getOperationalOrderAmount,
     shouldPersistOperationalBaseTotals,
+    validateOperationalBaseTotals,
 } from '../../../../shared/utils/order-currency.util';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
@@ -526,6 +527,16 @@ export class ShipmentService {
             const canPersistBaseTotals = shouldPersistOperationalBaseTotals(order);
             const orderCurrency = String(order.currency || 'INR').toUpperCase();
             const isOperationalCurrencyOrder = orderCurrency === 'INR';
+            const operationalBaseValidation = validateOperationalBaseTotals(order);
+
+            // Guardrail: all operational money flows (wallet/COD/shipping) must run on INR values.
+            if (!isOperationalCurrencyOrder && !operationalBaseValidation.isValid) {
+                throw new AppError(
+                    `Order is missing operational INR totals required for shipment creation: ${operationalBaseValidation.reason || 'invalid base totals'}`,
+                    ErrorCode.BIZ_INVALID_STATE,
+                    400
+                );
+            }
 
             // Idempotency Check (Compound Index: companyId + idempotencyKey)
             if (idempotencyKey) {

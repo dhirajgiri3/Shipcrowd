@@ -14,17 +14,8 @@ export const useProfile = (options?: UseQueryOptions<UserProfile, ApiError>) => 
     return useQuery<UserProfile, ApiError>({
         queryKey: IDENTITY_KEYS.profile,
         queryFn: async () => {
-            // Assuming /identity/profile endpoint returns the full user profile
-            // Based on profile.controller.ts, it seems update endpoints return partials, 
-            // but usually there's a GET /me or /profile endpoint. 
-            // Checking standard pattern, likely /auth/me or /identity/profile. 
-            // If strictly following profile.controller.ts, there isn't a "get full profile" there, 
-            // usually handled by user controller or auth controller.
-            // For now, assuming GET /identity/profile or /auth/me creates the base user object.
-            // Let's assume /identity/me based on typical structure, or use the one from auth context if available.
-            // However, to be safe and data-fresh, we'll request from API.
             const { data } = await apiClient.get('/auth/me');
-            return data.data;
+            return data.data.user;
         },
         ...options
     });
@@ -47,8 +38,13 @@ export const useProfileUpdate = (options?: UseMutationOptions<UserProfile, ApiEr
     const queryClient = useQueryClient();
     return useMutation<UserProfile, ApiError, ProfileUpdatePayload>({
         mutationFn: async (payload) => {
-            const { data } = await apiClient.patch('/identity/profile/basic', payload);
-            return data.data.user; // Controller returns { user: ... }
+            const { data } = await apiClient.patch('/users/profile', {
+                name: payload.name,
+                profile: {
+                    phone: payload.phone,
+                },
+            });
+            return data.data.user;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: IDENTITY_KEYS.profile });
@@ -63,8 +59,10 @@ export const useAddressUpdate = (options?: UseMutationOptions<any, ApiError, Add
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (payload: AddressUpdatePayload) => {
-            const { data } = await apiClient.patch('/identity/profile/address', payload);
-            return data.data;
+            const { data } = await apiClient.patch('/users/profile', {
+                profile: payload,
+            });
+            return data.data.user;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: IDENTITY_KEYS.profile });

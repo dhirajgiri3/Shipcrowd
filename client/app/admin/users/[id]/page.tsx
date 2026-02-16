@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUserDetails, useImpersonateUser } from '@/src/core/api/hooks/admin/useUserManagement';
 import {
-    ArrowLeft,
     User,
     Building2,
     Mail,
@@ -25,6 +24,7 @@ import {
 import { motion } from 'framer-motion';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { Button } from '@/src/components/ui/core/Button';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { HealthGauge } from '@/src/components/ui/visualizations/HealthGauge';
 import { SuspendUserModal } from '../../sellers/components/SuspendUserModal';
@@ -52,8 +52,8 @@ export default function UserDetailsPage() {
     if (error || !userData) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-secondary)] gap-4">
-                <AlertCircle className="h-12 w-12 text-red-500" />
-                <div className="text-red-500 font-medium">{error?.message || "User not found"}</div>
+                <AlertCircle className="h-12 w-12 text-[var(--error)]" />
+                <div className="text-[var(--error)] font-medium">{error?.message || "User not found"}</div>
                 <Button onClick={() => router.back()} variant="outline">Go Back</Button>
             </div>
         );
@@ -66,19 +66,17 @@ export default function UserDetailsPage() {
     return (
         <div className="min-h-screen bg-[var(--bg-secondary)] p-6 md:p-8 animate-fade-in pb-24">
             <div className="max-w-7xl mx-auto space-y-8">
-                {/* Header Navigation */}
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => router.back()}
-                        className="p-2 hover:bg-[var(--bg-primary)] rounded-full transition-colors text-[var(--text-secondary)]"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">User Profile</h1>
-                        <p className="text-[var(--text-secondary)]">Manage account details and permissions</p>
-                    </div>
-                </div>
+                <PageHeader
+                    title="User Profile"
+                    description="Manage account details and permissions"
+                    showBack={true}
+                    backUrl="/admin/users"
+                    breadcrumbs={[
+                        { label: 'Admin', href: '/admin' },
+                        { label: 'Users', href: '/admin/users' },
+                        { label: user.firstName ? `${user.firstName} ${user.lastName || ''}` : (user.company?.name || user.email || 'User'), active: true }
+                    ]}
+                />
 
                 {/* Identity Card (Full Width) */}
                 <div className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-2xl overflow-hidden shadow-sm relative">
@@ -224,7 +222,7 @@ export default function UserDetailsPage() {
                                     )}
                                     <div className="space-y-1">
                                         <label className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Wallet Balance</label>
-                                        <p className="font-medium text-emerald-600">{formatCurrency(stats?.wallet?.balance || 0)}</p>
+                                        <p className="font-medium text-[var(--success)]">{formatCurrency(stats?.wallet?.balance || 0)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -253,13 +251,13 @@ export default function UserDetailsPage() {
                             <div className="mt-6 pt-6 border-t border-[var(--border-subtle)] space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-tertiary)]">RTO Rate</span>
-                                    <span className={`font-bold ${stats?.shipments?.rtoRate > 10 ? 'text-red-500' : 'text-green-500'}`}>
+                                    <span className={`font-bold ${stats?.shipments?.rtoRate > 10 ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}>
                                         {stats?.shipments?.rtoRate || 0}%
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[var(--text-tertiary)]">NDR Rate</span>
-                                    <span className={`font-bold ${stats?.shipments?.ndrRate > 10 ? 'text-orange-500' : 'text-green-500'}`}>
+                                    <span className={`font-bold ${stats?.shipments?.ndrRate > 10 ? 'text-[var(--warning)]' : 'text-[var(--success)]'}`}>
                                         {stats?.shipments?.ndrRate || 0}%
                                     </span>
                                 </div>

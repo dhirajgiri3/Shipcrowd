@@ -1,45 +1,61 @@
 'use client';
 export const dynamic = "force-dynamic";
 
-import { useMemo, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn, parsePaginationQuery } from '@/src/lib/utils';
+import { parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
 import { ShipmentTable } from './ShipmentTable';
 import {
-    Search,
     Package,
     Truck,
     CheckCircle,
     Clock,
     AlertTriangle,
     RotateCcw,
-    Filter,
     FileOutput,
     RefreshCw,
-    Loader2,
-    Info
 } from 'lucide-react';
 
 import { useShipments, useShipmentStats, Shipment as ApiShipment } from '@/src/core/api/hooks/orders/useShipments';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
-const DEFAULT_LIMIT = 10;
+import { useDebouncedValue } from '@/src/hooks/data';
+
+const DEFAULT_LIMIT = 20;
+
+const SHIPMENT_TABS = [
+    { key: 'all', label: 'All' },
+    { key: 'pending', label: 'Pending Pickup' },
+    { key: 'in_transit', label: 'In Transit' },
+    { key: 'delivered', label: 'Delivered' },
+    { key: 'ndr', label: 'NDR' },
+    { key: 'rto', label: 'RTO' },
+] as const;
 
 export function ShipmentsClient() {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const { addToast } = useToast();
 
-    // -- State from URL & Local --
-    const { page, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+    const { page: urlPage, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+    const [page, setPage] = useState(urlPage);
     const status = searchParams.get('status') || 'all';
     const search = searchParams.get('search') || '';
+    const [searchTerm, setSearchTerm] = useState(search);
+    const debouncedSearch = useDebouncedValue(searchTerm, 500);
+    const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
+    const [isUrlHydrated, setIsUrlHydrated] = useState(false);
+    const hasInitializedFilterReset = useRef(false);
+
     const {
         range: dateRange,
         startDateIso,
@@ -47,57 +63,53 @@ export function ShipmentsClient() {
         setRange,
     } = useUrlDateRange();
 
-    const [searchTerm, setSearchTerm] = useState(search);
-    const [debouncedSearch, setDebouncedSearch] = useState(search);
-    const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
-
-    // -- Debounce Search --
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
-
-    // Keep local search in sync with URL (back/forward/share links)
     useEffect(() => {
         setSearchTerm((current) => (current === search ? current : search));
-        setDebouncedSearch((current) => (current === search ? current : search));
-    }, [search]);
+        const { page: nextPage } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
+        setPage((current) => (current === nextPage ? current : nextPage));
+        setIsUrlHydrated(true);
+    }, [searchParams]);
 
-    // Sync debounced search to URL
     useEffect(() => {
-        if (debouncedSearch !== search) {
-            updateUrl({ search: debouncedSearch, page: 1 });
+        if (!isUrlHydrated) return;
+        if (!hasInitializedFilterReset.current) {
+            hasInitializedFilterReset.current = true;
+            return;
         }
-    }, [debouncedSearch]);
+        setPage(1);
+    }, [debouncedSearch, status, startDateIso, endDateIso, isUrlHydrated]);
 
-    // -- Update URL Helper --
-    const updateUrl = (updates: Record<string, string | number | null>) => {
+    useEffect(() => {
+        if (!isUrlHydrated) return;
+
         const params = new URLSearchParams(searchParams.toString());
-        searchParams.forEach((value, key) => {
-            if (!(key in updates)) params.set(key, value);
-        });
+        params.set('status', status);
+        if (debouncedSearch) {
+            params.set('search', debouncedSearch);
+        } else {
+            params.delete('search');
+        }
+        syncPaginationQuery(params, { page, limit }, { defaultLimit: DEFAULT_LIMIT });
 
-        Object.entries(updates).forEach(([key, value]) => {
-            if (value === null || value === undefined || value === '') {
-                params.delete(key);
-            } else {
-                params.set(key, String(value));
-            }
-        });
-        router.push(`?${params.toString()}`, { scroll: false });
-    };
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery !== currentQuery) {
+            router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        }
+    }, [status, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
 
-    const handleTabChange = (newStatus: string) => {
-        updateUrl({ status: newStatus, page: 1 });
+    const handleTabChange = (key: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('status', key);
+        params.set('page', '1');
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     };
 
     const handlePageChange = (newPage: number) => {
-        updateUrl({ page: newPage });
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('page', String(newPage));
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     };
-
-    const handleDateRangeChange = setRange;
 
     const handleRefresh = () => {
         refetch();
@@ -125,9 +137,11 @@ export function ShipmentsClient() {
         const total = pagination?.total ?? 0;
         const pages = pagination?.pages ?? 1;
         if (total > 0 && page > pages && shipmentsData.length === 0) {
-            updateUrl({ page: 1 });
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('page', '1');
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         }
-    }, [pagination?.total, pagination?.pages, page, shipmentsData.length]);
+    }, [pagination?.total, pagination?.pages, page, shipmentsData.length, searchParams, pathname, router]);
 
     // Helper to extract order number
     const getOrderNumber = (orderId: any) => {
@@ -179,164 +193,59 @@ export function ShipmentsClient() {
         addToast('Export started. You will receive an email shortly.', 'success');
     };
 
-    const statsConfig = [
-        {
-            title: 'Total Shipments',
-            value: stats?.total || 0,
-            icon: Package,
-            iconColor: "bg-blue-600 text-white",
-            trend: { value: 0, label: 'vs last week', positive: true },
-            delay: 0,
-            filter: 'all'
-        },
-        {
-            title: 'Pending Pickup',
-            value: stats?.pending || 0,
-            icon: Clock,
-            iconColor: "bg-yellow-500 text-white",
-            trend: { value: 0, label: 'waiting', positive: false },
-            delay: 1,
-            filter: 'pending'
-        },
-        {
-            title: 'In Transit',
-            value: stats?.in_transit || 0,
-            icon: Truck,
-            iconColor: "bg-orange-500 text-white",
-            trend: { value: 0, label: 'active now', positive: true },
-            delay: 2,
-            filter: 'in_transit'
-        },
-        {
-            title: 'Delivered',
-            value: stats?.delivered || 0,
-            icon: CheckCircle,
-            iconColor: "bg-emerald-500 text-white",
-            trend: { value: 0, label: 'completed', positive: true },
-            delay: 3,
-            filter: 'delivered'
-        },
-        {
-            title: 'NDR / Issues',
-            value: stats?.ndr || 0,
-            icon: AlertTriangle,
-            iconColor: "bg-purple-500 text-white",
-            trend: { value: 0, label: 'action needed', positive: false },
-            delay: 4,
-            filter: 'ndr'
-        },
-        {
-            title: 'RTO / Returned',
-            value: stats?.rto || 0,
-            icon: RotateCcw,
-            iconColor: "bg-red-500 text-white",
-            trend: { value: 0, label: 'attention needed', positive: false },
-            delay: 5,
-            filter: 'rto'
-        }
-    ];
-
-    const TABS = [
-        { id: 'all', label: 'All' },
-        { id: 'pending', label: 'Pending Pickup' },
-        { id: 'in_transit', label: 'In Transit' },
-        { id: 'delivered', label: 'Delivered' },
-        { id: 'ndr', label: 'NDR' },
-        { id: 'rto', label: 'RTO' },
-    ];
-
     return (
         <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in bg-[var(--bg-secondary)] min-h-screen">
-            {/* Header Section - Matched to OrdersClient */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Shipments</h1>
-                    <p className="text-[var(--text-secondary)] mt-1">Track and manage all deliveries across the platform.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleRefresh}
-                        disabled={isFetching}
-                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
-                    >
-                        <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
-                        Refresh Data
-                    </button>
-                    <button
-                        onClick={handleExport}
-                        className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-50"
-                    >
-                        <FileOutput size={16} />
-                        Export Data
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                title="Shipments"
+                breadcrumbs={[
+                    { label: 'Admin', href: '/admin' },
+                    { label: 'Shipments', active: true },
+                ]}
+                description="Track and manage all deliveries across the platform."
+                actions={
+                    <div className="flex items-center gap-3">
+                        <DateRangePicker value={dateRange} onRangeChange={setRange} />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={isFetching}
+                        >
+                            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+                            Refresh
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleExport}>
+                            <FileOutput size={16} />
+                            Export
+                        </Button>
+                    </div>
+                }
+            />
 
-            {/* Stats Grid - Flat Design matching Orders */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                {statsConfig.map((stat, i) => (
-                    <StatsCard
-                        key={i}
-                        title={stat.title}
-                        value={stat.value}
-                        icon={stat.icon}
-                        iconColor={stat.iconColor}
-                        trend={stat.trend as any}
-                        delay={stat.delay}
-                    />
-                ))}
+                <StatsCard title="Total Shipments" value={stats?.total || 0} icon={Package} variant="default" />
+                <StatsCard title="Pending Pickup" value={stats?.pending || 0} icon={Clock} variant="warning" />
+                <StatsCard title="In Transit" value={stats?.in_transit || 0} icon={Truck} variant="info" />
+                <StatsCard title="Delivered" value={stats?.delivered || 0} icon={CheckCircle} variant="success" />
+                <StatsCard title="NDR / Issues" value={stats?.ndr || 0} icon={AlertTriangle} variant="critical" />
+                <StatsCard title="RTO / Returned" value={stats?.rto || 0} icon={RotateCcw} variant="critical" />
             </div>
 
             {/* Filters & Table */}
             <div className="space-y-4">
-                {/* Controls - Matched with Orders */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-default)]">
-                    {/* Search */}
-                    <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search by AWB, Order ID, or Customer..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm focus:outline-none placeholder:text-[var(--text-muted)] text-[var(--text-primary)]"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        {/* Date Picker */}
-                        <div className="hidden md:block">
-                            <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
-                        </div>
-
-                        {/* Filter Tabs */}
-                        <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] p-1 rounded-lg overflow-x-auto scrollbar-hide">
-                            {TABS.map((tab) => {
-                                const isActive = status === tab.id;
-                                let count = 0;
-                                if (tab.id === 'all') count = stats?.total || 0;
-                                else count = (stats as any)?.[tab.id] || 0;
-
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => handleTabChange(tab.id)}
-                                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${isActive
-                                            ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
-                                            : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
-                                            }`}
-                                    >
-                                        {tab.label}
-                                        {count > 0 && (
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-[var(--bg-secondary)] text-[var(--text-primary)]' : 'bg-[var(--bg-primary)]/50'}`}>
-                                                {count}
-                                            </span>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-xl border border-[var(--border-default)]">
+                    <SearchInput
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search by AWB, Order ID, or Customer..."
+                        widthClass="w-full md:w-96"
+                    />
+                    <PillTabs
+                        tabs={SHIPMENT_TABS}
+                        activeTab={status}
+                        onTabChange={handleTabChange}
+                    />
                 </div>
 
                 <motion.div

@@ -7,6 +7,15 @@
 
 import axios from 'axios';
 
+const getCSRFBaseUrl = (): string => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (process.env.NODE_ENV === 'development') {
+        return '/api/v1';
+    }
+
+    return apiUrl || '/api/v1';
+};
+
 // ============================================================================
 // CSRF Token Manager
 // ============================================================================
@@ -48,7 +57,7 @@ class CSRFTokenManager {
         try {
             // Use a separate axios instance to avoid circular dependency
             const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1'}/auth/csrf-token`,
+                `${getCSRFBaseUrl()}/auth/csrf-token`,
                 { withCredentials: true }
             );
 

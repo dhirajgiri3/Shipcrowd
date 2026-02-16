@@ -9,6 +9,7 @@
 import { useRouter } from 'next/navigation';
 import { Package, Wallet, TrendingUp, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface BusinessHeroSectionProps {
     revenue: number;
@@ -53,21 +54,21 @@ export function BusinessHeroSection({
                             <div className="flex items-baseline justify-between">
                                 <span className="text-sm text-[var(--text-secondary)] font-medium">Revenue</span>
                                 <span className="text-xl font-bold text-[var(--text-primary)]">
-                                    ₹{revenue.toLocaleString('en-IN')}
+                                    {formatCurrency(revenue, 'INR')}
                                 </span>
                             </div>
                             {/* Shipping Cost */}
                             <div className="flex items-baseline justify-between">
                                 <span className="text-sm text-[var(--text-secondary)] font-medium">Shipping</span>
                                 <span className="text-lg font-semibold text-[var(--text-primary)]">
-                                    ₹{shippingCost.toLocaleString('en-IN')}
+                                    {formatCurrency(shippingCost, 'INR')}
                                 </span>
                             </div>
                             {/* Profit */}
                             <div className="flex items-baseline justify-between pt-3 border-t border-[var(--border-subtle)]">
                                 <span className="text-sm font-bold text-[var(--success)] uppercase tracking-wide">Net Profit</span>
                                 <span className="text-2xl font-bold text-[var(--success)]">
-                                    ₹{profit.toLocaleString('en-IN')}
+                                    {formatCurrency(profit, 'INR')}
                                 </span>
                             </div>
                         </div>
@@ -125,7 +126,7 @@ export function BusinessHeroSection({
                                 </div>
                                 <div className={`text-2xl font-bold ${isLowBalance ? 'text-[var(--error)]' : 'text-[var(--text-primary)]'
                                     }`}>
-                                    ₹{walletBalance.toLocaleString('en-IN')}
+                                    {formatCurrency(walletBalance, 'INR')}
                                 </div>
                             </div>
                         </div>
