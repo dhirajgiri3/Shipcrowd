@@ -71,6 +71,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                     <RoleAvatar
                         role={user.role}
                         name={user.name}
+                        src={user.avatar}
                         size="sm"
                         className="ring-2 ring-[var(--bg-primary)] group-hover:ring-[var(--bg-secondary)] transition-all"
                     />
@@ -104,7 +105,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                     {/* User Info Header */}
                     <div className="px-4 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/30">
                         <div className="flex items-center gap-3">
-                            <RoleAvatar role={user.role} name={user.name} />
+                            <RoleAvatar role={user.role} name={user.name} src={user.avatar} />
                             <div className="flex-1 overflow-hidden">
                                 <p className="text-sm font-bold text-[var(--text-primary)] truncate">{user.name}</p>
                                 <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">{user.email}</p>

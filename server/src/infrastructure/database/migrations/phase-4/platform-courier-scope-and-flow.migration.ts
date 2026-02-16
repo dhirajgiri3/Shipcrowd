@@ -84,6 +84,10 @@ export class PlatformCourierScopeAndFlowMigration {
         const integrations = await Integration.find({
             type: 'courier',
             isDeleted: false,
+            $or: [
+                { companyId: { $ne: null } },
+                { provider: { $in: ['Velocity', 'Delhivery', 'Ekart'] } },
+            ],
         }).lean();
 
         let updated = 0;
@@ -93,6 +97,9 @@ export class PlatformCourierScopeAndFlowMigration {
             const provider =
                 CourierProviderRegistry.toCanonical(String(integration.provider || '')) ||
                 String(integration.provider || '').toLowerCase();
+            const shouldUpdateCompanyScope = integration.companyId !== null && integration.companyId !== undefined;
+            const shouldUpdateProvider = String(integration.provider || '') !== provider;
+            if (!shouldUpdateCompanyScope && !shouldUpdateProvider) continue;
             bulkOps.push({
                 updateOne: {
                     filter: { _id: integration._id },
@@ -304,54 +311,63 @@ export class PlatformCourierScopeAndFlowMigration {
     }
 
     private async migrateServiceRateCards(): Promise<number> {
+        const scopeQuery = { companyId: { $ne: null } };
+        const flowTypeQuery = {
+            $or: [{ flowType: { $exists: false } }, { flowType: null }, { flowType: '' }],
+        };
+        const categoryQuery = {
+            $or: [{ category: { $exists: false } }, { category: null }, { category: '' }],
+        };
+
         if (this.dryRun) {
-            const count = await ServiceRateCard.countDocuments({});
-            console.log(`[DryRun] Would migrate ${count} service rate cards to platform scope + flow/category`);
+            const [scopeCount, flowCount, categoryCount] = await Promise.all([
+                ServiceRateCard.countDocuments(scopeQuery),
+                ServiceRateCard.countDocuments(flowTypeQuery),
+                ServiceRateCard.countDocuments(categoryQuery),
+            ]);
+            const count = scopeCount + flowCount + categoryCount;
+            console.log(`[DryRun] Would migrate up to ${count} service rate card field updates (scope/flow/category)`);
             return count;
         }
 
-        const result = await ServiceRateCard.updateMany(
-            {},
-            [
-                {
-                    $set: {
-                        companyId: null,
-                        flowType: { $ifNull: ['$flowType', 'forward'] },
-                        category: {
-                            $ifNull: [
-                                '$category',
-                                {
-                                    $cond: [
-                                        { $eq: ['$cardType', 'sell'] },
-                                        'default',
-                                        'default',
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
-            ]
+        const [scopeResult, flowResult, categoryResult] = await Promise.all([
+            ServiceRateCard.updateMany(scopeQuery, { $set: { companyId: null } }),
+            ServiceRateCard.updateMany(flowTypeQuery, { $set: { flowType: 'forward' } }),
+            ServiceRateCard.updateMany(categoryQuery, { $set: { category: 'default' } }),
+        ]);
+
+        return (
+            Number(scopeResult.modifiedCount || 0) +
+            Number(flowResult.modifiedCount || 0) +
+            Number(categoryResult.modifiedCount || 0)
         );
-        return Number(result.modifiedCount || 0);
     }
 
     private async migrateSellerPolicies(): Promise<number> {
+        const typeQuery = {
+            $or: [{ rateCardType: { $exists: false } }, { rateCardType: null }, { rateCardType: '' }],
+        };
+        const categoryQuery = {
+            $or: [{ rateCardCategory: { $exists: false } }, { rateCardCategory: null }, { rateCardCategory: '' }],
+        };
+
         if (this.dryRun) {
-            const count = await SellerCourierPolicy.countDocuments({});
-            console.log(`[DryRun] Would backfill ${count} seller courier policies with rateCardType/category`);
+            const [typeCount, categoryCount] = await Promise.all([
+                SellerCourierPolicy.countDocuments(typeQuery),
+                SellerCourierPolicy.countDocuments(categoryQuery),
+            ]);
+            const count = typeCount + categoryCount;
+            console.log(
+                `[DryRun] Would backfill up to ${count} seller courier policy fields (rateCardType/rateCardCategory)`
+            );
             return count;
         }
 
-        const result = await SellerCourierPolicy.updateMany(
-            {},
-            {
-                $set: {
-                    rateCardType: 'default',
-                    rateCardCategory: 'default',
-                },
-            }
-        );
-        return Number(result.modifiedCount || 0);
+        const [typeResult, categoryResult] = await Promise.all([
+            SellerCourierPolicy.updateMany(typeQuery, { $set: { rateCardType: 'default' } }),
+            SellerCourierPolicy.updateMany(categoryQuery, { $set: { rateCardCategory: 'default' } }),
+        ]);
+
+        return Number(typeResult.modifiedCount || 0) + Number(categoryResult.modifiedCount || 0);
     }
 }
