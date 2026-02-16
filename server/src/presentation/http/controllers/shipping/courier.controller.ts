@@ -40,6 +40,16 @@ function getCompanyId(req: Request, options?: { required?: boolean }): string {
     return String(companyId || '');
 }
 
+async function getPlatformCourierCatalog(): Promise<any[]> {
+    try {
+        const collection = mongoose.connection?.collection?.('couriers');
+        if (!collection) return [];
+        return await collection.find({}).toArray();
+    } catch {
+        return [];
+    }
+}
+
 function normalizeProvider(id: string): string {
     return CourierProviderRegistry.normalize(id);
 }
@@ -515,22 +525,40 @@ export class CourierController {
         const isPlatformAdmin = ['admin', 'super_admin'].includes(String((req as any).user?.role || ''));
 
         if (!companyId && isPlatformAdmin) {
-            const defaults = SUPPORTED_PROVIDERS.map((provider) => ({
-                id: provider,
-                name: formatProviderName(provider),
-                code: provider,
-                logo: formatProviderName(provider).slice(0, 2).toUpperCase(),
-                status: 'inactive',
-                services: [],
-                zones: [],
-                apiIntegrated: false,
-                pickupEnabled: false,
-                codEnabled: false,
-                trackingEnabled: false,
-                codLimit: 0,
-                weightLimit: 0,
-                credentialsConfigured: false,
-            }));
+            const catalog = await getPlatformCourierCatalog();
+            const defaults = catalog.length
+                ? catalog.map((item: any) => ({
+                    id: String(item.name || item._id),
+                    name: String(item.displayName || item.name || 'Courier'),
+                    code: String(item.name || ''),
+                    logo: String(item.displayName || item.name || 'CO').slice(0, 2).toUpperCase(),
+                    status: item.isActive ? 'active' : 'inactive',
+                    services: item.serviceTypes || [],
+                    zones: item.regions || [],
+                    apiIntegrated: Boolean(item.isApiIntegrated),
+                    pickupEnabled: Boolean(item.pickupEnabled),
+                    codEnabled: Boolean(item.codEnabled),
+                    trackingEnabled: Boolean(item.trackingEnabled),
+                    codLimit: Number(item.codLimit || 0),
+                    weightLimit: Number(item.weightLimit || 0),
+                    credentialsConfigured: false,
+                }))
+                : SUPPORTED_PROVIDERS.map((provider) => ({
+                    id: provider,
+                    name: formatProviderName(provider),
+                    code: provider,
+                    logo: formatProviderName(provider).slice(0, 2).toUpperCase(),
+                    status: 'inactive',
+                    services: [],
+                    zones: [],
+                    apiIntegrated: false,
+                    pickupEnabled: false,
+                    codEnabled: false,
+                    trackingEnabled: false,
+                    codLimit: 0,
+                    weightLimit: 0,
+                    credentialsConfigured: false,
+                }));
 
             res.status(200).json({
                 success: true,
@@ -577,8 +605,53 @@ export class CourierController {
     });
 
     getCourier = asyncHandler(async (req: Request, res: Response) => {
-        const companyId = getCompanyId(req);
+        const companyId = getCompanyId(req, { required: false });
+        const isPlatformAdmin = ['admin', 'super_admin'].includes(String((req as any).user?.role || ''));
         const provider = requireSupportedProvider(req.params.id);
+
+        if (!companyId && isPlatformAdmin) {
+            const catalog = await getPlatformCourierCatalog();
+            const match = catalog.find((item: any) => toSupportedProvider(String(item.name || '')) === provider);
+            if (!match) {
+                throw new NotFoundError('Courier');
+            }
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    id: provider,
+                    name: String(match.displayName || match.name || formatProviderName(provider)),
+                    code: provider,
+                    isActive: Boolean(match.isActive),
+                    apiEndpoint: '',
+                    serviceStatus: Boolean(match.isActive) ? 'active' : 'inactive',
+                    operationalStatus: Boolean(match.isActive) ? 'OPERATIONAL' : 'DOWN',
+                    credentialsConfigured: false,
+                    activeShipments: 0,
+                    services: [],
+                    integratedServices: [],
+                    availableServiceTypes: match.serviceTypes || [],
+                    zones: match.regions || [],
+                    pickupEnabled: Boolean(match.pickupEnabled),
+                    codEnabled: Boolean(match.codEnabled),
+                    trackingEnabled: Boolean(match.trackingEnabled),
+                    codLimit: Number(match.codLimit || 0),
+                    weightLimit: Number(match.weightLimit || 0),
+                    serviceLevel: {
+                        sameDay: false,
+                        nextDay: false,
+                        express: false,
+                    },
+                    slaCompliance: { today: null, week: null, month: null },
+                    metadata: {
+                        integrationExists: false,
+                        updatedAt: match.updatedAt || null,
+                        createdAt: match.createdAt || null,
+                    },
+                },
+            });
+            return;
+        }
 
         const snapshot = await getProviderSnapshot(companyId, provider);
         if (!snapshot) {
@@ -727,7 +800,32 @@ export class CourierController {
 
     getPerformance = asyncHandler(async (req: Request, res: Response) => {
         const provider = requireSupportedProvider(req.params.id);
-        const companyId = getCompanyId(req);
+        const companyId = getCompanyId(req, { required: false });
+        const isPlatformAdmin = ['admin', 'super_admin'].includes(String((req as any).user?.role || ''));
+        if (!companyId && isPlatformAdmin) {
+            return res.status(200).json({
+                success: true,
+                data: {
+                    totalShipments: 0,
+                    deliveredShipments: 0,
+                    successRate: 0,
+                    avgDeliveryTime: 0,
+                    avgCost: 0,
+                    costPerShipment: 0,
+                    ndrCount: 0,
+                    ndrPercentage: 0,
+                    rtoCount: 0,
+                    rtoPercentage: 0,
+                    ranking: 0,
+                    totalCouriers: 0,
+                    trends: [],
+                    zonePerformance: [],
+                    serviceTypePerformance: [],
+                    slaCompliance: { today: null, week: null, month: null },
+                    activeShipments: 0,
+                },
+            });
+        }
         const [activeShipments, slaCompliance, performance] = await Promise.all([
             getActiveShipmentsCount(companyId, provider),
             getSlaCompliance(companyId, provider),

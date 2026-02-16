@@ -9,8 +9,7 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-import { parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
+import { cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
 import { ShipmentTable } from './ShipmentTable';
 import {
@@ -23,11 +22,11 @@ import {
     FileOutput,
     RefreshCw,
 } from 'lucide-react';
-
+import { showSuccessToast } from '@/src/lib/error';
 import { useShipments, useShipmentStats, Shipment as ApiShipment } from '@/src/core/api/hooks/orders/useShipments';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
-import { useDebouncedValue } from '@/src/hooks/data';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 
 const DEFAULT_LIMIT = 20;
 
@@ -46,15 +45,14 @@ export function ShipmentsClient() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { addToast } = useToast();
 
     const { page: urlPage, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [page, setPage] = useState(urlPage);
     const statusParam = searchParams.get('status') || 'all';
     const status: ShipmentTabKey = isShipmentTabKey(statusParam) ? statusParam : 'all';
     const search = searchParams.get('search') || '';
-    const [searchTerm, setSearchTerm] = useState(search);
-    const debouncedSearch = useDebouncedValue(searchTerm, 500);
+    const [searchInput, setSearchInput] = useState(search);
+    const debouncedSearch = useDebouncedValue(searchInput, 300);
     const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const hasInitializedFilterReset = useRef(false);
@@ -67,11 +65,11 @@ export function ShipmentsClient() {
     } = useUrlDateRange();
 
     useEffect(() => {
-        setSearchTerm((current) => (current === search ? current : search));
+        setSearchInput((current) => (current === search ? current : search));
         const { page: nextPage } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
         setPage((current) => (current === nextPage ? current : nextPage));
         setIsUrlHydrated(true);
-    }, [searchParams]);
+    }, [searchParams, search]);
 
     useEffect(() => {
         if (!isUrlHydrated) return;
@@ -116,7 +114,7 @@ export function ShipmentsClient() {
 
     const handleRefresh = () => {
         refetch();
-        addToast('Shipments refreshed', 'success');
+        showSuccessToast('Shipments refreshed');
     };
 
     // Fetch shipments
@@ -193,7 +191,7 @@ export function ShipmentsClient() {
     };
 
     const handleExport = () => {
-        addToast('Export started. You will receive an email shortly.', 'success');
+        showSuccessToast('Export started. You will receive an email shortly.');
     };
 
     return (
@@ -206,19 +204,25 @@ export function ShipmentsClient() {
                 ]}
                 description="Track and manage all deliveries across the platform."
                 actions={
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <DateRangePicker value={dateRange} onRangeChange={setRange} />
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleRefresh}
                             disabled={isFetching}
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
                         >
-                            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+                            <RefreshCw size={16} className={cn(isFetching && 'animate-spin')} />
                             Refresh
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleExport}>
-                            <FileOutput size={16} />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExport}
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
+                        >
+                            <FileOutput size={16} className="mr-2" />
                             Export
                         </Button>
                     </div>
@@ -235,20 +239,24 @@ export function ShipmentsClient() {
                 <StatsCard title="RTO / Returned" value={stats?.rto || 0} icon={RotateCcw} variant="critical" />
             </div>
 
-            {/* Filters & Table */}
+            {/* Filters & Table - Consistent with admin Orders and seller Shipments */}
             <div className="space-y-4">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-xl border border-[var(--border-default)]">
-                    <SearchInput
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search by AWB, Order ID, or Customer..."
-                        widthClass="w-full md:w-96"
-                    />
+                <div className="flex flex-col lg:flex-row justify-between gap-4">
                     <PillTabs
                         tabs={SHIPMENT_TABS}
                         activeTab={status}
                         onTabChange={handleTabChange}
+                        className="max-w-full lg:max-w-[500px] overflow-x-auto"
                     />
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <SearchInput
+                            widthClass="w-full sm:w-72"
+                            placeholder="Search by AWB, Order ID, or Customer..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 <motion.div

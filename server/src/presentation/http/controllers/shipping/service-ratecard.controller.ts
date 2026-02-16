@@ -165,7 +165,17 @@ export const listServiceRateCards = async (req: Request, res: Response, next: Ne
 export const createServiceRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const admin = isPlatformAdmin(req.user ?? {});
+        let targetCompanyId = auth.companyId;
+        if (admin) {
+            const bodyCompanyId = typeof req.body?.companyId === 'string' ? req.body.companyId : undefined;
+            targetCompanyId = bodyCompanyId || auth.companyId;
+            if (!targetCompanyId) {
+                throw new ValidationError('Validation failed', [{ field: 'companyId', message: 'companyId is required' }]);
+            }
+        } else {
+            requireCompanyContext(auth);
+        }
 
         const validation = upsertServiceRateCardSchema.safeParse(req.body);
         if (!validation.success) {
@@ -184,7 +194,7 @@ export const createServiceRateCard = async (req: Request, res: Response, next: N
         const startDate = toDate(validation.data.effectiveDates?.startDate as string | Date | undefined);
         const endDate = toDate(validation.data.effectiveDates?.endDate as string | Date | undefined);
         await ensureNoActiveWindowOverlap({
-            companyId: auth.companyId,
+            companyId: targetCompanyId,
             serviceId: validation.data.serviceId,
             cardType: validation.data.cardType,
             status: validation.data.status || 'draft',
@@ -194,7 +204,7 @@ export const createServiceRateCard = async (req: Request, res: Response, next: N
 
         const card = await ServiceRateCard.create({
             ...validation.data,
-            companyId: auth.companyId,
+            companyId: targetCompanyId,
             isDeleted: false,
         });
 
@@ -230,7 +240,11 @@ export const getServiceRateCardById = async (req: Request, res: Response, next: 
 export const updateServiceRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const admin = isPlatformAdmin(req.user ?? {});
+        let targetCompanyId = auth.companyId;
+        if (!admin) {
+            requireCompanyContext(auth);
+        }
 
         const validation = upsertServiceRateCardSchema.partial().safeParse(req.body);
         if (!validation.success) {
@@ -241,15 +255,26 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
             throw new ValidationError('Validation failed', errors);
         }
 
-        const existing = await ServiceRateCard.findOne({
+        const adminCompanyId = typeof req.body?.companyId === 'string'
+            ? req.body.companyId
+            : (typeof req.query?.companyId === 'string' ? req.query.companyId : undefined);
+
+        const existingQuery: any = {
             _id: req.params.id,
-            companyId: auth.companyId,
             isDeleted: false,
-        }).lean();
+        };
+        if (admin) {
+            if (adminCompanyId) existingQuery.companyId = adminCompanyId;
+        } else {
+            existingQuery.companyId = auth.companyId;
+        }
+
+        const existing = await ServiceRateCard.findOne(existingQuery).lean();
 
         if (!existing) {
             throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
         }
+        targetCompanyId = String(existing.companyId);
 
         const merged = {
             serviceId: String(validation.data.serviceId || existing.serviceId),
@@ -271,7 +296,7 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
         const startDate = toDate(merged.effectiveDates.startDate as string | Date | undefined);
         const endDate = toDate(merged.effectiveDates.endDate as string | Date | undefined);
         await ensureNoActiveWindowOverlap({
-            companyId: auth.companyId,
+            companyId: targetCompanyId,
             serviceId: merged.serviceId,
             cardType: merged.cardType,
             status: merged.status,
@@ -283,7 +308,7 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
         const updated = await ServiceRateCard.findOneAndUpdate(
             {
                 _id: req.params.id,
-                companyId: auth.companyId,
+                companyId: targetCompanyId,
                 isDeleted: false,
             },
             { $set: validation.data },
@@ -304,7 +329,11 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
 export const importServiceRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const admin = isPlatformAdmin(req.user ?? {});
+        let targetCompanyId = auth.companyId;
+        if (!admin) {
+            requireCompanyContext(auth);
+        }
 
         const validation = importServiceRateCardSchema.safeParse(req.body);
         if (!validation.success) {
@@ -315,11 +344,26 @@ export const importServiceRateCard = async (req: Request, res: Response, next: N
             throw new ValidationError('Validation failed', errors);
         }
 
+        const adminCompanyId = typeof req.body?.companyId === 'string'
+            ? req.body.companyId
+            : (typeof req.query?.companyId === 'string' ? req.query.companyId : undefined);
+        if (admin && adminCompanyId) {
+            targetCompanyId = adminCompanyId;
+        } else if (admin && !targetCompanyId) {
+            const existing = await ServiceRateCard.findOne({ _id: req.params.id, isDeleted: false })
+                .select('companyId')
+                .lean();
+            if (!existing) {
+                throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
+            }
+            targetCompanyId = String(existing.companyId);
+        }
+
         const { zoneRules, metadata } = validation.data;
         const card = await ServiceRateCard.findOneAndUpdate(
             {
                 _id: req.params.id,
-                companyId: auth.companyId,
+                companyId: targetCompanyId,
                 isDeleted: false,
             },
             {
@@ -346,7 +390,11 @@ export const importServiceRateCard = async (req: Request, res: Response, next: N
 export const simulateServiceRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const admin = isPlatformAdmin(req.user ?? {});
+        let targetCompanyId = auth.companyId;
+        if (!admin) {
+            requireCompanyContext(auth);
+        }
 
         const validation = simulateServiceRateCardSchema.safeParse(req.body);
         if (!validation.success) {
@@ -355,6 +403,21 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
                 message: err.message,
             }));
             throw new ValidationError('Validation failed', errors);
+        }
+
+        const adminCompanyId = typeof req.body?.companyId === 'string'
+            ? req.body.companyId
+            : (typeof req.query?.companyId === 'string' ? req.query.companyId : undefined);
+        if (admin && adminCompanyId) {
+            targetCompanyId = adminCompanyId;
+        } else if (admin && !targetCompanyId) {
+            const existing = await ServiceRateCard.findOne({ _id: req.params.id, isDeleted: false })
+                .select('companyId')
+                .lean();
+            if (!existing) {
+                throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
+            }
+            targetCompanyId = String(existing.companyId);
         }
 
         const {
@@ -369,7 +432,7 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
         } = validation.data;
         const card = await ServiceRateCard.findOne({
             _id: req.params.id,
-            companyId: auth.companyId,
+            companyId: targetCompanyId,
             isDeleted: false,
         }).lean();
 

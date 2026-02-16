@@ -304,6 +304,129 @@ class SupportTicketService {
     }
 
     /**
+     * Admin: Update ticket without requiring requester company membership.
+     * Optionally constrained by target companyId.
+     */
+    public async updateTicketAdmin(
+        ticketId: string,
+        updates: UpdateTicketDTO,
+        actorId: string,
+        companyId?: string
+    ): Promise<ISupportTicket> {
+        const query: FilterQuery<ISupportTicket> = {};
+        if (companyId) {
+            query.companyId = new Types.ObjectId(companyId);
+        }
+
+        if (Types.ObjectId.isValid(ticketId)) {
+            query._id = new Types.ObjectId(ticketId);
+        } else {
+            query.ticketId = ticketId;
+        }
+
+        const ticket = await SupportTicket.findOne(query);
+        if (!ticket) {
+            throw new NotFoundError('Support ticket not found');
+        }
+
+        const historyEntry = {
+            action: 'updated',
+            actor: new Types.ObjectId(actorId),
+            message: 'Ticket updated',
+            timestamp: new Date()
+        };
+
+        if (updates.status) {
+            ticket.status = updates.status;
+            historyEntry.message = `Status changed to ${updates.status}`;
+            if (updates.status === 'resolved' || updates.status === 'closed') {
+                ticket.resolvedAt = new Date();
+            }
+        }
+
+        if (updates.priority) {
+            ticket.priority = updates.priority;
+            historyEntry.message = `Priority changed to ${updates.priority}`;
+        }
+
+        if (updates.assignedTo) {
+            ticket.assignedTo = new Types.ObjectId(updates.assignedTo);
+            historyEntry.message = `Assigned to user ${updates.assignedTo}`;
+        }
+
+        if (updates.slaBreached !== undefined) {
+            ticket.slaBreached = updates.slaBreached;
+        }
+
+        ticket.history.push(historyEntry);
+        await ticket.save();
+
+        return ticket;
+    }
+
+    /**
+     * Admin: Add note/reply without requiring requester company membership.
+     * Optionally constrained by target companyId.
+     */
+    public async addNoteAdmin(
+        ticketId: string,
+        message: string,
+        actorId: string,
+        action: 'internal_note' | 'reply' = 'internal_note',
+        companyId?: string
+    ): Promise<ISupportTicket & { notes?: any[] }> {
+        const query: FilterQuery<ISupportTicket> = {};
+        if (companyId) {
+            query.companyId = new Types.ObjectId(companyId);
+        }
+
+        if (Types.ObjectId.isValid(ticketId)) {
+            query._id = new Types.ObjectId(ticketId);
+        } else {
+            query.ticketId = ticketId;
+        }
+
+        const ticket = await SupportTicket.findOne(query);
+        if (!ticket) {
+            throw new NotFoundError('Support ticket not found');
+        }
+
+        ticket.history.push({
+            action,
+            actor: new Types.ObjectId(actorId),
+            message,
+            timestamp: new Date()
+        });
+
+        if (action === 'reply') {
+            ticket.lastReplyAt = new Date();
+        }
+
+        await ticket.save();
+
+        const populated = await SupportTicket.findById(ticket._id)
+            .populate('assignedTo', 'firstName lastName email')
+            .populate('userId', 'firstName lastName email')
+            .populate('history.actor', 'firstName lastName email');
+
+        const result: any = populated!.toObject();
+        result.notes = result.history
+            .filter((h: any) => h.action === 'reply' || h.action === 'internal_note')
+            .map((h: any) => ({
+                id: h._id?.toString(),
+                userId: h.actor?._id?.toString() || h.actor?.toString(),
+                userName: h.actor?.firstName
+                    ? `${h.actor.firstName} ${h.actor.lastName || ''}`.trim()
+                    : undefined,
+                message: h.message,
+                type: h.action,
+                createdAt: h.timestamp?.toISOString(),
+            }));
+
+        return result as ISupportTicket & { notes?: any[] };
+    }
+
+    /**
      * Get SLA metrics for dashboard
      */
     public async getSLAMetrics(companyId: string) {

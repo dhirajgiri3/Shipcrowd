@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import multer from 'multer';
 import QuoteEngineService from '../../../../../core/application/services/pricing/quote-engine.service';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
@@ -120,8 +121,22 @@ router.get(
     '/courier-rates',
     authenticate,
     asyncHandler(async (req, res): Promise<void> => {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
+        // Admin shipping on behalf: must pass companyId (from order) for pricing context
+        const adminCompanyId = auth.isAdmin ? (req.query.companyId as string)?.trim() : undefined;
+        const companyId = adminCompanyId || auth.companyId;
+        if (!companyId) {
+            if (auth.isAdmin) {
+                throw new AppError(
+                    'companyId is required when fetching courier rates as admin (use order\'s companyId)',
+                    ErrorCode.VAL_MISSING_FIELD,
+                    422,
+                    true,
+                    { field: 'companyId' }
+                );
+            }
+            requireCompanyContext(auth);
+        }
         const paymentMode: 'cod' | 'prepaid' =
             String(req.query.paymentMode || 'Prepaid').toLowerCase() === 'cod' ? 'cod' : 'prepaid';
         const fromPincode = String(req.query.fromPincode || '').trim();
@@ -165,9 +180,23 @@ router.get(
             COURIER_RATE_LIMITS.maxOrderValue
         );
 
+        // For admin shipping on behalf: resolve sellerId from order's company
+        let sellerId = auth.userId;
+        if (auth.isAdmin && companyId) {
+            const { User } = await import('../../../../../infrastructure/database/mongoose/models');
+            const companySeller = await User.findOne({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                role: { $in: ['seller', 'staff'] },
+                isDeleted: false,
+            })
+                .select('_id')
+                .lean();
+            sellerId = companySeller?._id?.toString() || auth.userId;
+        }
+
         const quoteInput = {
-            companyId: auth.companyId,
-            sellerId: auth.userId,
+            companyId,
+            sellerId,
             fromPincode,
             toPincode,
             weight,

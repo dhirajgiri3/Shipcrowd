@@ -31,7 +31,7 @@ updateShipmentStatusSchema
 } from '../../../../shared/validation/schemas';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 
-const toShipmentResponseWithCompat = (shipment: any) => {
+export const toShipmentResponseWithCompat = (shipment: any) => {
     if (!shipment) return shipment;
 
     const data = typeof shipment.toObject === 'function' ? shipment.toObject() : shipment;

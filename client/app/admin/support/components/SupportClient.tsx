@@ -26,12 +26,12 @@ import {
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from '@/src/lib/utils';
 import {
-    useSupportTickets,
-    useSupportMetrics,
-    useSupportTicketDetail,
-    useUpdateTicket,
-    useAddTicketNote
-} from '@/src/core/api/hooks/support/useSupportTickets';
+    useAdminSupportTickets,
+    useAdminSupportMetrics,
+    useAdminSupportTicketDetail,
+    useAdminUpdateTicket,
+    useAdminAddTicketNote
+} from '@/src/core/api/hooks/admin/support/useAdminSupportTickets';
 import { SupportTicket } from '@/src/types/domain/support';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { format } from 'date-fns';
@@ -52,7 +52,7 @@ export function SupportClient() {
     const {
         data: ticketsData,
         isLoading: isTicketsLoading
-    } = useSupportTickets({
+    } = useAdminSupportTickets({
         page,
         limit,
         status: statusFilter,
@@ -64,17 +64,17 @@ export function SupportClient() {
     const {
         data: metricsData,
         isLoading: isMetricsLoading
-    } = useSupportMetrics();
+    } = useAdminSupportMetrics();
 
     // Hook for detail view (lazy fetched when modal open)
     const {
         data: selectedTicket,
         isLoading: isTicketLoading
-    } = useSupportTicketDetail(selectedTicketId, { enabled: !!selectedTicketId });
+    } = useAdminSupportTicketDetail(selectedTicketId, { enabled: !!selectedTicketId });
 
     // Mutations
-    const { mutate: updateTicket, isPending: isUpdating } = useUpdateTicket(selectedTicketId || '');
-    const { mutate: addNote, isPending: isSendingReply } = useAddTicketNote(selectedTicketId || '');
+    const { mutate: updateTicket, isPending: isUpdating } = useAdminUpdateTicket(selectedTicketId || '');
+    const { mutate: addNote, isPending: isSendingReply } = useAdminAddTicketNote(selectedTicketId || '');
 
     const handleSendReply = () => {
         if (!replyMessage.trim() || !selectedTicketId) return;
@@ -466,4 +466,3 @@ export function SupportClient() {
         </div>
     );
 }
-

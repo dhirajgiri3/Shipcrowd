@@ -1,20 +1,24 @@
 import { NextFunction, Request, Response } from 'express';
+import mongoose from 'mongoose';
+import BookFromQuoteService from '../../../../core/application/services/shipping/book-from-quote.service';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { Order, User } from '../../../../infrastructure/database/mongoose/models';
+import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import {
-guardChecks,
-parsePagination,
-validateObjectId,
+    guardChecks,
+    parsePagination,
+    validateObjectId,
 } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import {
-sendPaginated,
-sendSuccess
+    sendCreated,
+    sendPaginated,
+    sendSuccess,
 } from '../../../../shared/utils/responseHelper';
-import { updateOrderSchema } from '../../../../shared/validation/schemas';
+import { bookFromQuoteSchema, updateOrderSchema } from '../../../../shared/validation/schemas';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import { toShipmentResponseWithCompat } from './shipment.controller';
 
 /**
  * Get all orders (Admin View)
@@ -181,8 +185,100 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
+/**
+ * Ship an order (Admin View)
+ * Admin can ship any order on behalf of seller - standard aggregator workflow for support/ops
+ * POST /api/v1/admin/orders/:orderId/ship
+ */
+export const shipOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        const { orderId } = req.params;
+        validateObjectId(orderId, 'order');
+
+        const validation = bookFromQuoteSchema.safeParse({
+            ...req.body,
+            orderId,
+        });
+        if (!validation.success) {
+            const errors = validation.error.errors.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', errors);
+        }
+
+        const order = await Order.findOne({
+            _id: orderId,
+            isDeleted: false,
+        }).lean();
+
+        if (!order) {
+            throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
+        }
+
+        const companyId = String(order.companyId);
+        const companySeller = await User.findOne({
+            companyId: new mongoose.Types.ObjectId(companyId),
+            role: { $in: ['seller', 'staff'] },
+            isDeleted: false,
+        })
+            .select('_id')
+            .lean();
+
+        const sellerId = companySeller?._id?.toString();
+        if (!sellerId) {
+            throw new AppError(
+                'No seller found for order\'s company. Cannot ship on behalf.',
+                ErrorCode.RES_ORDER_NOT_FOUND,
+                400,
+                true
+            );
+        }
+
+        const result = await BookFromQuoteService.execute({
+            companyId,
+            sellerId,
+            userId: auth.userId,
+            sessionId: validation.data.sessionId,
+            optionId: validation.data.optionId,
+            orderId: validation.data.orderId,
+            warehouseId: validation.data.warehouseId,
+            instructions: validation.data.instructions,
+        });
+
+        await createAuditLog(
+            auth.userId,
+            companyId,
+            'create',
+            'shipment',
+            String(result.shipment._id),
+            {
+                trackingNumber: result.shipment.trackingNumber,
+                carrier: result.carrierSelection?.selectedCarrier,
+                adminShipOnBehalf: true,
+                orderId,
+            },
+            req
+        );
+
+        sendCreated(
+            res,
+            {
+                ...result,
+                shipment: toShipmentResponseWithCompat(result.shipment),
+            },
+            'Shipment created successfully (admin on behalf)'
+        );
+    } catch (error) {
+        logger.error('Error shipping admin order:', error);
+        next(error);
+    }
+};
+
 export default {
     getAllOrders,
     getOrderById,
     updateOrder,
+    shipOrder,
 };

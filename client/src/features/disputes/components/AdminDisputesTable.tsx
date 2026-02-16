@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/co
 import { Button } from '@/src/components/ui/core/Button';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { TableSkeleton, EmptyState } from '@/src/components/ui';
 import { useDebouncedValue } from '@/src/hooks/data';
@@ -215,16 +216,17 @@ export function AdminDisputesTable() {
                                 <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                                     <tr>
                                         <th className="px-4 py-3 w-10">
-                                            <input
-                                                type="checkbox"
+                                            <Checkbox
                                                 checked={
-                                                    disputes.length > 0 &&
-                                                    selectedIds.size === disputes.length
+                                                    disputes.length === 0
+                                                        ? false
+                                                        : selectedIds.size === disputes.length
+                                                            ? true
+                                                            : selectedIds.size > 0
+                                                                ? 'indeterminate'
+                                                                : false
                                                 }
-                                                onChange={(e) =>
-                                                    handleSelectAll(e.target.checked)
-                                                }
-                                                className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                                onCheckedChange={handleSelectAll}
                                                 aria-label="Select all"
                                             />
                                         </th>
@@ -271,14 +273,12 @@ export function AdminDisputesTable() {
                                                 className="hover:bg-[var(--bg-hover)] transition-colors"
                                             >
                                                 <td className="px-4 py-3">
-                                                    <input
-                                                        type="checkbox"
+                                                    <Checkbox
                                                         checked={selectedIds.has(dispute._id)}
-                                                        onChange={(e) =>
-                                                            handleSelect(dispute._id, e.target.checked)
+                                                        onCheckedChange={(checked) =>
+                                                            handleSelect(dispute._id, checked)
                                                         }
                                                         onClick={(e) => e.stopPropagation()}
-                                                        className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
                                                         aria-label={`Select ${dispute.disputeId}`}
                                                     />
                                                 </td>

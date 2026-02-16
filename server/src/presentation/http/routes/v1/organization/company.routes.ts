@@ -54,18 +54,6 @@ router.post(
 );
 
 /**
- * @route GET /companies/:companyId
- * @desc Get a company by ID
- * @access Private (Owner/Admin or Platform Admin)
- */
-router.get(
-  '/:companyId',
-  authenticate,
-  requireAccess({ companyMatch: true }),
-  asyncHandler(companyController.getCompanyById)
-);
-
-/**
  * @route GET /companies/stats
  * @desc Get company statistics (admin only)
  * @access Private (Admin)
@@ -75,6 +63,18 @@ router.get(
   authenticate,
   requireAccess({ roles: ['admin'] }),
   asyncHandler(companyController.getCompanyStats)
+);
+
+/**
+ * @route GET /companies/:companyId
+ * @desc Get a company by ID
+ * @access Private (Owner/Admin or Platform Admin)
+ */
+router.get(
+  '/:companyId',
+  authenticate,
+  requireAccess({ companyMatch: true }),
+  asyncHandler(companyController.getCompanyById)
 );
 
 /**

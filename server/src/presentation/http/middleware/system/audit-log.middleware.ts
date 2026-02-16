@@ -28,9 +28,10 @@ export const createAuditLog = async (
   req?: Request
 ) => {
   try {
+    const normalizedCompanyId = companyId === '' ? undefined : companyId;
     const auditLog = new AuditLog({
       userId,
-      companyId,
+      companyId: normalizedCompanyId,
       action,
       resource,
       resourceId,

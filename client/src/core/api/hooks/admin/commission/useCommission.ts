@@ -344,7 +344,7 @@ export function useCommissionTransactions(
         queryKey: queryKeys.commission.transactions(filters),
         queryFn: async () => {
             const { data } = await apiClient.get<{ success: boolean; data: CommissionTransaction[]; pagination?: any }>(
-                '/commission/transactions',
+                '/admin/commission/transactions',
                 { params: filters }
             );
             return { data: data.data, pagination: data.pagination };
@@ -363,7 +363,7 @@ export function useBulkApproveTransactions(
     return useMutation<any, ApiError, { transactionIds: string[] }>({
         mutationFn: async (payload) => {
             const { data } = await apiClient.post<{ success: boolean; data: any }>(
-                '/commission/transactions/bulk-approve',
+                '/admin/commission/transactions/bulk-approve',
                 payload
             );
             return data.data;
@@ -386,7 +386,7 @@ export function useBulkRejectTransactions(
     return useMutation<any, ApiError, { transactionIds: string[]; reason: string }>({
         mutationFn: async (payload) => {
             const { data } = await apiClient.post<{ success: boolean; data: any }>(
-                '/commission/transactions/bulk-reject',
+                '/admin/commission/transactions/bulk-reject',
                 payload
             );
             return data.data;

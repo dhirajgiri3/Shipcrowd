@@ -17,7 +17,8 @@ import {
     CheckCircle2,
     ShieldAlert,
     ArrowUpDown,
-    Ban
+    Ban,
+    Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,7 @@ import { SuspendUserModal } from './SuspendUserModal';
 import { UnsuspendUserModal } from './UnsuspendUserModal';
 import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 import { formatPaginationRange } from '@/src/lib/utils';
+import { Button } from '@/src/components/ui/core/Button';
 
 interface SellerTableProps {
     data: SellerHealth[];
@@ -43,6 +45,9 @@ interface SellerTableProps {
     onSort?: (key: string) => void;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    /** When provided and filters are active, shows Clear filters button in empty state */
+    hasActiveFilters?: boolean;
+    onClearFilters?: () => void;
 }
 
 export function SellerTable({
@@ -53,7 +58,9 @@ export function SellerTable({
     onPageChange,
     onSort,
     sortBy,
-    sortOrder
+    sortOrder,
+    hasActiveFilters,
+    onClearFilters,
 }: SellerTableProps) {
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
@@ -103,8 +110,25 @@ export function SellerTable({
 
     if (!isLoading && data.length === 0) {
         return (
-            <div className="text-center py-12 bg-[var(--bg-primary)] rounded-lg border border-dashed border-[var(--border-default)]">
-                <p className="text-[var(--text-tertiary)]">No sellers found matching your criteria.</p>
+            <div className="text-center py-16 bg-[var(--bg-primary)] rounded-xl border border-dashed border-[var(--border-default)]">
+                <div className="w-16 h-16 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-8 h-8 text-[var(--text-muted)]" />
+                </div>
+                <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">No sellers found</h3>
+                <p className="text-[var(--text-muted)] text-sm mb-6">
+                    {hasActiveFilters
+                        ? 'No sellers match your current filters'
+                        : 'Sellers will appear here once they are onboarded'}
+                </p>
+                {hasActiveFilters && onClearFilters && (
+                    <Button
+                        variant="outline"
+                        onClick={onClearFilters}
+                        className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
+                    >
+                        Clear all filters
+                    </Button>
+                )}
             </div>
         );
     }
@@ -302,26 +326,34 @@ export function SellerTable({
                     </Table>
                 </div>
 
-                {/* Pagination Controls */}
+                {/* Pagination Controls - Consistent with OrderTable and ShipmentTable */}
                 {pagination && (
-                    <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/50 flex justify-between items-center text-xs text-[var(--text-tertiary)]">
-                        <span>{formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'sellers')}</span>
-                        <div className="flex gap-2 items-center">
-                            <button
-                                className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
-                                disabled={pagination.page <= 1}
+                    <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm">
+                        <p className="text-[var(--text-muted)] order-2 sm:order-1">
+                            {formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'sellers')}
+                        </p>
+                        <div className="flex items-center gap-2 order-1 sm:order-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => onPageChange?.(pagination.page - 1)}
+                                disabled={pagination.page <= 1}
+                                className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
                             >
                                 Previous
-                            </button>
-                            <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {Math.max(1, pagination.totalPages)}</span>
-                            <button
-                                className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
-                                disabled={pagination.page >= pagination.totalPages}
+                            </Button>
+                            <span className="text-sm font-medium text-[var(--text-primary)] bg-[var(--bg-secondary)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
+                                Page {pagination.page} / {Math.max(1, pagination.totalPages)}
+                            </span>
+                            <Button
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => onPageChange?.(pagination.page + 1)}
+                                disabled={pagination.page >= pagination.totalPages}
+                                className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
                             >
                                 Next
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 )}

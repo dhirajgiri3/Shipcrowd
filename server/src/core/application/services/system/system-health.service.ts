@@ -291,6 +291,16 @@ class SystemHealthService {
         const startTime = Date.now();
 
         try {
+            if (process.env.NODE_ENV !== 'production' && !process.env.VELOCITY_BASE_URL) {
+                return {
+                    name: 'Velocity API',
+                    status: 'degraded',
+                    responseTime: 0,
+                    lastChecked: new Date(),
+                    error: 'Skipped in non-production without VELOCITY_BASE_URL',
+                };
+            }
+
             // Velocity base URL
             const baseUrl = process.env.VELOCITY_BASE_URL || 'https://api.velocityexpress.in';
 
@@ -310,13 +320,18 @@ class SystemHealthService {
                 endpoint: baseUrl,
             };
         } catch (error) {
-            logger.warn('Velocity health check failed:', error);
+            const message = error instanceof Error ? error.message : 'Connection failed';
+            if (message.includes('ENOTFOUND') && process.env.NODE_ENV !== 'production') {
+                logger.info('Velocity health check skipped (host not resolvable in current environment)');
+            } else {
+                logger.warn('Velocity health check failed:', error);
+            }
             return {
                 name: 'Velocity API',
                 status: 'unhealthy',
                 responseTime: Date.now() - startTime,
                 lastChecked: new Date(),
-                error: error instanceof Error ? error.message : 'Connection failed',
+                error: message,
             };
         }
     }

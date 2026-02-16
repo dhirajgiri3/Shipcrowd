@@ -2,21 +2,19 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-    Package, Truck, CheckCircle, AlertCircle, Clock,
-    MoreVertical, FileText, ArrowUpRight,
-    RefreshCw, Calendar as CalendarIcon, XCircle,
-    LayoutDashboard, RefreshCcw, Box, Loader2, ArrowRight,
-    ChevronDown
+    Package, Truck, CheckCircle, Clock,
+    ArrowUpRight, RefreshCw, XCircle, Loader2, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
+import { Select } from '@/src/components/ui/form/Select';
 import { OrderTable } from './OrderTable';
-import { useAdminOrders, useGetCourierRates, useShipOrder, useAdminDeleteOrder, useOrderExport } from '@/src/core/api/hooks/admin';
+import { useAdminOrders, useGetCourierRates, useAdminShipOrder, useAdminDeleteOrder, useOrderExport } from '@/src/core/api/hooks/admin';
 import { useAdminWarehouses } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
 import { showSuccessToast, showErrorToast } from '@/src/lib/error';
@@ -26,6 +24,7 @@ import { Modal } from '@/src/components/ui/feedback/Modal';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 
 const ORDER_TABS = [
     { key: 'all', label: 'All' },
@@ -57,8 +56,8 @@ export default function OrdersClient() {
         setRange,
     } = useUrlDateRange();
 
-    const [searchTerm, setSearchTerm] = useState(search);
-    const [debouncedSearch, setDebouncedSearch] = useState(search);
+    const [searchInput, setSearchInput] = useState(search);
+    const debouncedSearch = useDebouncedValue(searchInput, 300);
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(searchParams.get('warehouse') || 'all');
 
     // -- Hooks --
@@ -73,19 +72,10 @@ export default function OrdersClient() {
     const [quoteTimeLeftSec, setQuoteTimeLeftSec] = useState<number>(0);
     const [selectedRateBreakdown, setSelectedRateBreakdown] = useState<CourierRate | null>(null);
 
-    // -- Debounce Search --
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
-
     // Keep local controls in sync with URL (back/forward/share links)
     useEffect(() => {
         const nextSearch = searchParams.get('search') || '';
-        setSearchTerm((current) => (current === nextSearch ? current : nextSearch));
-        setDebouncedSearch((current) => (current === nextSearch ? current : nextSearch));
+        setSearchInput((current) => (current === nextSearch ? current : nextSearch));
 
         const nextWarehouse = searchParams.get('warehouse') || 'all';
         setSelectedWarehouseId((current) => (current === nextWarehouse ? current : nextWarehouse));
@@ -133,7 +123,7 @@ export default function OrdersClient() {
     } = useAdminOrders(queryParams);
 
     const getCourierRatesMutation = useGetCourierRates({ suppressDefaultErrorHandling: true });
-    const shipOrderMutation = useShipOrder();
+    const shipOrderMutation = useAdminShipOrder();
     const deleteOrderMutation = useAdminDeleteOrder();
     const exportOrderMutation = useOrderExport();
 
@@ -191,6 +181,14 @@ export default function OrdersClient() {
         const warehouse = warehouses.find((w: any) => w._id === orderWarehouseId || w.id === orderWarehouseId);
         const fromPincode = warehouse?.address?.postalCode || order.customerInfo.address.postalCode;
 
+        const orderCompanyId = typeof order.companyId === 'object'
+            ? (order.companyId as { _id?: string })?._id
+            : order.companyId;
+        if (!orderCompanyId) {
+            showErrorToast('Order has no company context. Cannot fetch rates.');
+            return;
+        }
+
         const result = await getCourierRatesMutation.mutateAsync({
             fromPincode,
             toPincode: order.customerInfo.address.postalCode,
@@ -200,6 +198,7 @@ export default function OrdersClient() {
             length: 20,
             width: 15,
             height: 10,
+            companyId: orderCompanyId,
         });
 
         const rates = result.data || [];
@@ -372,45 +371,48 @@ export default function OrdersClient() {
                 />
             </div>
 
-            {/* Controls & Filters */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-xl border border-[var(--border-default)]">
-                <SearchInput
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by Order ID, Customer, Phone..."
-                    widthClass="w-full md:w-96"
-                />
-
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <select
-                            value={selectedWarehouseId}
-                            onChange={(e) => {
-                                setSelectedWarehouseId(e.target.value);
-                                updateUrl({ warehouse: e.target.value === 'all' ? null : e.target.value, page: 1 });
-                            }}
-                            className="h-10 pl-3 pr-10 rounded-lg bg-transparent hover:bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] font-medium focus:outline-none transition-all cursor-pointer appearance-none border border-transparent hover:border-[var(--border-subtle)]"
-                        >
-                            <option value="all">All Warehouses</option>
-                            {warehouses.map((w) => (
-                                <option key={w._id} value={w._id}>
-                                    {w.name}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={16} />
-                    </div>
-
-                    <div className="hidden md:block">
-                        <DateRangePicker value={dateRange} onRangeChange={handleDateRangeChange} />
-                    </div>
-
+            {/* Controls & Filters - Consistent with seller Orders/Shipments */}
+            <div className="space-y-4">
+                <div className="flex flex-col lg:flex-row justify-between gap-4">
                     <PillTabs
                         tabs={ORDER_TABS}
                         activeTab={status}
                         onTabChange={(key) => handleTabChange(key)}
-                        className="max-w-[500px]"
+                        className="max-w-full lg:max-w-[500px] overflow-x-auto"
                     />
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <SearchInput
+                            widthClass="w-full sm:w-72"
+                            placeholder="Search by Order ID, Customer, Phone..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                        />
+                        <div className="w-full sm:w-auto sm:min-w-[170px]">
+                            <label htmlFor="admin-orders-warehouse-filter" className="sr-only">
+                                Warehouse filter
+                            </label>
+                            <Select
+                                id="admin-orders-warehouse-filter"
+                                value={selectedWarehouseId}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setSelectedWarehouseId(value);
+                                    updateUrl({ warehouse: value === 'all' ? null : value, page: 1 });
+                                }}
+                                options={[
+                                    { value: 'all', label: 'All Warehouses' },
+                                    ...warehouses.map((w) => ({ value: w._id, label: w.name })),
+                                ]}
+                                className="h-11 rounded-xl border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                            />
+                        </div>
+                        <DateRangePicker
+                            value={dateRange}
+                            onRangeChange={handleDateRangeChange}
+                            className="shrink-0"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -512,11 +514,19 @@ export default function OrdersClient() {
                             ) : (
                                 <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
                                     {courierRates.map((courier) => (
-                                        <button
+                                        <div
                                             key={courier.optionId || courier.courierId}
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={() => setSelectedCourier(courier.optionId || courier.courierId)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    setSelectedCourier(courier.optionId || courier.courierId);
+                                                }
+                                            }}
                                             className={cn(
-                                                "w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left relative overflow-hidden group",
+                                                "w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left relative overflow-hidden group cursor-pointer",
                                                 selectedCourier === (courier.optionId || courier.courierId)
                                                     ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] ring-1 ring-[var(--primary-blue)]"
                                                     : "border-[var(--border-default)] hover:border-[var(--border-strong)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]"
@@ -568,7 +578,7 @@ export default function OrdersClient() {
                                                     </Badge>
                                                 )}
                                             </div>
-                                        </button>
+                                        </div>
                                     ))}
                                 </div>
                             )}

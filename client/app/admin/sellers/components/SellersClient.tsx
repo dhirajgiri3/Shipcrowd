@@ -19,9 +19,9 @@ import {
     Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-import { useDebouncedValue } from '@/src/hooks/data';
-import { parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
+import { showSuccessToast, showErrorToast } from '@/src/lib/error';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import { cn, parsePaginationQuery, syncPaginationQuery } from '@/src/lib/utils';
 
 const SELLER_TABS = [
     { key: 'all', label: 'All' },
@@ -39,14 +39,13 @@ const SellersClient = () => {
     const { page: urlPage, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [page, setPage] = useState(urlPage);
     const [searchQuery, setSearchQuery] = useState('');
-    const debouncedSearch = useDebouncedValue(searchQuery, 500);
+    const debouncedSearch = useDebouncedValue(searchQuery, 300);
     const [statusFilter, setStatusFilter] = useState<'all' | 'excellent' | 'warning' | 'critical'>('all');
     const [sortBy, setSortBy] = useState<string>('companyName');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const hasInitializedFilterReset = useRef(false);
     const [isExporting, setIsExporting] = useState(false);
-    const { addToast } = useToast();
 
     useEffect(() => {
         const nextStatus = (searchParams.get('status') || 'all') as typeof statusFilter;
@@ -140,9 +139,10 @@ const SellersClient = () => {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+            showSuccessToast('Sellers exported successfully');
         } catch (error) {
             console.error('Export failed:', error);
-            addToast('Failed to export sellers. Please try again.', 'error');
+            showErrorToast('Failed to export sellers. Please try again.');
         } finally {
             setIsExporting(false);
         }
@@ -163,13 +163,25 @@ const SellersClient = () => {
                 ]}
                 description="Monitor seller health, performance, and risk metrics across the platform."
                 actions={
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-                            <Activity size={16} className={isFetching ? 'animate-spin' : ''} />
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refetch()}
+                            disabled={isFetching}
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
+                        >
+                            <Activity size={16} className={cn(isFetching && 'animate-spin')} />
                             Refresh
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
-                            {isExporting ? <Loader2 className="animate-spin h-4 w-4" /> : <ArrowUpRight size={16} />}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all"
+                        >
+                            {isExporting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <ArrowUpRight size={16} className="mr-2" />}
                             {isExporting ? 'Exporting...' : 'Export'}
                         </Button>
                     </div>
@@ -219,18 +231,25 @@ const SellersClient = () => {
                 />
             </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-xl border border-[var(--border-default)]">
-                <SearchInput
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search sellers by name or email..."
-                    widthClass="w-full md:w-96"
-                />
-                <PillTabs
-                    tabs={SELLER_TABS}
-                    activeTab={statusFilter}
-                    onTabChange={(key) => setStatusFilter(key as typeof statusFilter)}
-                />
+            {/* Controls & Filters - Consistent with admin Orders/Shipments */}
+            <div className="space-y-4">
+                <div className="flex flex-col lg:flex-row justify-between gap-4">
+                    <PillTabs
+                        tabs={SELLER_TABS}
+                        activeTab={statusFilter}
+                        onTabChange={(key) => setStatusFilter(key as typeof statusFilter)}
+                        className="max-w-full lg:max-w-[500px] overflow-x-auto"
+                    />
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <SearchInput
+                            widthClass="w-full sm:w-72"
+                            placeholder="Search sellers by name or email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </div>
             </div>
 
             <motion.div
@@ -247,6 +266,12 @@ const SellersClient = () => {
                     onSort={handleSort}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
+                    hasActiveFilters={statusFilter !== 'all' || !!debouncedSearch}
+                    onClearFilters={() => {
+                        setStatusFilter('all');
+                        setSearchQuery('');
+                        setPage(1);
+                    }}
                 />
             </motion.div>
         </div>

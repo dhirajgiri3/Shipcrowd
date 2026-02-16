@@ -253,26 +253,34 @@ export function OrderTable({
                 </Table>
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls - Consistent with seller Orders/Shipments */}
             {pagination && (
-                <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/50 flex justify-between items-center text-xs text-[var(--text-tertiary)]">
-                    <span>{formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'orders')}</span>
-                    <div className="flex gap-2 items-center">
-                        <button
-                            className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
-                            disabled={pagination.page <= 1}
+                <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-secondary)]/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm">
+                    <p className="text-[var(--text-muted)] order-2 sm:order-1">
+                        {formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'orders')}
+                    </p>
+                    <div className="flex items-center gap-2 order-1 sm:order-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => onPageChange?.(pagination.page - 1)}
+                            disabled={pagination.page <= 1}
+                            className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
                         >
                             Previous
-                        </button>
-                        <span className="text-[var(--text-primary)] font-medium">Page {pagination.page} of {Math.max(1, pagination.totalPages)}</span>
-                        <button
-                            className="px-3 py-1 border border-[var(--border-default)] rounded hover:bg-[var(--bg-primary)] disabled:opacity-50 text-[var(--text-secondary)] transition-colors"
-                            disabled={pagination.page >= pagination.totalPages}
+                        </Button>
+                        <span className="text-sm font-medium text-[var(--text-primary)] bg-[var(--bg-secondary)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
+                            Page {pagination.page} / {Math.max(1, pagination.totalPages)}
+                        </span>
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => onPageChange?.(pagination.page + 1)}
+                            disabled={pagination.page >= pagination.totalPages}
+                            className="h-9 px-4 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] shadow-sm disabled:opacity-50"
                         >
                             Next
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}

@@ -92,6 +92,8 @@ import crmDisputeRoutes from './crm/disputes.routes';
 import leadRoutes from './crm/leads.routes';
 import supportRoutes from './support/support.routes';
 import adminSupportRoutes from './admin/admin-support.routes';
+import adminCommissionRoutes from './admin/admin-commission.routes';
+import adminIntelligenceRoutes from './admin/admin-intelligence.routes';
 import sellerExportRoutes from './seller/export.routes';
 
 // ============================================================================
@@ -231,12 +233,14 @@ router.use('/crm/call-logs', callLogRoutes);
 router.use('/crm/disputes', crmDisputeRoutes);
 router.use('/support', supportRoutes);
 router.use('/admin/support', adminSupportRoutes);
+router.use('/admin/commission', adminCommissionRoutes);
+router.use('/admin/intelligence', adminIntelligenceRoutes);
 router.use('/seller/exports', sellerExportRoutes);
 
 // 8. System & Analytics
 router.use('/analytics', analyticsRoutes);
 router.use('/admin/profit', analyticsRoutes); // Alias for frontend compatibility
-router.use('/admin/intelligence', analyticsRoutes); // Alias for frontend compatibility
+router.use('/admin/intelligence', analyticsRoutes); // Fallback alias for legacy frontend compatibility
 router.use('/export', exportRoutes);
 router.use('/reports', scheduledReportRoutes);
 router.use('/audit', auditRoutes);

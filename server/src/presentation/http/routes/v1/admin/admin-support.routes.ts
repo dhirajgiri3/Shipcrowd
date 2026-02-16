@@ -28,6 +28,20 @@ router.get('/tickets', asyncHandler(adminSupportController.getAllTickets));
 router.get('/tickets/:id', asyncHandler(adminSupportController.getTicketById));
 
 /**
+ * @route PUT /api/v1/admin/support/tickets/:id
+ * @desc Update ticket details (admin can update any ticket)
+ * @access Admin only
+ */
+router.put('/tickets/:id', asyncHandler(adminSupportController.updateTicket));
+
+/**
+ * @route POST /api/v1/admin/support/tickets/:id/notes
+ * @desc Add note/reply to ticket (admin can update any ticket)
+ * @access Admin only
+ */
+router.post('/tickets/:id/notes', asyncHandler(adminSupportController.addNote));
+
+/**
  * @route GET /api/v1/admin/support/metrics
  * @desc Get platform-wide or company-specific SLA metrics
  * @query companyId (optional) - Get metrics for specific company, or platform-wide if omitted

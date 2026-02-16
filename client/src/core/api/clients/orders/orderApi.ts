@@ -297,6 +297,8 @@ export const orderApi = {
     length?: number;
     width?: number;
     height?: number;
+    /** Required when admin fetches rates (order's companyId for pricing context) */
+    companyId?: string;
   }): Promise<{ success: boolean; data: CourierRate[] }> => {
     const fromPincode = String(params.fromPincode || '').trim();
     const toPincode = String(params.toPincode || '').trim();
@@ -363,7 +365,7 @@ export const orderApi = {
   },
 
   /**
-   * Ship an order
+   * Ship an order (Seller - uses /orders/:id/ship)
    * POST /api/v1/orders/:id/ship
    */
   shipOrder: async (data: ShipOrderRequest): Promise<{
@@ -373,6 +375,20 @@ export const orderApi = {
   }> => {
     const { orderId, ...payload } = data;
     const response = await apiClient.post(`/orders/${orderId}/ship`, payload);
+    return response.data;
+  },
+
+  /**
+   * Ship an order (Admin - ships on behalf of seller)
+   * POST /api/v1/admin/orders/:id/ship
+   */
+  shipAdminOrder: async (data: ShipOrderRequest): Promise<{
+    success: boolean;
+    data: Record<string, unknown>;
+    message: string;
+  }> => {
+    const { orderId, ...payload } = data;
+    const response = await apiClient.post(`/admin/orders/${orderId}/ship`, payload);
     return response.data;
   },
 

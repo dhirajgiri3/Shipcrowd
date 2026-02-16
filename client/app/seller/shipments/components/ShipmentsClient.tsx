@@ -49,7 +49,7 @@ export function ShipmentsClient() {
     const [page, setPage] = useState(1);
     const { limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [search, setSearch] = useState('');
-    const debouncedSearch = useDebouncedValue(search, 500);
+    const debouncedSearch = useDebouncedValue(search, 300);
     const [statusFilter, setStatusFilter] = useState<ShipmentStatusFilter>('all');
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -363,6 +363,31 @@ export function ShipmentsClient() {
                         <Button variant="primary" onClick={() => refetchShipments()} className="mx-auto">
                             <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
                         </Button>
+                    </div>
+                ) : !isLoading && !error && shipmentsData.length === 0 ? (
+                    <div className="py-24 text-center bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]">
+                        <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Package className="w-10 h-10 text-[var(--text-muted)]" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)]">No shipments found</h3>
+                        <p className="text-[var(--text-muted)] text-sm mt-2 mb-6">
+                            {(statusFilter !== 'all' || search)
+                                ? 'No shipments match your current filters'
+                                : 'Your shipments will appear here once orders are shipped'}
+                        </p>
+                        {(statusFilter !== 'all' || search) && (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setSearch('');
+                                    setStatusFilter('all');
+                                    setPage(1);
+                                }}
+                                className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
+                            >
+                                Clear all filters
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <DataTable

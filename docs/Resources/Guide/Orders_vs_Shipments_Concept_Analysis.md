@@ -310,6 +310,7 @@ If shipment is `created` but carrier API failed (`awaiting_carrier_sync`):
 ### Phase 4: Admin Frontend
 - [x] Admin Orders: Same tab logic as seller
 - [x] Admin Shipments: Same as seller (no Ship when order-centric)
+- [x] Admin can ship orders on behalf of sellers (standard aggregator workflow: support/ops, POST /admin/orders/:orderId/ship)
 
 ### Phase 5: Testing & Rollout
 - [ ] E2E: Ship from Orders → verify order moves to Shipped, shipment appears on Shipments

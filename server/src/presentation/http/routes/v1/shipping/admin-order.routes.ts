@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import adminOrderController from '../../../controllers/shipping/admin-order.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/index';
+import { csrfProtection, requireAccess } from '../../../middleware/index';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = Router();
 
@@ -29,5 +30,16 @@ router.get('/:orderId', adminOrderController.getOrderById);
  * @access  Admin
  */
 router.patch('/:orderId', adminOrderController.updateOrder);
+
+/**
+ * @route   POST /api/v1/admin/orders/:orderId/ship
+ * @desc    Ship order on behalf of seller (standard aggregator workflow for support/ops)
+ * @access  Admin
+ */
+router.post(
+    '/:orderId/ship',
+    csrfProtection,
+    asyncHandler(adminOrderController.shipOrder)
+);
 
 export default router;

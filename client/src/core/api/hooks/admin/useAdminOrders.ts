@@ -42,6 +42,7 @@ export const useGetCourierRates = (options?: { suppressDefaultErrorHandling?: bo
       length?: number;
       width?: number;
       height?: number;
+      companyId?: string;
     }
   >({
     mutationFn: async (params) => await orderApi.getCourierRates(params),
@@ -54,8 +55,7 @@ export const useGetCourierRates = (options?: { suppressDefaultErrorHandling?: bo
 };
 
 /**
- * Ship a single order
- * Works for both admin and seller
+ * Ship a single order (Seller - uses seller endpoint)
  */
 export const useShipOrder = (options?: { suppressDefaultErrorHandling?: boolean }) => {
   const queryClient = useQueryClient();
@@ -67,6 +67,32 @@ export const useShipOrder = (options?: { suppressDefaultErrorHandling?: boolean 
   >({
     mutationFn: async (data) => await orderApi.shipOrder(data),
     onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
+    },
+    onError: (error) => {
+      if (!options?.suppressDefaultErrorHandling) {
+        handleApiError(error, 'Failed to create shipment');
+      }
+    },
+  });
+};
+
+/**
+ * Ship a single order (Admin - ships on behalf of seller, standard aggregator workflow)
+ */
+export const useAdminShipOrder = (options?: { suppressDefaultErrorHandling?: boolean }) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { success: boolean; data: Record<string, unknown>; message: string },
+    ApiError,
+    ShipOrderRequest
+  >({
+    mutationFn: async (data) => await orderApi.shipAdminOrder(data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
