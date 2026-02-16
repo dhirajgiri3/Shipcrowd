@@ -488,6 +488,16 @@ export const orderApi = {
   },
 
   /**
+   * Delete an order (Admin only)
+   * DELETE /api/v1/admin/orders/:id
+   * Admin can delete any order without company ownership check
+   */
+  deleteAdminOrder: async (orderId: string): Promise<DeleteOrderResponse> => {
+    const response = await apiClient.delete<DeleteOrderResponse>(`/admin/orders/${orderId}`);
+    return response.data;
+  },
+
+  /**
    * Bulk ship multiple orders (Admin only)
    * POST /api/v1/admin/orders/bulk-ship
    */

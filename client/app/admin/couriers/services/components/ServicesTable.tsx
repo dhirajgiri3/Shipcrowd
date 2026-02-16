@@ -112,7 +112,7 @@ export function ServicesTable({ services, isLoading, onEdit, onDelete, onToggleS
                                 <Edit2 className="h-4 w-4" />
                                 Edit Service
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => window.open(`/admin/courier-services/${row._id}`, '_blank')}>
+                            <DropdownMenuItem onClick={() => window.open(`/admin/couriers/services/${row._id}`, '_blank')}>
                                 <Eye className="h-4 w-4" />
                                 View Details
                             </DropdownMenuItem>

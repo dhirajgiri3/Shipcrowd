@@ -217,7 +217,7 @@ const OrderSchema = new Schema<IOrder>(
     },
     source: {
       type: String,
-      enum: ['manual', 'shopify', 'woocommerce', 'flipkart', 'amazon', 'api', 'cloned', 'split'],
+      enum: ['manual', 'shopify', 'woocommerce', 'flipkart', 'amazon', 'api', 'bulk_import', 'cloned', 'split', 'merged'],
       default: 'manual',
     },
     sourceId: String,

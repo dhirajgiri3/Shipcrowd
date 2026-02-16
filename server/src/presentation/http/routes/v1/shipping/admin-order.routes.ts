@@ -42,4 +42,11 @@ router.post(
     asyncHandler(adminOrderController.shipOrder)
 );
 
+/**
+ * @route   DELETE /api/v1/admin/orders/:orderId
+ * @desc    Soft delete an order (admin can delete any order)
+ * @access  Admin
+ */
+router.delete('/:orderId', asyncHandler(adminOrderController.deleteOrder));
+
 export default router;

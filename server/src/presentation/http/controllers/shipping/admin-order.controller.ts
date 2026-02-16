@@ -276,9 +276,54 @@ export const shipOrder = async (req: Request, res: Response, next: NextFunction)
     }
 };
 
+/**
+ * Delete an order (Admin View)
+ * Admin can delete any order without company ownership check
+ * DELETE /api/v1/admin/orders/:orderId
+ */
+export const deleteOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        const { orderId } = req.params;
+        validateObjectId(orderId, 'order');
+
+        const order = await Order.findOne({
+            _id: orderId,
+            isDeleted: false,
+        });
+
+        if (!order) {
+            throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
+        }
+
+        const { canDelete, reason } = OrderService.getInstance().canDeleteOrder(order.currentStatus);
+        if (!canDelete) {
+            throw new AppError(reason || 'Cannot delete order', 'CANNOT_DELETE_ORDER', 400);
+        }
+
+        order.isDeleted = true;
+        await order.save();
+        await createAuditLog(
+            auth.userId,
+            auth.companyId || String(order.companyId),
+            'delete',
+            'order',
+            orderId,
+            { softDelete: true, adminDelete: true },
+            req
+        );
+
+        sendSuccess(res, null, 'Order deleted successfully');
+    } catch (error) {
+        logger.error('Error deleting admin order:', error);
+        next(error);
+    }
+};
+
 export default {
     getAllOrders,
     getOrderById,
     updateOrder,
     shipOrder,
+    deleteOrder,
 };

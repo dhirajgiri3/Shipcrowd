@@ -132,6 +132,7 @@ export const useBulkShipOrders = () => {
 
 /**
  * Delete an order (Admin only)
+ * Uses admin endpoint - can delete any order without company ownership check
  */
 export const useAdminDeleteOrder = () => {
   const queryClient = useQueryClient();
@@ -141,7 +142,7 @@ export const useAdminDeleteOrder = () => {
     ApiError,
     string
   >({
-    mutationFn: async (orderId) => await orderApi.deleteOrder(orderId),
+    mutationFn: async (orderId) => await orderApi.deleteAdminOrder(orderId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders.all() });
     },

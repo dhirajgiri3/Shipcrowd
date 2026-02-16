@@ -178,7 +178,6 @@ export const getSellerCourierPolicyAdmin = async (req: Request, res: Response, n
             isActive: true,
         })
             .select('companyId sellerId allowedProviders allowedServiceIds blockedProviders blockedServiceIds rateCardType rateCardCategory selectionMode autoPriority balancedDeltaPercent isActive')
-            .hint({ companyId: 1, sellerId: 1, isActive: 1 })
             .lean();
 
         const etag = policy ? `"${policy._id}"` : null;

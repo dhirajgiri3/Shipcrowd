@@ -939,7 +939,7 @@ export class OrderService extends CachedService {
                 }],
                 paymentMethod: normalizedRow.payment_method === 'cod' ? 'cod' : 'prepaid',
                 paymentStatus: normalizedRow.payment_status || (normalizedRow.payment_method === 'cod' ? 'pending' : 'paid'),
-                source: 'manual',
+                source: 'bulk_import',
                 currentStatus,
                 totals: { subtotal, tax: 0, shipping: 0, discount: 0, total: subtotal },
                 shippingDetails: { shippingCost: 0 },

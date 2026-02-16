@@ -47,6 +47,20 @@ export const useCourierServices = (filters?: Record<string, any>, options?: UseQ
     });
 };
 
+export const useCourierService = (id: string, options?: UseQueryOptions<CourierServiceItem, ApiError>) => {
+    return useQuery<CourierServiceItem, ApiError>({
+        queryKey: queryKeys.courierServices.detail(id),
+        queryFn: async () => {
+            const response = await apiClient.get(`/admin/courier-services/${id}`);
+            return response.data.data || response.data;
+        },
+        enabled: Boolean(id),
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};
+
 export const useCreateCourierService = (options?: UseMutationOptions<CourierServiceItem, ApiError, Partial<CourierServiceItem>>) => {
     const queryClient = useQueryClient();
     return useMutation<CourierServiceItem, ApiError, Partial<CourierServiceItem>>({

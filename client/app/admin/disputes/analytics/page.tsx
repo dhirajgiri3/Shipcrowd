@@ -13,10 +13,8 @@ import { DisputeAnalytics } from '@/src/features/disputes/components/DisputeAnal
 
 export default function DisputeAnalyticsPage() {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-            <div className="max-w-7xl mx-auto">
-                <DisputeAnalytics />
-            </div>
+        <div className="min-h-screen bg-[var(--bg-secondary)] p-6 md:p-8 max-w-[1600px] mx-auto pb-20 animate-in fade-in duration-500">
+            <DisputeAnalytics />
         </div>
     );
 }
