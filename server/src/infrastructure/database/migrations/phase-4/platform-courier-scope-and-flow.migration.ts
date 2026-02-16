@@ -274,7 +274,16 @@ export class PlatformCourierScopeAndFlowMigration {
         const duplicateIds = Array.from(canonicalServiceMap.keys()).map(
             (id) => new mongoose.Types.ObjectId(id)
         );
-        const query = duplicateIds.length ? { _id: { $nin: duplicateIds } } : {};
+        const baseQuery: Record<string, any> = {
+            isDeleted: false,
+            companyId: { $ne: null },
+        };
+        const query = duplicateIds.length
+            ? {
+                  ...baseQuery,
+                  _id: { $nin: duplicateIds },
+              }
+            : baseQuery;
 
         if (this.dryRun) {
             const count = await CourierService.countDocuments(query);

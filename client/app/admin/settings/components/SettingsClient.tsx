@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { PageHeaderSkeleton, CardSkeleton } from '@/src/components/ui';
-import { Building2, ChevronRight, Globe, Loader2, Settings2, Shield, Wallet } from 'lucide-react';
+import { Building2, ChevronRight, Globe, Loader2, Settings2, Wallet } from 'lucide-react';
 import { useProfile, useProfileUpdate } from '@/src/core/api/hooks/identity/useProfile';
 import { RoleAvatar } from '@/src/components/shared/RoleAvatar';
 
@@ -35,12 +35,6 @@ const SETTINGS_LINKS = [
         description: 'Open billing and financial administration',
         href: '/admin/billing',
         icon: Wallet,
-    },
-    {
-        title: 'Security',
-        description: 'Review fraud and security operations controls',
-        href: '/admin/security/fraud',
-        icon: Shield,
     },
 ];
 
