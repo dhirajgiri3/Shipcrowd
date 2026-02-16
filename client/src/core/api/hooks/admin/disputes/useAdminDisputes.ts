@@ -58,7 +58,7 @@ export const useAdminDisputes = (filters?: DisputeFilters) => {
 };
 
 /**
- * Get dispute metrics for dashboard (company-scoped; requires company context)
+ * Get dispute metrics for admin dashboard (platform-wide).
  */
 export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate?: string }) => {
     return useQuery<DisputeMetrics, ApiError>({
@@ -68,7 +68,7 @@ export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate
             if (dateRange?.startDate) params.append('startDate', dateRange.startDate);
             if (dateRange?.endDate) params.append('endDate', dateRange.endDate);
 
-            const response = await apiClient.get(`/disputes/weight/metrics?${params.toString()}`);
+            const response = await apiClient.get(`/admin/disputes/weight/metrics?${params.toString()}`);
             return response.data.data.metrics;
         },
         ...CACHE_TIMES.MEDIUM,

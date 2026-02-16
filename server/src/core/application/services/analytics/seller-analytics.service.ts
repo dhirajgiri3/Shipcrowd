@@ -518,12 +518,12 @@ export default class SellerAnalyticsService {
                             $cond: {
                                 if: {
                                     $in: [
-                                        { $toLower: { $trim: { $ifNull: ['$carrier', ''] } } },
+                                        { $toLower: { $trim: { input: { $ifNull: ['$carrier', ''] } } } },
                                         ['surface', 'express', 'air', 'standard', 'economy', 'ground', 'road'],
                                     ],
                                 },
                                 then: 'velocity',
-                                else: { $toLower: { $trim: { $ifNull: ['$carrier', 'unknown'] } } },
+                                else: { $toLower: { $trim: { input: { $ifNull: ['$carrier', 'unknown'] } } } },
                             },
                         },
                     },

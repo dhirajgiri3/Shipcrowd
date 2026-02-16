@@ -21,6 +21,7 @@ interface OrderQuoteShipModalProps {
 }
 
 const EMPTY_WAREHOUSES: Array<{ _id: string; address?: { postalCode?: string } }> = [];
+const PINCODE_REGEX = /^\d{6}$/;
 
 const resolveOrderWarehouseId = (order: Order): string | null => {
   const warehouseId = order?.warehouseId;
@@ -86,6 +87,7 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
   const [quoteTimeLeftSec, setQuoteTimeLeftSec] = useState(0);
   const [shouldFetchOrderDetails, setShouldFetchOrderDetails] = useState(false);
   const [hasMissingOriginError, setHasMissingOriginError] = useState(false);
+  const [hasInvalidDestinationError, setHasInvalidDestinationError] = useState(false);
 
   const {
     mutateAsync: fetchCourierRates,
@@ -143,11 +145,22 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
     }
 
     setHasMissingOriginError(false);
+    const toPincode = String(targetOrder.customerInfo.address.postalCode || '').trim();
+    if (!PINCODE_REGEX.test(toPincode)) {
+      setHasInvalidDestinationError(true);
+      setCourierRates([]);
+      setSelectedCourierKey(null);
+      setQuoteExpiresAt(null);
+      setQuoteTimeLeftSec(0);
+      addToast('Destination pincode is invalid for this order. Please update address and retry.', 'error');
+      return;
+    }
+    setHasInvalidDestinationError(false);
 
     const dims = deriveOrderDimensions(targetOrder);
     const result = await fetchCourierRates({
       fromPincode,
-      toPincode: targetOrder.customerInfo.address.postalCode,
+      toPincode,
       weight: deriveOrderWeight(targetOrder),
       paymentMode: targetOrder.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
       orderValue: Number(targetOrder.totals?.total || 0),
@@ -206,6 +219,8 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
     setQuoteTimeLeftSec(0);
     setShouldFetchOrderDetails(false);
     setHasMissingOriginError(false);
+    setHasInvalidDestinationError(false);
+    setHasInvalidDestinationError(false);
     bookingInFlightRef.current = false;
     autoRefreshInFlightRef.current = false;
     autoRefreshAttemptedExpiryRef.current = null;
@@ -358,6 +373,7 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
     !hasSufficientBalance ||
     isShipBooking ||
     hasMissingOriginError ||
+    hasInvalidDestinationError ||
     isFetchingCourierRates ||
     (quoteExpiresAt ? quoteExpiresAt.getTime() <= Date.now() : false);
 

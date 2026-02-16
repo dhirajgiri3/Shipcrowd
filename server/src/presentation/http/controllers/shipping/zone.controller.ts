@@ -277,9 +277,55 @@ export const updateZone = async (req: Request, res: Response, next: NextFunction
     }
 };
 
+/**
+ * Delete a zone (soft delete)
+ * @route DELETE /api/v1/zones/:id
+ */
+export const deleteZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        requireCompanyContext(auth);
+        const companyId = auth.companyId;
+
+        const zoneId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(zoneId)) {
+            throw new ValidationError('Invalid zone ID format');
+        }
+
+        const zone = await Zone.findOne({
+            _id: zoneId,
+            companyId,
+            isDeleted: false,
+        });
+
+        if (!zone) {
+            throw new NotFoundError('Zone', ErrorCode.BIZ_NOT_FOUND);
+        }
+
+        zone.isDeleted = true;
+        await zone.save();
+
+        await createAuditLog(
+            auth.userId,
+            companyId,
+            'delete',
+            'zone',
+            zoneId,
+            { message: 'Zone deleted' },
+            req
+        );
+
+        sendSuccess(res, null, 'Zone deleted successfully');
+    } catch (error) {
+        logger.error('Error deleting zone:', error);
+        next(error);
+    }
+};
+
 export default {
     getZones,
     createZone,
     getZoneById,
     updateZone,
+    deleteZone,
 };

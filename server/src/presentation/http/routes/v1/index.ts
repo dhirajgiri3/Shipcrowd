@@ -111,6 +111,8 @@ import companyGroupRoutes from './admin/company-group.routes';
 import disputeMetricsRoutes from './admin/dispute-metrics.routes';
 import emailQueueRoutes from './admin/email-queue.routes';
 import featureFlagRoutes from './admin/feature-flag.routes';
+import adminIntegrationsRoutes from './admin/admin-integrations.routes';
+import adminPromoRoutes from './admin/admin-promo.routes';
 import impersonationRoutes from './admin/impersonation.routes';
 import platformSettingsRoutes from './admin/platform-settings.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
@@ -165,6 +167,7 @@ router.use('/orders', orderRoutes);
 router.use('/admin/orders', adminOrderRoutes); // Admin-specific order routes
 router.use('/shipments', shipmentRoutes);
 router.use('/zones', zoneRoutes);
+router.use('/admin/zones', zoneRoutes); // Admin UI compatibility (company-scoped)
 router.use('/quotes', quoteRoutes);
 router.use('/admin/courier-services', courierServiceRoutes);
 router.use('/admin/service-ratecards', serviceRateCardRoutes);
@@ -244,6 +247,8 @@ router.use('/admin/sku-weight-profiles', skuWeightProfileRoutes);
 router.use('/admin/disputes/weight', disputeMetricsRoutes);
 router.use('/admin/company-groups', companyGroupRoutes);
 router.use('/admin/email-queue', emailQueueRoutes);
+router.use('/admin/integrations', adminIntegrationsRoutes);
+router.use('/admin/promos', adminPromoRoutes);
 
 // 10. Webhooks
 router.use('/webhooks/velocity', velocityWebhookRoutes);

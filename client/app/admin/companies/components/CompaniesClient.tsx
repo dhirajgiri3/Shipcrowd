@@ -29,6 +29,7 @@ import {
 } from '@/src/core/api/hooks/admin/companies/useCompanies';
 import { Company } from '@/src/core/api/clients/general/companyApi';
 import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
 import { ViewActionButton } from '@/src/components/ui/core/ViewActionButton';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';

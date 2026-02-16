@@ -32,5 +32,7 @@ router.get('/:id', authenticate, asyncHandler(zoneController.getZoneById));
  * @access Private
  */
 router.patch('/:id', authenticate, csrfProtection, asyncHandler(zoneController.updateZone));
+router.put('/:id', authenticate, csrfProtection, asyncHandler(zoneController.updateZone));
+router.delete('/:id', authenticate, csrfProtection, asyncHandler(zoneController.deleteZone));
 
 export default router;

@@ -28,6 +28,9 @@ export function useReturns(filters?: ReturnFilters, options?: UseQueryOptions<Re
                 ...filters,
                 returnReason: filters?.returnReason || filters?.reason,
             };
+            if (typeof params.search === 'string' && params.search.trim() === '') {
+                delete (params as Record<string, unknown>).search;
+            }
             const response = await apiClient.get<any>('/logistics/returns', { params });
             const body = response?.data || {};
             const payload = (Array.isArray(body?.data) || body?.pagination)

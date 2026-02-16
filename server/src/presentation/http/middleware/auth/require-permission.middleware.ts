@@ -35,11 +35,15 @@ export const requirePermission = (
                 throw new AppError('Authentication required', 'UNAUTHORIZED', 401);
             }
 
-            // Extract companyId from request
+            // Extract companyId from request safely (req.body can be undefined on GET)
+            const body = (req.body ?? {}) as Record<string, unknown>;
+            const query = (req.query ?? {}) as Record<string, unknown>;
+            const params = (req.params ?? {}) as Record<string, unknown>;
+
             const companyId = (
-                req.params.companyId ||
-                req.body.companyId ||
-                req.query.companyId
+                params.companyId ||
+                body.companyId ||
+                query.companyId
             ) as string | undefined;
 
             let permissions: string[];

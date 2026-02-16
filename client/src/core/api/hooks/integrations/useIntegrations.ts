@@ -60,9 +60,9 @@ export interface IntegrationHealthResponse {
  */
 export const useIntegrationHealth = (options?: UseQueryOptions<IntegrationHealthResponse, any>) => {
     return useQuery<IntegrationHealthResponse, any>({
-        queryKey: ['integrations', 'health'], // Fallback query key
+        queryKey: ['admin', 'integrations', 'health'],
         queryFn: async () => {
-            const response = await apiClient.get('/integrations/health');
+            const response = await apiClient.get('/admin/integrations/health');
             // Backend response is wrapped by sendSuccess: { success, message, data }
             return response.data?.data;
         },
