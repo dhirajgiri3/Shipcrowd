@@ -141,7 +141,10 @@ async function main(): Promise<void> {
   const sellerPassword = process.env.SMOKE_SELLER_PASSWORD || '';
   const sellerBearer = process.env.SMOKE_SELLER_BEARER || '';
 
-  const reverseQuoteEnabled = process.env.REVERSE_QUOTE_ENABLED === 'true';
+  const reverseQuoteEnabled =
+    process.env.SERVICE_LEVEL_REVERSE_QUOTES_ENABLED !== undefined
+      ? process.env.SERVICE_LEVEL_REVERSE_QUOTES_ENABLED === 'true'
+      : process.env.REVERSE_QUOTE_ENABLED === 'true';
   const failures: string[] = [];
 
   console.log(`[Smoke] Base URL: ${baseUrl}`);

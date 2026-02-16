@@ -31,6 +31,19 @@ const sourceModeOptions = [
     { label: 'Live API', value: 'LIVE_API' },
 ];
 
+const flowTypeOptions = [
+    { label: 'Forward', value: 'forward' },
+    { label: 'Reverse', value: 'reverse' },
+];
+
+const categoryOptions = [
+    { label: 'Default', value: 'default' },
+    { label: 'Basic', value: 'basic' },
+    { label: 'Standard', value: 'standard' },
+    { label: 'Advanced', value: 'advanced' },
+    { label: 'Custom', value: 'custom' },
+];
+
 const statusOptions = [
     { label: 'Active', value: 'active' },
     { label: 'Draft', value: 'draft' },
@@ -80,6 +93,8 @@ interface RateCardsTabProps {
 type RateCardForm = {
     serviceId: string;
     cardType: 'cost' | 'sell';
+    flowType: 'forward' | 'reverse';
+    category: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     sourceMode: 'LIVE_API' | 'TABLE' | 'HYBRID';
     status: 'draft' | 'active' | 'inactive';
     effectiveStartDate: string;
@@ -108,6 +123,8 @@ type RateCardForm = {
 const defaultRateCardForm: RateCardForm = {
     serviceId: '',
     cardType: 'sell',
+    flowType: 'forward',
+    category: 'default',
     sourceMode: 'TABLE',
     status: 'active',
     effectiveStartDate: toDateInputValue(new Date()),
@@ -164,9 +181,17 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
     const [editingRateCard, setEditingRateCard] = useState<ServiceRateCardItem | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+    const [listFlowType, setListFlowType] = useState<'all' | 'forward' | 'reverse'>('all');
+    const [listCategory, setListCategory] = useState<'all' | 'default' | 'basic' | 'standard' | 'advanced' | 'custom'>('all');
 
     const { data: rateCards = [], isLoading: isRateCardsLoading } = useServiceRateCards(
-        selectedServiceId ? { serviceId: selectedServiceId } : undefined
+        selectedServiceId
+            ? {
+                serviceId: selectedServiceId,
+                ...(listFlowType !== 'all' ? { flowType: listFlowType } : {}),
+                ...(listCategory !== 'all' ? { category: listCategory } : {}),
+            }
+            : undefined
     );
 
     const createRateCardMutation = useCreateServiceRateCard();
@@ -230,6 +255,8 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
         setRateCardForm({
             serviceId: card.serviceId,
             cardType: card.cardType,
+            flowType: card.flowType || 'forward',
+            category: card.category || 'default',
             sourceMode: card.sourceMode,
             status: card.status,
             effectiveStartDate: toDateInputValue(card.effectiveDates?.startDate) || toDateInputValue(new Date()),
@@ -462,6 +489,8 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
         const payload: Partial<ServiceRateCardItem> = {
             serviceId: rateCardForm.serviceId,
             cardType: rateCardForm.cardType,
+            flowType: rateCardForm.flowType,
+            category: rateCardForm.cardType === 'sell' ? rateCardForm.category : 'default',
             sourceMode: rateCardForm.sourceMode,
             status: rateCardForm.status,
             currency: 'INR',
@@ -513,6 +542,22 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                     >
                         {row.sourceMode}
                     </Badge>
+                    <Badge
+                        variant="outline"
+                        size="sm"
+                        className="uppercase tracking-wide"
+                    >
+                        {row.flowType || 'forward'}
+                    </Badge>
+                    {row.cardType === 'sell' && (
+                        <Badge
+                            variant="secondary"
+                            size="sm"
+                            className="uppercase tracking-wide"
+                        >
+                            {row.category || 'default'}
+                        </Badge>
+                    )}
                 </div>
             )
         },
@@ -746,18 +791,56 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                             </CardHeader>
                             <CardContent className="space-y-6 pt-6">
                                 {/* Type and Source */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
                                             Type
                                         </label>
                                         <Select
                                             value={rateCardForm.cardType}
-                                            onChange={(e) => setRateCardForm({
-                                                ...rateCardForm,
-                                                cardType: e.target.value as RateCardForm['cardType']
-                                            })}
+                                            onChange={(e) => {
+                                                const nextCardType = e.target.value as RateCardForm['cardType'];
+                                                setRateCardForm({
+                                                    ...rateCardForm,
+                                                    cardType: nextCardType,
+                                                    category:
+                                                        nextCardType === 'cost'
+                                                            ? 'default'
+                                                            : rateCardForm.category,
+                                                });
+                                            }}
                                             options={cardTypeOptions}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                            Flow Type
+                                        </label>
+                                        <Select
+                                            value={rateCardForm.flowType}
+                                            onChange={(e) =>
+                                                setRateCardForm({
+                                                    ...rateCardForm,
+                                                    flowType: e.target.value as RateCardForm['flowType'],
+                                                })
+                                            }
+                                            options={flowTypeOptions}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                            Category
+                                        </label>
+                                        <Select
+                                            value={rateCardForm.category}
+                                            onChange={(e) =>
+                                                setRateCardForm({
+                                                    ...rateCardForm,
+                                                    category: e.target.value as RateCardForm['category'],
+                                                })
+                                            }
+                                            disabled={rateCardForm.cardType === 'cost'}
+                                            options={categoryOptions}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -1206,30 +1289,62 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                     description="Please select a courier service to view and manage its rate cards."
                                     className="h-[400px]"
                                 />
-                            ) : isRateCardsLoading ? (
-                                <RateCardTableSkeleton />
-                            ) : rateCards.length === 0 ? (
-                                <EmptyState
-                                    variant="noItems"
-                                    icon={<Coins className="h-12 w-12" />}
-                                    title="No Rate Cards Found"
-                                    description="This service doesn't have any rate cards configured yet."
-                                    action={{
-                                        label: 'Create First Rate Card',
-                                        onClick: startCreate,
-                                        variant: 'primary',
-                                        icon: <Plus className="h-4 w-4" />
-                                    }}
-                                    className="h-[400px]"
-                                />
                             ) : (
-                                <CardContent className="p-0">
-                                    <DataTable
-                                        columns={columns}
-                                        data={rateCards}
-                                        isLoading={isRateCardsLoading}
-                                    />
-                                </CardContent>
+                                <>
+                                    <CardContent className="border-b border-[var(--border-subtle)] p-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <Select
+                                                value={listFlowType}
+                                                onChange={(e) =>
+                                                    setListFlowType(
+                                                        e.target.value as typeof listFlowType
+                                                    )
+                                                }
+                                                options={[
+                                                    { label: 'All Flows', value: 'all' },
+                                                    ...flowTypeOptions,
+                                                ]}
+                                            />
+                                            <Select
+                                                value={listCategory}
+                                                onChange={(e) =>
+                                                    setListCategory(
+                                                        e.target.value as typeof listCategory
+                                                    )
+                                                }
+                                                options={[
+                                                    { label: 'All Categories', value: 'all' },
+                                                    ...categoryOptions,
+                                                ]}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                    {isRateCardsLoading ? (
+                                        <RateCardTableSkeleton />
+                                    ) : rateCards.length === 0 ? (
+                                        <EmptyState
+                                            variant="noItems"
+                                            icon={<Coins className="h-12 w-12" />}
+                                            title="No Rate Cards Found"
+                                            description="This service doesn't have any rate cards configured yet."
+                                            action={{
+                                                label: 'Create First Rate Card',
+                                                onClick: startCreate,
+                                                variant: 'primary',
+                                                icon: <Plus className="h-4 w-4" />
+                                            }}
+                                            className="h-[400px]"
+                                        />
+                                    ) : (
+                                        <CardContent className="p-0">
+                                            <DataTable
+                                                columns={columns}
+                                                data={rateCards}
+                                                isLoading={isRateCardsLoading}
+                                            />
+                                        </CardContent>
+                                    )}
+                                </>
                             )}
                         </Card>
                     )}

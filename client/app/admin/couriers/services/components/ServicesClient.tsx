@@ -91,6 +91,7 @@ export function ServicesClient() {
             serviceCode: form.serviceCode.trim(),
             providerServiceId: form.providerServiceId.trim() || undefined,
             serviceType: form.serviceType,
+            flowType: form.flowType,
             zoneSupport: toZoneList(form.zoneSupport),
             constraints: {
                 minWeightKg,

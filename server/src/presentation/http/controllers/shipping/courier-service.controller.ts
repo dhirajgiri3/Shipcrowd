@@ -65,7 +65,7 @@ export const listCourierServices = async (req: Request, res: Response, next: Nex
 
         const [items, total] = await Promise.all([
             CourierService.find(query)
-                .select('provider serviceCode providerServiceId displayName serviceType status zoneSupport constraints sla') // Only needed fields
+                .select('provider serviceCode providerServiceId displayName serviceType flowType status zoneSupport constraints sla') // Only needed fields
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)

@@ -10,17 +10,32 @@ export interface SellerCourierPolicy {
     allowedServiceIds: string[];
     blockedProviders: string[];
     blockedServiceIds: string[];
+    rateCardType: 'default' | 'custom';
+    rateCardCategory: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     selectionMode: 'manual_with_recommendation' | 'manual_only' | 'auto';
     autoPriority: 'price' | 'speed' | 'balanced';
     balancedDeltaPercent: number;
     isActive: boolean;
 }
 
-export const useSellerCourierPolicy = (sellerId: string, options?: UseQueryOptions<SellerCourierPolicy, ApiError>) => {
+type SellerCourierPolicyScope = 'admin' | 'seller';
+
+const getSellerCourierPolicyPath = (sellerId: string, scope: SellerCourierPolicyScope): string =>
+    scope === 'admin'
+        ? `/admin/sellers/${sellerId}/courier-policy`
+        : `/sellers/${sellerId}/courier-policy`;
+
+export const useSellerCourierPolicy = (
+    sellerId: string,
+    options?: Omit<UseQueryOptions<SellerCourierPolicy, ApiError>, 'queryKey' | 'queryFn'> & {
+        scope?: SellerCourierPolicyScope;
+    }
+) => {
+    const scope = options?.scope || 'admin';
     return useQuery<SellerCourierPolicy, ApiError>({
-        queryKey: queryKeys.sellerCourierPolicy.detail(sellerId),
+        queryKey: [...queryKeys.sellerCourierPolicy.detail(sellerId), scope],
         queryFn: async () => {
-            const response = await apiClient.get(`/admin/sellers/${sellerId}/courier-policy`);
+            const response = await apiClient.get(getSellerCourierPolicyPath(sellerId, scope));
             return response.data.data || response.data;
         },
         enabled: !!sellerId,
@@ -28,7 +43,10 @@ export const useSellerCourierPolicy = (sellerId: string, options?: UseQueryOptio
         retry: RETRY_CONFIG.DEFAULT,
         refetchOnWindowFocus: false, // Don't refetch when user switches tabs
         refetchOnReconnect: true,    // Do refetch after network restore
-        ...options,
+        ...(() => {
+            const { scope: _scope, ...rest } = options || {};
+            return rest;
+        })(),
     });
 };
 
@@ -36,7 +54,7 @@ export const useUpdateSellerCourierPolicy = (
     options?: UseMutationOptions<
         SellerCourierPolicy,
         ApiError,
-        { sellerId: string; data: Partial<SellerCourierPolicy> },
+        { sellerId: string; data: Partial<SellerCourierPolicy>; scope?: SellerCourierPolicyScope },
         { previousPolicy: SellerCourierPolicy | undefined } // Context type
     >
 ) => {
@@ -44,40 +62,43 @@ export const useUpdateSellerCourierPolicy = (
     return useMutation<
         SellerCourierPolicy,
         ApiError,
-        { sellerId: string; data: Partial<SellerCourierPolicy> },
+        { sellerId: string; data: Partial<SellerCourierPolicy>; scope?: SellerCourierPolicyScope },
         { previousPolicy: SellerCourierPolicy | undefined } // Context type
     >({
-        mutationFn: async ({ sellerId, data }) => {
-            const response = await apiClient.put(`/admin/sellers/${sellerId}/courier-policy`, data);
+        mutationFn: async ({ sellerId, data, scope = 'admin' }) => {
+            const response = await apiClient.put(getSellerCourierPolicyPath(sellerId, scope), data);
             return response.data.data || response.data;
         },
         // Optimistic update for instant UI feedback
-        onMutate: async ({ sellerId, data }) => {
+        onMutate: async ({ sellerId, data, scope = 'admin' }) => {
+            const key = [...queryKeys.sellerCourierPolicy.detail(sellerId), scope];
             // Cancel outgoing refetches
-            await queryClient.cancelQueries({ queryKey: queryKeys.sellerCourierPolicy.detail(sellerId) });
+            await queryClient.cancelQueries({ queryKey: key });
 
             // Snapshot current value for rollback
             const previousPolicy = queryClient.getQueryData<SellerCourierPolicy>(
-                queryKeys.sellerCourierPolicy.detail(sellerId)
+                key
             );
 
             // Optimistically update the cache
             queryClient.setQueryData<SellerCourierPolicy>(
-                queryKeys.sellerCourierPolicy.detail(sellerId),
+                key,
                 (old) => (old ? { ...old, ...data } : old) as SellerCourierPolicy
             );
 
             return { previousPolicy };
         },
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.sellerCourierPolicy.detail(variables.sellerId) });
+            const key = [...queryKeys.sellerCourierPolicy.detail(variables.sellerId), variables.scope || 'admin'];
+            queryClient.invalidateQueries({ queryKey: key });
             showSuccessToast('Seller courier policy updated');
         },
         onError: (error, variables, context) => {
+            const key = [...queryKeys.sellerCourierPolicy.detail(variables.sellerId), variables.scope || 'admin'];
             // Rollback optimistic update on error
             if (context?.previousPolicy) {
                 queryClient.setQueryData(
-                    queryKeys.sellerCourierPolicy.detail(variables.sellerId),
+                    key,
                     context.previousPolicy
                 );
             }

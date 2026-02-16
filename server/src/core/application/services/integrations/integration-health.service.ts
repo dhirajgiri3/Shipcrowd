@@ -17,6 +17,7 @@
  * ```
  */
 
+import mongoose from 'mongoose';
 import {
 AmazonStore,
 AmazonSyncLog,
@@ -76,6 +77,17 @@ interface IntegrationHealthResponse {
 
 /** Base filter for marketplace stores - exclude uninstalled */
 const EXCLUDE_UNINSTALLED = { $or: [{ uninstalledAt: { $exists: false } }, { uninstalledAt: null }] };
+
+/** Resolve company filter for MongoDB query - ensures ObjectId for reliable matching */
+function resolveCompanyFilter(companyId?: string): Record<string, unknown> {
+    if (!companyId || !mongoose.Types.ObjectId.isValid(companyId)) {
+        return { ...EXCLUDE_UNINSTALLED };
+    }
+    return {
+        companyId: new mongoose.Types.ObjectId(companyId),
+        ...EXCLUDE_UNINSTALLED,
+    };
+}
 
 export class IntegrationHealthService {
     /**
@@ -170,9 +182,7 @@ export class IntegrationHealthService {
      */
     private static async getShopifyHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const filter: Record<string, unknown> = companyId
-                ? { companyId, isActive: true }
-                : { ...EXCLUDE_UNINSTALLED };
+            const filter = resolveCompanyFilter(companyId);
             const stores = await ShopifyStore.find(filter).lean();
 
             if (stores.length === 0) {
@@ -267,9 +277,7 @@ export class IntegrationHealthService {
      */
     private static async getWooCommerceHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const filter: Record<string, unknown> = companyId
-                ? { companyId, isActive: true }
-                : { ...EXCLUDE_UNINSTALLED };
+            const filter = resolveCompanyFilter(companyId);
             const stores = await WooCommerceStore.find(filter).lean();
 
             if (stores.length === 0) {
@@ -360,9 +368,7 @@ export class IntegrationHealthService {
      */
     private static async getAmazonHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const filter: Record<string, unknown> = companyId
-                ? { companyId, isActive: true }
-                : { ...EXCLUDE_UNINSTALLED };
+            const filter = resolveCompanyFilter(companyId);
             const stores = await AmazonStore.find(filter).lean();
 
             if (stores.length === 0) {
@@ -453,9 +459,7 @@ export class IntegrationHealthService {
      */
     private static async getFlipkartHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const filter: Record<string, unknown> = companyId
-                ? { companyId, isActive: true }
-                : { ...EXCLUDE_UNINSTALLED };
+            const filter = resolveCompanyFilter(companyId);
             const stores = await FlipkartStore.find(filter).lean();
 
             if (stores.length === 0) {

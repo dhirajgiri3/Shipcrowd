@@ -30,6 +30,7 @@ export type ServiceForm = {
     serviceCode: string;
     providerServiceId: string;
     serviceType: 'surface' | 'express' | 'air' | 'standard';
+    flowType: 'forward' | 'reverse' | 'both';
     zoneSupport: string;
     minWeightKg: string;
     maxWeightKg: string;
@@ -46,6 +47,7 @@ const defaultForm: ServiceForm = {
     serviceCode: '',
     providerServiceId: '',
     serviceType: 'surface',
+    flowType: 'forward',
     zoneSupport: 'A,B,C,D,E',
     minWeightKg: '',
     maxWeightKg: '',
@@ -69,6 +71,12 @@ const serviceTypeOptions = [
     { label: 'Standard', value: 'standard' },
 ];
 
+const flowTypeOptions = [
+    { label: 'Forward', value: 'forward' },
+    { label: 'Reverse', value: 'reverse' },
+    { label: 'Both', value: 'both' },
+];
+
 export function ServiceDialog({
     open,
     onOpenChange,
@@ -90,6 +98,7 @@ export function ServiceDialog({
                     serviceCode: initialData.serviceCode,
                     providerServiceId: initialData.providerServiceId || '',
                     serviceType: initialData.serviceType,
+                    flowType: initialData.flowType || 'forward',
                     zoneSupport: (initialData.zoneSupport || []).join(','),
                     minWeightKg: String(initialData.constraints?.minWeightKg ?? ''),
                     maxWeightKg: String(initialData.constraints?.maxWeightKg ?? ''),
@@ -149,6 +158,16 @@ export function ServiceDialog({
                                 onChange={(e) => setForm({ ...form, serviceType: e.target.value as ServiceForm['serviceType'] })}
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="flowType">Flow Type</Label>
+                        <Select
+                            id="flowType"
+                            options={flowTypeOptions}
+                            value={form.flowType}
+                            onChange={(e) => setForm({ ...form, flowType: e.target.value as ServiceForm['flowType'] })}
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

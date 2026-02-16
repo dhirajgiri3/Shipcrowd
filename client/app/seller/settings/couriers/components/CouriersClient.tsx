@@ -11,9 +11,8 @@ import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useAuth } from '@/src/features/auth';
 import {
     useSellerCourierPolicy,
-    useUpdateSellerCourierPolicy,
 } from '@/src/core/api/hooks/admin/couriers/useSellerCourierPolicy';
-import { ShieldCheck, Save } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 type Provider = 'velocity' | 'delhivery' | 'ekart';
 const PROVIDERS: Provider[] = ['velocity', 'delhivery', 'ekart'];
@@ -40,8 +39,7 @@ export function CouriersClient() {
     const { user } = useAuth();
     const { addToast } = useToast();
     const sellerId = user?._id || '';
-    const { data: policy, isLoading } = useSellerCourierPolicy(sellerId);
-    const updatePolicy = useUpdateSellerCourierPolicy();
+    const { data: policy, isLoading } = useSellerCourierPolicy(sellerId, { scope: 'seller' });
     const [form, setForm] = useState<PolicyForm>(DEFAULT_FORM);
 
     useEffect(() => {
@@ -72,32 +70,6 @@ export function CouriersClient() {
         });
     };
 
-    const savePolicy = async () => {
-        if (!sellerId) {
-            addToast('Unable to resolve seller identity', 'error');
-            return;
-        }
-
-        try {
-            await updatePolicy.mutateAsync({
-                sellerId,
-                data: {
-                    selectionMode: form.selectionMode,
-                    autoPriority: form.autoPriority,
-                    balancedDeltaPercent: form.balancedDeltaPercent,
-                    allowedProviders: form.allowedProviders,
-                    blockedProviders: form.blockedProviders,
-                    allowedServiceIds: [],
-                    blockedServiceIds: [],
-                    isActive: form.isActive,
-                },
-            });
-            addToast('Courier policy updated', 'success');
-        } catch {
-            // handled in hook
-        }
-    };
-
     if (!sellerId) {
         return (
             <Card>
@@ -121,7 +93,7 @@ export function CouriersClient() {
                     Courier Policy
                 </h1>
                 <p className="text-sm text-[var(--text-secondary)] mt-1">
-                    Configure provider eligibility and auto-selection strategy for your account.
+                    View provider eligibility and auto-selection strategy. Pricing controls are managed by admin.
                 </p>
             </div>
 
@@ -221,9 +193,8 @@ export function CouriersClient() {
             </Card>
 
             <div className="flex justify-end">
-                <Button onClick={savePolicy} disabled={updatePolicy.isPending}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Policy
+                <Button disabled onClick={() => addToast('Policy updates are managed by admin', 'info')}>
+                    Managed By Admin
                 </Button>
             </div>
         </div>

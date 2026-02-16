@@ -1,32 +1,93 @@
 /**
  * Service-Level Pricing Seeder
  *
- * Seeds the new architecture entities for development:
- * - CourierService
- * - ServiceRateCard (cost + sell)
- * - SellerCourierPolicy (default per seller)
- *
- * Scope: Velocity, Delhivery, Ekart
+ * Seeds the platform-scoped courier pricing architecture:
+ * - Platform CourierService (100+)
+ * - Platform ServiceRateCard (cost + sell categories)
+ * - SellerCourierPolicy defaults for category/type
  */
 
 import mongoose from 'mongoose';
 import {
-CourierService,
-Integration,
-SellerCourierPolicy,
-ServiceRateCard,
-User,
+    CourierService,
+    Integration,
+    SellerCourierPolicy,
+    ServiceRateCard,
+    User,
 } from '../../mongoose/models';
 import { createTimer, logger } from '../utils/logger.utils';
 
 type ProviderKey = 'velocity' | 'delhivery' | 'ekart';
 type ZoneKey = 'zoneA' | 'zoneB' | 'zoneC' | 'zoneD' | 'zoneE';
+type ServiceType = 'surface' | 'express' | 'air' | 'standard';
+type RateCardCategory = 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
+
+const ZONES: ZoneKey[] = ['zoneA', 'zoneB', 'zoneC', 'zoneD', 'zoneE'];
+const WEIGHT_BUCKETS = [0.5, 1, 2, 3, 5, 7.5, 10, 15, 20];
+const SERVICE_TYPES: ServiceType[] = ['surface', 'express', 'air', 'standard'];
+const SELL_CATEGORIES: RateCardCategory[] = ['default', 'basic', 'standard', 'advanced', 'custom'];
+
+const PROVIDER_CONFIG: Record<
+    ProviderKey,
+    {
+        displayName: string;
+        baseZoneHalfKg: Record<ZoneKey, number>;
+        defaultPaymentModes: Array<'cod' | 'prepaid'>;
+        serviceTypeBoost: Record<ServiceType, number>;
+        slaByServiceType: Record<ServiceType, { eddMinDays: number; eddMaxDays: number }>;
+    }
+> = {
+    velocity: {
+        displayName: 'Velocity',
+        baseZoneHalfKg: { zoneA: 44, zoneB: 50, zoneC: 58, zoneD: 66, zoneE: 76 },
+        defaultPaymentModes: ['cod', 'prepaid'],
+        serviceTypeBoost: { surface: 1, express: 1.22, air: 1.35, standard: 1.08 },
+        slaByServiceType: {
+            surface: { eddMinDays: 3, eddMaxDays: 6 },
+            express: { eddMinDays: 1, eddMaxDays: 3 },
+            air: { eddMinDays: 1, eddMaxDays: 2 },
+            standard: { eddMinDays: 2, eddMaxDays: 5 },
+        },
+    },
+    delhivery: {
+        displayName: 'Delhivery',
+        baseZoneHalfKg: { zoneA: 46, zoneB: 53, zoneC: 61, zoneD: 70, zoneE: 81 },
+        defaultPaymentModes: ['cod', 'prepaid'],
+        serviceTypeBoost: { surface: 1, express: 1.2, air: 1.33, standard: 1.1 },
+        slaByServiceType: {
+            surface: { eddMinDays: 2, eddMaxDays: 5 },
+            express: { eddMinDays: 1, eddMaxDays: 3 },
+            air: { eddMinDays: 1, eddMaxDays: 2 },
+            standard: { eddMinDays: 2, eddMaxDays: 4 },
+        },
+    },
+    ekart: {
+        displayName: 'Ekart Logistics',
+        baseZoneHalfKg: { zoneA: 43, zoneB: 49, zoneC: 56, zoneD: 65, zoneE: 77 },
+        defaultPaymentModes: ['cod', 'prepaid'],
+        serviceTypeBoost: { surface: 1, express: 1.18, air: 1.28, standard: 1.07 },
+        slaByServiceType: {
+            surface: { eddMinDays: 2, eddMaxDays: 5 },
+            express: { eddMinDays: 1, eddMaxDays: 3 },
+            air: { eddMinDays: 1, eddMaxDays: 2 },
+            standard: { eddMinDays: 2, eddMaxDays: 4 },
+        },
+    },
+};
+
+const CATEGORY_MULTIPLIERS: Record<RateCardCategory, number> = {
+    default: 1.18,
+    basic: 1.14,
+    standard: 1.1,
+    advanced: 1.06,
+    custom: 1.02,
+};
 
 interface ServiceTemplate {
     provider: ProviderKey;
     serviceCode: string;
     displayName: string;
-    serviceType: 'surface' | 'express' | 'air' | 'standard';
+    serviceType: ServiceType;
     constraints: {
         minWeightKg: number;
         maxWeightKg: number;
@@ -39,175 +100,69 @@ interface ServiceTemplate {
         eddMaxDays: number;
     };
     costBasePerZoneHalfKg: Record<ZoneKey, number>;
-    sellMarkupMultiplier: number;
 }
-
-const ZONES: ZoneKey[] = ['zoneA', 'zoneB', 'zoneC', 'zoneD', 'zoneE'];
-
-const SERVICE_TEMPLATES: ServiceTemplate[] = [
-    {
-        provider: 'velocity',
-        serviceCode: 'VEL_SURFACE_05KG',
-        displayName: 'Velocity Surface 0.5 KG',
-        serviceType: 'surface',
-        constraints: {
-            minWeightKg: 0,
-            maxWeightKg: 20,
-            maxCodValue: 50000,
-            maxPrepaidValue: 200000,
-            paymentModes: ['cod', 'prepaid'],
-        },
-        sla: { eddMinDays: 3, eddMaxDays: 6 },
-        costBasePerZoneHalfKg: {
-            zoneA: 48,
-            zoneB: 56,
-            zoneC: 64,
-            zoneD: 74,
-            zoneE: 88,
-        },
-        sellMarkupMultiplier: 1.18,
-    },
-    {
-        provider: 'velocity',
-        serviceCode: 'VEL_EXPRESS_05KG',
-        displayName: 'Velocity Express 0.5 KG',
-        serviceType: 'express',
-        constraints: {
-            minWeightKg: 0,
-            maxWeightKg: 10,
-            maxCodValue: 50000,
-            maxPrepaidValue: 200000,
-            paymentModes: ['cod', 'prepaid'],
-        },
-        sla: { eddMinDays: 1, eddMaxDays: 3 },
-        costBasePerZoneHalfKg: {
-            zoneA: 72,
-            zoneB: 82,
-            zoneC: 94,
-            zoneD: 108,
-            zoneE: 124,
-        },
-        sellMarkupMultiplier: 1.2,
-    },
-    {
-        provider: 'delhivery',
-        serviceCode: 'DLV_SURFACE_05KG',
-        displayName: 'Delhivery Surface 0.5 KG',
-        serviceType: 'surface',
-        constraints: {
-            minWeightKg: 0,
-            maxWeightKg: 25,
-            maxCodValue: 50000,
-            maxPrepaidValue: 250000,
-            paymentModes: ['cod', 'prepaid'],
-        },
-        sla: { eddMinDays: 2, eddMaxDays: 5 },
-        costBasePerZoneHalfKg: {
-            zoneA: 50,
-            zoneB: 58,
-            zoneC: 66,
-            zoneD: 78,
-            zoneE: 92,
-        },
-        sellMarkupMultiplier: 1.17,
-    },
-    {
-        provider: 'delhivery',
-        serviceCode: 'DLV_AIR_05KG',
-        displayName: 'Delhivery Air 0.5 KG',
-        serviceType: 'air',
-        constraints: {
-            minWeightKg: 0,
-            maxWeightKg: 10,
-            maxCodValue: 50000,
-            maxPrepaidValue: 250000,
-            paymentModes: ['cod', 'prepaid'],
-        },
-        sla: { eddMinDays: 1, eddMaxDays: 2 },
-        costBasePerZoneHalfKg: {
-            zoneA: 78,
-            zoneB: 90,
-            zoneC: 102,
-            zoneD: 120,
-            zoneE: 136,
-        },
-        sellMarkupMultiplier: 1.19,
-    },
-    {
-        provider: 'ekart',
-        serviceCode: 'EKT_SURFACE_05KG',
-        displayName: 'Ekart Surface 0.5 KG',
-        serviceType: 'surface',
-        constraints: {
-            minWeightKg: 0,
-            maxWeightKg: 20,
-            maxCodValue: 50000,
-            maxPrepaidValue: 200000,
-            paymentModes: ['cod', 'prepaid'],
-        },
-        sla: { eddMinDays: 2, eddMaxDays: 5 },
-        costBasePerZoneHalfKg: {
-            zoneA: 46,
-            zoneB: 54,
-            zoneC: 62,
-            zoneD: 74,
-            zoneE: 90,
-        },
-        sellMarkupMultiplier: 1.16,
-    },
-];
 
 function round2(value: number): number {
     return Number(value.toFixed(2));
 }
 
-async function verifyPlatformServiceLevelIntegrity(): Promise<void> {
-    const activeServices = await CourierService.find({
-        companyId: null,
-        isDeleted: false,
-        status: 'active',
-        flowType: { $in: ['forward', 'both'] },
-    })
-        .select('_id serviceCode')
-        .lean<Array<{ _id: mongoose.Types.ObjectId; serviceCode: string }>>();
+function formatWeightToken(weight: number): string {
+    return weight.toString().replace('.', '_');
+}
 
-    if (!activeServices.length) {
-        throw new Error('No active platform courier services found');
-    }
+function toServiceCode(provider: ProviderKey, serviceType: ServiceType, maxWeightKg: number): string {
+    const providerCode = provider.slice(0, 3).toUpperCase();
+    const typeCode = serviceType.slice(0, 3).toUpperCase();
+    return `${providerCode}_${typeCode}_${formatWeightToken(maxWeightKg)}KG`;
+}
 
-    for (const service of activeServices) {
-        const activeCostCard = await ServiceRateCard.exists({
-            companyId: null,
-            serviceId: service._id,
-            cardType: 'cost',
-            flowType: 'forward',
-            category: 'default',
-            status: 'active',
-            isDeleted: false,
-        });
-        const activeSellCard = await ServiceRateCard.exists({
-            companyId: null,
-            serviceId: service._id,
-            cardType: 'sell',
-            flowType: 'forward',
-            category: 'default',
-            status: 'active',
-            isDeleted: false,
-        });
+function buildServiceTemplates(): ServiceTemplate[] {
+    const templates: ServiceTemplate[] = [];
 
-        if (!activeCostCard || !activeSellCard) {
-            throw new Error(`Missing active forward cost/sell platform rate card pair for service ${service.serviceCode}`);
+    for (const provider of Object.keys(PROVIDER_CONFIG) as ProviderKey[]) {
+        const config = PROVIDER_CONFIG[provider];
+
+        for (const serviceType of SERVICE_TYPES) {
+            for (const maxWeightKg of WEIGHT_BUCKETS) {
+                const serviceBoost = config.serviceTypeBoost[serviceType];
+                const weightBoost = 1 + Math.log2(maxWeightKg + 1) * 0.065;
+                const costBasePerZoneHalfKg: Record<ZoneKey, number> = {
+                    zoneA: round2(config.baseZoneHalfKg.zoneA * serviceBoost * weightBoost),
+                    zoneB: round2(config.baseZoneHalfKg.zoneB * serviceBoost * weightBoost),
+                    zoneC: round2(config.baseZoneHalfKg.zoneC * serviceBoost * weightBoost),
+                    zoneD: round2(config.baseZoneHalfKg.zoneD * serviceBoost * weightBoost),
+                    zoneE: round2(config.baseZoneHalfKg.zoneE * serviceBoost * weightBoost),
+                };
+
+                templates.push({
+                    provider,
+                    serviceCode: toServiceCode(provider, serviceType, maxWeightKg),
+                    displayName: `${config.displayName} ${serviceType.toUpperCase()} ${maxWeightKg} KG`,
+                    serviceType,
+                    constraints: {
+                        minWeightKg: 0,
+                        maxWeightKg,
+                        maxCodValue: 50000,
+                        maxPrepaidValue: 300000,
+                        paymentModes: config.defaultPaymentModes,
+                    },
+                    sla: config.slaByServiceType[serviceType],
+                    costBasePerZoneHalfKg,
+                });
+            }
         }
     }
+
+    return templates;
 }
 
 function buildZoneRules(baseHalfKg: Record<ZoneKey, number>, multiplier = 1): any[] {
     const slabFactors = {
         slab05: 1,
-        slab1: 1.5,
-        slab2: 2.25,
-        slab5: 3.8,
-        extraPerKg: 0.75,
+        slab1: 1.55,
+        slab2: 2.3,
+        slab5: 3.9,
+        extraPerKg: 0.76,
     };
 
     return ZONES.map((zoneKey) => {
@@ -232,6 +187,7 @@ function buildZoneRules(baseHalfKg: Record<ZoneKey, number>, multiplier = 1): an
                 base: 'freight',
             },
             rtoRule: {
+                type: 'percentage',
                 percentage: 55,
                 minCharge: 30,
             },
@@ -239,9 +195,63 @@ function buildZoneRules(baseHalfKg: Record<ZoneKey, number>, multiplier = 1): an
     });
 }
 
-async function ensureCourierIntegration(
-    provider: string
-): Promise<mongoose.Types.ObjectId> {
+async function verifyPlatformServiceLevelIntegrity(
+    canonicalServices: Array<{ _id: mongoose.Types.ObjectId; serviceCode: string }>
+): Promise<void> {
+    for (const service of canonicalServices) {
+        const activeCostCard = await ServiceRateCard.exists({
+            companyId: null,
+            serviceId: service._id,
+            cardType: 'cost',
+            flowType: 'forward',
+            category: 'default',
+            status: 'active',
+            isDeleted: false,
+        });
+
+        if (!activeCostCard) {
+            throw new Error(`Missing active forward cost rate card for service ${service.serviceCode}`);
+        }
+
+        for (const category of SELL_CATEGORIES) {
+            const activeSellCard = await ServiceRateCard.exists({
+                companyId: null,
+                serviceId: service._id,
+                cardType: 'sell',
+                flowType: 'forward',
+                category,
+                status: 'active',
+                isDeleted: false,
+            });
+
+            if (!activeSellCard) {
+                throw new Error(`Missing active forward sell ${category} rate card for service ${service.serviceCode}`);
+            }
+        }
+    }
+}
+
+async function archiveDuplicatePlatformServices(
+    serviceCode: string,
+    canonicalServiceId: mongoose.Types.ObjectId
+): Promise<void> {
+    await CourierService.updateMany(
+        {
+            companyId: null,
+            serviceCode,
+            _id: { $ne: canonicalServiceId },
+            isDeleted: false,
+        },
+        {
+            $set: {
+                isDeleted: true,
+                status: 'inactive',
+            },
+        }
+    );
+}
+
+async function ensureCourierIntegration(provider: ProviderKey): Promise<mongoose.Types.ObjectId> {
     const existing = await Integration.findOne({
         companyId: null,
         type: 'courier',
@@ -284,14 +294,26 @@ async function ensureCourierIntegration(
 
 export async function seedServiceLevelPricing(): Promise<void> {
     const timer = createTimer();
-    logger.step(30, 'Seeding Service-Level Pricing (Platform CourierService, Platform ServiceRateCard, SellerPolicy)');
+    logger.step(
+        30,
+        'Seeding Service-Level Pricing (100+ Platform CourierService, Category-Aware ServiceRateCards, SellerPolicy defaults)'
+    );
 
     try {
+        const templates = buildServiceTemplates();
+        const integrationIds = {
+            velocity: await ensureCourierIntegration('velocity'),
+            delhivery: await ensureCourierIntegration('delhivery'),
+            ekart: await ensureCourierIntegration('ekart'),
+        } as const;
+
         let serviceCount = 0;
         let rateCardCount = 0;
         let policyCount = 0;
-        for (const template of SERVICE_TEMPLATES) {
-            const integrationId = await ensureCourierIntegration(template.provider);
+        const canonicalServices: Array<{ _id: mongoose.Types.ObjectId; serviceCode: string }> = [];
+
+        for (const template of templates) {
+            const integrationId = integrationIds[template.provider];
 
             const courierService = await CourierService.findOneAndUpdate(
                 {
@@ -315,16 +337,18 @@ export async function seedServiceLevelPricing(): Promise<void> {
                 },
                 { upsert: true, new: true, setDefaultsOnInsert: true }
             );
+            const serviceId = courierService._id as mongoose.Types.ObjectId;
+            await archiveDuplicatePlatformServices(template.serviceCode, serviceId);
+            canonicalServices.push({ _id: serviceId, serviceCode: template.serviceCode });
 
             serviceCount += 1;
 
             const now = new Date();
             const baseRateCardPayload = {
                 companyId: null,
-                serviceId: courierService._id,
+                serviceId,
                 currency: 'INR',
                 flowType: 'forward' as const,
-                category: 'default' as const,
                 effectiveDates: { startDate: now },
                 status: 'active' as const,
                 calculation: {
@@ -344,7 +368,7 @@ export async function seedServiceLevelPricing(): Promise<void> {
             await ServiceRateCard.findOneAndUpdate(
                 {
                     companyId: null,
-                    serviceId: courierService._id,
+                    serviceId,
                     cardType: 'cost',
                     flowType: 'forward',
                     category: 'default',
@@ -354,6 +378,7 @@ export async function seedServiceLevelPricing(): Promise<void> {
                     $set: {
                         ...baseRateCardPayload,
                         cardType: 'cost',
+                        category: 'default',
                         sourceMode: template.provider === 'velocity' ? 'TABLE' : 'HYBRID',
                         zoneRules: buildZoneRules(template.costBasePerZoneHalfKg, 1),
                     },
@@ -362,26 +387,32 @@ export async function seedServiceLevelPricing(): Promise<void> {
             );
             rateCardCount += 1;
 
-            await ServiceRateCard.findOneAndUpdate(
-                {
+            for (const category of SELL_CATEGORIES) {
+                await ServiceRateCard.findOneAndUpdate(
+                    {
                     companyId: null,
-                    serviceId: courierService._id,
-                    cardType: 'sell',
-                    flowType: 'forward',
-                    category: 'default',
-                    isDeleted: false,
-                },
-                {
-                    $set: {
-                        ...baseRateCardPayload,
+                    serviceId,
                         cardType: 'sell',
-                        sourceMode: 'TABLE',
-                        zoneRules: buildZoneRules(template.costBasePerZoneHalfKg, template.sellMarkupMultiplier),
+                        flowType: 'forward',
+                        category,
+                        isDeleted: false,
                     },
-                },
-                { upsert: true, new: true, setDefaultsOnInsert: true }
-            );
-            rateCardCount += 1;
+                    {
+                        $set: {
+                            ...baseRateCardPayload,
+                            cardType: 'sell',
+                            category,
+                            sourceMode: 'TABLE',
+                            zoneRules: buildZoneRules(
+                                template.costBasePerZoneHalfKg,
+                                CATEGORY_MULTIPLIERS[category]
+                            ),
+                        },
+                    },
+                    { upsert: true, new: true, setDefaultsOnInsert: true }
+                );
+                rateCardCount += 1;
+            }
         }
 
         const sellers = await User.find({
@@ -408,6 +439,8 @@ export async function seedServiceLevelPricing(): Promise<void> {
                         autoPriority: 'balanced',
                         balancedDeltaPercent: 5,
                         isActive: true,
+                        rateCardType: 'default',
+                        rateCardCategory: 'default',
                         metadata: {
                             notes: 'Seeded default seller policy for service-level pricing',
                         },
@@ -427,7 +460,7 @@ export async function seedServiceLevelPricing(): Promise<void> {
             { $set: { rateCardCategory: 'default' } }
         );
 
-        await verifyPlatformServiceLevelIntegrity();
+        await verifyPlatformServiceLevelIntegrity(canonicalServices);
 
         logger.complete('service-level pricing entities', serviceCount + rateCardCount + policyCount, timer.elapsed());
         logger.table({
@@ -436,6 +469,7 @@ export async function seedServiceLevelPricing(): Promise<void> {
             CourierServices: serviceCount,
             ServiceRateCards: rateCardCount,
             SellerPolicies: policyCount,
+            SellCategories: SELL_CATEGORIES.length,
         });
     } catch (error) {
         logger.error('Failed to seed service-level pricing:', error);

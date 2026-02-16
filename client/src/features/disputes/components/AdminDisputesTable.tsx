@@ -33,6 +33,7 @@ const STATUS_TABS = [
     { key: 'auto_resolved', label: 'Auto Resolved' },
     { key: 'manual_resolved', label: 'Resolved' },
 ] as const;
+type StatusTabKey = (typeof STATUS_TABS)[number]['key'];
 
 function getDaysPending(createdAt: string): number {
     const days = Math.floor(
@@ -122,7 +123,10 @@ export function AdminDisputesTable() {
         setSelectedIds(new Set());
     }, [selectedIds, batchMutation]);
 
-    const activeStatus = filters.status ?? 'all';
+    const activeStatus: StatusTabKey =
+        (STATUS_TABS.some((tab) => tab.key === filters.status)
+            ? filters.status
+            : 'all') as StatusTabKey;
 
     if (isError) {
         return (

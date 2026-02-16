@@ -18,6 +18,8 @@ type ProviderKey = 'velocity' | 'delhivery' | 'ekart';
 
 type PolicyForm = {
     isActive: boolean;
+    rateCardType: 'default' | 'custom';
+    rateCardCategory: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     selectionMode: 'manual_with_recommendation' | 'manual_only' | 'auto';
     autoPriority: 'price' | 'speed' | 'balanced';
     balancedDeltaPercent: string;
@@ -29,6 +31,8 @@ type PolicyForm = {
 
 const defaultPolicyForm: PolicyForm = {
     isActive: true,
+    rateCardType: 'default',
+    rateCardCategory: 'default',
     selectionMode: 'manual_with_recommendation',
     autoPriority: 'balanced',
     balancedDeltaPercent: '5',
@@ -50,6 +54,19 @@ const autoPriorityOptions = [
     { label: 'Balanced (Smart)', value: 'balanced' },
     { label: 'Cheapest (Price)', value: 'price' },
     { label: 'Fastest (Speed)', value: 'speed' },
+];
+
+const rateCardTypeOptions = [
+    { label: 'Default', value: 'default' },
+    { label: 'Custom', value: 'custom' },
+];
+
+const rateCardCategoryOptions = [
+    { label: 'Default', value: 'default' },
+    { label: 'Basic', value: 'basic' },
+    { label: 'Standard', value: 'standard' },
+    { label: 'Advanced', value: 'advanced' },
+    { label: 'Custom', value: 'custom' },
 ];
 
 export function PoliciesTab() {
@@ -87,6 +104,8 @@ export function PoliciesTab() {
         }
         setPolicyForm({
             isActive: sellerPolicy.isActive !== false,
+            rateCardType: sellerPolicy.rateCardType || 'default',
+            rateCardCategory: sellerPolicy.rateCardCategory || 'default',
             selectionMode: sellerPolicy.selectionMode || 'manual_with_recommendation',
             autoPriority: sellerPolicy.autoPriority || 'balanced',
             balancedDeltaPercent: String(sellerPolicy.balancedDeltaPercent ?? 5),
@@ -130,6 +149,8 @@ export function PoliciesTab() {
                 sellerId: selectedSellerId,
                 data: {
                     isActive: policyForm.isActive,
+                    rateCardType: policyForm.rateCardType,
+                    rateCardCategory: policyForm.rateCardCategory,
                     selectionMode: policyForm.selectionMode,
                     autoPriority: policyForm.autoPriority,
                     balancedDeltaPercent,
@@ -261,6 +282,39 @@ export function PoliciesTab() {
                             <CardContent className="flex-1 overflow-y-auto space-y-6 pt-6 scrollbar-premium">
                                 {/* Controls */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">Rate Card Type</label>
+                                        <Select
+                                            value={policyForm.rateCardType}
+                                            onChange={(e) =>
+                                                setPolicyForm({
+                                                    ...policyForm,
+                                                    rateCardType: e.target.value as PolicyForm['rateCardType'],
+                                                    rateCardCategory:
+                                                        e.target.value === 'custom'
+                                                            ? 'custom'
+                                                            : policyForm.rateCardCategory === 'custom'
+                                                                ? 'default'
+                                                                : policyForm.rateCardCategory,
+                                                })
+                                            }
+                                            options={rateCardTypeOptions}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">Rate Card Category</label>
+                                        <Select
+                                            value={policyForm.rateCardCategory}
+                                            onChange={(e) =>
+                                                setPolicyForm({
+                                                    ...policyForm,
+                                                    rateCardCategory: e.target.value as PolicyForm['rateCardCategory'],
+                                                })
+                                            }
+                                            options={rateCardCategoryOptions}
+                                            disabled={policyForm.rateCardType === 'custom'}
+                                        />
+                                    </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">Selection Mode</label>
                                         <Select

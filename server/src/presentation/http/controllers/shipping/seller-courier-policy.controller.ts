@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { SellerCourierPolicy, User } from '../../../../infrastructure/database/mongoose/models';
-import { ValidationError } from '../../../../shared/errors/app.error';
+import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
@@ -15,6 +15,10 @@ export const getSellerCourierPolicy = async (req: Request, res: Response, next: 
         const { sellerId } = req.params;
         if (!sellerId) {
             throw new ValidationError('sellerId is required', ErrorCode.VAL_MISSING_FIELD);
+        }
+
+        if (String(auth.userId) !== String(sellerId)) {
+            throw new AuthorizationError('You can only access your own courier policy');
         }
 
         const policy = await SellerCourierPolicy.findOne({
@@ -73,6 +77,19 @@ export const upsertSellerCourierPolicy = async (req: Request, res: Response, nex
         const { sellerId } = req.params;
         if (!sellerId) {
             throw new ValidationError('sellerId is required', ErrorCode.VAL_MISSING_FIELD);
+        }
+
+        if (String(auth.userId) !== String(sellerId)) {
+            throw new AuthorizationError('You can only update your own courier policy');
+        }
+
+        const forbiddenFields = ['rateCardType', 'rateCardCategory'] as const;
+        const attemptedForbiddenField = forbiddenFields.find((field) => field in (req.body || {}));
+        if (attemptedForbiddenField) {
+            throw new ValidationError(
+                `${attemptedForbiddenField} can only be managed by admin`,
+                ErrorCode.VAL_INVALID_INPUT
+            );
         }
 
         const validation = upsertSellerCourierPolicySchema.safeParse(req.body);

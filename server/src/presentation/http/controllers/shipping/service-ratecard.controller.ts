@@ -396,6 +396,8 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
             paymentMode = 'prepaid',
             orderValue = 0,
             provider = 'delhivery',
+            flowType,
+            category,
             fromPincode = '560001',
             toPincode = '110001',
         } = validation.data;
@@ -407,6 +409,18 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
 
         if (!card) {
             throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
+        }
+
+        if (flowType && flowType !== card.flowType) {
+            throw new ValidationError('Simulation flowType does not match card flowType', ErrorCode.VAL_INVALID_INPUT);
+        }
+        if (category) {
+            if (card.cardType === 'sell' && category !== card.category) {
+                throw new ValidationError('Simulation category does not match card category', ErrorCode.VAL_INVALID_INPUT);
+            }
+            if (card.cardType === 'cost' && category !== 'default') {
+                throw new ValidationError('Cost card simulation only supports category=default', ErrorCode.VAL_INVALID_INPUT);
+            }
         }
 
         const result = ServiceRateCardFormulaService.calculatePricing({

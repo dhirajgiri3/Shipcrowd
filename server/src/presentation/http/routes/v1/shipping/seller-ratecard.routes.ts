@@ -14,25 +14,4 @@ router.get(
     asyncHandler(sellerRateCardController.listSellerRateCards)
 );
 
-router.post(
-    '/:sellerId/rate-cards',
-    authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
-    asyncHandler(sellerRateCardController.createSellerRateCard)
-);
-
-router.put(
-    '/:sellerId/rate-cards/:id',
-    authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
-    asyncHandler(sellerRateCardController.updateSellerRateCard)
-);
-
-router.delete(
-    '/:sellerId/rate-cards/:id',
-    authenticate,
-    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
-    asyncHandler(sellerRateCardController.deleteSellerRateCard)
-);
-
 export default router;
