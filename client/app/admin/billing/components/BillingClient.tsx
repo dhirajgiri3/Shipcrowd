@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
@@ -323,7 +324,7 @@ export function BillingClient() {
                 <CardContent className="p-0">
                     {!isLoading && transactions.length === 0 ? (
                         <EmptyState
-                            icon={Receipt}
+                            icon={<Receipt className="h-6 w-6" />}
                             title="No transactions found"
                             description="No billing transactions match your filters. Try adjusting your search or filters."
                         />

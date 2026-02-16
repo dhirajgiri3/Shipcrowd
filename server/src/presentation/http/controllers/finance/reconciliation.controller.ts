@@ -100,8 +100,12 @@ export const importCarrierBilling = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.body?.companyId || req.query?.companyId;
+        const companyId = auth.isAdmin
+            ? String(requestedCompanyId || auth.companyId || '')
+            : auth.companyId;
+        requireCompanyContext({ companyId });
 
         const validation = carrierBillingImportSchema.safeParse(req.body || {});
         if (!validation.success) {
@@ -109,7 +113,7 @@ export const importCarrierBilling = async (
         }
 
         const summary = await CarrierBillingReconciliationService.importRecords({
-            companyId: auth.companyId,
+            companyId,
             userId: auth.userId,
             records: validation.data.records,
             thresholdPercent: validation.data.thresholdPercent,
@@ -135,16 +139,23 @@ export const listPricingVarianceCases = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.query.companyId;
+        const companyId = auth.isAdmin
+            ? String(requestedCompanyId || auth.companyId || '')
+            : auth.companyId;
+        if (!auth.isAdmin || companyId) {
+            requireCompanyContext({ companyId });
+        }
 
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
         const status = req.query.status as string;
 
-        const query: { companyId: string; status?: string } = {
-            companyId: auth.companyId,
-        };
+        const query: { companyId?: string; status?: string } = {};
+        if (companyId) {
+            query.companyId = companyId;
+        }
         if (status) query.status = status;
 
         const total = await PricingVarianceCase.countDocuments(query);
@@ -174,8 +185,7 @@ export const updatePricingVarianceCase = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
 
         const { id } = req.params;
         const validation = updatePricingVarianceCaseSchema.safeParse(req.body || {});
@@ -194,8 +204,20 @@ export const updatePricingVarianceCase = async (
                 }
                 : updates.resolution;
 
+        const requestedCompanyId = req.body?.companyId || req.query?.companyId;
+        let companyId = auth.isAdmin
+            ? String(requestedCompanyId || auth.companyId || '')
+            : auth.companyId;
+
+        if (!companyId && auth.isAdmin) {
+            const existing = await PricingVarianceCase.findById(id).select('companyId').lean();
+            companyId = existing?.companyId ? String(existing.companyId) : '';
+        }
+
+        requireCompanyContext({ companyId });
+
         const item = await PricingVarianceCase.findOneAndUpdate(
-            { _id: id, companyId: auth.companyId },
+            { _id: id, companyId },
             {
                 $set: {
                     status: updates.status,

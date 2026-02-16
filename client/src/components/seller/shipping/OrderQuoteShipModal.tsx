@@ -220,7 +220,6 @@ export function OrderQuoteShipModal({ order, isOpen, onClose, onShipSuccess }: O
     setShouldFetchOrderDetails(false);
     setHasMissingOriginError(false);
     setHasInvalidDestinationError(false);
-    setHasInvalidDestinationError(false);
     bookingInFlightRef.current = false;
     autoRefreshInFlightRef.current = false;
     autoRefreshAttemptedExpiryRef.current = null;

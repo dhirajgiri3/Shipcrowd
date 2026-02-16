@@ -1,5 +1,10 @@
 import { Router } from 'express';
 import adminFinanceController from '../../../controllers/finance/admin-finance.controller';
+import {
+    importCarrierBilling,
+    listPricingVarianceCases,
+    updatePricingVarianceCase,
+} from '../../../controllers/finance/reconciliation.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
 
@@ -36,5 +41,26 @@ router.get('/wallets/:companyId', adminFinanceController.getWalletByCompanyId);
  * @access  Admin
  */
 router.get('/stats', adminFinanceController.getFinanceStats);
+
+/**
+ * @route   GET /api/v1/admin/finance/pricing-variance-cases
+ * @desc    List pricing variance cases (platform-wide or by companyId)
+ * @access  Admin
+ */
+router.get('/pricing-variance-cases', listPricingVarianceCases);
+
+/**
+ * @route   POST /api/v1/admin/finance/carrier-billing/import
+ * @desc    Import carrier billing records for a target company
+ * @access  Admin
+ */
+router.post('/carrier-billing/import', importCarrierBilling);
+
+/**
+ * @route   PATCH /api/v1/admin/finance/pricing-variance-cases/:id
+ * @desc    Update a variance case
+ * @access  Admin
+ */
+router.patch('/pricing-variance-cases/:id', updatePricingVarianceCase);
 
 export default router;

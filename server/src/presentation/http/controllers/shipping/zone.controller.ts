@@ -67,19 +67,20 @@ const checkPincodeOverlap = async (
  */
 export const getZones = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
-        const companyId = auth.companyId;
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.query.companyId ? String(req.query.companyId) : '';
+        const companyId = auth.isAdmin ? (requestedCompanyId || auth.companyId || '') : auth.companyId;
 
         // Pagination
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
         const skip = (page - 1) * limit;
 
-        const filter: any = {
-            companyId,
-            isDeleted: false,
-        };
+        const filter: any = { isDeleted: false };
+        if (!auth.isAdmin || companyId) {
+            requireCompanyContext({ companyId });
+            filter.companyId = companyId;
+        }
 
         // Search by name or pincode
         if (req.query.search) {
@@ -112,9 +113,10 @@ export const getZones = async (req: Request, res: Response, next: NextFunction):
  */
 export const createZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
-        const companyId = auth.companyId;
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.body?.companyId ? String(req.body.companyId) : '';
+        const companyId = auth.isAdmin ? (requestedCompanyId || auth.companyId || '') : auth.companyId;
+        requireCompanyContext({ companyId });
 
         const validation = createZoneSchema.safeParse(req.body);
         if (!validation.success) {
@@ -173,20 +175,26 @@ export const createZone = async (req: Request, res: Response, next: NextFunction
  */
 export const getZoneById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
-        const companyId = auth.companyId;
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.query.companyId ? String(req.query.companyId) : '';
+        const companyId = auth.isAdmin ? (requestedCompanyId || auth.companyId || '') : auth.companyId;
 
         const zoneId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(zoneId)) {
             throw new ValidationError('Invalid zone ID format');
         }
 
-        const zone = await Zone.findOne({
+        const query: Record<string, unknown> = {
             _id: zoneId,
-            companyId,
             isDeleted: false,
-        }).lean();
+        };
+
+        if (!auth.isAdmin || companyId) {
+            requireCompanyContext({ companyId });
+            query.companyId = companyId;
+        }
+
+        const zone = await Zone.findOne(query).lean();
 
         if (!zone) {
             throw new NotFoundError('Zone', ErrorCode.BIZ_NOT_FOUND);
@@ -205,14 +213,20 @@ export const getZoneById = async (req: Request, res: Response, next: NextFunctio
  */
 export const updateZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
-        const companyId = auth.companyId;
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.body?.companyId || req.query?.companyId;
+        let companyId = auth.isAdmin ? String(requestedCompanyId || auth.companyId || '') : auth.companyId;
 
         const zoneId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(zoneId)) {
             throw new ValidationError('Invalid zone ID format');
         }
+
+        if (!companyId && auth.isAdmin) {
+            const existing = await Zone.findById(zoneId).select('companyId').lean();
+            companyId = existing?.companyId ? String(existing.companyId) : '';
+        }
+        requireCompanyContext({ companyId });
 
         const validation = updateZoneSchema.safeParse(req.body);
         if (!validation.success) {
@@ -283,14 +297,20 @@ export const updateZone = async (req: Request, res: Response, next: NextFunction
  */
 export const deleteZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
-        const companyId = auth.companyId;
-
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.body?.companyId || req.query?.companyId;
         const zoneId = req.params.id;
+        let companyId = auth.isAdmin ? String(requestedCompanyId || auth.companyId || '') : auth.companyId;
+
         if (!mongoose.Types.ObjectId.isValid(zoneId)) {
             throw new ValidationError('Invalid zone ID format');
         }
+
+        if (!companyId && auth.isAdmin) {
+            const existing = await Zone.findById(zoneId).select('companyId').lean();
+            companyId = existing?.companyId ? String(existing.companyId) : '';
+        }
+        requireCompanyContext({ companyId });
 
         const zone = await Zone.findOne({
             _id: zoneId,

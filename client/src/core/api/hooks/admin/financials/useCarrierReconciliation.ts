@@ -54,7 +54,7 @@ export const usePricingVarianceCases = (
     return useQuery<PaginatedResponse<PricingVarianceCaseItem>, ApiError>({
         queryKey: queryKeys.finance.pricingVarianceCases(filters),
         queryFn: async () => {
-            const response = await apiClient.get('/finance/pricing-variance-cases', { params: filters });
+            const response = await apiClient.get('/admin/finance/pricing-variance-cases', { params: filters });
             const pagination = response.data.pagination || {};
             const page = Number(pagination.page ?? filters?.page ?? 1);
             const limit = Number(pagination.limit ?? filters?.limit ?? 20);
@@ -83,7 +83,7 @@ export const useImportCarrierBilling = (
 
     return useMutation<any, ApiError, { records: CarrierBillingImportRecord[]; thresholdPercent?: number }>({
         mutationFn: async ({ records, thresholdPercent }) => {
-            const response = await apiClient.post('/finance/carrier-billing/import', { records, thresholdPercent });
+            const response = await apiClient.post('/admin/finance/carrier-billing/import', { records, thresholdPercent });
             return response.data.data || response.data;
         },
         onSuccess: () => {
@@ -120,7 +120,7 @@ export const useUpdatePricingVarianceCase = (
         };
     }>({
         mutationFn: async ({ id, ...payload }) => {
-            const response = await apiClient.patch(`/finance/pricing-variance-cases/${id}`, payload);
+            const response = await apiClient.patch(`/admin/finance/pricing-variance-cases/${id}`, payload);
             return response.data.data || response.data;
         },
         onSuccess: () => {

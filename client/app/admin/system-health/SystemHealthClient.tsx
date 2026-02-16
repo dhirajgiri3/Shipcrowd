@@ -1,9 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Button } from '@/src/components/ui/core/Button';
-import { Skeleton } from '@/src/components/ui/data/Skeleton';
+import { PageHeader } from '@/src/components/ui/layout/PageHeader';
+import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
+import { PageHeaderSkeleton, CardSkeleton } from '@/src/components/ui/data/Skeleton';
 import { Progress } from '@/src/components/ui/data/Progress';
 import {
     useDetailedHealthCheck,
@@ -14,7 +19,6 @@ import {
     useResetMetrics,
 } from '@/src/core/api/hooks/system/useSystemHealth';
 import {
-    Activity,
     AlertCircle,
     CheckCircle2,
     AlertTriangle,
@@ -31,12 +35,16 @@ import {
 import { formatBytes, formatDuration } from '@/src/lib/utils/common';
 
 export function SystemHealthClient() {
-    const { data: healthReport, isLoading: healthLoading, refetch: refetchHealth } = useDetailedHealthCheck();
+    const [showResetDialog, setShowResetDialog] = useState(false);
+
+    const { data: healthReport, isLoading: healthLoading, isError: healthError, refetch: refetchHealth } = useDetailedHealthCheck();
     const { data: apiMetrics, isLoading: metricsLoading } = useApiMetrics();
     const { data: dbHealth, isLoading: dbLoading } = useDatabaseHealth();
     const { data: servicesHealth, isLoading: servicesLoading } = useExternalServicesHealth();
     const { data: systemMetrics, isLoading: systemLoading } = useSystemMetrics();
     const { mutate: resetMetrics, isPending: isResetting } = useResetMetrics();
+
+    const isLoading = healthLoading || metricsLoading || dbLoading || servicesLoading || systemLoading;
 
     const getStatusIcon = (status: 'healthy' | 'degraded' | 'unhealthy') => {
         switch (status) {
@@ -53,40 +61,76 @@ export function SystemHealthClient() {
         const variants = {
             healthy: 'success' as const,
             degraded: 'warning' as const,
-            unhealthy: 'destructive' as const,
+            unhealthy: 'error' as const,
         };
         return <Badge variant={variants[status]}>{status.toUpperCase()}</Badge>;
     };
 
-    if (healthLoading || metricsLoading || dbLoading || servicesLoading || systemLoading) {
+    const getDbVariant = (): 'success' | 'warning' | 'critical' | 'info' => {
+        if (!dbHealth) return 'info';
+        switch (dbHealth.status) {
+            case 'healthy': return 'success';
+            case 'degraded': return 'warning';
+            case 'unhealthy': return 'critical';
+            default: return 'info';
+        }
+    };
+
+    const getServicesVariant = (): 'success' | 'warning' | 'critical' | 'default' => {
+        if (!servicesHealth) return 'default';
+        const { healthy, degraded, unhealthy } = servicesHealth.summary;
+        const total = healthy + degraded + unhealthy;
+        if (unhealthy > 0) return 'critical';
+        if (degraded > 0) return 'warning';
+        return 'success';
+    };
+
+    if (isLoading) {
         return (
-            <div className="space-y-6 p-6">
-                <Skeleton className="h-32 w-full" />
+            <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 bg-[var(--bg-secondary)] min-h-screen pb-20">
+                <PageHeaderSkeleton />
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <Skeleton className="h-48" />
-                    <Skeleton className="h-48" />
-                    <Skeleton className="h-48" />
-                    <Skeleton className="h-48" />
+                    <CardSkeleton />
+                    <CardSkeleton />
+                    <CardSkeleton />
+                    <CardSkeleton />
                 </div>
-                <Skeleton className="h-96 w-full" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <CardSkeleton className="h-96" />
+                    <CardSkeleton className="h-96" />
+                </div>
+            </div>
+        );
+    }
+
+    if (healthError || !healthReport) {
+        return (
+            <div className="p-6 md:p-8 max-w-[1600px] mx-auto bg-[var(--bg-secondary)] min-h-screen flex items-center justify-center">
+                <EmptyState
+                    variant="error"
+                    title="Failed to load system health"
+                    description="Unable to fetch system health data. Please check your connection and try again."
+                    action={{
+                        label: 'Retry',
+                        onClick: () => refetchHealth(),
+                        variant: 'outline',
+                    }}
+                />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 p-6">
-            {/* Overall Health Status */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <Activity className="h-6 w-6" />
-                            System Health Dashboard
-                        </CardTitle>
-                        <CardDescription>Real-time monitoring of system health and performance</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {healthReport && getStatusBadge(healthReport.overall)}
+        <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 bg-[var(--bg-secondary)] min-h-screen pb-20">
+            <PageHeader
+                title="System Health"
+                description="Real-time monitoring of system health and performance"
+                showBack={true}
+                backUrl="/admin"
+                breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'System Health', active: true }]}
+                actions={
+                    <>
+                        {getStatusBadge(healthReport.overall)}
                         <Button
                             variant="outline"
                             size="sm"
@@ -96,110 +140,46 @@ export function SystemHealthClient() {
                             <RefreshCw className="h-4 w-4" />
                             Refresh
                         </Button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Database Status */}
-                        <div className="flex items-start gap-4 p-4 border rounded-lg">
-                            <Database className="h-8 w-8 text-[var(--info)] mt-1" />
-                            <div className="flex-1">
-                                <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-semibold">Database</h3>
-                                    {dbHealth && getStatusIcon(dbHealth.status)}
-                                </div>
-                                {dbHealth && (
-                                    <>
-                                        <p className="text-sm text-muted-foreground mb-2">
-                                            Response Time: {dbHealth.responseTime}ms
-                                        </p>
-                                        {dbHealth.connections && (
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-muted-foreground">
-                                                    Connections: {dbHealth.connections.current} / {dbHealth.connections.available}
-                                                </p>
-                                                <Progress
-                                                    value={(dbHealth.connections.current / dbHealth.connections.available) * 100}
-                                                    className="h-2"
-                                                />
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
+                    </>
+                }
+            />
 
-                        {/* API Performance */}
-                        <div className="flex items-start gap-4 p-4 border rounded-lg">
-                            <Zap className="h-8 w-8 text-[var(--warning)] mt-1" />
-                            <div className="flex-1">
-                                <h3 className="font-semibold mb-2">API Performance</h3>
-                                {apiMetrics && (
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Total Requests:</span>
-                                            <span className="font-medium">{apiMetrics.totalRequests.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Avg Response:</span>
-                                            <span className="font-medium">{apiMetrics.averageResponseTime.toFixed(2)}ms</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Error Rate:</span>
-                                            <span className={`font-medium ${apiMetrics.errorRate > 0.05 ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}>
-                                                {(apiMetrics.errorRate * 100).toFixed(2)}%
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Active Connections:</span>
-                                            <span className="font-medium">{apiMetrics.activeConnections}</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+            {/* StatsCard Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatsCard
+                    title="Database"
+                    value={dbHealth ? `${dbHealth.responseTime ?? 0}ms` : '—'}
+                    icon={Database}
+                    variant={getDbVariant()}
+                    description={dbHealth ? `${dbHealth.status}` : 'Checking...'}
+                />
+                <StatsCard
+                    title="API Requests"
+                    value={apiMetrics ? apiMetrics.totalRequests.toLocaleString() : '—'}
+                    icon={Zap}
+                    variant="default"
+                    description={apiMetrics ? `Avg ${apiMetrics.averageResponseTime.toFixed(0)}ms` : undefined}
+                />
+                <StatsCard
+                    title="Error Rate"
+                    value={apiMetrics ? `${(apiMetrics.errorRate * 100).toFixed(2)}%` : '—'}
+                    icon={AlertCircle}
+                    variant={apiMetrics && apiMetrics.errorRate > 0.05 ? 'critical' : 'success'}
+                />
+                <StatsCard
+                    title="External Services"
+                    value={servicesHealth ? `${servicesHealth.summary.healthy} / ${servicesHealth.summary.total} healthy` : '—'}
+                    icon={Globe}
+                    variant={getServicesVariant()}
+                />
+            </div>
 
-                        {/* External Services */}
-                        <div className="flex items-start gap-4 p-4 border rounded-lg">
-                            <Globe className="h-8 w-8 text-[var(--primary-blue)] mt-1" />
-                            <div className="flex-1">
-                                <h3 className="font-semibold mb-2">External Services</h3>
-                                {servicesHealth && (
-                                    <div className="space-y-2">
-                                        <div className="grid grid-cols-3 gap-2 text-xs">
-                                            <div className="text-center">
-                                                <div className="text-2xl font-bold text-[var(--success)]">
-                                                    {servicesHealth.summary.healthy}
-                                                </div>
-                                                <div className="text-muted-foreground">Healthy</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-2xl font-bold text-[var(--warning)]">
-                                                    {servicesHealth.summary.degraded}
-                                                </div>
-                                                <div className="text-muted-foreground">Degraded</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-2xl font-bold text-[var(--error)]">
-                                                    {servicesHealth.summary.unhealthy}
-                                                </div>
-                                                <div className="text-muted-foreground">Unhealthy</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* System Resources */}
+            {/* System Resources & External Services Detail */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* CPU & Memory */}
-                <Card>
+                <Card className="border-[var(--border-subtle)] bg-[var(--bg-primary)]">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-[var(--text-primary)]">
                             <Server className="h-5 w-5" />
                             System Resources
                         </CardTitle>
@@ -212,9 +192,9 @@ export function SystemHealthClient() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <MemoryStick className="h-4 w-4 text-[var(--info)]" />
-                                            <span className="font-medium">Memory Usage</span>
+                                            <span className="font-medium text-[var(--text-primary)]">Memory Usage</span>
                                         </div>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-sm text-[var(--text-muted)]">
                                             {formatBytes(systemMetrics.memory.used)} / {formatBytes(systemMetrics.memory.total)}
                                         </span>
                                     </div>
@@ -229,7 +209,7 @@ export function SystemHealthClient() {
                                                     : 'bg-[var(--success)]'
                                         }
                                     />
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-[var(--text-muted)]">
                                         {systemMetrics.memory.usagePercent.toFixed(1)}% utilized
                                     </p>
                                 </div>
@@ -239,9 +219,9 @@ export function SystemHealthClient() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <Cpu className="h-4 w-4 text-[var(--primary-blue)]" />
-                                            <span className="font-medium">CPU Usage</span>
+                                            <span className="font-medium text-[var(--text-primary)]">CPU Usage</span>
                                         </div>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-sm text-[var(--text-muted)]">
                                             {systemMetrics.cpu.cores} cores
                                         </span>
                                     </div>
@@ -256,18 +236,18 @@ export function SystemHealthClient() {
                                                     : 'bg-[var(--success)]'
                                         }
                                     />
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-[var(--text-muted)]">
                                         {systemMetrics.cpu.usagePercent.toFixed(1)}% utilized
                                     </p>
                                 </div>
 
                                 {/* Uptime */}
-                                <div className="flex items-center justify-between pt-4 border-t">
+                                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-subtle)]">
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-4 w-4 text-[var(--success)]" />
-                                        <span className="font-medium">System Uptime</span>
+                                        <span className="font-medium text-[var(--text-primary)]">System Uptime</span>
                                     </div>
-                                    <span className="text-sm font-medium">
+                                    <span className="text-sm font-medium text-[var(--text-primary)]">
                                         {formatDuration(systemMetrics.uptime)}
                                     </span>
                                 </div>
@@ -276,9 +256,9 @@ export function SystemHealthClient() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <TrendingUp className="h-4 w-4 text-[var(--info)]" />
-                                        <span className="font-medium">Process Uptime</span>
+                                        <span className="font-medium text-[var(--text-primary)]">Process Uptime</span>
                                     </div>
-                                    <span className="text-sm font-medium">
+                                    <span className="text-sm font-medium text-[var(--text-primary)]">
                                         {formatDuration(systemMetrics.process.uptime)}
                                     </span>
                                 </div>
@@ -288,9 +268,9 @@ export function SystemHealthClient() {
                 </Card>
 
                 {/* External Services Detail */}
-                <Card>
+                <Card className="border-[var(--border-subtle)] bg-[var(--bg-primary)]">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-[var(--text-primary)]">
                             <Globe className="h-5 w-5" />
                             External Services
                         </CardTitle>
@@ -301,20 +281,20 @@ export function SystemHealthClient() {
                                 {servicesHealth.services.map((service) => (
                                     <div
                                         key={service.name}
-                                        className="flex items-center justify-between p-3 border rounded-lg"
+                                        className="flex items-center justify-between p-3 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]/50 transition-colors"
                                     >
                                         <div className="flex items-center gap-3">
                                             {getStatusIcon(service.status)}
                                             <div>
-                                                <p className="font-medium">{service.name}</p>
+                                                <p className="font-medium text-[var(--text-primary)]">{service.name}</p>
                                                 {service.endpoint && (
-                                                    <p className="text-xs text-muted-foreground">{service.endpoint}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{service.endpoint}</p>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             {service.responseTime && (
-                                                <p className="text-sm font-medium">{service.responseTime}ms</p>
+                                                <p className="text-sm font-medium text-[var(--text-primary)]">{service.responseTime}ms</p>
                                             )}
                                             {service.error && (
                                                 <p className="text-xs text-[var(--error)]">{service.error}</p>
@@ -328,18 +308,18 @@ export function SystemHealthClient() {
                 </Card>
             </div>
 
-            {/* API Metrics Control */}
-            <Card>
+            {/* API Metrics Management */}
+            <Card className="border-[var(--border-subtle)] bg-[var(--bg-primary)]">
                 <CardHeader>
-                    <CardTitle>API Metrics Management</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-[var(--text-primary)]">API Metrics Management</CardTitle>
+                    <CardDescription className="text-[var(--text-secondary)]">
                         Reset counters to start fresh metrics collection
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Button
                         variant="danger"
-                        onClick={() => resetMetrics()}
+                        onClick={() => setShowResetDialog(true)}
                         disabled={isResetting}
                         className="gap-2"
                     >
@@ -348,6 +328,20 @@ export function SystemHealthClient() {
                     </Button>
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={showResetDialog}
+                title="Reset API Metrics"
+                description="This will reset all request counters and metrics. Data collection will start fresh. This action cannot be undone."
+                confirmText="Reset Metrics"
+                confirmVariant="danger"
+                onCancel={() => setShowResetDialog(false)}
+                onConfirm={() => {
+                    resetMetrics();
+                    setShowResetDialog(false);
+                }}
+                isLoading={isResetting}
+            />
         </div>
     );
 }

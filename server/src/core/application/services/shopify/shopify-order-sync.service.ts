@@ -97,6 +97,16 @@ interface SyncResult {
 }
 
 export class ShopifyOrderSyncService {
+  private static sanitizeIndianPincode(value?: string): string {
+    const raw = String(value || '').trim();
+    if (!raw) return '000000';
+
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length < 6) return '000000';
+
+    const candidate = digits.slice(0, 6);
+    return /^[1-9][0-9]{5}$/.test(candidate) ? candidate : '000000';
+  }
 
   /**
    * Main sync orchestrator
@@ -441,6 +451,7 @@ export class ShopifyOrderSyncService {
     // Handle null shipping_address (can happen with gift cards, digital products, warehouse fulfillment)
     const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address || {};
     const hasAddressData = !!(shippingAddress.address1 || shippingAddress.city);
+    const sanitizedPostalCode = this.sanitizeIndianPincode(shippingAddress.zip);
 
     // Determine order status: cancelled_at takes priority over fulfillment_status
     const orderStatus = shopifyOrder.cancelled_at
@@ -486,7 +497,7 @@ export class ShopifyOrderSyncService {
           city: shippingAddress.city || (hasAddressData ? '' : 'Unknown'),
           state: shippingAddress.province || shippingAddress.province_code || (hasAddressData ? '' : 'Unknown'),
           country: shippingAddress.country || shippingAddress.country_code || (hasAddressData ? '' : 'Unknown'),
-          postalCode: shippingAddress.zip || (hasAddressData ? '' : '000000'),
+          postalCode: sanitizedPostalCode,
         },
       },
 

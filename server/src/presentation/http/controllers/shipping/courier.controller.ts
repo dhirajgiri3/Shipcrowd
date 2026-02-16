@@ -31,12 +31,13 @@ const RTO_SHIPMENT_STATUSES = ['rto', 'returned', 'rto_delivered', 'return_initi
 const NDR_SHIPMENT_STATUSES = ['ndr', 'NDR'];
 const SLA_MIN_SAMPLE_SIZE = Number(process.env.COURIER_SLA_MIN_SAMPLE_SIZE || 10);
 
-function getCompanyId(req: Request): string {
-    const companyId = (req as any).user?.companyId;
-    if (!companyId) {
+function getCompanyId(req: Request, options?: { required?: boolean }): string {
+    const required = options?.required !== false;
+    const companyId = (req as any).user?.companyId || (req.query?.companyId as string | undefined);
+    if (!companyId && required) {
         throw new ValidationError('Company ID required');
     }
-    return String(companyId);
+    return String(companyId || '');
 }
 
 function normalizeProvider(id: string): string {
@@ -510,7 +511,33 @@ async function getProviderSnapshot(companyId: string, provider: string) {
 
 export class CourierController {
     getCouriers = asyncHandler(async (req: Request, res: Response) => {
-        const companyId = getCompanyId(req);
+        const companyId = getCompanyId(req, { required: false });
+        const isPlatformAdmin = ['admin', 'super_admin'].includes(String((req as any).user?.role || ''));
+
+        if (!companyId && isPlatformAdmin) {
+            const defaults = SUPPORTED_PROVIDERS.map((provider) => ({
+                id: provider,
+                name: formatProviderName(provider),
+                code: provider,
+                logo: formatProviderName(provider).slice(0, 2).toUpperCase(),
+                status: 'inactive',
+                services: [],
+                zones: [],
+                apiIntegrated: false,
+                pickupEnabled: false,
+                codEnabled: false,
+                trackingEnabled: false,
+                codLimit: 0,
+                weightLimit: 0,
+                credentialsConfigured: false,
+            }));
+
+            res.status(200).json({
+                success: true,
+                data: defaults,
+            });
+            return;
+        }
 
         const [services, integrations] = await Promise.all([
             CourierService.find({

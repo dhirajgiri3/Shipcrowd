@@ -47,6 +47,8 @@ type QuoteOptionsApiResponse = {
   };
 };
 
+const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
+
 /**
  * Order API Service
  * Handles all order-related API calls
@@ -296,7 +298,24 @@ export const orderApi = {
     width?: number;
     height?: number;
   }): Promise<{ success: boolean; data: CourierRate[] }> => {
-    const response = await apiClient.get('/orders/courier-rates', { params });
+    const fromPincode = String(params.fromPincode || '').trim();
+    const toPincode = String(params.toPincode || '').trim();
+
+    // Defensive guard: avoid noisy invalid network calls (e.g. marketplace orders with placeholder pincodes).
+    if (!PINCODE_REGEX.test(fromPincode)) {
+      throw new Error('Source pincode must be a valid 6-digit pincode');
+    }
+    if (!PINCODE_REGEX.test(toPincode)) {
+      throw new Error('Destination pincode must be a valid 6-digit pincode');
+    }
+
+    const response = await apiClient.get('/orders/courier-rates', {
+      params: {
+        ...params,
+        fromPincode,
+        toPincode,
+      },
+    });
     const payload = response.data as QuoteOptionsApiResponse | { success: boolean; data: CourierRate[] };
 
     if (Array.isArray((payload as { data: CourierRate[] }).data)) {
