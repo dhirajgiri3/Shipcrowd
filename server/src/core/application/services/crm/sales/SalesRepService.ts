@@ -216,11 +216,68 @@ class SalesRepService {
         };
     }
 
+    public async getSalesRepsAdmin(
+        filters: {
+            companyId?: string;
+            territory?: string;
+            status?: string;
+            page?: number;
+            limit?: number;
+        }
+    ) {
+        const page = filters.page || 1;
+        const limit = filters.limit || 10;
+        const skip = (page - 1) * limit;
+
+        const query: FilterQuery<any> = {};
+        if (filters.companyId) {
+            query.company = new Types.ObjectId(filters.companyId);
+        }
+        if (filters.territory) {
+            query.territory = filters.territory;
+        }
+        if (filters.status) {
+            query.status = filters.status;
+        }
+
+        const [reps, total] = await Promise.all([
+            SalesRepresentative.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('user', 'name email phone')
+                .populate('reportingTo', 'employeeId')
+                .populate('company', 'name')
+                .exec(),
+            SalesRepresentative.countDocuments(query),
+        ]);
+
+        return {
+            reps: reps.map((rep) => this.mapToCRMShape(rep, false)),
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit),
+        };
+    }
+
     public async getSalesRepById(id: string, companyId: string, includeBankDetails = false): Promise<CRMRepResponse> {
         const rep = await SalesRepresentative.findOne({
             _id: new Types.ObjectId(id),
             company: new Types.ObjectId(companyId),
         })
+            .populate('user', 'name email phone')
+            .populate('reportingTo', 'employeeId');
+
+        if (!rep) {
+            throw new NotFoundError('Sales Representative not found');
+        }
+
+        return this.mapToCRMShape(rep, includeBankDetails);
+    }
+
+    public async getSalesRepByIdAdmin(id: string, includeBankDetails = false): Promise<CRMRepResponse> {
+        const rep = await SalesRepresentative.findById(new Types.ObjectId(id))
             .populate('user', 'name email phone')
             .populate('reportingTo', 'employeeId');
 
@@ -277,6 +334,49 @@ class SalesRepService {
         return this.mapToCRMShape(rep, true);
     }
 
+    public async updateSalesRepAdmin(
+        id: string,
+        updates: UpdateSalesRepDTO
+    ): Promise<CRMRepResponse> {
+        const rep = await SalesRepresentative.findById(new Types.ObjectId(id))
+            .populate('user', 'name email phone');
+
+        if (!rep) {
+            throw new NotFoundError('Sales Representative not found');
+        }
+
+        if (updates.territory) {
+            rep.territory = [updates.territory];
+        }
+        if (updates.status) {
+            rep.status = updates.status;
+        }
+        if (updates.reportingTo) {
+            rep.reportingTo = new Types.ObjectId(updates.reportingTo);
+        }
+
+        if (updates.bankDetails) {
+            rep.bankDetails = {
+                ...rep.bankDetails,
+                accountNumber: updates.bankDetails.accountNumber,
+                ifscCode: updates.bankDetails.ifscCode,
+                accountHolderName: updates.bankDetails.accountHolderName,
+            } as any;
+        }
+
+        const user = rep.user as any;
+        if (user) {
+            if (updates.name) user.name = updates.name;
+            if (updates.email) user.email = updates.email.toLowerCase();
+            if (updates.phone) user.phone = updates.phone;
+            await user.save();
+        }
+
+        await rep.save();
+        await rep.populate('user', 'name email phone');
+        return this.mapToCRMShape(rep, true);
+    }
+
     public async getPerformanceMetrics(id: string, companyId: string) {
         const repId = new Types.ObjectId(id);
 
@@ -285,6 +385,54 @@ class SalesRepService {
             company: new Types.ObjectId(companyId),
         });
 
+        if (!rep) {
+            throw new NotFoundError('Sales Representative not found');
+        }
+
+        const stats = await SupportTicket.aggregate([
+            { $match: { assignedTo: repId } },
+            {
+                $group: {
+                    _id: null,
+                    totalTickets: { $sum: 1 },
+                    resolvedTickets: {
+                        $sum: { $cond: [{ $in: ['$status', ['resolved', 'closed']] }, 1, 0] },
+                    },
+                    openTickets: {
+                        $sum: { $cond: [{ $in: ['$status', ['open', 'in_progress']] }, 1, 0] },
+                    },
+                    avgResolutionTime: {
+                        $avg: {
+                            $cond: [
+                                { $and: [{ $ne: ['$resolvedAt', null] }, { $ne: ['$createdAt', null] }] },
+                                { $subtract: ['$resolvedAt', '$createdAt'] },
+                                null,
+                            ],
+                        },
+                    },
+                },
+            },
+        ]);
+
+        const metrics = stats[0] || {
+            totalTickets: 0,
+            resolvedTickets: 0,
+            openTickets: 0,
+            avgResolutionTime: 0,
+        };
+
+        metrics.avgResolutionTimeHours = metrics.avgResolutionTime
+            ? Math.round((metrics.avgResolutionTime / (1000 * 60 * 60)) * 100) / 100
+            : 0;
+        delete metrics._id;
+
+        return metrics;
+    }
+
+    public async getPerformanceMetricsAdmin(id: string) {
+        const repId = new Types.ObjectId(id);
+
+        const rep = await SalesRepresentative.exists({ _id: repId });
         if (!rep) {
             throw new NotFoundError('Sales Representative not found');
         }

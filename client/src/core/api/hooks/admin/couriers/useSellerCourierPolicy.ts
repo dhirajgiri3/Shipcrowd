@@ -20,7 +20,7 @@ export const useSellerCourierPolicy = (sellerId: string, options?: UseQueryOptio
     return useQuery<SellerCourierPolicy, ApiError>({
         queryKey: queryKeys.sellerCourierPolicy.detail(sellerId),
         queryFn: async () => {
-            const response = await apiClient.get(`/sellers/${sellerId}/courier-policy`);
+            const response = await apiClient.get(`/admin/sellers/${sellerId}/courier-policy`);
             return response.data.data || response.data;
         },
         enabled: !!sellerId,
@@ -48,7 +48,7 @@ export const useUpdateSellerCourierPolicy = (
         { previousPolicy: SellerCourierPolicy | undefined } // Context type
     >({
         mutationFn: async ({ sellerId, data }) => {
-            const response = await apiClient.put(`/sellers/${sellerId}/courier-policy`, data);
+            const response = await apiClient.put(`/admin/sellers/${sellerId}/courier-policy`, data);
             return response.data.data || response.data;
         },
         // Optimistic update for instant UI feedback

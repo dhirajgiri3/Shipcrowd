@@ -49,9 +49,10 @@ const COMPANY_TABS = [
     { key: 'pending_verification', label: 'Pending Verification' },
     { key: 'suspended', label: 'Suspended' },
 ] as const;
+type CompanyTabKey = (typeof COMPANY_TABS)[number]['key'];
 
 export function CompaniesClient() {
-    const [activeTab, setActiveTab] = useState('all');
+    const [activeTab, setActiveTab] = useState<CompanyTabKey>('all');
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearch = useDebouncedValue(searchTerm, 500);

@@ -45,6 +45,8 @@ const NDR_TABS = [
     { key: 'rto_triggered', label: 'RTO Triggered' },
     { key: 'resolved', label: 'Resolved' },
 ] as const;
+type NdrTabKey = (typeof NDR_TABS)[number]['key'];
+const isNdrTabKey = (value: string): value is NdrTabKey => NDR_TABS.some((tab) => tab.key === value);
 
 // Status mapping helper
 const getStatusColor = (status: string) => {
@@ -61,7 +63,7 @@ export function NdrClient() {
     const searchParams = useSearchParams();
     const { page: urlPage, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [page, setPage] = useState(urlPage);
-    const [activeTab, setActiveTab] = useState('all');
+    const [activeTab, setActiveTab] = useState<NdrTabKey>('all');
     const hasInitializedFilterReset = useRef(false);
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search, 500);
@@ -78,7 +80,8 @@ export function NdrClient() {
     const statusFilter = activeTab === 'all' ? undefined : activeTab;
 
     useEffect(() => {
-        const nextStatus = searchParams.get('status') || 'all';
+        const nextStatusParam = searchParams.get('status') || 'all';
+        const nextStatus: NdrTabKey = isNdrTabKey(nextStatusParam) ? nextStatusParam : 'all';
         setActiveTab((current) => (current === nextStatus ? current : nextStatus));
 
         const nextSearch = searchParams.get('search') || '';
@@ -177,7 +180,7 @@ export function NdrClient() {
                         </Badge>
                     </div>
                     <div className="h-[250px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                             <BarChart data={funnelData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border-subtle)" />
                                 <XAxis type="number" hide />

@@ -1,6 +1,8 @@
 "use client";
 export const dynamic = "force-dynamic";
 
+import { useMemo } from 'react';
+import { endOfDay, startOfDay, subDays } from 'date-fns';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Loader } from '@/src/components/ui/feedback/Loader';
@@ -11,7 +13,14 @@ import { useAdminDisputeMetrics } from '@/src/core/api/hooks/admin/disputes/useA
 
 export function WeightClient() {
     const router = useRouter();
-    const { data: metrics, isLoading } = useAdminDisputeMetrics();
+    const metricsRange = useMemo(() => {
+        const to = new Date();
+        return {
+            startDate: startOfDay(subDays(to, 29)).toISOString(),
+            endDate: endOfDay(to).toISOString(),
+        };
+    }, []);
+    const { data: metrics, isLoading } = useAdminDisputeMetrics(metricsRange);
 
     if (isLoading) {
         return <Loader message="Loading weight & dispute overview..." centered />;

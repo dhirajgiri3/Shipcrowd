@@ -1,8 +1,8 @@
 import express from 'express';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import weightDisputesController from '../../../controllers/disputes/weight-disputes.controller';
-import { requireAccess } from '../../../middleware/auth/access.middleware';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/index';
 import { verifyWebhookSignature } from '../../../middleware/webhooks/webhook-signature.middleware';
 
 const router = express.Router();

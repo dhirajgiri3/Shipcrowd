@@ -41,10 +41,27 @@ const updateSalesRepSchema = z.object({
 
 const service = SalesRepService.getInstance();
 
+const resolveAdminCompanyId = (auth: { isAdmin?: boolean; companyId?: string }, requested?: unknown): string | undefined => {
+    if (!auth.isAdmin) {
+        return auth.companyId;
+    }
+
+    const requestedCompanyId = typeof requested === 'string' && requested.trim().length > 0 ? requested : undefined;
+    return requestedCompanyId || auth.companyId;
+};
+
+const ensureCompanyId = (companyId?: string): string => {
+    if (!companyId) {
+        throw new ValidationError('Company ID is required for this operation');
+    }
+    requireCompanyContext({ companyId });
+    return companyId;
+};
+
 export const createSalesRep = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const companyId = ensureCompanyId(resolveAdminCompanyId(auth, req.body?.companyId));
 
         const validation = createSalesRepSchema.safeParse(req.body);
         if (!validation.success) {
@@ -52,11 +69,11 @@ export const createSalesRep = async (req: Request, res: Response, next: NextFunc
         }
 
         const rep = await service.createSalesRep({
-            companyId: auth.companyId,
+            companyId,
             ...validation.data
         });
 
-        await createAuditLog(auth.userId, auth.companyId, 'create', 'sales_rep', rep.id, { message: 'Sales Representative created', name: rep.name }, req);
+        await createAuditLog(auth.userId, companyId, 'create', 'sales_rep', rep.id, { message: 'Sales Representative created', name: rep.name }, req);
 
         sendCreated(res, rep, 'Sales Representative created successfully');
     } catch (error) {
@@ -68,17 +85,21 @@ export const createSalesRep = async (req: Request, res: Response, next: NextFunc
 export const getSalesReps = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const companyId = resolveAdminCompanyId(auth, req.query.companyId);
 
         const page = Math.max(1, parseInt(req.query.page as string) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
 
-        const result = await service.getSalesReps(auth.companyId, {
+        const filters = {
             page,
             limit,
             territory: req.query.territory as string,
             status: req.query.status as string,
-        });
+        };
+
+        const result = auth.isAdmin
+            ? await service.getSalesRepsAdmin({ ...filters, companyId })
+            : await service.getSalesReps(ensureCompanyId(companyId), filters);
 
         const pagination = calculatePagination(result.total, page, limit);
 
@@ -99,7 +120,7 @@ export const getSalesReps = async (req: Request, res: Response, next: NextFuncti
 export const getSalesRepById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const companyId = resolveAdminCompanyId(auth, req.query.companyId);
 
         const { id } = req.params;
         // Check if user has permission to view bank details (e.g. admin or finance role)
@@ -107,7 +128,13 @@ export const getSalesRepById = async (req: Request, res: Response, next: NextFun
         // In a real scenario, check req.user.roles or permissions
         const canViewBankDetails = true; // Placeholder for permission check
 
-        const rep = await service.getSalesRepById(id, auth.companyId, canViewBankDetails);
+        const rep = auth.isAdmin
+            ? await service.getSalesRepByIdAdmin(id, canViewBankDetails)
+            : await service.getSalesRepById(
+                id,
+                ensureCompanyId(companyId),
+                canViewBankDetails
+            );
 
         sendSuccess(res, rep, 'Sales Representative details retrieved successfully');
     } catch (error) {
@@ -119,7 +146,7 @@ export const getSalesRepById = async (req: Request, res: Response, next: NextFun
 export const updateSalesRep = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const companyId = resolveAdminCompanyId(auth, req.body?.companyId ?? req.query?.companyId);
 
         const { id } = req.params;
         const validation = updateSalesRepSchema.safeParse(req.body);
@@ -127,13 +154,15 @@ export const updateSalesRep = async (req: Request, res: Response, next: NextFunc
             throw new ValidationError('Validation failed', validation.error.errors);
         }
 
-        const rep = await service.updateSalesRep(
-            id,
-            auth.companyId,
-            validation.data
-        );
+        const rep = auth.isAdmin
+            ? await service.updateSalesRepAdmin(id, validation.data)
+            : await service.updateSalesRep(
+                id,
+                ensureCompanyId(companyId),
+                validation.data
+            );
 
-        await createAuditLog(auth.userId, auth.companyId, 'update', 'sales_rep', rep.id, { message: 'Sales Representative updated', updates: validation.data }, req);
+        await createAuditLog(auth.userId, companyId || auth.companyId, 'update', 'sales_rep', rep.id, { message: 'Sales Representative updated', updates: validation.data }, req);
 
         sendSuccess(res, rep, 'Sales Representative updated successfully');
     } catch (error) {
@@ -145,10 +174,15 @@ export const updateSalesRep = async (req: Request, res: Response, next: NextFunc
 export const getPerformanceMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const companyId = resolveAdminCompanyId(auth, req.query.companyId);
 
         const { id } = req.params;
-        const metrics = await service.getPerformanceMetrics(id, auth.companyId);
+        const metrics = auth.isAdmin
+            ? await service.getPerformanceMetricsAdmin(id)
+            : await service.getPerformanceMetrics(
+                id,
+                ensureCompanyId(companyId)
+            );
 
         sendSuccess(res, metrics, 'Performance metrics retrieved successfully');
     } catch (error) {

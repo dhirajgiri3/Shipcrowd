@@ -25,9 +25,8 @@ export type { WeightDispute, DisputeFilters, DisputeMetrics, DisputeAnalytics };
  */
 export const useAdminDisputes = (filters?: DisputeFilters) => {
     return useQuery<DisputeListResponse, ApiError>({
-        queryKey: queryKeys.disputes.list(filters),
+        queryKey: ['admin', ...queryKeys.disputes.list(filters)],
         queryFn: async () => {
-            // Admin endpoint might be same, ensuring we use the correct params
             const params = new URLSearchParams();
             if (filters?.status) params.append('status', filters.status);
             if (filters?.startDate) params.append('startDate', filters.startDate);
@@ -36,8 +35,7 @@ export const useAdminDisputes = (filters?: DisputeFilters) => {
             if (filters?.page) params.append('page', filters.page.toString());
             if (filters?.limit) params.append('limit', filters.limit.toString());
 
-            // Using the existing endpoint which seems to handle admin/seller based on context or it's a shared endpoint
-            const response = await apiClient.get(`/disputes/weight?${params.toString()}`);
+            const response = await apiClient.get(`/admin/disputes/weight?${params.toString()}`);
             const raw = response.data;
             const pagination = raw.pagination
                 ? {
@@ -54,6 +52,25 @@ export const useAdminDisputes = (filters?: DisputeFilters) => {
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
+        refetchOnWindowFocus: false,
+        placeholderData: (previousData) => previousData, // Keep previous data during pagination/filter for smooth UX
+    });
+};
+
+/**
+ * Get single dispute details for admin review page
+ */
+export const useAdminDispute = (disputeId: string) => {
+    return useQuery<WeightDispute, ApiError>({
+        queryKey: ['admin', ...queryKeys.disputes.detail(disputeId)],
+        queryFn: async () => {
+            const response = await apiClient.get(`/admin/disputes/weight/${disputeId}`);
+            return response.data.data.dispute;
+        },
+        enabled: !!disputeId,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -62,7 +79,7 @@ export const useAdminDisputes = (filters?: DisputeFilters) => {
  */
 export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate?: string }) => {
     return useQuery<DisputeMetrics, ApiError>({
-        queryKey: queryKeys.disputes.metrics(dateRange as any),
+        queryKey: ['admin', ...queryKeys.disputes.metrics(dateRange as any)],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (dateRange?.startDate) params.append('startDate', dateRange.startDate);
@@ -73,6 +90,7 @@ export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -82,7 +100,7 @@ export const useAdminDisputeMetrics = (dateRange?: { startDate?: string; endDate
  */
 export const useAdminPlatformDisputeMetrics = (filters?: { startDate?: string; endDate?: string }) => {
     return useQuery<DisputeMetrics, ApiError>({
-        queryKey: queryKeys.disputes.platformMetrics(filters),
+        queryKey: ['admin', ...queryKeys.disputes.platformMetrics(filters)],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (filters?.startDate) params.append('startDate', filters.startDate);
@@ -95,6 +113,7 @@ export const useAdminPlatformDisputeMetrics = (filters?: { startDate?: string; e
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -103,18 +122,19 @@ export const useAdminPlatformDisputeMetrics = (filters?: { startDate?: string; e
  */
 export const useAdminDisputeAnalytics = (filters?: any) => {
     return useQuery<DisputeAnalytics, ApiError>({
-        queryKey: queryKeys.disputes.analytics(filters),
+        queryKey: ['admin', ...queryKeys.disputes.analytics(filters)],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (filters?.startDate) params.append('startDate', filters.startDate);
             if (filters?.endDate) params.append('endDate', filters.endDate);
             if (filters?.groupBy) params.append('groupBy', filters.groupBy);
 
-            const response = await apiClient.get(`/disputes/weight/analytics?${params.toString()}`);
+            const response = await apiClient.get(`/admin/disputes/weight/analytics?${params.toString()}`);
             return response.data.data;
         },
         ...CACHE_TIMES.LONG,
         retry: RETRY_CONFIG.DEFAULT,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -126,7 +146,7 @@ export const useAdminResolveDispute = () => {
     return useMutation<WeightDispute, ApiError, { disputeId: string; resolution: ResolveDisputePayload }>({
         mutationFn: async ({ disputeId, resolution }) => {
             const response = await apiClient.post(
-                `/disputes/weight/${disputeId}/resolve`,
+                `/admin/disputes/weight/${disputeId}/resolve`,
                 resolution
             );
             return response.data.data.dispute;
@@ -134,6 +154,7 @@ export const useAdminResolveDispute = () => {
         onSuccess: (data, variables) => {
             showSuccessToast('Dispute resolved successfully');
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all() });
+            queryClient.invalidateQueries({ queryKey: ['admin', ...queryKeys.disputes.all()] });
         },
         onError: (error) => handleApiError(error, 'Failed to resolve dispute'),
     });
@@ -151,7 +172,7 @@ export const useAdminBatchDisputes = () => {
         { disputeIds: string[]; action: 'approve_seller' | 'approve_carrier' | 'request_evidence' | 'escalate' | 'waive'; notes?: string }
     >({
         mutationFn: async ({ disputeIds, action, notes }) => {
-            const response = await apiClient.post('/disputes/weight/batch', {
+            const response = await apiClient.post('/admin/disputes/weight/batch', {
                 disputeIds,
                 action,
                 notes,
@@ -161,6 +182,7 @@ export const useAdminBatchDisputes = () => {
         onSuccess: (data) => {
             showSuccessToast(`Batch operation completed: ${data.success} succeeded, ${data.failed} failed`);
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all() });
+            queryClient.invalidateQueries({ queryKey: ['admin', ...queryKeys.disputes.all()] });
         },
         onError: (error) => handleApiError(error, 'Failed to perform batch dispute operation'),
     });

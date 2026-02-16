@@ -107,12 +107,34 @@ const getBaseURL = (): string => {
 
 const createApiClient = (): AxiosInstance => {
     const baseURL = getBaseURL();
+    const isDevelopment = process.env.NODE_ENV === 'development';
 
     const client = axios.create({
         baseURL,
-        timeout: 30000,
+        timeout: isDevelopment ? 15000 : 30000,
         withCredentials: true, // Send cookies with every request
     });
+
+    const summarizePayload = (payload: unknown): unknown => {
+        if (payload == null) return payload;
+        if (Array.isArray(payload)) return { type: 'array', length: payload.length };
+        if (typeof payload !== 'object') return payload;
+
+        const objectPayload = payload as Record<string, unknown>;
+        const keys = Object.keys(objectPayload);
+        const summary: Record<string, unknown> = { type: 'object', keys: keys.slice(0, 8) };
+        if ('success' in objectPayload) summary.success = objectPayload.success;
+        if ('message' in objectPayload) summary.message = objectPayload.message;
+        if ('data' in objectPayload) {
+            const data = objectPayload.data as unknown;
+            summary.data = Array.isArray(data)
+                ? { type: 'array', length: data.length }
+                : (typeof data === 'object' && data !== null
+                    ? { type: 'object', keys: Object.keys(data as Record<string, unknown>).slice(0, 8) }
+                    : data);
+        }
+        return summary;
+    };
 
     /**
      * Request interceptor: Add CSRF token and log requests
@@ -139,10 +161,10 @@ const createApiClient = (): AxiosInstance => {
                 }
             }
 
-            if (process.env.NODE_ENV === 'development') {
+            if (isDevelopment) {
                 console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
-                    params: config.params,
-                    data: config.data,
+                    params: summarizePayload(config.params),
+                    data: summarizePayload(config.data),
                     csrfToken: config.headers['X-CSRF-Token'] ? '***' : 'none',
                 });
             }
@@ -159,10 +181,10 @@ const createApiClient = (): AxiosInstance => {
      */
     client.interceptors.response.use(
         (response: AxiosResponse) => {
-            if (process.env.NODE_ENV === 'development') {
+            if (isDevelopment) {
                 console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
                     status: response.status,
-                    data: response.data,
+                    data: summarizePayload(response.data),
                 });
             }
             return response;
@@ -350,22 +372,8 @@ const createApiClient = (): AxiosInstance => {
                 } as ApiError);
             }
 
-            // Handle 5xx and Network Errors with retry
-            const isNetworkError = error.code === 'ERR_NETWORK' || !error.response;
-            const isServerError = error.response?.status && error.response.status >= 500;
-
-            if (isNetworkError || isServerError) {
-                const retryCount = (originalRequest as any).__retryCount || 0;
-                if (retryCount < 2) {
-                    (originalRequest as any).__retryCount = retryCount + 1;
-                    // Exponential backoff: 1s, 2s
-                    await new Promise((resolve) => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-                    return client(originalRequest);
-                }
-            }
-
             // Only log unexpected errors (skip 401 auth and 404 not-found which are expected)
-            if (process.env.NODE_ENV === 'development' && error.response?.status !== 401 && error.response?.status !== 404) {
+            if (isDevelopment && error.response?.status !== 401 && error.response?.status !== 404) {
                 // Extract error details with fallbacks
                 const responseData = error.response?.data as any;
                 const errorDetails: any = {
@@ -374,7 +382,7 @@ const createApiClient = (): AxiosInstance => {
                     status: error.response?.status || 'no response',
                     message: responseData?.message || responseData?.error?.message || error.message || 'No message',
                     code: responseData?.code || responseData?.error?.code || 'No code',
-                    data: responseData
+                    data: summarizePayload(responseData)
                 };
 
                 // Handle network errors

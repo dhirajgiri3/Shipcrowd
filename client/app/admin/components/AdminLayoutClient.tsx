@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/src/components/admin/Sidebar';
 import { Header } from '@/src/components/admin/Header';
@@ -17,6 +17,7 @@ export function AdminLayoutClient({
 }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const pathname = usePathname();
+    const mobileSidebarRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setSidebarOpen(false);
@@ -32,6 +33,15 @@ export function AdminLayoutClient({
         return () => {
             document.body.style.overflow = '';
         };
+    }, [sidebarOpen]);
+
+    useEffect(() => {
+        if (sidebarOpen) return;
+        const activeElement = document.activeElement as HTMLElement | null;
+        if (activeElement && mobileSidebarRef.current?.contains(activeElement)) {
+            activeElement.blur();
+            document.getElementById('admin-main-content')?.focus();
+        }
     }, [sidebarOpen]);
 
     return (
@@ -54,6 +64,7 @@ export function AdminLayoutClient({
                         )}
 
                         <div
+                            ref={mobileSidebarRef}
                             className={cn(
                                 'fixed inset-y-0 left-0 z-[var(--z-sidebar-mobile)] w-64 transform transition-transform duration-200 ease-in-out lg:hidden',
                                 sidebarOpen ? 'translate-x-0' : '-translate-x-full'

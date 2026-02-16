@@ -15,7 +15,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useWeightDispute, useResolveDispute } from '@/src/core/api/hooks';
+import { useAdminDispute, useAdminResolveDispute } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
 import { formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
@@ -72,8 +72,8 @@ export default function AdminDisputeReviewPage() {
     const router = useRouter();
     const id = params.id as string;
 
-    const { data: dispute, isLoading, isError } = useWeightDispute(id);
-    const resolveDispute = useResolveDispute();
+    const { data: dispute, isLoading, isError } = useAdminDispute(id);
+    const resolveDispute = useAdminResolveDispute();
 
     const [selectedOutcome, setSelectedOutcome] = useState<ResolutionOutcome | null>(null);
     const [reasonCode, setReasonCode] = useState('');

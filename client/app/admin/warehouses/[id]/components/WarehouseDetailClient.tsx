@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdminWarehouse } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
-import { useDeleteWarehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { useAdminWarehouse, useAdminDeleteWarehouse } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
 import { Button } from '@/src/components/ui/core/Button';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
@@ -31,7 +30,7 @@ interface WarehouseDetailClientProps {
 export function WarehouseDetailClient({ warehouseId }: WarehouseDetailClientProps) {
     const router = useRouter();
     const { data: warehouse, isLoading, error } = useAdminWarehouse(warehouseId);
-    const deleteWarehouse = useDeleteWarehouse();
+    const deleteWarehouse = useAdminDeleteWarehouse();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     if (isLoading) {

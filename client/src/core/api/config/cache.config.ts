@@ -40,7 +40,7 @@ export const CACHE_TIMES = {
  * Retry configuration for different error types
  */
 export const RETRY_CONFIG = {
-  DEFAULT: 2,
+  DEFAULT: 1,
   AGGRESSIVE: 3,
   NO_RETRY: 0,
 };

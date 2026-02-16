@@ -1,278 +1,421 @@
 /**
  * Admin Disputes Table Component
- * 
+ *
  * Enhanced table for admin view with:
- * - Status-based priority sorting
+ * - Status-based filters (PillTabs)
+ * - Search by AWB/Dispute ID
  * - Bulk actions (resolve multiple)
  * - Days pending indicator
- * - Quick actions (resolve buttons)
- * - Advanced filters (carrier, date range, amount)
+ * - Design system tokens
  */
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWeightDisputes } from '@/src/core/api/hooks';
-import { formatCurrency, formatDate, formatPaginationRange } from '@/src/lib/utils';
+import { formatCurrency, formatPaginationRange } from '@/src/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { SearchInput } from '@/src/components/ui/form/SearchInput';
+import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { TableSkeleton, EmptyState } from '@/src/components/ui';
+import { useDebouncedValue } from '@/src/hooks/data';
 import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
-import { useAdminBatchDisputes } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
+import { useAdminBatchDisputes, useAdminDisputes } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
+import { Scale, CheckCircle2, XCircle } from 'lucide-react';
 
 const STATUS_TABS = [
-    { value: 'all', label: 'All' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'under_review', label: 'Under Review' },
-    { value: 'auto_resolved', label: 'Auto Resolved' },
-    { value: 'manual_resolved', label: 'Resolved' },
-];
+    { key: 'all', label: 'All' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'under_review', label: 'Under Review' },
+    { key: 'auto_resolved', label: 'Auto Resolved' },
+    { key: 'manual_resolved', label: 'Resolved' },
+] as const;
+
+function getDaysPending(createdAt: string): number {
+    const days = Math.floor(
+        (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    return Math.max(0, days);
+}
+
+function getUrgencyClasses(days: number): string {
+    if (days >= 7) return 'text-[var(--error)] bg-[var(--error-bg)]';
+    if (days >= 5) return 'text-[var(--warning)] bg-[var(--warning-bg)]';
+    if (days >= 3) return 'text-[var(--warning)]/80 bg-[var(--warning-bg)]/50';
+    return 'text-[var(--text-muted)] bg-[var(--bg-tertiary)]';
+}
 
 export function AdminDisputesTable() {
     const router = useRouter();
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 350);
     const [filters, setFilters] = useState<DisputeFilters>({ page: 1, limit: 25 });
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const { data, isLoading, isError } = useWeightDisputes(filters);
+    useEffect(() => {
+        setFilters((prev) => ({
+            ...prev,
+            search: debouncedSearch || undefined,
+            page: 1,
+        }));
+    }, [debouncedSearch]);
+
+    const { data, isLoading, isError } = useAdminDisputes(filters);
     const batchMutation = useAdminBatchDisputes();
 
-    const getDaysPending = (createdAt: string) => {
-        const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
-        return days;
-    };
+    const disputes = data?.disputes ?? [];
+    const pagination = data?.pagination;
 
-    const getUrgencyColor = (days: number) => {
-        if (days >= 7) return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30';
-        if (days >= 5) return 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30';
-        if (days >= 3) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30';
-        return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700';
-    };
+    const handleStatusChange = useCallback(
+        (key: string) => {
+            setFilters((prev) => ({
+                ...prev,
+                status: key === 'all' ? undefined : (key as DisputeStatus),
+                page: 1,
+            }));
+        },
+        []
+    );
 
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedIds(new Set(data?.disputes.map(d => d._id) || []));
-        } else {
-            setSelectedIds(new Set());
-        }
-    };
+    const handleSelectAll = useCallback(
+        (checked: boolean) => {
+            if (checked) {
+                setSelectedIds(new Set(disputes.map((d) => d._id)));
+            } else {
+                setSelectedIds(new Set());
+            }
+        },
+        [disputes]
+    );
 
-    const handleSelect = (id: string, checked: boolean) => {
-        const newSelected = new Set(selectedIds);
-        if (checked) {
-            newSelected.add(id);
-        } else {
-            newSelected.delete(id);
-        }
-        setSelectedIds(newSelected);
-    };
+    const handleSelect = useCallback((id: string, checked: boolean) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (checked) next.add(id);
+            else next.delete(id);
+            return next;
+        });
+    }, []);
 
-    if (isLoading) {
-        return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-                <div className="p-6 space-y-4">
-                    {[...Array(8)].map((_, i) => (
-                        <div key={i} className="animate-pulse flex gap-4">
-                            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded flex-1"></div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
+    const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+    const handleBulkApproveSeller = useCallback(() => {
+        if (selectedIds.size === 0) return;
+        batchMutation.mutate({
+            disputeIds: Array.from(selectedIds),
+            action: 'approve_seller',
+            notes: 'Bulk approved in seller favor from admin table',
+        });
+        setSelectedIds(new Set());
+    }, [selectedIds, batchMutation]);
+
+    const handleBulkApproveCarrier = useCallback(() => {
+        if (selectedIds.size === 0) return;
+        batchMutation.mutate({
+            disputeIds: Array.from(selectedIds),
+            action: 'approve_carrier',
+            notes: 'Bulk approved in Shipcrowd favor from admin table',
+        });
+        setSelectedIds(new Set());
+    }, [selectedIds, batchMutation]);
+
+    const activeStatus = filters.status ?? 'all';
 
     if (isError) {
         return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <p className="text-red-600">Failed to load disputes</p>
-            </div>
+            <Card className="border-[var(--border-subtle)]">
+                <CardContent className="py-12">
+                    <EmptyState
+                        variant="error"
+                        title="Failed to load disputes"
+                        description="There was an error fetching the weight disputes. Please try again."
+                    />
+                </CardContent>
+            </Card>
         );
     }
 
-    const disputes = data?.disputes || [];
-    const pagination = data?.pagination;
-
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-4 mb-4">
-                    {STATUS_TABS.map((tab) => (
-                        <button
-                            key={tab.value}
-                            onClick={() => setFilters({ ...filters, status: tab.value === 'all' ? undefined : tab.value as DisputeStatus, page: 1 })}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${(filters.status === tab.value || (!filters.status && tab.value === 'all'))
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+        <Card className="border-[var(--border-subtle)]">
+            <CardHeader className="border-b border-[var(--border-subtle)]">
+                <CardTitle>Dispute List</CardTitle>
+                <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                    <PillTabs
+                        tabs={STATUS_TABS}
+                        activeTab={activeStatus}
+                        onTabChange={handleStatusChange}
+                    />
+                    <SearchInput
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search by AWB or Dispute ID..."
+                        widthClass="w-full sm:w-72"
+                    />
                 </div>
 
-                {/* Bulk Actions */}
+                {/* Bulk Actions Bar */}
                 {selectedIds.size > 0 && (
-                    <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <span className="text-sm text-blue-700 dark:text-blue-300">{selectedIds.size} selected</span>
-                        <button
-                            onClick={() =>
-                                batchMutation.mutate({
-                                    disputeIds: Array.from(selectedIds),
-                                    action: 'approve_seller',
-                                    notes: 'Bulk approved in seller favor from admin table',
-                                })
-                            }
-                            className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                    <div className="flex flex-wrap items-center gap-3 p-3 mt-4 rounded-xl bg-[var(--primary-blue-soft)] border border-[var(--primary-blue)]/20">
+                        <span className="text-sm font-medium text-[var(--primary-blue)]">
+                            {selectedIds.size} selected
+                        </span>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleBulkApproveSeller}
+                            disabled={batchMutation.isPending}
                         >
-                            Bulk Resolve: Seller Favor
-                        </button>
-                        <button
-                            onClick={() =>
-                                batchMutation.mutate({
-                                    disputeIds: Array.from(selectedIds),
-                                    action: 'approve_carrier',
-                                    notes: 'Bulk approved in Shipcrowd favor from admin table',
-                                })
-                            }
-                            className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                            <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                            Approve Seller
+                        </Button>
+                        <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={handleBulkApproveCarrier}
+                            disabled={batchMutation.isPending}
                         >
-                            Bulk Resolve: Shipcrowd Favor
-                        </button>
+                            <XCircle className="w-4 h-4 mr-1.5" />
+                            Approve Carrier
+                        </Button>
                         <button
-                            onClick={() => setSelectedIds(new Set())}
-                            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                            type="button"
+                            onClick={clearSelection}
+                            className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                         >
                             Clear
                         </button>
                     </div>
                 )}
-            </div>
+            </CardHeader>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-700/50">
-                        <tr>
-                            <th className="px-4 py-3 text-left">
-                                <input
-                                    type="checkbox"
-                                    checked={disputes.length > 0 && selectedIds.size === disputes.length}
-                                    onChange={(e) => handleSelectAll(e.target.checked)}
-                                    className="rounded border-gray-300 dark:border-gray-600"
-                                />
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Dispute</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Company</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Weight</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Discrepancy</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Impact</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Evidence</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Days</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {disputes.length === 0 ? (
-                            <tr>
-                                <td colSpan={10} className="px-4 py-12 text-center">
-                                    <p className="text-gray-500 dark:text-gray-400">No disputes found</p>
-                                </td>
-                            </tr>
-                        ) : (
-                            disputes.map((dispute) => {
-                                const days = getDaysPending(dispute.createdAt);
-                                const shipment = typeof dispute.shipmentId === 'object' ? dispute.shipmentId : null;
-
-                                return (
-                                    <tr key={dispute._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                        <td className="px-4 py-3">
+            <CardContent className="p-0">
+                {isLoading ? (
+                    <div className="p-4">
+                        <TableSkeleton rows={8} columns={10} showHeader={true} />
+                    </div>
+                ) : disputes.length === 0 ? (
+                    <div className="py-16 px-4">
+                        <EmptyState
+                            icon={<Scale className="w-12 h-12" />}
+                            variant="noData"
+                            title="No disputes found"
+                            description={
+                                debouncedSearch
+                                    ? 'Try adjusting your search or filters.'
+                                    : 'Weight disputes will appear here when detected.'
+                            }
+                        />
+                    </div>
+                ) : (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
+                                    <tr>
+                                        <th className="px-4 py-3 w-10">
                                             <input
                                                 type="checkbox"
-                                                checked={selectedIds.has(dispute._id)}
-                                                onChange={(e) => handleSelect(dispute._id, e.target.checked)}
-                                                className="rounded border-gray-300 dark:border-gray-600"
+                                                checked={
+                                                    disputes.length > 0 &&
+                                                    selectedIds.size === disputes.length
+                                                }
+                                                onChange={(e) =>
+                                                    handleSelectAll(e.target.checked)
+                                                }
+                                                className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                                aria-label="Select all"
                                             />
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{dispute.disputeId}</div>
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">{shipment?.trackingNumber || 'N/A'}</div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-sm text-gray-900 dark:text-white">Company</div>
-                                            <div className="text-xs text-gray-500 dark:text-gray-400">{dispute.companyId}</div>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                                            {dispute.declaredWeight.value} → {dispute.actualWeight.value} {dispute.actualWeight.unit}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`text-sm font-bold ${dispute.discrepancy.thresholdExceeded ? 'text-red-600' : 'text-yellow-600'}`}>
-                                                {dispute.discrepancy.percentage.toFixed(1)}%
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`text-sm font-semibold ${dispute.financialImpact.chargeDirection === 'debit' ? 'text-red-600' : 'text-green-600'}`}>
-                                                {formatCurrency(dispute.financialImpact.difference)}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {dispute.evidence ? (
-                                                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-                                                    Submitted
-                                                </span>
-                                            ) : (
-                                                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded">
-                                                    None
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`text-xs px-2 py-1 rounded font-medium ${getUrgencyColor(days)}`}>
-                                                {days}d
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <StatusBadge domain="dispute" status={dispute.status} size="sm" />
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <button
-                                                onClick={() => router.push(`/admin/disputes/weight/${dispute._id}`)}
-                                                className="px-3 py-1 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
-                                            >
-                                                Review
-                                            </button>
-                                        </td>
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Dispute
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Company
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Weight
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Discrepancy
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Impact
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Evidence
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Days
+                                        </th>
+                                        <th className="px-4 py-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                                            Actions
+                                        </th>
                                     </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                </thead>
+                                <tbody className="divide-y divide-[var(--border-subtle)]">
+                                    {disputes.map((dispute) => {
+                                        const days = getDaysPending(dispute.createdAt);
+                                        const shipment =
+                                            typeof dispute.shipmentId === 'object'
+                                                ? dispute.shipmentId
+                                                : null;
 
-            {/* Pagination */}
-            {pagination && pagination.totalPages > 1 && (
-                <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {formatPaginationRange(pagination.page, pagination.limit, pagination.total, 'results')}
-                    </span>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setFilters({ ...filters, page: filters.page! - 1 })}
-                            disabled={pagination.page === 1}
-                            className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50"
-                        >
-                            Previous
-                        </button>
-                        <button
-                            onClick={() => setFilters({ ...filters, page: filters.page! + 1 })}
-                            disabled={pagination.page === pagination.totalPages}
-                            className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50"
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
+                                        return (
+                                            <tr
+                                                key={dispute._id}
+                                                className="hover:bg-[var(--bg-hover)] transition-colors"
+                                            >
+                                                <td className="px-4 py-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.has(dispute._id)}
+                                                        onChange={(e) =>
+                                                            handleSelect(dispute._id, e.target.checked)
+                                                        }
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                                        aria-label={`Select ${dispute.disputeId}`}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="font-medium text-[var(--text-primary)]">
+                                                        {dispute.disputeId}
+                                                    </div>
+                                                    <div className="text-xs text-[var(--text-muted)] font-mono">
+                                                        {shipment?.trackingNumber ?? 'N/A'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-[var(--text-primary)]">
+                                                    <span className="text-xs truncate max-w-[120px] block">
+                                                        {dispute.companyId}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-[var(--text-primary)]">
+                                                    {dispute.declaredWeight.value} →{' '}
+                                                    {dispute.actualWeight.value}{' '}
+                                                    {dispute.actualWeight.unit}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span
+                                                        className={`font-bold ${
+                                                            dispute.discrepancy.thresholdExceeded
+                                                                ? 'text-[var(--error)]'
+                                                                : 'text-[var(--warning)]'
+                                                        }`}
+                                                    >
+                                                        {dispute.discrepancy.percentage.toFixed(1)}%
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span
+                                                        className={`font-semibold ${
+                                                            dispute.financialImpact.chargeDirection ===
+                                                            'debit'
+                                                                ? 'text-[var(--error)]'
+                                                                : 'text-[var(--success)]'
+                                                        }`}
+                                                    >
+                                                        {formatCurrency(
+                                                            dispute.financialImpact.difference
+                                                        )}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {dispute.evidence ? (
+                                                        <span className="text-xs px-2 py-1 rounded-md bg-[var(--success-bg)] text-[var(--success)]">
+                                                            Submitted
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs px-2 py-1 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
+                                                            None
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span
+                                                        className={`text-xs px-2 py-1 rounded-md font-medium ${getUrgencyClasses(days)}`}
+                                                    >
+                                                        {days}d
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <StatusBadge
+                                                        domain="dispute"
+                                                        status={dispute.status}
+                                                        size="sm"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Button
+                                                        variant="primary"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            router.push(
+                                                                `/admin/disputes/weight/${dispute._id}`
+                                                            )
+                                                        }
+                                                    >
+                                                        Review
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Pagination */}
+                        {pagination && pagination.totalPages > 1 && (
+                            <div className="px-4 py-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-sm text-[var(--text-muted)]">
+                                    {formatPaginationRange(
+                                        pagination.page,
+                                        pagination.limit,
+                                        pagination.total,
+                                        'results'
+                                    )}
+                                </span>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() =>
+                                            setFilters((prev) => ({
+                                                ...prev,
+                                                page: (prev.page ?? 1) - 1,
+                                            }))
+                                        }
+                                        disabled={pagination.page === 1}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() =>
+                                            setFilters((prev) => ({
+                                                ...prev,
+                                                page: (prev.page ?? 1) + 1,
+                                            }))
+                                        }
+                                        disabled={
+                                            pagination.page === pagination.totalPages
+                                        }
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </CardContent>
+        </Card>
     );
 }

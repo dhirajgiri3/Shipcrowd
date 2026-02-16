@@ -507,6 +507,7 @@ export class WeightDisputeResolutionService {
         resolved: number;
         autoResolved: number;
         totalFinancialImpact: number;
+        averageDiscrepancy: number;
         averageResolutionTime: number;
     }> {
         try {
@@ -523,21 +524,73 @@ export class WeightDisputeResolutionService {
                 };
             }
 
-            const disputes = await WeightDispute.find(query);
+            const [result] = await WeightDispute.aggregate([
+                { $match: query },
+                {
+                    $facet: {
+                        overview: [
+                            {
+                                $group: {
+                                    _id: null,
+                                    total: { $sum: 1 },
+                                    pending: {
+                                        $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
+                                    },
+                                    underReview: {
+                                        $sum: { $cond: [{ $eq: ['$status', 'under_review'] }, 1, 0] },
+                                    },
+                                    resolved: {
+                                        $sum: {
+                                            $cond: [
+                                                { $in: ['$status', ['manual_resolved', 'auto_resolved']] },
+                                                1,
+                                                0,
+                                            ],
+                                        },
+                                    },
+                                    autoResolved: {
+                                        $sum: { $cond: [{ $eq: ['$status', 'auto_resolved'] }, 1, 0] },
+                                    },
+                                    totalFinancialImpact: { $sum: '$financialImpact.difference' },
+                                    averageDiscrepancy: { $avg: '$discrepancy.percentage' },
+                                },
+                            },
+                        ],
+                        resolution: [
+                            { $match: { 'resolution.resolvedAt': { $exists: true } } },
+                            {
+                                $project: {
+                                    resolutionHours: {
+                                        $divide: [
+                                            { $subtract: ['$resolution.resolvedAt', '$createdAt'] },
+                                            1000 * 60 * 60,
+                                        ],
+                                    },
+                                },
+                            },
+                            {
+                                $group: {
+                                    _id: null,
+                                    averageResolutionTime: { $avg: '$resolutionHours' },
+                                },
+                            },
+                        ],
+                    },
+                },
+            ]);
+
+            const overview = result?.overview?.[0];
+            const resolution = result?.resolution?.[0];
 
             const metrics = {
-                total: disputes.length,
-                pending: disputes.filter((d) => d.status === 'pending').length,
-                underReview: disputes.filter((d) => d.status === 'under_review').length,
-                resolved: disputes.filter((d) =>
-                    ['manual_resolved', 'auto_resolved'].includes(d.status)
-                ).length,
-                autoResolved: disputes.filter((d) => d.status === 'auto_resolved').length,
-                totalFinancialImpact: disputes.reduce(
-                    (sum, d) => sum + (d.financialImpact?.difference || 0),
-                    0
-                ),
-                averageResolutionTime: this.calculateAverageResolutionTime(disputes),
+                total: overview?.total ?? 0,
+                pending: overview?.pending ?? 0,
+                underReview: overview?.underReview ?? 0,
+                resolved: overview?.resolved ?? 0,
+                autoResolved: overview?.autoResolved ?? 0,
+                totalFinancialImpact: overview?.totalFinancialImpact ?? 0,
+                averageDiscrepancy: overview?.averageDiscrepancy ?? 0,
+                averageResolutionTime: resolution?.averageResolutionTime ?? 0,
             };
 
             return metrics;
@@ -548,24 +601,6 @@ export class WeightDisputeResolutionService {
             });
             throw error;
         }
-    }
-
-    /**
-     * Calculate average resolution time in hours
-     */
-    private calculateAverageResolutionTime(disputes: any[]): number {
-        const resolvedDisputes = disputes.filter((d) => d.resolution?.resolvedAt);
-
-        if (resolvedDisputes.length === 0) return 0;
-
-        const totalHours = resolvedDisputes.reduce((sum, d) => {
-            const created = new Date(d.createdAt).getTime();
-            const resolved = new Date(d.resolution.resolvedAt).getTime();
-            const hours = (resolved - created) / (1000 * 60 * 60);
-            return sum + hours;
-        }, 0);
-
-        return totalHours / resolvedDisputes.length;
     }
 
     /**

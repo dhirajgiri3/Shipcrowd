@@ -15,7 +15,7 @@ import { apiClient } from '@/src/core/api/http';
  * Get all coupons with optional filtering
  */
 export const useAdminCoupons = (filters?: PromoCodeFilters) => {
-    return useQuery({
+    return useQuery<PromoCode[], ApiError>({
         queryKey: queryKeys.marketing.promoCodes(filters),
         queryFn: async () => {
             const response = await apiClient.get('/admin/promos', { params: filters });

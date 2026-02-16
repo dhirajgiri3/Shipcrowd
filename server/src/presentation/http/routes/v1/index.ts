@@ -115,6 +115,8 @@ import adminIntegrationsRoutes from './admin/admin-integrations.routes';
 import adminPromoRoutes from './admin/admin-promo.routes';
 import impersonationRoutes from './admin/impersonation.routes';
 import platformSettingsRoutes from './admin/platform-settings.routes';
+import adminSalesRepRoutes from './admin/sales-rep.routes';
+import adminSellerCourierPolicyRoutes from './admin/seller-courier-policy.routes';
 import skuWeightProfileRoutes from './admin/sku-weight-profile.routes';
 import userManagementRoutes from './admin/user-management.routes';
 
@@ -172,6 +174,7 @@ router.use('/quotes', quoteRoutes);
 router.use('/admin/courier-services', courierServiceRoutes);
 router.use('/admin/service-ratecards', serviceRateCardRoutes);
 router.use('/sellers', sellerCourierPolicyRoutes);
+router.use('/admin/sellers', adminSellerCourierPolicyRoutes);
 router.use('/admin/carriers', courierRoutes); // Backward compatibility
 router.use('/admin/couriers', courierRoutes); // New standard route
 router.use('/courier', courierRoutes);
@@ -222,6 +225,7 @@ router.use('/commission', commissionRoutes);
 // 7. CRM
 router.use('/crm/leads', leadRoutes);
 router.use('/crm/sales-reps', salesRepRoutes);
+router.use('/admin/crm/sales-reps', adminSalesRepRoutes);
 router.use('/crm/call-logs', callLogRoutes);
 router.use('/crm/disputes', crmDisputeRoutes);
 router.use('/support', supportRoutes);

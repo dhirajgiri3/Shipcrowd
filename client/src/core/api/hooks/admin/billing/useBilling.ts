@@ -39,7 +39,8 @@ export const useAdminPendingRecharges = () => {
         queryKey: queryKeys.admin.billing.pendingRecharges(),
         queryFn: async () => await billingApi.getPendingRecharges(),
         ...CACHE_TIMES.SHORT,
-        refetchInterval: 30000,
+        retry: RETRY_CONFIG.NO_RETRY,
+        refetchInterval: 60000,
     });
 };
 

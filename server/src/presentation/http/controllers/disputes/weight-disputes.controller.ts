@@ -50,15 +50,19 @@ export const listDisputes = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.query.companyId ? String(req.query.companyId) : '';
+        const companyId = auth.isAdmin ? (requestedCompanyId || auth.companyId || '') : auth.companyId;
 
         const { page, limit, skip } = parsePagination(req.query as any);
 
         const filter: Record<string, any> = {
-            companyId: auth.companyId,
             isDeleted: false,
         };
+        if (!auth.isAdmin || companyId) {
+            requireCompanyContext({ companyId });
+            filter.companyId = companyId;
+        }
 
         // Status filter
         if (req.query.status) {
@@ -116,17 +120,23 @@ export const getDisputeDetails = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        requireCompanyContext(auth);
+        const auth = guardChecks(req, { requireCompany: false });
+        const requestedCompanyId = req.query.companyId ? String(req.query.companyId) : '';
+        const companyId = auth.isAdmin ? (requestedCompanyId || auth.companyId || '') : auth.companyId;
 
         const { disputeId } = req.params;
         validateObjectId(disputeId, 'dispute');
 
-        const dispute = await WeightDispute.findOne({
+        const query: Record<string, any> = {
             _id: disputeId,
-            companyId: auth.companyId,
             isDeleted: false,
-        })
+        };
+        if (!auth.isAdmin || companyId) {
+            requireCompanyContext({ companyId });
+            query.companyId = companyId;
+        }
+
+        const dispute = await WeightDispute.findOne(query)
             .populate('shipmentId', 'trackingNumber carrier serviceType currentStatus packageDetails deliveryDetails')
             .populate('orderId', 'orderNumber customerInfo')
             .lean();
@@ -222,7 +232,7 @@ export const resolveDispute = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req);
+        const auth = guardChecks(req, { requireCompany: false });
 
         // Admin check
         if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
@@ -316,36 +326,25 @@ void auth;
 
         const companyId = req.query.companyId as string | undefined;
 
-        // Get comprehensive stats
-        const stats = await WeightDisputeAnalyticsService.getComprehensiveStats(
-            companyId,
+        const [stats, trends, highRiskSellers, carrierPerformance, fraudSignals] = await Promise.all([
+            WeightDisputeAnalyticsService.getComprehensiveStats(companyId, dateRange),
             dateRange
-        );
-
-        // Get trends
-        const trends = dateRange
-            ? await WeightDisputeAnalyticsService.getDisputeTrends(
-                dateRange,
-                (req.query.groupBy as 'day' | 'week' | 'month') || 'day'
-            )
-            : [];
-
-        // Get high-risk sellers
-        const highRiskSellers = await WeightDisputeAnalyticsService.identifyHighRiskSellers(
-            dateRange,
-            20
-        );
-
-        // Week 3: Carrier performance and fraud signals
-        const carrierPerformance = dateRange
-            ? await WeightDisputeAnalyticsService.getCarrierPerformanceMetrics(dateRange)
-            : [];
-        const fraudSignals = dateRange
-            ? await WeightDisputeAnalyticsService.getFraudDetectionSignals(dateRange, {
-                companyId,
-                topN: 10,
-            })
-            : { highRiskSellers: [], underDeclarationPattern: [], recentSpike: [] };
+                ? WeightDisputeAnalyticsService.getDisputeTrends(
+                    dateRange,
+                    (req.query.groupBy as 'day' | 'week' | 'month') || 'day'
+                )
+                : Promise.resolve([]),
+            WeightDisputeAnalyticsService.identifyHighRiskSellers(dateRange, 20),
+            dateRange
+                ? WeightDisputeAnalyticsService.getCarrierPerformanceMetrics(dateRange)
+                : Promise.resolve([]),
+            dateRange
+                ? WeightDisputeAnalyticsService.getFraudDetectionSignals(dateRange, {
+                    companyId,
+                    topN: 10,
+                })
+                : Promise.resolve({ highRiskSellers: [], underDeclarationPattern: [], recentSpike: [] }),
+        ]);
 
         sendSuccess(
             res,
@@ -506,7 +505,7 @@ export const batchOperation = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req);
+        const auth = guardChecks(req, { requireCompany: false });
 
         // Admin check
         if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {

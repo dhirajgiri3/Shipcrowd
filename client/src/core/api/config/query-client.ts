@@ -47,8 +47,8 @@ export const QUERY_CONFIG = {
      * Retry configuration
      */
     retry: {
-        /** Queries: retry twice on failure for better reliability */
-        queries: 2,
+        /** Queries: single retry on transient failures */
+        queries: 1,
 
         /** Mutations: don't retry (user-initiated actions) */
         mutations: 0,
@@ -67,5 +67,4 @@ export const QUERY_CONFIG = {
      */
     networkMode: 'online' as const,
 } as const;
-
 

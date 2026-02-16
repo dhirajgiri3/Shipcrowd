@@ -20,7 +20,7 @@ export const useNotifications = (filters?: NotificationFilters) => {
         queryFn: () => notificationsApi.getNotifications(filters),
         staleTime: 20000, // 20 seconds
         refetchInterval: 30000, // Poll every 30 seconds
-        retry: RETRY_CONFIG.DEFAULT,
+        retry: RETRY_CONFIG.NO_RETRY,
     });
 };
 
@@ -33,7 +33,7 @@ export const useUnreadCount = () => {
         queryFn: () => notificationsApi.getUnreadCount(),
         staleTime: 10000, // 10 seconds
         refetchInterval: 30000, // Poll every 30 seconds
-        retry: RETRY_CONFIG.DEFAULT,
+        retry: RETRY_CONFIG.NO_RETRY,
     });
 };
 

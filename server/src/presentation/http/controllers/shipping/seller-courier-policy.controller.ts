@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { SellerCourierPolicy } from '../../../../infrastructure/database/mongoose/models';
+import { SellerCourierPolicy, User } from '../../../../infrastructure/database/mongoose/models';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
@@ -114,7 +114,120 @@ export const upsertSellerCourierPolicy = async (req: Request, res: Response, nex
     }
 };
 
+export const getSellerCourierPolicyAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        guardChecks(req, { requireCompany: false });
+
+        const { sellerId } = req.params;
+        if (!sellerId) {
+            throw new ValidationError('sellerId is required', ErrorCode.VAL_MISSING_FIELD);
+        }
+
+        const seller = await User.findById(sellerId).select('companyId role').lean();
+        if (!seller || !seller.companyId) {
+            throw new ValidationError('Selected seller is not associated with any company');
+        }
+
+        const policy = await SellerCourierPolicy.findOne({
+            companyId: seller.companyId,
+            sellerId,
+            isActive: true,
+        })
+            .select('companyId sellerId allowedProviders allowedServiceIds blockedProviders blockedServiceIds selectionMode autoPriority balancedDeltaPercent isActive')
+            .hint({ companyId: 1, sellerId: 1, isActive: 1 })
+            .lean();
+
+        const etag = policy ? `"${policy._id}"` : null;
+        if (etag && req.headers['if-none-match'] === etag) {
+            res.status(304).send();
+            return;
+        }
+
+        res.set('Cache-Control', 'public, max-age=300');
+        if (etag) {
+            res.set('ETag', etag);
+        }
+
+        sendSuccess(
+            res,
+            policy || {
+                companyId: seller.companyId,
+                sellerId,
+                allowedProviders: [],
+                allowedServiceIds: [],
+                blockedProviders: [],
+                blockedServiceIds: [],
+                selectionMode: 'manual_with_recommendation',
+                autoPriority: 'balanced',
+                balancedDeltaPercent: 5,
+                isActive: true,
+            },
+            'Seller courier policy retrieved'
+        );
+    } catch (error) {
+        logger.error('Error getting seller courier policy (admin):', error);
+        next(error);
+    }
+};
+
+export const upsertSellerCourierPolicyAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+
+        const { sellerId } = req.params;
+        if (!sellerId) {
+            throw new ValidationError('sellerId is required', ErrorCode.VAL_MISSING_FIELD);
+        }
+
+        const seller = await User.findById(sellerId).select('companyId role').lean();
+        if (!seller || !seller.companyId) {
+            throw new ValidationError('Selected seller is not associated with any company');
+        }
+
+        const validation = upsertSellerCourierPolicySchema.safeParse(req.body);
+        if (!validation.success) {
+            const errors = validation.error.errors.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', errors);
+        }
+
+        const allowedProviders = new Set(validation.data.allowedProviders || []);
+        const blockedProviders = (validation.data.blockedProviders || [])
+            .filter((provider) => !allowedProviders.has(provider));
+
+        const payload = {
+            ...validation.data,
+            companyId: seller.companyId,
+            sellerId,
+            isActive: validation.data.isActive !== false,
+            blockedProviders,
+            metadata: {
+                ...(validation.data.metadata || {}),
+                updatedBy: auth.userId,
+            },
+        };
+
+        const policy = await SellerCourierPolicy.findOneAndUpdate(
+            {
+                companyId: seller.companyId,
+                sellerId,
+            },
+            { $set: payload },
+            { new: true, upsert: true }
+        ).lean();
+
+        sendSuccess(res, policy, 'Seller courier policy updated');
+    } catch (error) {
+        logger.error('Error upserting seller courier policy (admin):', error);
+        next(error);
+    }
+};
+
 export default {
     getSellerCourierPolicy,
     upsertSellerCourierPolicy,
+    getSellerCourierPolicyAdmin,
+    upsertSellerCourierPolicyAdmin,
 };

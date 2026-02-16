@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
-import { Skeleton } from '@/src/components/ui/data/Skeleton';
-import { Building2, Globe, Loader2, Settings2, Shield, User, Wallet } from 'lucide-react';
+import { PageHeaderSkeleton, CardSkeleton } from '@/src/components/ui';
+import { Building2, ChevronRight, Globe, Loader2, Settings2, Shield, Wallet } from 'lucide-react';
 import { useProfile, useProfileUpdate } from '@/src/core/api/hooks/identity/useProfile';
 import { RoleAvatar } from '@/src/components/shared/RoleAvatar';
 
@@ -79,15 +79,12 @@ export function SettingsClient() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
-                <div className="space-y-4">
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="h-5 w-80" />
-                </div>
-                <Skeleton className="h-64 w-full rounded-2xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="h-28 w-full rounded-xl" />
+            <div className="p-6 md:p-8 max-w-[1600px] mx-auto bg-[var(--bg-secondary)] min-h-screen pb-20 space-y-8 animate-in fade-in duration-500">
+                <PageHeaderSkeleton />
+                <CardSkeleton className="h-64" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <CardSkeleton key={i} className="h-28" />
                     ))}
                 </div>
             </div>
@@ -95,18 +92,19 @@ export function SettingsClient() {
     }
 
     return (
-        <div className="min-h-screen space-y-8 pb-32 md:pb-20 animate-fade-in">
+        <div className="p-6 md:p-8 max-w-[1600px] mx-auto bg-[var(--bg-secondary)] min-h-screen pb-20 space-y-8 animate-in fade-in duration-500">
             <PageHeader
                 title="Settings"
                 breadcrumbs={[
-                    { label: 'Dashboard', href: '/admin' },
+                    { label: 'Admin', href: '/admin' },
                     { label: 'Settings', active: true },
                 ]}
-                subtitle="Manage your profile and open operational settings modules"
-                showBack={false}
+                description="Manage your profile and open operational settings modules"
+                showBack={true}
+                backUrl="/admin"
             />
 
-            <Card>
+            <Card className="border-[var(--border-subtle)] bg-[var(--bg-primary)]">
                 <CardHeader>
                     <CardTitle>Profile Information</CardTitle>
                     <CardDescription>Update your admin account details.</CardDescription>
@@ -148,7 +146,7 @@ export function SettingsClient() {
                     </div>
 
                     <div className="flex justify-end">
-                        <Button onClick={handleSaveProfile} disabled={isUpdating || !dirty} className="min-w-[120px]">
+                        <Button variant="primary" onClick={handleSaveProfile} disabled={isUpdating || !dirty} className="min-w-[120px]">
                             {isUpdating ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -165,11 +163,14 @@ export function SettingsClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl">
                 {SETTINGS_LINKS.map((item) => (
                     <Link key={item.href} href={item.href}>
-                        <Card className="h-full hover:bg-[var(--bg-secondary)]/60 transition-colors cursor-pointer">
+                        <Card className="h-full border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-md transition-colors cursor-pointer">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-base">
-                                    <item.icon className="w-4 h-4" />
-                                    {item.title}
+                                <CardTitle className="flex items-center justify-between text-base">
+                                    <span className="flex items-center gap-2">
+                                        <item.icon className="w-4 h-4" />
+                                        {item.title}
+                                    </span>
+                                    <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
                                 </CardTitle>
                                 <CardDescription>{item.description}</CardDescription>
                             </CardHeader>

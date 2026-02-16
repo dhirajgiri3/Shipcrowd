@@ -17,7 +17,7 @@ import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { PillTabs } from '@/src/components/ui/core/PillTabs';
 import { OrderTable } from './OrderTable';
 import { useAdminOrders, useGetCourierRates, useShipOrder, useAdminDeleteOrder, useOrderExport } from '@/src/core/api/hooks/admin';
-import { useWarehouses } from '@/src/core/api/hooks/logistics';
+import { useAdminWarehouses } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
 import { Order, OrderListParams, CourierRate } from '@/src/types/domain/order';
 import { showSuccessToast, showErrorToast } from '@/src/lib/error';
 import { formatCurrency, cn, parsePaginationQuery } from '@/src/lib/utils';
@@ -35,6 +35,8 @@ const ORDER_TABS = [
     { key: 'rto', label: 'RTO' },
     { key: 'cancelled', label: 'Cancelled' },
 ] as const;
+type OrderTabKey = (typeof ORDER_TABS)[number]['key'];
+const isOrderTabKey = (value: string): value is OrderTabKey => ORDER_TABS.some((tab) => tab.key === value);
 const DEFAULT_LIMIT = 10;
 
 export default function OrdersClient() {
@@ -43,7 +45,8 @@ export default function OrdersClient() {
 
     // -- State from URL & Local --
     const { page, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
-    const status = searchParams.get('status') || 'all';
+    const statusParam = searchParams.get('status') || 'all';
+    const status: OrderTabKey = isOrderTabKey(statusParam) ? statusParam : 'all';
     const sort = searchParams.get('sort') || 'createdAt';
     const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
     const search = searchParams.get('search') || '';
@@ -59,7 +62,7 @@ export default function OrdersClient() {
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(searchParams.get('warehouse') || 'all');
 
     // -- Hooks --
-    const { data: warehouses = [] } = useWarehouses();
+    const { data: warehouses = [] } = useAdminWarehouses();
 
     // Shipping Modal State
     const [isShipModalOpen, setIsShipModalOpen] = useState(false);
@@ -155,7 +158,7 @@ export default function OrdersClient() {
         }
     }, [debouncedSearch]);
 
-    const handleTabChange = (newStatus: string) => {
+    const handleTabChange = (newStatus: OrderTabKey) => {
         updateUrl({ status: newStatus, page: 1 });
     };
 

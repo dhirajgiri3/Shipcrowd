@@ -11,7 +11,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useDisputeAnalytics } from '@/src/core/api/hooks';
+import { useAdminDisputeAnalytics } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -55,7 +55,7 @@ export function DisputeAnalytics() {
         return { startDate: startDate.toISOString(), endDate };
     };
 
-    const { data: analytics, isLoading } = useDisputeAnalytics(getDateRange(timeRange));
+    const { data: analytics, isLoading } = useAdminDisputeAnalytics(getDateRange(timeRange));
 
     if (isLoading) {
         return (

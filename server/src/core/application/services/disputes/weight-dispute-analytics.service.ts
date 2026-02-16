@@ -323,28 +323,51 @@ class WeightDisputeAnalyticsService {
                 { $sort: { count: -1 } },
             ]);
 
-            // Resolution time stats
-            const resolved = await WeightDispute.find({
-                ...matchStage,
-                'resolution.resolvedAt': { $exists: true },
-            });
+            // Resolution time stats (aggregation to avoid large in-memory arrays)
+            const resolutionStatsAgg = await WeightDispute.aggregate([
+                {
+                    $match: {
+                        ...matchStage,
+                        'resolution.resolvedAt': { $exists: true },
+                    },
+                },
+                {
+                    $project: {
+                        resolutionHours: {
+                            $divide: [
+                                { $subtract: ['$resolution.resolvedAt', '$createdAt'] },
+                                1000 * 60 * 60,
+                            ],
+                        },
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        averageHours: { $avg: '$resolutionHours' },
+                        minHours: { $min: '$resolutionHours' },
+                        maxHours: { $max: '$resolutionHours' },
+                        within24Hours: {
+                            $sum: { $cond: [{ $lte: ['$resolutionHours', 24] }, 1, 0] },
+                        },
+                        within48Hours: {
+                            $sum: { $cond: [{ $lte: ['$resolutionHours', 48] }, 1, 0] },
+                        },
+                        beyond7Days: {
+                            $sum: { $cond: [{ $gt: ['$resolutionHours', 168] }, 1, 0] },
+                        },
+                    },
+                },
+            ]);
 
-            const resolutionTimes = resolved.map((d) => {
-                const created = new Date(d.createdAt).getTime();
-                const resolvedAt = new Date(d.resolution!.resolvedAt).getTime();
-                return (resolvedAt - created) / (1000 * 60 * 60); // hours
-            });
-
+            const resolution = resolutionStatsAgg[0];
             const resolutionTimeStats = {
-                averageHours:
-                    resolutionTimes.length > 0
-                        ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
-                        : 0,
-                minHours: resolutionTimes.length > 0 ? Math.min(...resolutionTimes) : 0,
-                maxHours: resolutionTimes.length > 0 ? Math.max(...resolutionTimes) : 0,
-                within24Hours: resolutionTimes.filter((t) => t <= 24).length,
-                within48Hours: resolutionTimes.filter((t) => t <= 48).length,
-                beyond7Days: resolutionTimes.filter((t) => t > 168).length,
+                averageHours: resolution?.averageHours ?? 0,
+                minHours: resolution?.minHours ?? 0,
+                maxHours: resolution?.maxHours ?? 0,
+                within24Hours: resolution?.within24Hours ?? 0,
+                within48Hours: resolution?.within48Hours ?? 0,
+                beyond7Days: resolution?.beyond7Days ?? 0,
             };
 
             return {

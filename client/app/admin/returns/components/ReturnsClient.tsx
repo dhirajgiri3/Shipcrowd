@@ -36,6 +36,8 @@ const RETURNS_TABS = [
     { key: 'delivered', label: 'Delivered' },
     { key: 'completed', label: 'Completed' },
 ] as const;
+type ReturnTabKey = (typeof RETURNS_TABS)[number]['key'];
+const isReturnTabKey = (value: string): value is ReturnTabKey => RETURNS_TABS.some((tab) => tab.key === value);
 
 const DEFAULT_LIMIT = 20;
 
@@ -47,13 +49,14 @@ export function ReturnsClient() {
     const [page, setPage] = useState(urlPage);
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearch = useDebouncedValue(searchQuery, 300);
-    const [selectedStatus, setSelectedStatus] = useState<string>('all');
+    const [selectedStatus, setSelectedStatus] = useState<ReturnTabKey>('all');
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const hasInitializedFilterReset = useRef(false);
     const { addToast } = useToast();
 
     useEffect(() => {
-        const nextStatus = searchParams.get('status') || 'all';
+        const nextStatusParam = searchParams.get('status') || 'all';
+        const nextStatus: ReturnTabKey = isReturnTabKey(nextStatusParam) ? nextStatusParam : 'all';
         setSelectedStatus((current) => (current === nextStatus ? current : nextStatus));
 
         const nextSearch = searchParams.get('search') || '';

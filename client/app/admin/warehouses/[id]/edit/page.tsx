@@ -3,8 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { AddWarehouseForm } from '@/src/features/warehouse/components/AddWarehouseForm';
-import { useAdminWarehouse } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
-import { useUpdateWarehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { useAdminWarehouse, useAdminUpdateWarehouse } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { ArrowLeft } from 'lucide-react';
@@ -21,7 +20,7 @@ export default function EditWarehousePage({ params }: EditWarehousePageProps) {
     const router = useRouter();
 
     const { data: warehouse, isLoading } = useAdminWarehouse(id);
-    const updateWarehouse = useUpdateWarehouse();
+    const updateWarehouse = useAdminUpdateWarehouse();
 
     if (isLoading) {
         return (
@@ -55,7 +54,7 @@ export default function EditWarehousePage({ params }: EditWarehousePageProps) {
     const handleUpdate = async (data: any) => {
         try {
             await updateWarehouse.mutateAsync({
-                warehouseId: id,
+                id,
                 data
             });
             // Success toast is handled by the hook

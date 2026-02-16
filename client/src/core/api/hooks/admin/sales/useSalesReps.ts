@@ -35,8 +35,7 @@ export function useSalesRepList(
             if (filters.territory) params.append('territory', filters.territory);
             if (filters.status) params.append('status', filters.status);
 
-            // Using CRM endpoint as primary based on controller analysis
-            const { data } = await apiClient.get<{ data: SalesRepListResponse }>(`/crm/sales-reps?${params.toString()}`);
+            const { data } = await apiClient.get<{ data: SalesRepListResponse }>(`/admin/crm/sales-reps?${params.toString()}`);
             return data.data;
         },
         ...options,
@@ -50,7 +49,7 @@ export function useSalesRepDetail(
     return useQuery<SalesRep, ApiError>({
         queryKey: salesKeys.detail(id),
         queryFn: async () => {
-            const { data } = await apiClient.get<{ data: SalesRep }>(`/crm/sales-reps/${id}`);
+            const { data } = await apiClient.get<{ data: SalesRep }>(`/admin/crm/sales-reps/${id}`);
             return data.data;
         },
         enabled: !!id,
@@ -65,7 +64,7 @@ export function useSalesRepCreate(
 
     return useMutation<SalesRep, ApiError, CreateSalesRepPayload>({
         mutationFn: async (payload) => {
-            const { data } = await apiClient.post<{ data: SalesRep }>('/crm/sales-reps', payload);
+            const { data } = await apiClient.post<{ data: SalesRep }>('/admin/crm/sales-reps', payload);
             return data.data;
         },
         onSuccess: (data, variables, context) => {
@@ -85,7 +84,7 @@ export function useSalesRepUpdate(
 
     return useMutation<SalesRep, ApiError, UpdateSalesRepPayload>({
         mutationFn: async (payload) => {
-            const { data } = await apiClient.put<{ data: SalesRep }>(`/crm/sales-reps/${id}`, payload);
+            const { data } = await apiClient.put<{ data: SalesRep }>(`/admin/crm/sales-reps/${id}`, payload);
             return data.data;
         },
         onSuccess: (data, variables, context) => {
@@ -105,7 +104,7 @@ export function useSalesRepPerformance(
     return useQuery<SalesRepPerformance, ApiError>({
         queryKey: salesKeys.performance(id),
         queryFn: async () => {
-            const { data } = await apiClient.get<{ data: SalesRepPerformance }>(`/crm/sales-reps/${id}/performance`);
+            const { data } = await apiClient.get<{ data: SalesRepPerformance }>(`/admin/crm/sales-reps/${id}/performance`);
             return data.data;
         },
         enabled: !!id,

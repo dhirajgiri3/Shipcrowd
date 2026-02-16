@@ -13,6 +13,18 @@ import { isPublicRoute, isAdminRoute, isSellerRoute, isGuestOnlyRoute } from '@/
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
+    const decodeRoleFromToken = (token: string | undefined): string | null => {
+        if (!token) return null;
+        try {
+            const parts = token.split('.');
+            if (parts.length < 2) return null;
+            const payload = JSON.parse(atob(parts[1]));
+            return typeof payload?.role === 'string' ? payload.role : null;
+        } catch {
+            return null;
+        }
+    };
+
     // ═══════════════════════════════════════════════════════════════════════
     // SET CSP HEADERS FOR SHOPIFY EMBEDDED APP
     // ═══════════════════════════════════════════════════════════════════════
@@ -33,6 +45,13 @@ export async function proxy(request: NextRequest) {
     const secureRefreshToken = request.cookies.get('__Secure-refreshToken');
 
     const hasToken = !!(accessToken || refreshToken || secureAccessToken || secureRefreshToken);
+    const effectiveAccessToken = accessToken?.value || secureAccessToken?.value;
+    const roleFromToken = decodeRoleFromToken(effectiveAccessToken);
+
+    const getDashboardPath = () => {
+        if (roleFromToken === 'admin' || roleFromToken === 'super_admin') return '/admin';
+        return '/seller';
+    };
 
     // ═══════════════════════════════════════════════════════════════════════
     // GUEST-ONLY ROUTES - Redirect authenticated users
@@ -40,8 +59,7 @@ export async function proxy(request: NextRequest) {
 
     if (isGuestOnlyRoute(pathname)) {
         if (hasToken) {
-            // Default dashboard route
-            const response = NextResponse.redirect(new URL('/seller', request.url));
+            const response = NextResponse.redirect(new URL(getDashboardPath(), request.url));
             response.headers.set('Content-Security-Policy', cspHeader);
             return response;
         }
@@ -55,6 +73,13 @@ export async function proxy(request: NextRequest) {
     // ═══════════════════════════════════════════════════════════════════════
 
     if (isPublicRoute(pathname)) {
+        const response = NextResponse.next();
+        response.headers.set('Content-Security-Policy', cspHeader);
+        return response;
+    }
+
+    // Public metadata/assets that should never be auth-gated
+    if (pathname === '/manifest.json' || pathname.endsWith('.webmanifest')) {
         const response = NextResponse.next();
         response.headers.set('Content-Security-Policy', cspHeader);
         return response;
@@ -133,6 +158,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public folder files
          */
-        '/((?!api|_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$).*)',
+        '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\.webmanifest|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$).*)',
     ],
 };

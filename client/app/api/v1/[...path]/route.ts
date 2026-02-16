@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5005';
+const PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 15000);
 
 // Headers to exclude from forwarding (hop-by-hop headers)
 const HOP_BY_HOP_HEADERS = [
@@ -25,6 +26,14 @@ const HOP_BY_HOP_HEADERS = [
   'upgrade',
   'host', // Let fetch set this
 ];
+
+// Headers that should not be forwarded after response-body transformation
+const RESPONSE_EXCLUDED_HEADERS = new Set([
+  ...HOP_BY_HOP_HEADERS,
+  'content-encoding',
+  'content-length',
+  'set-cookie',
+]);
 
 export async function GET(
   request: NextRequest,
@@ -83,6 +92,8 @@ export async function HEAD(
 }
 
 async function proxyRequest(request: NextRequest, path: string[]) {
+  let timedOut = false;
+  const startedAt = Date.now();
   try {
     const url = new URL(request.url);
     const backendPath = `/api/v1/${path.join('/')}`;
@@ -105,44 +116,34 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     forwardHeaders['x-forwarded-for'] =
       forwardedForHeader?.split(',')[0]?.trim() || realIp || 'unknown';
 
-    // Get request body if present
-    let body: string | undefined;
-    if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
-      try {
-        const contentType = request.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          const json = await request.json();
-          body = JSON.stringify(json);
-        } else if (contentType?.includes('application/x-www-form-urlencoded')) {
-          body = await request.text();
-        } else {
-          body = await request.text();
-        }
+    const hasRequestBody =
+      request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS';
 
-        // Update content-length header to match actual body length
-        if (body) {
-          forwardHeaders['content-length'] = Buffer.byteLength(body, 'utf8').toString();
-        } else {
-          // Remove content-length if body is empty
-          delete forwardHeaders['content-length'];
-        }
-      } catch (e) {
-        // Body might be empty, that's ok
-        body = undefined;
-        delete forwardHeaders['content-length'];
+    // Forward the request to the backend with bounded latency to avoid request pileups.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, PROXY_TIMEOUT_MS);
+    let backendResponse: Response;
+    try {
+      const fetchOptions: RequestInit & { duplex?: 'half' } = {
+        method: request.method,
+        headers: forwardHeaders,
+        redirect: 'manual', // Don't auto-follow redirects, let client handle
+        signal: controller.signal,
+      };
+
+      // Stream request body to backend to avoid buffering large payloads in memory.
+      if (hasRequestBody && request.body) {
+        fetchOptions.body = request.body;
+        fetchOptions.duplex = 'half';
       }
-    } else {
-      // No body for GET/HEAD/OPTIONS - remove content-length
-      delete forwardHeaders['content-length'];
-    }
 
-    // Forward the request to the backend
-    const backendResponse = await fetch(backendUrl, {
-      method: request.method,
-      headers: forwardHeaders,
-      body,
-      redirect: 'manual', // Don't auto-follow redirects, let client handle
-    });
+      backendResponse = await fetch(backendUrl, fetchOptions);
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const status = backendResponse.status;
     const noBodyStatus = status === 204 || status === 205 || status === 304;
@@ -175,11 +176,7 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     // are sent as distinct headers and must not be collapsed/overwritten.
     backendResponse.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
-      if (
-        !HOP_BY_HOP_HEADERS.includes(lowerKey) &&
-        lowerKey !== 'content-encoding' &&
-        lowerKey !== 'set-cookie'
-      ) {
+      if (!RESPONSE_EXCLUDED_HEADERS.has(lowerKey)) {
         response.headers.set(key, value);
       }
     });
@@ -198,9 +195,39 @@ async function proxyRequest(request: NextRequest, path: string[]) {
       }
     }
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        `[API Proxy] ${request.method} ${backendPath} -> ${status} in ${Date.now() - startedAt}ms`
+      );
+    }
+
     return response;
   } catch (error) {
     console.error('[API Proxy Error]', error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        {
+          error: timedOut ? 'Backend timeout' : 'Request aborted',
+          message: timedOut
+            ? `Backend did not respond within ${PROXY_TIMEOUT_MS}ms`
+            : 'Proxy request was aborted before completion',
+        },
+        { status: timedOut ? 504 : 503 }
+      );
+    }
+
+    const maybeCode = (error as any)?.cause?.code || (error as any)?.code;
+    if (maybeCode === 'ECONNREFUSED' || maybeCode === 'UND_ERR_SOCKET' || maybeCode === 'ECONNRESET') {
+      return NextResponse.json(
+        {
+          error: 'Backend unavailable',
+          message: 'Backend connection failed',
+          code: maybeCode,
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: 'Failed to proxy request to backend',

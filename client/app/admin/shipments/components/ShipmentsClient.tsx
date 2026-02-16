@@ -39,6 +39,8 @@ const SHIPMENT_TABS = [
     { key: 'ndr', label: 'NDR' },
     { key: 'rto', label: 'RTO' },
 ] as const;
+type ShipmentTabKey = (typeof SHIPMENT_TABS)[number]['key'];
+const isShipmentTabKey = (value: string): value is ShipmentTabKey => SHIPMENT_TABS.some((tab) => tab.key === value);
 
 export function ShipmentsClient() {
     const router = useRouter();
@@ -48,7 +50,8 @@ export function ShipmentsClient() {
 
     const { page: urlPage, limit } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
     const [page, setPage] = useState(urlPage);
-    const status = searchParams.get('status') || 'all';
+    const statusParam = searchParams.get('status') || 'all';
+    const status: ShipmentTabKey = isShipmentTabKey(statusParam) ? statusParam : 'all';
     const search = searchParams.get('search') || '';
     const [searchTerm, setSearchTerm] = useState(search);
     const debouncedSearch = useDebouncedValue(searchTerm, 500);
@@ -98,7 +101,7 @@ export function ShipmentsClient() {
         }
     }, [status, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
 
-    const handleTabChange = (key: string) => {
+    const handleTabChange = (key: ShipmentTabKey) => {
         const params = new URLSearchParams(searchParams.toString());
         params.set('status', key);
         params.set('page', '1');
