@@ -57,6 +57,12 @@ const BOX_SIZES = ['SMALL', 'MEDIUM', 'LARGE', 'XLARGE', 'CUSTOM'];
 const AUTHORIZED_ROLES = ['WAREHOUSE_MANAGER', 'PICKER', 'PACKER', 'SUPERVISOR'];
 void AUTHORIZED_ROLES;
 
+const ZONE_COUNT_MIN = Number(process.env.SEED_WAREHOUSE_ZONE_MIN || 2);
+const ZONE_COUNT_MAX = Number(process.env.SEED_WAREHOUSE_ZONE_MAX || 3);
+const STATION_COUNT_MIN = Number(process.env.SEED_PACKING_STATION_MIN || 1);
+const STATION_COUNT_MAX = Number(process.env.SEED_PACKING_STATION_MAX || 3);
+const MAX_LOCATIONS_PER_ZONE = Number(process.env.SEED_MAX_LOCATIONS_PER_ZONE || 60);
+
 /**
  * Generate a zone code
  */
@@ -86,10 +92,10 @@ function generateZoneName(type: string, index: number): string {
 function generateZone(warehouseId: mongoose.Types.ObjectId, index: number): any {
     const type = selectWeightedFromObject(ZONE_TYPE_DISTRIBUTION);
     const temperature = selectWeightedFromObject(TEMPERATURE_DISTRIBUTION);
-    const aisles = randomInt(3, 5);
-    const racksPerAisle = randomInt(4, 10);
-    const shelvesPerRack = randomInt(3, 6);
-    const binsPerShelf = randomInt(2, 4);
+    const aisles = randomInt(2, 3);
+    const racksPerAisle = randomInt(2, 4);
+    const shelvesPerRack = randomInt(2, 3);
+    const binsPerShelf = randomInt(2, 3);
     const totalLocations = aisles * racksPerAisle * shelvesPerRack * binsPerShelf;
 
     return {
@@ -127,11 +133,16 @@ function generateLocations(
 ): any[] {
     const locations: any[] = [];
     let pickSequence = 0;
+    let generated = 0;
 
+    outerLoop:
     for (let aisle = 1; aisle <= zone.aisles; aisle++) {
         for (let rack = 1; rack <= zone.racksPerAisle; rack++) {
             for (let shelf = 1; shelf <= zone.shelvesPerRack; shelf++) {
                 for (let bin = 1; bin <= zone.binsPerShelf; bin++) {
+                    if (generated >= MAX_LOCATIONS_PER_ZONE) {
+                        break outerLoop;
+                    }
                     const aisleCode = String(aisle).padStart(2, '0');
                     const rackCode = String(rack).padStart(2, '0');
                     const shelfCode = String(shelf).padStart(2, '0');
@@ -169,6 +180,7 @@ function generateLocations(
                         lastPickedAt: isOccupied && zone.type === 'PICKING' ? subDays(new Date(), randomInt(0, 7)) : undefined,
                         lastReplenishedAt: isOccupied ? subDays(new Date(), randomInt(0, 14)) : undefined,
                     });
+                    generated += 1;
                 }
             }
         }
@@ -234,21 +246,16 @@ export async function seedWarehouseConfig(): Promise<void> {
         }
 
         const zones: any[] = [];
-        const locations: any[] = [];
         const packingStations: any[] = [];
+        let locationCount = 0;
 
         for (const warehouse of warehouses) {
             const wh = warehouse as any;
-            // Generate 3-5 zones per warehouse
-            const zoneCount = randomInt(3, 5);
+            // Generate compact zone structure per warehouse for fast local seeding
+            const zoneCount = randomInt(ZONE_COUNT_MIN, ZONE_COUNT_MAX);
             const warehouseZones: any[] = [];
 
             for (let i = 0; i < zoneCount; i++) {
-                // Adjust aisle count to 3-5 in generateZone function instead of here?
-                // Actually internal implementation of generateZone uses randomInt(2, 6).
-                // Let's rely on generateZone modification if I can, OR just update lines 88.
-                // But I am replacing the block where locations are generated.
-
                 const zone = generateZone(wh._id, i);
                 warehouseZones.push(zone);
                 zones.push(zone);
@@ -261,15 +268,20 @@ export async function seedWarehouseConfig(): Promise<void> {
                 return err.insertedDocs || [];
             });
 
-            // Generate locations for each zone (remove artificial limits)
+            // Generate locations for each zone and insert per warehouse (memory-safe)
             for (const zone of insertedZones) {
                 const zoneLocations = generateLocations(wh._id, zone);
-                locations.push(...zoneLocations);
+                if (zoneLocations.length > 0) {
+                    await WarehouseLocation.insertMany(zoneLocations, { ordered: false }).catch((err) => {
+                        if (err.code !== 11000) throw err;
+                    });
+                    locationCount += zoneLocations.length;
+                }
             }
 
-            // Generate 2-5 packing stations per warehouse
+            // Generate 1-3 packing stations per warehouse
             const packingZone = insertedZones.find((z: any) => z.type === 'PACKING');
-            const stationCount = randomInt(2, 5);
+            const stationCount = randomInt(STATION_COUNT_MIN, STATION_COUNT_MAX);
 
             for (let i = 0; i < stationCount; i++) {
                 packingStations.push(generatePackingStation(
@@ -281,18 +293,6 @@ export async function seedWarehouseConfig(): Promise<void> {
             }
         }
 
-        // Insert locations in batches
-        if (locations.length > 0) {
-            const batchSize = 500;
-            for (let i = 0; i < locations.length; i += batchSize) {
-                const batch = locations.slice(i, i + batchSize);
-                await WarehouseLocation.insertMany(batch, { ordered: false }).catch((err) => {
-                    if (err.code !== 11000) throw err;
-                });
-                logger.progress(Math.min(i + batchSize, locations.length), locations.length, 'Locations');
-            }
-        }
-
         // Insert packing stations
         if (packingStations.length > 0) {
             await PackingStation.insertMany(packingStations, { ordered: false }).catch((err) => {
@@ -301,12 +301,12 @@ export async function seedWarehouseConfig(): Promise<void> {
             });
         }
 
-        logger.complete('warehouse-config', zones.length + locations.length + packingStations.length, timer.elapsed());
+        logger.complete('warehouse-config', zones.length + locationCount + packingStations.length, timer.elapsed());
         logger.table({
             'Warehouse Zones': zones.length,
-            'Warehouse Locations': locations.length,
+            'Warehouse Locations': locationCount,
             'Packing Stations': packingStations.length,
-            'Total Records': zones.length + locations.length + packingStations.length,
+            'Total Records': zones.length + locationCount + packingStations.length,
         });
 
     } catch (error) {

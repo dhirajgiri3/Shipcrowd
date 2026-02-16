@@ -22,6 +22,7 @@ export interface StoreHealth {
     syncSuccessRate?: number;
     webhooksActive: number;
     webhooksTotal: number;
+    companyId?: string;
 }
 
 export interface PlatformHealth {
@@ -56,17 +57,32 @@ export interface IntegrationHealthResponse {
 // --- Hooks ---
 
 /**
- * Fetch integration health status for dashboard
+ * Fetch integration health status for admin dashboard (platform-wide or company-scoped).
+ * @param companyId - Optional. Filter by company; omit for platform-wide view.
  */
-export const useIntegrationHealth = (options?: UseQueryOptions<IntegrationHealthResponse, any>) => {
+export const useIntegrationHealth = (
+    companyId?: string,
+    options?: UseQueryOptions<IntegrationHealthResponse, any>
+) => {
     return useQuery<IntegrationHealthResponse, any>({
-        queryKey: ['admin', 'integrations', 'health'],
+        queryKey: ['admin', 'integrations', 'health', companyId ?? 'all'],
         queryFn: async () => {
-            const response = await apiClient.get('/admin/integrations/health');
-            // Backend response is wrapped by sendSuccess: { success, message, data }
-            return response.data?.data;
+            const params = companyId ? { companyId } : {};
+            const response = await apiClient.get('/admin/integrations/health', { params });
+            const raw = response.data?.data;
+            if (!raw) return raw;
+            return {
+                ...raw,
+                timestamp: raw.timestamp ?? new Date().toISOString(),
+                summary: {
+                    totalStores: raw.summary?.totalStores ?? 0,
+                    activeStores: raw.summary?.activeStores ?? 0,
+                    healthyStores: raw.summary?.healthyStores ?? 0,
+                    unhealthyStores: raw.summary?.unhealthyStores ?? 0,
+                },
+                platforms: raw.platforms ?? {},
+            } as IntegrationHealthResponse;
         },
-        // ...CACHE_TIMES.SHORT, 
         retry: 1,
         ...options,
     });

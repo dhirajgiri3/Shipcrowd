@@ -69,6 +69,7 @@ const COLLECTIONS_TO_CLEAR = [
     'courierservices',
     'serviceratecards',
     'sellercourierpolicies',
+    'sellerratecards',
     'quotesessions',
     'carrierbillingrecords',
     'pricingvariancecases',
@@ -255,20 +256,35 @@ async function verifyServiceLevelPricingSeed(): Promise<void> {
 
     const { CourierService, ServiceRateCard, SellerCourierPolicy } = await import('./../mongoose/models');
 
-    const [serviceCount, rateCardCount, policyCount] = await Promise.all([
-        CourierService.countDocuments({ isDeleted: false }),
-        ServiceRateCard.countDocuments({ isDeleted: false }),
+    const [serviceCount, costRateCardCount, sellRateCardCount, policyCount] = await Promise.all([
+        CourierService.countDocuments({ companyId: null, isDeleted: false, status: 'active' }),
+        ServiceRateCard.countDocuments({
+            companyId: null,
+            cardType: 'cost',
+            flowType: 'forward',
+            category: 'default',
+            isDeleted: false,
+            status: 'active',
+        }),
+        ServiceRateCard.countDocuments({
+            companyId: null,
+            cardType: 'sell',
+            flowType: 'forward',
+            category: 'default',
+            isDeleted: false,
+            status: 'active',
+        }),
         SellerCourierPolicy.countDocuments({ isActive: true }),
     ]);
 
-    if (serviceCount === 0 || rateCardCount === 0) {
+    if (serviceCount === 0 || costRateCardCount === 0 || sellRateCardCount === 0) {
         throw new Error(
-            `Service-level pricing sanity check failed (services=${serviceCount}, rateCards=${rateCardCount})`
+            `Service-level pricing sanity check failed (platform services=${serviceCount}, cost cards=${costRateCardCount}, sell cards=${sellRateCardCount})`
         );
     }
 
     logger.success(
-        `Service-level pricing sanity check passed (services=${serviceCount}, rateCards=${rateCardCount}, policies=${policyCount})`
+        `Service-level pricing sanity check passed (platform services=${serviceCount}, cost cards=${costRateCardCount}, sell cards=${sellRateCardCount}, policies=${policyCount})`
     );
 }
 

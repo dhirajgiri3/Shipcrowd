@@ -424,6 +424,7 @@ export const useTriggerSync = () => {
         onSuccess: (_, { integrationId }) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integration(integrationId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.syncLogs(integrationId) });
+            queryClient.invalidateQueries({ queryKey: ['admin', 'integrations', 'health'], exact: false });
         },
     });
 };

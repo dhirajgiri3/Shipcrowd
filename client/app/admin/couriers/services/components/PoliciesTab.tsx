@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
 import { Input } from '@/src/components/ui/core/Input';
 import { SearchInput } from '@/src/components/ui/form/SearchInput';
 import { useSellerCourierPolicy, useUpdateSellerCourierPolicy, useUserList } from '@/src/core/api/hooks/admin';
@@ -292,12 +293,16 @@ export function PoliciesTab() {
                                             <p className="text-xs text-[var(--text-muted)]">Allowed price deviation for faster delivery options.</p>
                                         </div>
                                         <div className="pb-3">
-                                            <label className="flex items-center gap-3 text-sm font-medium cursor-pointer select-none px-4 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                            <label
+                                                className="flex items-center gap-3 text-sm font-medium cursor-pointer select-none px-4 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors border border-[var(--border-subtle)] bg-[var(--bg-primary)]"
+                                                onClick={(e) => {
+                                                    if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
+                                                    setPolicyForm((p) => ({ ...p, isActive: !p.isActive }));
+                                                }}
+                                            >
+                                                <Checkbox
                                                     checked={policyForm.isActive}
-                                                    onChange={(e) => setPolicyForm({ ...policyForm, isActive: e.target.checked })}
+                                                    onCheckedChange={(checked) => setPolicyForm({ ...policyForm, isActive: checked })}
                                                 />
                                                 Policy Active
                                             </label>
@@ -313,13 +318,18 @@ export function PoliciesTab() {
                                         </h4>
                                         <div className="space-y-2 bg-[var(--bg-tertiary)]/30 p-4 rounded-xl border border-[var(--border-subtle)]">
                                             {PROVIDERS.map((provider) => (
-                                                <label key={`allowed-${provider}`} className="flex items-center justify-between gap-2 text-sm cursor-pointer hover:bg-[var(--bg-hover)] p-3 rounded-lg transition-colors bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm">
+                                                <label
+                                                    key={`allowed-${provider}`}
+                                                    className="flex items-center justify-between gap-2 text-sm cursor-pointer hover:bg-[var(--bg-hover)] p-3 rounded-lg transition-colors bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm"
+                                                    onClick={(e) => {
+                                                        if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
+                                                        togglePolicyProvider('allowedProviders', provider, !policyForm.allowedProviders.includes(provider));
+                                                    }}
+                                                >
                                                     <span className="capitalize font-medium">{provider}</span>
-                                                    <input
-                                                        type="checkbox"
-                                                        className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                                    <Checkbox
                                                         checked={policyForm.allowedProviders.includes(provider)}
-                                                        onChange={(e) => togglePolicyProvider('allowedProviders', provider, e.target.checked)}
+                                                        onCheckedChange={(checked) => togglePolicyProvider('allowedProviders', provider, checked)}
                                                     />
                                                 </label>
                                             ))}
@@ -332,13 +342,18 @@ export function PoliciesTab() {
                                         </h4>
                                         <div className="space-y-2 bg-[var(--bg-tertiary)]/30 p-4 rounded-xl border border-[var(--border-subtle)]">
                                             {PROVIDERS.map((provider) => (
-                                                <label key={`blocked-${provider}`} className="flex items-center justify-between gap-2 text-sm cursor-pointer hover:bg-[var(--bg-hover)] p-3 rounded-lg transition-colors bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm">
+                                                <label
+                                                    key={`blocked-${provider}`}
+                                                    className="flex items-center justify-between gap-2 text-sm cursor-pointer hover:bg-[var(--bg-hover)] p-3 rounded-lg transition-colors bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm"
+                                                    onClick={(e) => {
+                                                        if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
+                                                        togglePolicyProvider('blockedProviders', provider, !policyForm.blockedProviders.includes(provider));
+                                                    }}
+                                                >
                                                     <span className="capitalize font-medium text-[var(--text-secondary)]">{provider}</span>
-                                                    <input
-                                                        type="checkbox"
-                                                        className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--color-error)] focus:ring-[var(--color-error)]"
+                                                    <Checkbox
                                                         checked={policyForm.blockedProviders.includes(provider)}
-                                                        onChange={(e) => togglePolicyProvider('blockedProviders', provider, e.target.checked)}
+                                                        onCheckedChange={(checked) => togglePolicyProvider('blockedProviders', provider, checked)}
                                                     />
                                                 </label>
                                             ))}

@@ -12,6 +12,7 @@ import {
     AlertCircle,
     AlertTriangle,
     CheckCircle2,
+    Filter,
     Plug,
     RefreshCcw,
     Store,
@@ -22,9 +23,13 @@ import { useTriggerSync } from '@/src/core/api/hooks/integrations/useEcommerceIn
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { PLATFORM_META } from '@/app/seller/integrations/components/platformConfig';
 import { cn } from '@/src/lib/utils';
+import { useAdminCompanies } from '@/src/core/api/hooks/admin/companies/useCompanies';
+import { Select } from '@/src/components/ui/form/Select';
 
 export function AdminIntegrationsClient() {
-    const { data, isLoading, error, refetch } = useIntegrationHealth();
+    const [companyFilter, setCompanyFilter] = useState<string | undefined>(undefined);
+    const { data, isLoading, error, refetch } = useIntegrationHealth(companyFilter);
+    const { data: companiesData } = useAdminCompanies({ limit: 200 });
     const triggerSync = useTriggerSync();
     const { addToast } = useToast();
     const [syncingStores, setSyncingStores] = useState<Set<string>>(new Set());
@@ -41,6 +46,14 @@ export function AdminIntegrationsClient() {
                 : []),
         [data]
     );
+
+    const companyMap = useMemo(() => {
+        const map = new Map<string, string>();
+        (companiesData?.companies ?? []).forEach((c: { _id: string; name: string }) => {
+            map.set(c._id, c.name);
+        });
+        return map;
+    }, [companiesData]);
 
     const handleSync = async (storeId: string, platform: string) => {
         setSyncingStores((prev) => new Set(prev).add(storeId));
@@ -125,16 +138,31 @@ export function AdminIntegrationsClient() {
                 subtitle="Platform-wide health and operational controls"
                 showBack={false}
                 actions={
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => refetch()}
-                        className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]"
-                        aria-label="Refresh integrations"
-                    >
-                        <RefreshCcw className="w-4 h-4 mr-2" />
-                        Refresh
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Filter className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                        <Select
+                            value={companyFilter ?? 'all'}
+                            onChange={(e) => setCompanyFilter(e.target.value === 'all' ? undefined : e.target.value)}
+                            options={[
+                                { label: 'All companies', value: 'all' },
+                                ...(companiesData?.companies ?? []).map((c: { _id: string; name: string }) => ({
+                                    label: c.name,
+                                    value: c._id,
+                                })),
+                            ]}
+                            className="w-[200px] h-10 rounded-xl border border-[var(--border-subtle)]"
+                        />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => refetch()}
+                            className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]"
+                            aria-label="Refresh integrations"
+                        >
+                            <RefreshCcw className="w-4 h-4 mr-2" />
+                            Refresh
+                        </Button>
+                    </div>
                 }
             />
 
@@ -169,6 +197,34 @@ export function AdminIntegrationsClient() {
                 />
             </div>
 
+            {data?.platforms && (data.summary?.totalStores ?? 0) > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {(['shopify', 'woocommerce', 'amazon', 'flipkart'] as const).map((platform) => {
+                        const p = data.platforms[platform];
+                        if (!p || p.totalStores === 0) return null;
+                        const meta = PLATFORM_META[platform] ?? PLATFORM_META.shopify;
+                        return (
+                            <div
+                                key={platform}
+                                className={cn(
+                                    'rounded-xl border p-4 flex items-center gap-3',
+                                    'border-[var(--border-subtle)] bg-[var(--bg-primary)]'
+                                )}
+                            >
+                                <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', meta.bgClass, meta.borderClass)}>
+                                    <img src={meta.icon} alt={meta.name} className="w-6 h-6 object-contain" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-[var(--text-primary)] capitalize">{platform}</p>
+                                    <p className="text-lg font-bold text-[var(--text-primary)]">{p.totalStores} stores</p>
+                                    <p className="text-xs text-[var(--text-muted)]">{p.activeStores} active</p>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             <Card className="border-[var(--border-subtle)] overflow-hidden">
                 <CardHeader className="border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/50">
                     <CardTitle className="text-lg font-bold">Store Health</CardTitle>
@@ -180,9 +236,16 @@ export function AdminIntegrationsClient() {
                                 <Plug className="w-8 h-8 text-[var(--text-muted)] opacity-50" />
                             </div>
                             <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">No connected stores</h3>
-                            <p className="text-sm text-[var(--text-secondary)] max-w-sm mx-auto">
-                                No ecommerce stores are connected to the platform yet.
+                            <p className="text-sm text-[var(--text-secondary)] max-w-sm mx-auto mb-2">
+                                {companyFilter
+                                    ? 'No ecommerce stores found for this company. Try "All companies" to see platform-wide data.'
+                                    : 'No ecommerce stores are connected to the platform yet. Sellers can connect Shopify, WooCommerce, Amazon, or Flipkart from their integrations page.'}
                             </p>
+                            {!companyFilter && (
+                                <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
+                                    For development: run the marketplace stores seeder to populate sample data.
+                                </p>
+                            )}
                         </div>
                     ) : (
                         <div className="divide-y divide-[var(--border-subtle)]">
@@ -214,6 +277,11 @@ export function AdminIntegrationsClient() {
                                                     <Badge variant="outline" className="uppercase text-[10px] shrink-0">
                                                         {store.platform}
                                                     </Badge>
+                                                    {store.companyId && !companyFilter && (
+                                                        <Badge variant="secondary" className="shrink-0 text-[10px]">
+                                                            {companyMap.get(store.companyId) ?? store.companyId.slice(0, 8)}
+                                                        </Badge>
+                                                    )}
                                                     <Badge variant={store.isActive ? 'success' : 'secondary'} className="shrink-0">
                                                         {store.isActive ? 'Active' : 'Inactive'}
                                                     </Badge>

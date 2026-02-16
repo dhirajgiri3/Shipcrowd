@@ -451,6 +451,8 @@ export const queryKeys = {
       list: (filters?: FilterParams) => ['admin', 'companies', 'list', filters],
       stats: () => ['admin', 'companies', 'stats'],
     },
+    // Admin Integrations (platform-wide health)
+    integrationsHealth: (companyId?: string) => ['admin', 'integrations', 'health', companyId ?? 'all'],
   },
 
   // ========================================================================

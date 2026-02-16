@@ -2,7 +2,8 @@
  * Integrations Seeder
  * 
  * Seeds system integration data:
- * - Integration configurations for courier, ecommerce, payment providers
+ * - Integration configurations for ecommerce, payment, and other providers (company-scoped)
+ * - Courier integrations are seeded at platform-scope in 30-service-level-pricing.seeder.ts
  * - 20-30 integrations across companies
  */
 
@@ -14,21 +15,17 @@ import { generateAlphanumeric, generateHexString, randomInt, selectRandom } from
 
 // Integration types and providers
 const INTEGRATION_CONFIGS = {
-    courier: {
-        providers: ['delhivery', 'bluedart', 'ecom_express', 'dtdc', 'xpressbees', 'shadowfax', 'velocity'],
-        weight: 50,
-    },
     ecommerce: {
         providers: ['shopify', 'woocommerce', 'amazon', 'flipkart', 'magento'],
-        weight: 30,
+        weight: 55,
     },
     payment: {
         providers: ['razorpay', 'paytm', 'cashfree', 'payu'],
-        weight: 15,
+        weight: 30,
     },
     other: {
         providers: ['twilio', 'exotel', 'sendgrid', 'msg91'],
-        weight: 5,
+        weight: 15,
     },
 };
 
@@ -147,7 +144,7 @@ function generateIntegration(companyId: any): any {
             break;
         }
     }
-    type = type! || 'courier';
+    type = type! || 'ecommerce';
 
     const config = INTEGRATION_CONFIGS[type as keyof typeof INTEGRATION_CONFIGS];
     const provider = selectRandom(config.providers);
@@ -172,7 +169,7 @@ function generateIntegration(companyId: any): any {
  */
 export async function seedIntegrations(): Promise<void> {
     const timer = createTimer();
-    logger.step(22, 'Seeding Integrations (Courier, Ecommerce, Payment, Other)');
+    logger.step(22, 'Seeding Integrations (Ecommerce, Payment, Other)');
 
     try {
         const companies = await Company.find({ status: 'approved', isDeleted: false }).limit(20).lean();
@@ -208,7 +205,6 @@ export async function seedIntegrations(): Promise<void> {
 
         logger.complete('integrations', integrations.length, timer.elapsed());
         logger.table({
-            'Courier Integrations': byType['courier'] || 0,
             'Ecommerce Integrations': byType['ecommerce'] || 0,
             'Payment Integrations': byType['payment'] || 0,
             'Other Integrations': byType['other'] || 0,

@@ -90,10 +90,16 @@ export function IntelligenceClient() {
             {/* 1. AI Insights Cards */}
             <motion.div variants={containerVariants} className="grid gap-6 lg:grid-cols-3">
                 {insights.map((insight, idx) => {
-                    const isCritical = insight.impact === 'High';
+                    const isCritical = insight.priority === 'high';
+                    const impactLabel = typeof insight.impact === 'string'
+                        ? insight.impact
+                        : (insight.impact as { formatted?: string })?.formatted ?? insight.priority;
+                    const actionLabel = typeof insight.action === 'string'
+                        ? insight.action
+                        : (insight.action as { label?: string })?.label ?? 'View details';
                     return (
                         <motion.div
-                            key={idx}
+                            key={insight.id ?? idx}
                             variants={itemVariants}
                             whileHover={{ y: -5 }}
                             className={cn(
@@ -118,7 +124,7 @@ export function IntelligenceClient() {
                                         <Sparkles className="h-5 w-5" />
                                     </div>
                                     <Badge variant={isCritical ? "warning" : "default"} className="uppercase tracking-wider text-[10px] font-bold">
-                                        {insight.impact} Impact
+                                        {impactLabel}
                                     </Badge>
                                 </div>
 
@@ -135,7 +141,7 @@ export function IntelligenceClient() {
                                     className="w-full justify-between group/btn bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:text-[var(--primary-blue)] rounded-xl border border-transparent hover:border-[var(--border-subtle)]"
                                     onClick={() => showSuccessToast('Feature coming soon')}
                                 >
-                                    {insight.action}
+                                    {actionLabel}
                                     <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                                 </Button>
                             </div>

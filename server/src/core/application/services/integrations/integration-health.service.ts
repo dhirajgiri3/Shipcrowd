@@ -43,6 +43,7 @@ interface StoreHealth {
     syncSuccessRate?: number;
     webhooksActive: number;
     webhooksTotal: number;
+    companyId?: string;
 }
 
 interface PlatformHealth {
@@ -73,16 +74,18 @@ interface IntegrationHealthResponse {
     };
 }
 
+/** Base filter for marketplace stores - exclude uninstalled */
+const EXCLUDE_UNINSTALLED = { $or: [{ uninstalledAt: { $exists: false } }, { uninstalledAt: null }] };
+
 export class IntegrationHealthService {
     /**
-     * Get comprehensive health data for all platform integrations
+     * Get platform-wide or company-scoped integration health (admin or seller view).
      *
-     * @param companyId - Company ID
+     * @param companyId - Optional. When undefined, returns platform-wide data (all stores).
      * @returns Complete health status
      */
-    static async getHealth(companyId: string): Promise<IntegrationHealthResponse> {
+    static async getPlatformHealth(companyId?: string): Promise<IntegrationHealthResponse> {
         try {
-            // Fetch data concurrently
             const [shopifyData, woocommerceData, amazonData, flipkartData] = await Promise.all([
                 this.getShopifyHealth(companyId),
                 this.getWooCommerceHealth(companyId),
@@ -90,40 +93,10 @@ export class IntegrationHealthService {
                 this.getFlipkartHealth(companyId),
             ]);
 
-            // Calculate summary metrics
-            const summary = {
-                totalStores:
-                    (shopifyData?.totalStores || 0) +
-                    (woocommerceData?.totalStores || 0) +
-                    (amazonData?.totalStores || 0) +
-                    (flipkartData?.totalStores || 0),
-                activeStores:
-                    (shopifyData?.activeStores || 0) +
-                    (woocommerceData?.activeStores || 0) +
-                    (amazonData?.activeStores || 0) +
-                    (flipkartData?.activeStores || 0),
-                healthyStores: 0,
-                unhealthyStores: 0,
-            };
-
-            // Count healthy/unhealthy stores
-            const allStores = [
-                ...(shopifyData?.stores || []),
-                ...(woocommerceData?.stores || []),
-                ...(amazonData?.stores || []),
-                ...(flipkartData?.stores || []),
-            ];
-
-            allStores.forEach(store => {
-                if (store.errorCount24h < 5 && store.syncSuccessRate && store.syncSuccessRate > 80) {
-                    summary.healthyStores++;
-                } else {
-                    summary.unhealthyStores++;
-                }
-            });
+            const summary = this.buildSummary(shopifyData, woocommerceData, amazonData, flipkartData);
 
             return {
-                companyId,
+                companyId: companyId || 'all',
                 timestamp: new Date(),
                 platforms: {
                     shopify: shopifyData || undefined,
@@ -135,19 +108,72 @@ export class IntegrationHealthService {
             };
         } catch (error: any) {
             logger.error('Failed to get integration health', {
-                companyId,
+                companyId: companyId || 'platform',
                 error: error.message,
             });
             throw error;
         }
     }
 
+    private static buildSummary(
+        shopifyData: PlatformHealth | null,
+        woocommerceData: PlatformHealth | null,
+        amazonData: PlatformHealth | null,
+        flipkartData: PlatformHealth | null
+    ) {
+        const summary = {
+            totalStores:
+                (shopifyData?.totalStores || 0) +
+                (woocommerceData?.totalStores || 0) +
+                (amazonData?.totalStores || 0) +
+                (flipkartData?.totalStores || 0),
+            activeStores:
+                (shopifyData?.activeStores || 0) +
+                (woocommerceData?.activeStores || 0) +
+                (amazonData?.activeStores || 0) +
+                (flipkartData?.activeStores || 0),
+            healthyStores: 0,
+            unhealthyStores: 0,
+        };
+
+        const allStores = [
+            ...(shopifyData?.stores || []),
+            ...(woocommerceData?.stores || []),
+            ...(amazonData?.stores || []),
+            ...(flipkartData?.stores || []),
+        ];
+
+        allStores.forEach((store) => {
+            if (store.errorCount24h < 5 && (store.syncSuccessRate ?? 100) > 80) {
+                summary.healthyStores++;
+            } else {
+                summary.unhealthyStores++;
+            }
+        });
+
+        return summary;
+    }
+
+    /**
+     * Get comprehensive health data for a company (seller view).
+     *
+     * @param companyId - Company ID
+     * @returns Complete health status
+     */
+    static async getHealth(companyId: string): Promise<IntegrationHealthResponse> {
+        return this.getPlatformHealth(companyId);
+    }
+
     /**
      * Get Shopify integration health
+     * @param companyId - Optional. When undefined, returns platform-wide (all stores).
      */
-    private static async getShopifyHealth(companyId: string): Promise<PlatformHealth | null> {
+    private static async getShopifyHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await ShopifyStore.find({ companyId, isActive: true }).lean();
+            const filter: Record<string, unknown> = companyId
+                ? { companyId, isActive: true }
+                : { ...EXCLUDE_UNINSTALLED };
+            const stores = await ShopifyStore.find(filter).lean();
 
             if (stores.length === 0) {
                 return null;
@@ -204,6 +230,7 @@ export class IntegrationHealthService {
                         syncSuccessRate: Math.round(syncSuccessRate * 10) / 10,
                         webhooksActive: store.webhooks?.filter((w: any) => w.isActive).length || 0,
                         webhooksTotal: store.webhooks?.length || 0,
+                        companyId: store.companyId?.toString(),
                     };
                 })
             );
@@ -211,7 +238,6 @@ export class IntegrationHealthService {
             const activeStores = stores.filter((s: any) => s.isActive).length;
             const pausedStores = stores.filter((s: any) => s.isPaused).length;
 
-            // Calculate overall error and success rates
             const totalErrors = storeHealth.reduce((sum, s) => sum + s.errorCount7d, 0);
             const avgSuccessRate =
                 storeHealth.reduce((sum, s) => sum + (s.syncSuccessRate || 0), 0) / storeHealth.length;
@@ -237,10 +263,14 @@ export class IntegrationHealthService {
 
     /**
      * Get WooCommerce integration health
+     * @param companyId - Optional. When undefined, returns platform-wide (all stores).
      */
-    private static async getWooCommerceHealth(companyId: string): Promise<PlatformHealth | null> {
+    private static async getWooCommerceHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await WooCommerceStore.find({ companyId, isActive: true }).lean();
+            const filter: Record<string, unknown> = companyId
+                ? { companyId, isActive: true }
+                : { ...EXCLUDE_UNINSTALLED };
+            const stores = await WooCommerceStore.find(filter).lean();
 
             if (stores.length === 0) {
                 return null;
@@ -272,7 +302,9 @@ export class IntegrationHealthService {
                     ]);
 
                     const totalSyncs = recentLogs.length;
-                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'COMPLETED').length;
+                    const successfulSyncs = recentLogs.filter(
+                        (log: any) => log.status === 'COMPLETED' || log.status === 'PARTIAL'
+                    ).length;
                     const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
 
                     const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
@@ -291,6 +323,7 @@ export class IntegrationHealthService {
                         syncSuccessRate: Math.round(syncSuccessRate * 10) / 10,
                         webhooksActive: store.webhooks?.filter((w: any) => w.isActive).length || 0,
                         webhooksTotal: store.webhooks?.length || 0,
+                        companyId: store.companyId?.toString(),
                     };
                 })
             );
@@ -323,10 +356,14 @@ export class IntegrationHealthService {
 
     /**
      * Get Amazon integration health
+     * @param companyId - Optional. When undefined, returns platform-wide (all stores).
      */
-    private static async getAmazonHealth(companyId: string): Promise<PlatformHealth | null> {
+    private static async getAmazonHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await AmazonStore.find({ companyId, isActive: true }).lean();
+            const filter: Record<string, unknown> = companyId
+                ? { companyId, isActive: true }
+                : { ...EXCLUDE_UNINSTALLED };
+            const stores = await AmazonStore.find(filter).lean();
 
             if (stores.length === 0) {
                 return null;
@@ -358,7 +395,9 @@ export class IntegrationHealthService {
                     ]);
 
                     const totalSyncs = recentLogs.length;
-                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'SUCCESS').length;
+                    const successfulSyncs = recentLogs.filter(
+                        (log: any) => log.status === 'COMPLETED' || log.status === 'PARTIAL'
+                    ).length;
                     const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
 
                     const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
@@ -377,6 +416,7 @@ export class IntegrationHealthService {
                         syncSuccessRate: Math.round(syncSuccessRate * 10) / 10,
                         webhooksActive: store.webhooks?.filter((w: any) => w.isActive).length || 0,
                         webhooksTotal: store.webhooks?.length || 0,
+                        companyId: store.companyId?.toString(),
                     };
                 })
             );
@@ -409,10 +449,14 @@ export class IntegrationHealthService {
 
     /**
      * Get Flipkart integration health
+     * @param companyId - Optional. When undefined, returns platform-wide (all stores).
      */
-    private static async getFlipkartHealth(companyId: string): Promise<PlatformHealth | null> {
+    private static async getFlipkartHealth(companyId?: string): Promise<PlatformHealth | null> {
         try {
-            const stores = await FlipkartStore.find({ companyId, isActive: true }).lean();
+            const filter: Record<string, unknown> = companyId
+                ? { companyId, isActive: true }
+                : { ...EXCLUDE_UNINSTALLED };
+            const stores = await FlipkartStore.find(filter).lean();
 
             if (stores.length === 0) {
                 return null;
@@ -444,7 +488,9 @@ export class IntegrationHealthService {
                     ]);
 
                     const totalSyncs = recentLogs.length;
-                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'SUCCESS').length;
+                    const successfulSyncs = recentLogs.filter(
+                        (log: any) => log.status === 'COMPLETED' || log.status === 'PARTIAL'
+                    ).length;
                     const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
 
                     const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
@@ -463,6 +509,7 @@ export class IntegrationHealthService {
                         syncSuccessRate: Math.round(syncSuccessRate * 10) / 10,
                         webhooksActive: store.webhooks?.filter((w: any) => w.isActive).length || 0,
                         webhooksTotal: store.webhooks?.length || 0,
+                        companyId: store.companyId?.toString(),
                     };
                 })
             );

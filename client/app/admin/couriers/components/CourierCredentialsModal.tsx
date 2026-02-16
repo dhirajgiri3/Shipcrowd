@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/src/components/ui/core/Button';
+import { Checkbox } from '@/src/components/ui/core/Checkbox';
 import { Input } from '@/src/components/ui/core/Input';
 import { Label } from '@/src/components/ui/core/Label';
 import {
@@ -41,6 +42,7 @@ interface FormState {
     clientId: string;
     username: string;
     password: string;
+    isActive: boolean;
 }
 
 const INITIAL_FORM: FormState = {
@@ -49,6 +51,7 @@ const INITIAL_FORM: FormState = {
     clientId: '',
     username: '',
     password: '',
+    isActive: true,
 };
 
 export function CourierCredentialsModal({ isOpen, onClose, courier }: CourierCredentialsModalProps) {
@@ -68,9 +71,11 @@ export function CourierCredentialsModal({ isOpen, onClose, courier }: CourierCre
 
     useEffect(() => {
         if (!isOpen || !courier) return;
+        const c = courier as Courier & { isActive?: boolean };
         setForm({
             ...INITIAL_FORM,
-            apiEndpoint: (courier as Courier).apiEndpoint || '',
+            apiEndpoint: c.apiEndpoint || '',
+            isActive: c.isActive !== false,
         });
         // Reset visibility states on open
         setShowApiKey(false);
@@ -89,6 +94,7 @@ export function CourierCredentialsModal({ isOpen, onClose, courier }: CourierCre
 
         const payload: UpdateCourierRequest = {
             apiEndpoint: form.apiEndpoint || undefined,
+            isActive: form.isActive,
             credentials: {},
         };
 
@@ -174,6 +180,17 @@ export function CourierCredentialsModal({ isOpen, onClose, courier }: CourierCre
                                         }
                                         className="bg-[var(--bg-primary)]"
                                     />
+                                </div>
+                                <div className="flex items-center gap-3 pt-2">
+                                    <Checkbox
+                                        checked={form.isActive}
+                                        onCheckedChange={(checked) =>
+                                            setForm((prev) => ({ ...prev, isActive: checked }))
+                                        }
+                                    />
+                                    <Label className="text-sm font-medium cursor-pointer select-none">
+                                        Activate integration
+                                    </Label>
                                 </div>
                             </div>
 
