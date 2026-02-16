@@ -292,6 +292,8 @@ WeightDisputeSchema.index({ status: 1, createdAt: -1 }); // Admin view: All pend
 // Note: shipmentId index is already defined inline in the schema field definition
 WeightDisputeSchema.index({ createdAt: -1 }); // Auto-resolve job: Old disputes
 WeightDisputeSchema.index({ 'financialImpact.difference': -1 }); // High-value disputes
+WeightDisputeSchema.index({ isDeleted: 1, status: 1, createdAt: -1 }); // Admin list + count
+WeightDisputeSchema.index({ isDeleted: 1, createdAt: -1 }); // Metrics/analytics with date range
 
 // Pre-save hook to ensure initial timeline entry
 WeightDisputeSchema.pre('save', function (next) {

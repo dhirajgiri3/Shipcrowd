@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5005';
 const PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 15000);
+const HEAVY_ENDPOINT_TIMEOUT_MS = 30000; // Analytics, metrics on large datasets
 
 // Headers to exclude from forwarding (hop-by-hop headers)
 const HOP_BY_HOP_HEADERS = [
@@ -91,9 +92,18 @@ export async function HEAD(
   return proxyRequest(request, path);
 }
 
+function getProxyTimeout(path: string[]): number {
+  const pathStr = path.join('/');
+  if (pathStr.includes('analytics') || pathStr.includes('disputes/weight/metrics')) {
+    return HEAVY_ENDPOINT_TIMEOUT_MS;
+  }
+  return PROXY_TIMEOUT_MS;
+}
+
 async function proxyRequest(request: NextRequest, path: string[]) {
   let timedOut = false;
   const startedAt = Date.now();
+  const timeoutMs = getProxyTimeout(path);
   try {
     const url = new URL(request.url);
     const backendPath = `/api/v1/${path.join('/')}`;
@@ -124,7 +134,7 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, PROXY_TIMEOUT_MS);
+    }, timeoutMs);
     let backendResponse: Response;
     try {
       const fetchOptions: RequestInit & { duplex?: 'half' } = {
@@ -209,7 +219,7 @@ async function proxyRequest(request: NextRequest, path: string[]) {
         {
           error: timedOut ? 'Backend timeout' : 'Request aborted',
           message: timedOut
-            ? `Backend did not respond within ${PROXY_TIMEOUT_MS}ms`
+            ? `Backend did not respond within ${timeoutMs}ms`
             : 'Proxy request was aborted before completion',
         },
         { status: timedOut ? 504 : 503 }

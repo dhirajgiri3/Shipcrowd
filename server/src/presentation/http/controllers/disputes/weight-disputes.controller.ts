@@ -91,15 +91,21 @@ export const listDisputes = async (
             ];
         }
 
+        const hint = filter.status
+            ? { isDeleted: 1, status: 1, createdAt: -1 }
+            : { isDeleted: 1, createdAt: -1 };
+
         const [disputes, total] = await Promise.all([
             WeightDispute.find(filter)
+                .hint(hint)
                 .populate('shipmentId', 'trackingNumber carrier currentStatus')
+                .populate('companyId', 'name')
                 .populate('orderId', 'orderNumber')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
-            WeightDispute.countDocuments(filter),
+            WeightDispute.countDocuments(filter).hint(hint),
         ]);
 
         const pagination = calculatePagination(total, page, limit);
@@ -317,33 +323,31 @@ void auth;
             req.query.startDate as string | undefined,
             req.query.endDate as string | undefined
         );
+        // Default to last 30 days when no date range provided (avoids full-table scan on large collections)
         const dateRange = parsedRange.startDate || parsedRange.endDate
             ? {
                 start: parsedRange.startDate || new Date(0),
                 end: parsedRange.endDate || new Date(),
             }
-            : undefined;
+            : {
+                start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                end: new Date(),
+            };
 
         const companyId = req.query.companyId as string | undefined;
 
         const [stats, trends, highRiskSellers, carrierPerformance, fraudSignals] = await Promise.all([
             WeightDisputeAnalyticsService.getComprehensiveStats(companyId, dateRange),
-            dateRange
-                ? WeightDisputeAnalyticsService.getDisputeTrends(
-                    dateRange,
-                    (req.query.groupBy as 'day' | 'week' | 'month') || 'day'
-                )
-                : Promise.resolve([]),
+            WeightDisputeAnalyticsService.getDisputeTrends(
+                dateRange,
+                (req.query.groupBy as 'day' | 'week' | 'month') || 'day'
+            ),
             WeightDisputeAnalyticsService.identifyHighRiskSellers(dateRange, 20),
-            dateRange
-                ? WeightDisputeAnalyticsService.getCarrierPerformanceMetrics(dateRange)
-                : Promise.resolve([]),
-            dateRange
-                ? WeightDisputeAnalyticsService.getFraudDetectionSignals(dateRange, {
-                    companyId,
-                    topN: 10,
-                })
-                : Promise.resolve({ highRiskSellers: [], underDeclarationPattern: [], recentSpike: [] }),
+            WeightDisputeAnalyticsService.getCarrierPerformanceMetrics(dateRange),
+            WeightDisputeAnalyticsService.getFraudDetectionSignals(dateRange, {
+                companyId,
+                topN: 10,
+            }),
         ]);
 
         sendSuccess(
@@ -413,12 +417,16 @@ export const getAdminPlatformMetrics = async (
             req.query.startDate as string | undefined,
             req.query.endDate as string | undefined
         );
+        // Default to last 30 days when no date range provided (avoids full-table scan on large collections)
         const dateRange = parsedRange.startDate || parsedRange.endDate
             ? {
                 start: parsedRange.startDate || new Date(0),
                 end: parsedRange.endDate || new Date(),
             }
-            : undefined;
+            : {
+                start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                end: new Date(),
+            };
         const metrics = await WeightDisputeResolutionService.getDisputeMetrics(undefined, dateRange);
         sendSuccess(res, { metrics }, 'Platform dispute metrics retrieved successfully');
     } catch (error) {

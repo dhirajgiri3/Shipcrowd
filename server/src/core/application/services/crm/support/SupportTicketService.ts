@@ -364,6 +364,125 @@ class SupportTicketService {
             byPriority
         };
     }
+
+    /**
+     * ============================================================================
+     * ADMIN METHODS - Platform-wide ticket access
+     * ============================================================================
+     */
+
+    /**
+     * Get tickets for admin (no company restriction, optional company filter)
+     */
+    async getTicketsAdmin(filters: {
+        companyId?: string;
+        status?: string;
+        priority?: string;
+        category?: string;
+        search?: string;
+        page: number;
+        limit: number;
+    }): Promise<{ tickets: ISupportTicket[]; total: number }> {
+        const query: FilterQuery<ISupportTicket> = {};
+
+        // Admin can optionally filter by specific company
+        if (filters.companyId) {
+            query.companyId = new Types.ObjectId(filters.companyId);
+        }
+
+        if (filters.status) query.status = filters.status;
+        if (filters.priority) query.priority = filters.priority;
+        if (filters.category) query.category = filters.category;
+
+        if (filters.search) {
+            query.$or = [
+                { subject: { $regex: filters.search, $options: 'i' } },
+                { description: { $regex: filters.search, $options: 'i' } },
+                { ticketId: { $regex: filters.search, $options: 'i' } }
+            ];
+        }
+
+        const skip = (filters.page - 1) * filters.limit;
+
+        const [tickets, total] = await Promise.all([
+            SupportTicket.find(query)
+                .populate('companyId', 'name email')
+                .populate('userId', 'name email')
+                .populate('assignedTo', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(filters.limit)
+                .lean(),
+            SupportTicket.countDocuments(query)
+        ]);
+
+        return { tickets: tickets as ISupportTicket[], total };
+    }
+
+    /**
+     * Get ticket by ID (Admin - no company check)
+     */
+    async getTicketByIdAdmin(ticketId: string): Promise<ISupportTicket> {
+        const ticket = await SupportTicket.findById(ticketId)
+            .populate('companyId', 'name email')
+            .populate('userId', 'name email')
+            .populate('assignedTo', 'name email')
+            .lean();
+
+        if (!ticket) {
+            throw new NotFoundError('Support ticket not found');
+        }
+
+        return ticket as ISupportTicket;
+    }
+
+    /**
+     * Get SLA metrics (Admin - optionally filter by company, or platform-wide)
+     */
+    async getSLAMetricsAdmin(companyId?: string): Promise<{
+        totalTickets: number;
+        openTickets: number;
+        resolvedTickets: number;
+        breachedSLA: number;
+        avgResolutionTimeMs: number;
+        slaComplianceRate: number;
+    }> {
+        const query: FilterQuery<ISupportTicket> = {};
+        if (companyId) {
+            query.companyId = new Types.ObjectId(companyId);
+        }
+
+        const [totalTickets, openTickets, resolvedTickets, breachedSLA] = await Promise.all([
+            SupportTicket.countDocuments(query),
+            SupportTicket.countDocuments({ ...query, status: { $in: ['open', 'in_progress'] } }),
+            SupportTicket.countDocuments({ ...query, status: { $in: ['resolved', 'closed'] } }),
+            SupportTicket.countDocuments({ ...query, slaBreached: true })
+        ]);
+
+        const avgResolutionTime = await SupportTicket.aggregate([
+            { $match: { ...query, status: { $in: ['resolved', 'closed'] }, resolvedAt: { $exists: true } } },
+            {
+                $project: {
+                    resolutionTime: { $subtract: ['$resolvedAt', '$createdAt'] }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgTime: { $avg: '$resolutionTime' }
+                }
+            }
+        ]);
+
+        return {
+            totalTickets,
+            openTickets,
+            resolvedTickets,
+            breachedSLA,
+            avgResolutionTimeMs: avgResolutionTime[0]?.avgTime || 0,
+            slaComplianceRate: totalTickets > 0 ? ((totalTickets - breachedSLA) / totalTickets) * 100 : 100
+        };
+    }
 }
 
 export default SupportTicketService;

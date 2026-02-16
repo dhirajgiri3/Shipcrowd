@@ -37,4 +37,4 @@ export * from './marketing/promotionApi';
 
 // General
 export * from './general/companyApi';
-export * from './general/notificationsApi';
+// Removed: notificationsApi (in-app notification polling removed for performance)

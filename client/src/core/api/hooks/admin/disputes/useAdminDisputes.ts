@@ -119,19 +119,22 @@ export const useAdminPlatformDisputeMetrics = (filters?: { startDate?: string; e
 
 /**
  * Get comprehensive analytics
+ * @param filters - startDate, endDate, groupBy. Pass enabled: false to defer loading.
  */
-export const useAdminDisputeAnalytics = (filters?: any) => {
+export const useAdminDisputeAnalytics = (filters?: { startDate?: string; endDate?: string; groupBy?: string; enabled?: boolean }) => {
+    const { enabled = true, ...queryFilters } = filters || {};
     return useQuery<DisputeAnalytics, ApiError>({
-        queryKey: ['admin', ...queryKeys.disputes.analytics(filters)],
+        queryKey: ['admin', ...queryKeys.disputes.analytics(queryFilters as DisputeFilters)],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (filters?.startDate) params.append('startDate', filters.startDate);
-            if (filters?.endDate) params.append('endDate', filters.endDate);
-            if (filters?.groupBy) params.append('groupBy', filters.groupBy);
+            if (queryFilters.startDate) params.append('startDate', queryFilters.startDate);
+            if (queryFilters.endDate) params.append('endDate', queryFilters.endDate);
+            if (queryFilters.groupBy) params.append('groupBy', queryFilters.groupBy);
 
             const response = await apiClient.get(`/admin/disputes/weight/analytics?${params.toString()}`);
             return response.data.data;
         },
+        enabled,
         ...CACHE_TIMES.LONG,
         retry: RETRY_CONFIG.DEFAULT,
         refetchOnWindowFocus: false,

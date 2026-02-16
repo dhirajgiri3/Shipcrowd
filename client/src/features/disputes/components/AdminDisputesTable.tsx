@@ -291,8 +291,8 @@ export function AdminDisputesTable() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-[var(--text-primary)]">
-                                                    <span className="text-xs truncate max-w-[120px] block">
-                                                        {dispute.companyId}
+                                                    <span className="text-xs truncate max-w-[120px] block" title={String((dispute.companyId as { name?: string })?.name ?? dispute.companyId)}>
+                                                        {(dispute.companyId as { name?: string })?.name ?? dispute.companyId}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-[var(--text-primary)]">

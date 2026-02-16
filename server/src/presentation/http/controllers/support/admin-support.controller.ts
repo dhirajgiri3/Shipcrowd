@@ -1,0 +1,106 @@
+import { NextFunction, Request, Response } from 'express';
+import SupportTicketService from '@/core/application/services/crm/support/SupportTicketService';
+import { guardChecks, requirePlatformAdmin } from '@/shared/helpers/controller.helpers';
+import logger from '@/shared/logger/winston.logger';
+import { calculatePagination, sendSuccess } from '@/shared/utils/responseHelper';
+
+const service = SupportTicketService.getInstance();
+
+/**
+ * Admin Support Controller
+ * Platform-wide support ticket management for admins/super_admins.
+ * Admins can view and manage tickets across all companies.
+ */
+
+/**
+ * GET /api/v1/admin/support/tickets
+ * List all support tickets across all companies (Admin only)
+ * Query params:
+ * - companyId (optional): Filter by specific company
+ * - status, priority, category, search (optional)
+ * - page, limit (pagination)
+ */
+export const getAllTickets = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const page = Math.max(1, parseInt(req.query.page as string) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+
+        const filters: any = {};
+        if (req.query.companyId) filters.companyId = req.query.companyId;
+        if (req.query.status) filters.status = req.query.status;
+        if (req.query.priority) filters.priority = req.query.priority;
+        if (req.query.category) filters.category = req.query.category;
+        if (req.query.search) filters.search = req.query.search;
+
+        // Admin can see tickets across all companies
+        const result = await service.getTicketsAdmin({
+            ...filters,
+            page,
+            limit,
+        });
+
+        const pagination = calculatePagination(result.total, page, limit);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                tickets: result.tickets,
+                pagination
+            },
+            message: 'Tickets retrieved successfully'
+        });
+
+    } catch (error) {
+        logger.error('Error fetching admin tickets:', error);
+        next(error);
+    }
+};
+
+/**
+ * GET /api/v1/admin/support/tickets/:id
+ * Get ticket details (Admin can view ANY ticket)
+ */
+export const getTicketById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const { id } = req.params;
+        const ticket = await service.getTicketByIdAdmin(id);
+
+        sendSuccess(res, ticket, 'Ticket retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching admin ticket:', error);
+        next(error);
+    }
+};
+
+/**
+ * GET /api/v1/admin/support/metrics
+ * Get platform-wide or company-specific SLA metrics (Admin only)
+ * Query params:
+ * - companyId (optional): Get metrics for specific company, or platform-wide if omitted
+ */
+export const getMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        requirePlatformAdmin(auth);
+
+        const companyId = req.query.companyId as string | undefined;
+        const metrics = await service.getSLAMetricsAdmin(companyId);
+
+        sendSuccess(res, metrics, 'SLA metrics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching admin metrics:', error);
+        next(error);
+    }
+};
+
+export default {
+    getAllTickets,
+    getTicketById,
+    getMetrics,
+};

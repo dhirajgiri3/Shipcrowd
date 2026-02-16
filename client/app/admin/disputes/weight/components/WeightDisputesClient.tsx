@@ -1,21 +1,31 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { PageHeader } from '@/src/components/ui/layout/PageHeader';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { Button } from '@/src/components/ui/core/Button';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { AdminDisputesTable } from '@/src/features/disputes/components/AdminDisputesTable';
 import {
     useAdminDisputeMetrics,
     useAdminDisputeAnalytics,
 } from '@/src/core/api/hooks/admin/disputes/useAdminDisputes';
+import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 import { formatCompactCurrency } from '@/src/lib/utils';
 import { PageHeaderSkeleton, CardSkeleton } from '@/src/components/ui';
-import { AlertCircle, Clock, IndianRupee, Scale } from 'lucide-react';
+import { AlertCircle, BarChart3, Clock, IndianRupee, Scale } from 'lucide-react';
 
 export function WeightDisputesClient() {
-    const { data: metrics, isLoading: metricsLoading } = useAdminDisputeMetrics();
-    const { data: analytics, isLoading: analyticsLoading } = useAdminDisputeAnalytics();
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const { range, startDateIso, endDateIso, setRange } = useUrlDateRange({ defaultDays: 30 });
+
+    const dateRange = { startDate: startDateIso, endDate: endDateIso };
+    const { data: metrics, isLoading: metricsLoading } = useAdminDisputeMetrics(dateRange);
+    const { data: analytics, isLoading: analyticsLoading } = useAdminDisputeAnalytics({
+        ...dateRange,
+        enabled: showAnalytics,
+    });
 
     return (
         <div className="p-6 md:p-8 max-w-[1600px] mx-auto bg-[var(--bg-secondary)] min-h-screen pb-20 space-y-6 animate-in fade-in duration-500">
@@ -29,6 +39,7 @@ export function WeightDisputesClient() {
                     { label: 'Disputes', href: '/admin/disputes/weight' },
                     { label: 'Weight', active: true },
                 ]}
+                actions={<DateRangePicker value={range} onRangeChange={setRange} />}
             />
 
             {/* Metrics - Show skeleton when loading, don't block page */}
@@ -88,8 +99,23 @@ export function WeightDisputesClient() {
                 )}
             </div>
 
-            {/* Resolution Stats - Lazy loaded, skeleton when loading */}
-            {analyticsLoading ? (
+            {/* Resolution Stats - Deferred until user clicks to load */}
+            {!showAnalytics ? (
+                <Card className="border-[var(--border-subtle)]">
+                    <CardContent className="py-6 flex items-center justify-between">
+                        <p className="text-sm text-[var(--text-secondary)]">
+                            Avg resolution time, discrepancy, and resolved count for the selected date range.
+                        </p>
+                        <Button
+                            variant="secondary"
+                            onClick={() => setShowAnalytics(true)}
+                        >
+                            <BarChart3 className="w-4 h-4 mr-2" />
+                            View Resolution Stats
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : analyticsLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[1, 2, 3].map((i) => (
                         <CardSkeleton key={i} className="h-24" />

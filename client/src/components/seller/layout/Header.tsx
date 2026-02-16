@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu, Truck, Plus, Wallet } from 'lucide-react';
 import { ProfileDropdown } from '@/src/components/shared/ProfileDropdown';
-import { NotificationCenter } from '@/src/components/shared/NotificationCenter';
 import { ThemeToggle } from '@/src/components/shared/ThemeToggle';
 import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 import { cn } from '@/src/lib/utils';
@@ -217,7 +216,6 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
 
                 <div className="flex items-center gap-1">
                     <ThemeToggle />
-                    <NotificationCenter />
                     <ProfileDropdown user={currentUser} onSignOut={handleSignOut} />
                 </div>
             </div>

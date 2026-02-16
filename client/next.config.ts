@@ -21,6 +21,7 @@ const allowedDevOrigins = Array.from(
     [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
+      'https://terminable-bruno-invigoratingly.ngrok-free.dev', // Ngrok dev preview
       appOrigin,
       apiOrigin,
     ].filter(Boolean)

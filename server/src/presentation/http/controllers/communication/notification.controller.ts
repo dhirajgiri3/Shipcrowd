@@ -3,7 +3,7 @@ import { z } from 'zod';
 import emailService from '../../../../core/application/services/communication/email.service';
 import notificationService, { NotificationType } from '../../../../core/application/services/communication/notification.service';
 import smsService from '../../../../core/application/services/communication/sms.service';
-import { NotificationService } from '../../../../core/application/services/crm/communication/notification.service';
+// Removed: NotificationService (CRM in-app notifications) - no longer used
 import { ExternalServiceError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { guardChecks, requireCompanyContext } from '../../../../shared/helpers/controller.helpers';
@@ -182,76 +182,11 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
 };
 
 // ============================================================================
-// IN-APP NOTIFICATION CONTROLLERS
+// IN-APP NOTIFICATION CONTROLLERS - REMOVED
 // ============================================================================
-
-const notifService = new NotificationService();
-
-export const getNotifications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const userId = getAuthUserId(req);
-    if (!userId) {
-      throw new ValidationError('User not authenticated');
-    }
-
-    const validation = getNotificationsSchema.safeParse(req.query);
-    if (!validation.success) {
-      throw new ValidationError('Validation failed', validation.error.errors);
-    }
-
-    const result = await notifService.getUserNotifications(userId, validation.data);
-    sendSuccess(res, result, 'Notifications retrieved successfully');
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const markAsRead = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const userId = getAuthUserId(req);
-    if (!userId) {
-      throw new ValidationError('User not authenticated');
-    }
-
-    const validation = markAsReadSchema.safeParse({ id: req.params.id });
-    if (!validation.success) {
-      throw new ValidationError('Validation failed', validation.error.errors);
-    }
-
-    await notifService.markNotificationAsRead(validation.data.id, userId);
-    sendSuccess(res, { success: true }, 'Notification marked as read');
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const markAllAsRead = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const userId = getAuthUserId(req);
-    if (!userId) {
-      throw new ValidationError('User not authenticated');
-    }
-
-    await notifService.markAllNotificationsAsRead(userId);
-    sendSuccess(res, { success: true }, 'All notifications marked as read');
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getUnreadCount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const userId = getAuthUserId(req);
-    if (!userId) {
-      throw new ValidationError('User not authenticated');
-    }
-
-    const count = await notifService.getUnreadCount(userId);
-    sendSuccess(res, { count }, 'Unread count retrieved successfully');
-  } catch (error) {
-    next(error);
-  }
-};
+// In-app notification polling (bell icon) has been removed to improve performance.
+// Critical notifications (RTO, disputes, etc.) are sent via Email/SMS/WhatsApp.
+// See: Email/SMS notification controllers above
 
 export default {
   sendEmail,
@@ -259,8 +194,5 @@ export default {
   sendVerificationCode,
   verifyPhoneNumber,
   sendShipmentStatus,
-  getNotifications,
-  markAsRead,
-  markAllAsRead,
-  getUnreadCount,
+  // Removed in-app notification endpoints: getNotifications, markAsRead, markAllAsRead, getUnreadCount
 };

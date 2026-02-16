@@ -123,9 +123,32 @@ export const getSellerCourierPolicyAdmin = async (req: Request, res: Response, n
             throw new ValidationError('sellerId is required', ErrorCode.VAL_MISSING_FIELD);
         }
 
-        const seller = await User.findById(sellerId).select('companyId role').lean();
-        if (!seller || !seller.companyId) {
-            throw new ValidationError('Selected seller is not associated with any company');
+        const seller = await User.findById(sellerId).select('companyId role email name').lean();
+        if (!seller) {
+            throw new ValidationError('Seller not found');
+        }
+
+        // ✅ Handle sellers without company gracefully (incomplete onboarding)
+        if (!seller.companyId) {
+            sendSuccess(res, {
+                sellerId,
+                companyId: null,
+                allowedProviders: [],
+                allowedServiceIds: [],
+                blockedProviders: [],
+                blockedServiceIds: [],
+                selectionMode: 'manual_with_recommendation',
+                autoPriority: 'balanced',
+                balancedDeltaPercent: 5,
+                isActive: false,
+                metadata: {
+                    incomplete: true,
+                    reason: 'Seller has not completed company setup',
+                    sellerEmail: seller.email,
+                    sellerName: seller.name
+                }
+            }, 'Seller has no company - returning default policy');
+            return;
         }
 
         const policy = await SellerCourierPolicy.findOne({
@@ -179,9 +202,14 @@ export const upsertSellerCourierPolicyAdmin = async (req: Request, res: Response
             throw new ValidationError('sellerId is required', ErrorCode.VAL_MISSING_FIELD);
         }
 
-        const seller = await User.findById(sellerId).select('companyId role').lean();
-        if (!seller || !seller.companyId) {
-            throw new ValidationError('Selected seller is not associated with any company');
+        const seller = await User.findById(sellerId).select('companyId role email name').lean();
+        if (!seller) {
+            throw new ValidationError('Seller not found');
+        }
+
+        // ✅ Cannot upsert policy for sellers without company
+        if (!seller.companyId) {
+            throw new ValidationError('Cannot update policy for seller without company. Please ask seller to complete company setup first.');
         }
 
         const validation = upsertSellerCourierPolicySchema.safeParse(req.body);

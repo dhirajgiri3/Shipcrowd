@@ -91,6 +91,7 @@ import callLogRoutes from './crm/call-log.routes';
 import crmDisputeRoutes from './crm/disputes.routes';
 import leadRoutes from './crm/leads.routes';
 import supportRoutes from './support/support.routes';
+import adminSupportRoutes from './admin/admin-support.routes';
 import sellerExportRoutes from './seller/export.routes';
 
 // ============================================================================
@@ -229,6 +230,7 @@ router.use('/admin/crm/sales-reps', adminSalesRepRoutes);
 router.use('/crm/call-logs', callLogRoutes);
 router.use('/crm/disputes', crmDisputeRoutes);
 router.use('/support', supportRoutes);
+router.use('/admin/support', adminSupportRoutes);
 router.use('/seller/exports', sellerExportRoutes);
 
 // 8. System & Analytics

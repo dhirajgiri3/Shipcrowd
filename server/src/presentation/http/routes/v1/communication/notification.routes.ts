@@ -46,35 +46,15 @@ router.post('/sms', notificationController.sendSMS);
 router.post('/shipment-status', notificationController.sendShipmentStatus);
 
 // ============================================================================
-// IN-APP NOTIFICATION ROUTES
+// IN-APP NOTIFICATION ROUTES - REMOVED
 // ============================================================================
-
-/**
- * @route GET /api/v1/notifications
- * @desc Get user notifications
- * @access Private
- */
-router.get('/', notificationController.getNotifications);
-
-/**
- * @route POST /api/v1/notifications/:id/read
- * @desc Mark notification as read
- * @access Private
- */
-router.post('/:id/read', notificationController.markAsRead);
-
-/**
- * @route POST /api/v1/notifications/mark-all-read
- * @desc Mark all notifications as read
- * @access Private
- */
-router.post('/mark-all-read', notificationController.markAllAsRead);
-
-/**
- * @route GET /api/v1/notifications/unread-count
- * @desc Get unread notification count
- * @access Private
- */
-router.get('/unread-count', notificationController.getUnreadCount);
+// In-app notification polling (bell icon) routes have been removed to improve performance.
+// These endpoints were:
+// - GET /api/v1/notifications (polled every 30s)
+// - POST /api/v1/notifications/:id/read
+// - POST /api/v1/notifications/mark-all-read
+// - GET /api/v1/notifications/unread-count (polled every 30s)
+//
+// Critical notifications are sent via Email/SMS/WhatsApp using the endpoints above.
 
 export default router;
