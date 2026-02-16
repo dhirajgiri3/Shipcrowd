@@ -10,7 +10,7 @@
 import { Store } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-export type OrderSource = 'shopify' | 'woocommerce' | 'amazon' | 'flipkart' | 'manual' | 'api';
+export type OrderSource = 'shopify' | 'woocommerce' | 'amazon' | 'flipkart' | 'manual' | 'api' | 'bulk_import';
 
 const SOURCE_CONFIG: Record<
   string,
@@ -41,16 +41,40 @@ const SOURCE_CONFIG: Record<
     bgDark: 'dark:bg-[#2874F0]/25',
   },
   api: {
-    label: 'API',
+    label: 'REST API',
     color: '#10B981',
     bgLight: 'bg-[#10B981]/15',
     bgDark: 'dark:bg-[#10B981]/25',
+  },
+  bulk_import: {
+    label: 'Bulk Import',
+    color: '#6366F1',
+    bgLight: 'bg-[#6366F1]/15',
+    bgDark: 'dark:bg-[#6366F1]/25',
   },
   manual: {
     label: 'Manual',
     color: 'inherit',
     bgLight: 'bg-[var(--bg-secondary)]',
     bgDark: 'dark:bg-[var(--bg-secondary)]',
+  },
+  cloned: {
+    label: 'Cloned',
+    color: '#8B5CF6',
+    bgLight: 'bg-[#8B5CF6]/15',
+    bgDark: 'dark:bg-[#8B5CF6]/25',
+  },
+  split: {
+    label: 'Split',
+    color: '#F59E0B',
+    bgLight: 'bg-[#F59E0B]/15',
+    bgDark: 'dark:bg-[#F59E0B]/25',
+  },
+  merged: {
+    label: 'Merged',
+    color: '#EC4899',
+    bgLight: 'bg-[#EC4899]/15',
+    bgDark: 'dark:bg-[#EC4899]/25',
   },
 };
 

@@ -346,6 +346,11 @@ export class OrderService extends CachedService {
             matchStageBase.paymentStatus = queryParams.paymentStatus;
         }
 
+        // Source Filter (manual, shopify, woocommerce, amazon, flipkart, api, bulk_import)
+        if (queryParams.source && queryParams.source !== 'all') {
+            matchStageBase.source = queryParams.source;
+        }
+
         // 2. Build Filtered Match Stage (with smartFilter) - for orders list & pagination
         const matchStageFiltered = { ...matchStageBase };
         const todayStart = new Date();
@@ -828,14 +833,31 @@ export class OrderService extends CachedService {
     }
 
     /**
+     * Invalidate order list cache for a company (e.g. after order delete)
+     */
+    async invalidateOrderListsForCompany(companyId: string): Promise<void> {
+        await this.invalidateTags([this.companyTag(companyId, 'orders')]);
+    }
+
+    /**
+     * Invalidate order detail cache (e.g. after order delete)
+     */
+    async invalidateOrderDetail(orderId: string): Promise<void> {
+        await this.cache.delete(`order:${orderId}`);
+    }
+
+    /**
      * Validate if an order can be deleted based on its status
+     * Blocked: shipped, delivered (fulfillment complete - preserve for records/compliance)
+     * Allowed: pending, ready_to_ship, cancelled, rto, ndr, etc.
+     * Note: Caller must also check hasActiveShipment - orders with active shipments cannot be deleted.
      */
     canDeleteOrder(currentStatus: string): { canDelete: boolean; reason?: string } {
         const nonDeletableStatuses = ['shipped', 'delivered'];
         if (nonDeletableStatuses.includes(currentStatus)) {
             return {
                 canDelete: false,
-                reason: `Cannot delete order with status '${currentStatus}'`
+                reason: `Cannot delete order: Orders with status '${currentStatus}' cannot be deleted. Shipped and delivered orders must be retained for records and compliance.`
             };
         }
         return { canDelete: true };

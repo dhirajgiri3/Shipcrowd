@@ -36,20 +36,30 @@ export class DelhiveryAuth {
     }
 
     private async getIntegrationToken(): Promise<string | undefined> {
-        if (!this.companyId) return undefined;
+        const companyClauses = this.companyId
+            ? [{ companyId: this.companyId }, { companyId: null }]
+            : [{ companyId: null }];
 
-        const integration = await Integration.collection.findOne({
-            companyId: this.companyId,
+        const integrations = await Integration.collection.find({
             type: 'courier',
             provider: 'delhivery',
-            'settings.isActive': true
+            'settings.isActive': true,
+            $or: companyClauses,
         }, {
-            projection: { credentials: 1 }
-        });
+            projection: { companyId: 1, credentials: 1 }
+        }).toArray();
 
-        if (!integration) return undefined;
+        if (!integrations.length) return undefined;
 
-        const token = (integration as any).credentials?.apiKey;
+        const companySpecific = this.companyId
+            ? integrations.find((item: any) => item.companyId && String(item.companyId) === String(this.companyId))
+            : undefined;
+        const platformScoped = integrations.find((item: any) => !item.companyId);
+        const selected = companySpecific || platformScoped;
+
+        if (!selected) return undefined;
+
+        const token = (selected as any).credentials?.apiKey;
         if (!token) return undefined;
 
         return this.decodeCredentialValue(token);

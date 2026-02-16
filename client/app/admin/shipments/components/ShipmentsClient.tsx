@@ -24,9 +24,12 @@ import {
 } from 'lucide-react';
 import { showSuccessToast } from '@/src/lib/error';
 import { useShipments, useShipmentStats, Shipment as ApiShipment } from '@/src/core/api/hooks/orders/useShipments';
+import { useAdminWarehouses } from '@/src/core/api/hooks/logistics/useAdminWarehouses';
 import { StatsCard } from '@/src/components/ui/dashboard/StatsCard';
+import { Select } from '@/src/components/ui/form/Select';
 import { useUrlDateRange } from '@/src/hooks/analytics/useUrlDateRange';
 import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import { CARRIER_LIST } from '@/src/constants/carriers';
 
 const DEFAULT_LIMIT = 20;
 
@@ -53,7 +56,12 @@ export function ShipmentsClient() {
     const search = searchParams.get('search') || '';
     const [searchInput, setSearchInput] = useState(search);
     const debouncedSearch = useDebouncedValue(searchInput, 300);
+    const [selectedCarrier, setSelectedCarrier] = useState<string>(searchParams.get('carrier') || 'all');
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(searchParams.get('warehouse') || 'all');
     const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
+
+    const { data: warehousesData } = useAdminWarehouses({ limit: 100 });
+    const warehouses = warehousesData?.warehouses ?? [];
     const [isUrlHydrated, setIsUrlHydrated] = useState(false);
     const hasInitializedFilterReset = useRef(false);
 
@@ -68,6 +76,8 @@ export function ShipmentsClient() {
         setSearchInput((current) => (current === search ? current : search));
         const { page: nextPage } = parsePaginationQuery(searchParams, { defaultLimit: DEFAULT_LIMIT });
         setPage((current) => (current === nextPage ? current : nextPage));
+        setSelectedCarrier((current) => (current === (searchParams.get('carrier') || 'all') ? current : (searchParams.get('carrier') || 'all')));
+        setSelectedWarehouseId((current) => (current === (searchParams.get('warehouse') || 'all') ? current : (searchParams.get('warehouse') || 'all')));
         setIsUrlHydrated(true);
     }, [searchParams, search]);
 
@@ -78,18 +88,19 @@ export function ShipmentsClient() {
             return;
         }
         setPage(1);
-    }, [debouncedSearch, status, startDateIso, endDateIso, isUrlHydrated]);
+    }, [debouncedSearch, status, startDateIso, endDateIso, selectedCarrier, selectedWarehouseId, isUrlHydrated]);
 
     useEffect(() => {
         if (!isUrlHydrated) return;
 
         const params = new URLSearchParams(searchParams.toString());
         params.set('status', status);
-        if (debouncedSearch) {
-            params.set('search', debouncedSearch);
-        } else {
-            params.delete('search');
-        }
+        if (debouncedSearch) params.set('search', debouncedSearch);
+        else params.delete('search');
+        if (selectedCarrier !== 'all') params.set('carrier', selectedCarrier);
+        else params.delete('carrier');
+        if (selectedWarehouseId !== 'all') params.set('warehouse', selectedWarehouseId);
+        else params.delete('warehouse');
         syncPaginationQuery(params, { page, limit }, { defaultLimit: DEFAULT_LIMIT });
 
         const nextQuery = params.toString();
@@ -97,7 +108,7 @@ export function ShipmentsClient() {
         if (nextQuery !== currentQuery) {
             router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
         }
-    }, [status, debouncedSearch, page, limit, isUrlHydrated, searchParams, pathname, router]);
+    }, [status, debouncedSearch, page, limit, selectedCarrier, selectedWarehouseId, isUrlHydrated, searchParams, pathname, router]);
 
     const handleTabChange = (key: ShipmentTabKey) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -121,6 +132,8 @@ export function ShipmentsClient() {
     const { data: shipmentsResponse, isLoading, refetch, isFetching } = useShipments({
         status: status !== 'all' ? status : undefined,
         search: debouncedSearch || undefined,
+        carrier: selectedCarrier !== 'all' ? selectedCarrier : undefined,
+        warehouse: selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
         startDate: startDateIso,
         endDate: endDateIso,
         page,
@@ -249,13 +262,55 @@ export function ShipmentsClient() {
                         className="max-w-full lg:max-w-[500px] overflow-x-auto"
                     />
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
                         <SearchInput
                             widthClass="w-full sm:w-72"
                             placeholder="Search by AWB, Order ID, or Customer..."
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                         />
+                        <div className="w-full sm:w-auto sm:min-w-[160px]">
+                            <label htmlFor="admin-shipments-carrier-filter" className="sr-only">Carrier filter</label>
+                            <Select
+                                id="admin-shipments-carrier-filter"
+                                value={selectedCarrier}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setSelectedCarrier(value);
+                                    const params = new URLSearchParams(searchParams.toString());
+                                    if (value !== 'all') params.set('carrier', value);
+                                    else params.delete('carrier');
+                                    params.set('page', '1');
+                                    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+                                }}
+                                options={[
+                                    { value: 'all', label: 'All Carriers' },
+                                    ...CARRIER_LIST.map((c) => ({ value: c.name, label: c.name })),
+                                ]}
+                                className="h-11 rounded-xl border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                            />
+                        </div>
+                        <div className="w-full sm:w-auto sm:min-w-[170px]">
+                            <label htmlFor="admin-shipments-warehouse-filter" className="sr-only">Warehouse filter</label>
+                            <Select
+                                id="admin-shipments-warehouse-filter"
+                                value={selectedWarehouseId}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setSelectedWarehouseId(value);
+                                    const params = new URLSearchParams(searchParams.toString());
+                                    if (value !== 'all') params.set('warehouse', value);
+                                    else params.delete('warehouse');
+                                    params.set('page', '1');
+                                    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+                                }}
+                                options={[
+                                    { value: 'all', label: 'All Warehouses' },
+                                    ...warehouses.map((w) => ({ value: w._id, label: w.name })),
+                                ]}
+                                className="h-11 rounded-xl border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                            />
+                        </div>
                     </div>
                 </div>
 

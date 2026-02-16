@@ -6,6 +6,7 @@ import { Readable } from 'stream';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import RiskScoringService from '../../../../core/application/services/risk/risk-scoring.service';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
+import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
 import { BulkOrderImportJob, Order } from '../../../../infrastructure/database/mongoose/models';
 import { BulkOrderImportJobProcessor } from '../../../../infrastructure/jobs/shipping/bulk-order-import.job';
 import { AppError, ConflictError, DatabaseError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
@@ -297,8 +298,20 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
             throw new AppError(reason || 'Cannot delete order', 'CANNOT_DELETE_ORDER', 400);
         }
 
+        const hasActive = await ShipmentService.hasActiveShipment(order._id as mongoose.Types.ObjectId);
+        if (hasActive) {
+            throw new ConflictError(
+                'Cannot delete order: An active shipment exists. Cancel the shipment first, then delete the order.',
+                ErrorCode.BIZ_SHIPMENT_EXISTS
+            );
+        }
+
         order.isDeleted = true;
         await order.save();
+
+        await OrderService.getInstance().invalidateOrderListsForCompany(auth.companyId);
+        await OrderService.getInstance().invalidateOrderDetail(orderId);
+
         await createAuditLog(auth.userId, auth.companyId, 'delete', 'order', orderId, { softDelete: true }, req);
 
         sendSuccess(res, null, 'Order deleted successfully');

@@ -32,6 +32,7 @@ import {
     Activity,
     RotateCcw,
     Plug,
+    ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
@@ -52,71 +53,84 @@ export interface AdminNavSection {
     defaultOpen?: boolean;
 }
 
-/** Priority-based nav structure: Core (daily) → Operations → Financial → Insights → System */
+/** Task-based nav structure with priority ordering */
 export const adminNavSections: AdminNavSection[] = [
     {
-        id: 'core',
-        title: 'Core',
+        id: 'overview',
+        title: 'Overview & Monitoring',
         defaultOpen: true,
         items: [
             { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
             { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
             { label: 'Shipments', href: '/admin/shipments', icon: Package },
-            { label: 'Sellers', href: '/admin/sellers', icon: Users },
             { label: 'Support Tickets', href: '/admin/support', icon: Headphones },
         ],
     },
     {
-        id: 'operations',
-        title: 'Operations',
+        id: 'sellers',
+        title: 'Seller Management',
         defaultOpen: true,
         items: [
-            { label: 'Returns', href: '/admin/returns', icon: RotateCcw },
-            { label: 'NDR', href: '/admin/ndr', icon: PackageX },
-            { label: 'Warehouses', href: '/admin/warehouses', icon: Building2 },
-            { label: 'Weight Discrepancy', href: '/admin/weight', icon: ScaleIcon },
-            { label: 'Weight Disputes', href: '/admin/disputes/weight', icon: ScaleIcon },
-            { label: 'Courier Partners', href: '/admin/couriers', icon: Truck },
-            { label: 'Courier Services', href: '/admin/couriers/services', icon: Settings },
-            { label: 'Rate Cards', href: '/admin/rate-cards', icon: CreditCard },
-            { label: 'Courier Policies', href: '/admin/courier-policies', icon: UserCog },
-            { label: 'Integrations', href: '/admin/integrations', icon: Plug },
+            { label: 'Sellers', href: '/admin/sellers', icon: Users },
+            { label: 'Companies', href: '/admin/companies', icon: Building2 },
+            { label: 'KYC Verification', href: '/admin/kyc', icon: ShieldCheck },
+            { label: 'Warehouses', href: '/admin/warehouses', icon: Boxes },
         ],
     },
     {
-        id: 'financial',
-        title: 'Financial',
+        id: 'logistics',
+        title: 'Logistics & Couriers',
         defaultOpen: false,
         items: [
-            { label: 'Pricing Studio', href: '/admin/pricing-studio', icon: CreditCard },
+            { label: 'Courier Partners', href: '/admin/couriers', icon: Truck },
+            { label: 'Courier Services', href: '/admin/courier-services', icon: Settings },
+            { label: 'Rate Cards', href: '/admin/rate-cards', icon: CreditCard },
+            { label: 'Courier Assignment', href: '/admin/courier-assignment', icon: UserCog },
+            { label: 'Shipping Zones', href: '/admin/zones', icon: MapPin },
+        ],
+    },
+    {
+        id: 'issues',
+        title: 'Issues & Resolution',
+        defaultOpen: false,
+        items: [
+            { label: 'Returns', href: '/admin/returns', icon: RotateCcw },
+            { label: 'NDR Management', href: '/admin/ndr', icon: PackageX },
+            { label: 'Disputes', href: '/admin/disputes/weight', icon: ScaleIcon },
+        ],
+    },
+    {
+        id: 'finance',
+        title: 'Finance & Revenue',
+        defaultOpen: false,
+        items: [
             { label: 'Financials', href: '/admin/financials', icon: Wallet },
             { label: 'Billing', href: '/admin/billing', icon: Receipt },
-            { label: 'Profit', href: '/admin/profit', icon: BarChart3 },
+            { label: 'Profit Analysis', href: '/admin/profit', icon: BarChart3 },
             { label: 'Commission', href: '/admin/commission', icon: Percent },
             { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
             { label: 'Sales Team', href: '/admin/sales', icon: Users },
         ],
     },
     {
-        id: 'insights',
-        title: 'Insights',
+        id: 'analytics',
+        title: 'Analytics & Insights',
         defaultOpen: false,
         items: [
             { label: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
             { label: 'Intelligence', href: '/admin/intelligence', icon: Sparkles },
-            { label: 'Companies', href: '/admin/companies', icon: Building2 },
-            { label: 'KYC Analytics', href: '/admin/kyc', icon: Boxes },
         ],
     },
     {
         id: 'system',
-        title: 'System',
+        title: 'System & Settings',
         defaultOpen: false,
         items: [
-            { label: 'Zones', href: '/admin/zones', icon: MapPin },
-            { label: 'User Management', href: '/admin/users', icon: UserCog, superAdminOnly: true },
+            { label: 'Integrations', href: '/admin/integrations', icon: Plug },
+            { label: 'Pricing Studio', href: '/admin/pricing-studio', icon: CreditCard },
             { label: 'Settings', href: '/admin/settings', icon: Settings },
             { label: 'System Health', href: '/admin/system-health', icon: Activity },
+            { label: 'User Management', href: '/admin/users', icon: UserCog, superAdminOnly: true },
         ],
     },
 ];
@@ -135,10 +149,12 @@ function SidebarComponent({ onNavigate }: { onNavigate?: () => void }) {
     const navContainerRef = useRef<HTMLDivElement>(null);
 
     const DEFAULT_EXPANDED: Record<string, boolean> = {
-        core: true,
-        operations: true,
-        financial: false,
-        insights: false,
+        overview: true,
+        sellers: true,
+        logistics: false,
+        issues: false,
+        finance: false,
+        analytics: false,
         system: false,
     };
 

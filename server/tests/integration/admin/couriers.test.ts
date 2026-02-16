@@ -1,4 +1,5 @@
 import { CourierService, Integration } from '@/infrastructure/database/mongoose/models';
+import axios from 'axios';
 import v1Routes from '@/presentation/http/routes/v1';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -13,6 +14,9 @@ jest.mock('@/core/application/services/communication/email.service', () => ({
     sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
     sendMagicLinkEmail: jest.fn().mockResolvedValue(true),
 }));
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('Admin Courier Management API', () => {
     let app: express.Express;
@@ -32,6 +36,7 @@ describe('Admin Courier Management API', () => {
     });
 
     afterEach(async () => {
+        jest.clearAllMocks();
         await clearTestDb();
     });
 
@@ -174,6 +179,63 @@ describe('Admin Courier Management API', () => {
                 type: 'courier'
             });
             expect(integration?.settings.baseUrl).toBe('https://api.newvelocity.com');
+        });
+
+        it('should reject Delhivery activation when API token is invalid', async () => {
+            const cookies = await createAdminAndLogin();
+            mockedAxios.get.mockRejectedValue({
+                response: {
+                    status: 401,
+                    data: { detail: 'Invalid token' },
+                },
+            });
+
+            const response = await request(app)
+                .put('/api/v1/admin/couriers/delhivery')
+                .set('Cookie', cookies)
+                .send({
+                    isActive: true,
+                    credentials: { apiKey: 'wrong-token' },
+                });
+
+            expect(response.status).toBe(400);
+            expect(response.body.success).toBe(false);
+            expect(String(response.body.message || '').toLowerCase()).toContain('invalid delhivery api token');
+
+            const integration = await Integration.findOne({
+                companyId: null,
+                type: 'courier',
+                provider: 'delhivery',
+            }).lean();
+            expect(integration).toBeNull();
+        });
+
+        it('should save Delhivery settings when API token is valid', async () => {
+            const cookies = await createAdminAndLogin();
+            mockedAxios.get.mockResolvedValue({
+                data: { delivery_codes: [] },
+            } as any);
+
+            const response = await request(app)
+                .put('/api/v1/admin/couriers/delhivery')
+                .set('Cookie', cookies)
+                .send({
+                    isActive: true,
+                    apiEndpoint: 'https://staging-express.delhivery.com',
+                    credentials: { apiKey: 'valid-token' },
+                });
+
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+
+            const integration = await Integration.findOne({
+                companyId: null,
+                type: 'courier',
+                provider: 'delhivery',
+            });
+            expect(integration).toBeTruthy();
+            expect(integration?.settings?.isActive).toBe(true);
+            expect(integration?.settings?.baseUrl).toBe('https://staging-express.delhivery.com');
         });
     });
 

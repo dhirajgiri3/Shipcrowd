@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/src/components/admin/Sidebar';
 import { Header } from '@/src/components/admin/Header';
+import { AdminQuickActionsFAB } from '@/src/components/admin/AdminQuickActionsFAB';
 import { ThemeProvider } from '@/src/components/shared/ThemeProvider';
 import { ToastProvider } from '@/src/components/ui/feedback/Toast';
 import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
@@ -92,6 +93,7 @@ export function AdminLayoutClient({
                                     {children}
                                 </div>
                             </main>
+                            <AdminQuickActionsFAB />
                         </div>
                     </div>
                 </ToastProvider>

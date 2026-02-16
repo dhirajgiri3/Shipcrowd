@@ -11,11 +11,9 @@ import {
 import { Order } from '@/src/types/domain/order';
 import {
     MoreHorizontal,
-    ExternalLink,
     Truck,
     ArrowUpDown,
     Trash2,
-    Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -132,20 +130,22 @@ export function OrderTable({
                     </TableHeader>
                     <TableBody>
                         <AnimatePresence>
-                            {data.map((order, index) => (
+                            {data.map((order, index) => {
+                                const orderId = order._id ?? (order as { id?: string }).id ?? String(index);
+                                return (
                                 <motion.tr
-                                    key={order._id}
+                                    key={orderId}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ delay: index * 0.05, duration: 0.2 }}
                                     className="group hover:bg-[var(--bg-hover)] transition-colors border-b last:border-0 border-[var(--border-subtle)]"
-                                    onClick={() => handleViewDetails(order._id)} // Entire row clickable
+                                    onClick={() => handleViewDetails(orderId)} // Entire row clickable
                                 >
                                     <TableCell>
                                         <div>
                                             <div className="font-medium text-[var(--text-primary)]">{order.orderNumber}</div>
-                                            <div className="text-xs text-[var(--text-tertiary)]">{format(new Date(order.createdAt), 'MMM d, h:mm a')}</div>
+                                            <div className="text-xs text-[var(--text-tertiary)]">{order.createdAt ? format(new Date(order.createdAt), 'MMM d, h:mm a') : '—'}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -191,7 +191,7 @@ export function OrderTable({
                                     <TableCell onClick={(e) => e.stopPropagation()} className="sticky right-0 z-10 bg-[var(--bg-primary)] group-hover:bg-[var(--bg-hover)] shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)]">
                                         <div className="flex justify-center items-center gap-2 relative">
                                             <ViewActionButton
-                                                onClick={() => handleViewDetails(order._id)}
+                                                onClick={() => handleViewDetails(orderId)}
                                             />
 
                                             {['pending', 'ready_to_ship'].includes(String(order.currentStatus || '').toLowerCase()) && (
@@ -210,44 +210,51 @@ export function OrderTable({
                                                 </Tooltip>
                                             )}
 
-                                            {!['pending', 'ready_to_ship'].includes(String(order.currentStatus || '').toLowerCase()) && (
-                                                <>
-                                                    <button
-                                                        onClick={(e) => toggleDropdown(order._id, e)}
-                                                        className={`p-2 rounded-full transition-colors ${activeDropdown === (order._id) ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'}`}
-                                                    >
-                                                        <MoreHorizontal size={18} />
-                                                    </button>
+                                            {(() => {
+                                                const status = String(order.currentStatus || '').toLowerCase();
+                                                const isDeletable = !['shipped', 'delivered'].includes(status);
+                                                return isDeletable ? (
+                                                    <>
+                                                        <Tooltip content="More actions (Delete)">
+                                                            <button
+                                                                onClick={(e) => toggleDropdown(orderId, e)}
+                                                                className={`p-2 rounded-full transition-colors ${activeDropdown === orderId ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'}`}
+                                                                aria-label="More actions"
+                                                            >
+                                                                <MoreHorizontal size={18} />
+                                                            </button>
+                                                        </Tooltip>
 
-                                                    {/* Custom Dropdown Menu */}
-                                                    {activeDropdown === (order._id) && (
-                                                        <>
-                                                            <div
-                                                                className="fixed inset-0 z-10"
-                                                                onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); }}
-                                                            />
-                                                            <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
-                                                                <div className="py-1">
-                                                                    <button
-                                                                        className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setActiveDropdown(null);
-                                                                            onDelete?.(order._id);
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 size={14} /> Delete Order
-                                                                    </button>
+                                                        {activeDropdown === orderId && (
+                                                            <>
+                                                                <div
+                                                                    className="fixed inset-0 z-10"
+                                                                    onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); }}
+                                                                />
+                                                                <div className="absolute right-0 mt-1 w-48 bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                                                    <div className="py-1">
+                                                                        <button
+                                                                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setActiveDropdown(null);
+                                                                                onDelete?.(order._id ?? (order as { id?: string }).id ?? orderId);
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 size={14} /> Delete Order
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </>
-                                            )}
+                                                            </>
+                                                        )}
+                                                    </>
+                                                ) : null;
+                                            })()}
                                         </div>
                                     </TableCell>
                                 </motion.tr>
-                            ))}
+                            );
+                            })}
                         </AnimatePresence>
                     </TableBody>
                 </Table>

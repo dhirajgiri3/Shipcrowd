@@ -248,6 +248,12 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
         }
 
         if (req.query.carrier) filter.carrier = { $regex: req.query.carrier, $options: 'i' };
+        if (req.query.warehouse) {
+            const warehouseId = String(req.query.warehouse);
+            if (mongoose.Types.ObjectId.isValid(warehouseId)) {
+                filter['pickupDetails.warehouseId'] = new mongoose.Types.ObjectId(warehouseId);
+            }
+        }
         if (req.query.pincode) filter['deliveryDetails.address.postalCode'] = req.query.pincode;
         if (req.query.orderId) {
             const orderId = String(req.query.orderId);

@@ -28,6 +28,7 @@ import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 
 const ORDER_TABS = [
     { key: 'all', label: 'All' },
+    { key: 'pending', label: 'Pending' },
     { key: 'unshipped', label: 'To Ship' },
     { key: 'shipped', label: 'Shipped' },
     { key: 'delivered', label: 'Delivered' },
@@ -59,6 +60,7 @@ export default function OrdersClient() {
     const [searchInput, setSearchInput] = useState(search);
     const debouncedSearch = useDebouncedValue(searchInput, 300);
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(searchParams.get('warehouse') || 'all');
+    const [selectedSource, setSelectedSource] = useState<string>(searchParams.get('source') || 'all');
 
     // -- Hooks --
     const { data: warehousesData } = useAdminWarehouses({ limit: 100 });
@@ -80,6 +82,9 @@ export default function OrdersClient() {
 
         const nextWarehouse = searchParams.get('warehouse') || 'all';
         setSelectedWarehouseId((current) => (current === nextWarehouse ? current : nextWarehouse));
+
+        const nextSource = searchParams.get('source') || 'all';
+        setSelectedSource((current) => (current === nextSource ? current : nextSource));
     }, [searchParams]);
 
     // -- Update URL Helper --
@@ -111,9 +116,10 @@ export default function OrdersClient() {
         sortOrder: order,
         search: debouncedSearch || undefined,
         warehouse: selectedWarehouseId !== 'all' ? selectedWarehouseId : undefined,
+        source: selectedSource !== 'all' ? selectedSource : undefined,
         startDate: startDateIso,
         endDate: endDateIso,
-    }), [page, limit, status, sort, order, debouncedSearch, selectedWarehouseId, startDateIso, endDateIso]);
+    }), [page, limit, status, sort, order, debouncedSearch, selectedWarehouseId, selectedSource, startDateIso, endDateIso]);
 
     // -- Fetch Data --
     const {
@@ -389,6 +395,31 @@ export default function OrdersClient() {
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                         />
+                        <div className="w-full sm:w-auto sm:min-w-[160px]">
+                            <label htmlFor="admin-orders-source-filter" className="sr-only">
+                                Order source filter
+                            </label>
+                            <Select
+                                id="admin-orders-source-filter"
+                                value={selectedSource}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setSelectedSource(value);
+                                    updateUrl({ source: value === 'all' ? null : value, page: 1 });
+                                }}
+                                options={[
+                                    { value: 'all', label: 'All Sources' },
+                                    { value: 'manual', label: 'Manual' },
+                                    { value: 'bulk_import', label: 'Bulk Import' },
+                                    { value: 'api', label: 'REST API' },
+                                    { value: 'shopify', label: 'Shopify' },
+                                    { value: 'woocommerce', label: 'WooCommerce' },
+                                    { value: 'amazon', label: 'Amazon' },
+                                    { value: 'flipkart', label: 'Flipkart' },
+                                ]}
+                                className="h-11 rounded-xl border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                            />
+                        </div>
                         <div className="w-full sm:w-auto sm:min-w-[170px]">
                             <label htmlFor="admin-orders-warehouse-filter" className="sr-only">
                                 Warehouse filter
@@ -606,7 +637,7 @@ export default function OrdersClient() {
             <ConfirmDialog
                 open={!!deleteTarget}
                 title="Delete order"
-                description="Are you sure you want to delete this order? This action cannot be undone."
+                description="Are you sure you want to delete this order? This action cannot be undone. Orders with active shipments must have the shipment cancelled first."
                 confirmText="Delete"
                 confirmVariant="danger"
                 onCancel={() => setDeleteTarget(null)}
@@ -615,8 +646,10 @@ export default function OrdersClient() {
                     try {
                         await deleteOrderMutation.mutateAsync(deleteTarget);
                         showSuccessToast('Order deleted successfully');
-                    } finally {
                         setDeleteTarget(null);
+                    } catch {
+                        // Error toast shown by handleApiError in useAdminDeleteOrder
+                        // Keep dialog open so user can read error and retry after fixing (e.g. cancel shipment)
                     }
                 }}
             />

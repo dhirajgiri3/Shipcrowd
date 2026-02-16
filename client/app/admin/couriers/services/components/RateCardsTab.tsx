@@ -17,7 +17,11 @@ import {
     useCreateServiceRateCard,
     useUpdateServiceRateCard
 } from '@/src/core/api/hooks/admin';
-import { Save, Plus, Edit2, Coins, ArrowRight, Info, X } from 'lucide-react';
+import {
+    Save, Plus, Edit2, Coins, ArrowRight, Info, X,
+    Settings, Scale, Banknote, Fuel, RotateCcw, SlidersHorizontal
+} from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/src/components/ui/core/Accordion';
 import { Select } from '@/src/components/ui/form/Select';
 
 const cardTypeOptions = [
@@ -617,7 +621,8 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                     </Button>
                 </div>
             ),
-            width: '60px'
+            width: '60px',
+            stickyRight: true
         }
     ];
 
@@ -768,166 +773,207 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
 
                     {/* Form or Table */}
                     {showForm ? (
-                        <Card className="border-[var(--primary-blue)]/30 animate-slide-up">
-                            <CardHeader className="pb-4 border-b border-[var(--border-subtle)]">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <CardTitle className="text-base">
-                                            {editingRateCard ? 'Edit Rate Card' : 'New Rate Card'}
-                                        </CardTitle>
-                                        <CardDescription className="text-xs mt-1">
-                                            Define cost or sell rates for specific zones and weight slabs.
-                                        </CardDescription>
+                        <div className="animate-slide-up space-y-6">
+                            {/* Header Card */}
+                            <Card className="border-[var(--primary-blue)]/30">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            {editingRateCard ? (
+                                                <Edit2 className="h-5 w-5 text-[var(--primary-blue)]" />
+                                            ) : (
+                                                <Plus className="h-5 w-5 text-[var(--primary-blue)]" />
+                                            )}
+                                            <div>
+                                                <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                                                    {editingRateCard ? 'Edit Rate Card' : 'New Rate Card'}
+                                                </h3>
+                                                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                                                    Configure rates, slabs, and rules for {selectedService?.displayName}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={resetRateCardForm}
+                                            className="h-8 w-8 p-0"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={resetRateCardForm}
-                                        className="h-8 w-8 p-0"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-6 pt-6">
-                                {/* Type and Source */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Type
-                                        </label>
-                                        <Select
-                                            value={rateCardForm.cardType}
-                                            onChange={(e) => {
-                                                const nextCardType = e.target.value as RateCardForm['cardType'];
-                                                setRateCardForm({
-                                                    ...rateCardForm,
-                                                    cardType: nextCardType,
-                                                    category:
-                                                        nextCardType === 'cost'
-                                                            ? 'default'
-                                                            : rateCardForm.category,
-                                                });
-                                            }}
-                                            options={cardTypeOptions}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Flow Type
-                                        </label>
-                                        <Select
-                                            value={rateCardForm.flowType}
-                                            onChange={(e) =>
-                                                setRateCardForm({
-                                                    ...rateCardForm,
-                                                    flowType: e.target.value as RateCardForm['flowType'],
-                                                })
-                                            }
-                                            options={flowTypeOptions}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Category
-                                        </label>
-                                        <Select
-                                            value={rateCardForm.category}
-                                            onChange={(e) =>
-                                                setRateCardForm({
-                                                    ...rateCardForm,
-                                                    category: e.target.value as RateCardForm['category'],
-                                                })
-                                            }
-                                            disabled={rateCardForm.cardType === 'cost'}
-                                            options={categoryOptions}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Source Mode
-                                        </label>
-                                        <Select
-                                            value={rateCardForm.sourceMode}
-                                            onChange={(e) => setRateCardForm({
-                                                ...rateCardForm,
-                                                sourceMode: e.target.value as RateCardForm['sourceMode']
-                                            })}
-                                            options={sourceModeOptions}
-                                        />
-                                    </div>
-                                </div>
+                                </CardContent>
+                            </Card>
 
-                                {/* Effective Window */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Effective Start
-                                        </label>
-                                        <Input
-                                            type="date"
-                                            value={rateCardForm.effectiveStartDate}
-                                            onChange={(e) =>
-                                                setRateCardForm({
-                                                    ...rateCardForm,
-                                                    effectiveStartDate: e.target.value,
-                                                })
-                                            }
-                                        />
+                            {/* SECTION 1: Configuration */}
+                            <Card className="border-[var(--border-subtle)]">
+                                <div className="bg-[var(--bg-subtle)] px-6 py-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                        <Settings className="h-4 w-4 text-[var(--primary-blue)]" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Effective End (Optional)
-                                        </label>
-                                        <Input
-                                            type="date"
-                                            value={rateCardForm.effectiveEndDate}
-                                            onChange={(e) =>
-                                                setRateCardForm({
-                                                    ...rateCardForm,
-                                                    effectiveEndDate: e.target.value,
-                                                })
-                                            }
-                                        />
-                                    </div>
+                                    <h4 className="font-semibold text-[var(--text-primary)]">Basic Configuration</h4>
                                 </div>
-
-                                {/* Status and Zone */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Status
-                                        </label>
-                                        <Select
-                                            value={rateCardForm.status}
-                                            onChange={(e) => setRateCardForm({
-                                                ...rateCardForm,
-                                                status: e.target.value as RateCardForm['status']
-                                            })}
-                                            options={statusOptions}
-                                        />
+                                <CardContent className="p-6">
+                                    {/* Type and Source */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Type
+                                            </label>
+                                            <Select
+                                                value={rateCardForm.cardType}
+                                                onChange={(e) => {
+                                                    const nextCardType = e.target.value as RateCardForm['cardType'];
+                                                    setRateCardForm({
+                                                        ...rateCardForm,
+                                                        cardType: nextCardType,
+                                                        category:
+                                                            nextCardType === 'cost'
+                                                                ? 'default'
+                                                                : rateCardForm.category,
+                                                    });
+                                                }}
+                                                options={cardTypeOptions}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Flow Type
+                                            </label>
+                                            <Select
+                                                value={rateCardForm.flowType}
+                                                onChange={(e) =>
+                                                    setRateCardForm({
+                                                        ...rateCardForm,
+                                                        flowType: e.target.value as RateCardForm['flowType'],
+                                                    })
+                                                }
+                                                options={flowTypeOptions}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Category
+                                            </label>
+                                            <Select
+                                                value={rateCardForm.category}
+                                                onChange={(e) =>
+                                                    setRateCardForm({
+                                                        ...rateCardForm,
+                                                        category: e.target.value as RateCardForm['category'],
+                                                    })
+                                                }
+                                                disabled={rateCardForm.cardType === 'cost'}
+                                                options={categoryOptions}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Source Mode
+                                            </label>
+                                            <Select
+                                                value={rateCardForm.sourceMode}
+                                                onChange={(e) => setRateCardForm({
+                                                    ...rateCardForm,
+                                                    sourceMode: e.target.value as RateCardForm['sourceMode']
+                                                })}
+                                                options={sourceModeOptions}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="col-span-2 space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                            Zone Key
-                                        </label>
+
+                                    {/* Effective Window */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Effective Start
+                                            </label>
+                                            <Input
+                                                type="date"
+                                                value={rateCardForm.effectiveStartDate}
+                                                onChange={(e) =>
+                                                    setRateCardForm({
+                                                        ...rateCardForm,
+                                                        effectiveStartDate: e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Effective End (Optional)
+                                            </label>
+                                            <Input
+                                                type="date"
+                                                value={rateCardForm.effectiveEndDate}
+                                                onChange={(e) =>
+                                                    setRateCardForm({
+                                                        ...rateCardForm,
+                                                        effectiveEndDate: e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Status and Zone */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Status
+                                            </label>
+                                            <Select
+                                                value={rateCardForm.status}
+                                                onChange={(e) => setRateCardForm({
+                                                    ...rateCardForm,
+                                                    status: e.target.value as RateCardForm['status']
+                                                })}
+                                                options={statusOptions}
+                                            />
+                                        </div>
+                                        <div className="col-span-2 space-y-2">
+                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
+                                                Zone Key
+                                            </label>
+                                            <Input
+                                                value={rateCardForm.zoneKey}
+                                                onChange={(e) => setRateCardForm({
+                                                    ...rateCardForm,
+                                                    zoneKey: e.target.value
+                                                })}
+                                                placeholder="e.g. zoneD"
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* SECTION 2: Pricing Rules */}
+                            <Card className="border-[var(--border-subtle)]">
+                                <div className="bg-[var(--bg-subtle)] px-6 py-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                        <Coins className="h-4 w-4 text-emerald-600" />
+                                    </div>
+                                    <h4 className="font-semibold text-[var(--text-primary)]">Pricing Rules</h4>
+                                </div>
+                                <CardContent className="p-6 space-y-6">
+                                    <div className="max-w-md space-y-2">
+                                        <label className="text-sm font-medium text-[var(--text-primary)]">Zone Key</label>
                                         <Input
                                             value={rateCardForm.zoneKey}
-                                            onChange={(e) => setRateCardForm({
-                                                ...rateCardForm,
-                                                zoneKey: e.target.value
-                                            })}
-                                            placeholder="e.g. zoneD"
+                                            onChange={(e) => setRateCardForm({ ...rateCardForm, zoneKey: e.target.value })}
+                                            placeholder="e.g. zoneD, local, metro"
                                         />
+                                        <p className="text-xs text-[var(--text-muted)]">
+                                            Case-sensitive zone identifier matching your zone map
+                                        </p>
                                     </div>
-                                </div>
 
-                                {/* Weight Slab & Charges */}
-                                <Card className="bg-[var(--bg-secondary)] border-[var(--border-subtle)]">
-                                    <CardContent className="p-4 space-y-3">
-                                        <h4 className="text-sm font-medium text-[var(--text-primary)]">
-                                            Weight Slab & Charges
-                                        </h4>
+                                    <div className="bg-[var(--bg-secondary)] p-5 rounded-lg border border-[var(--border-subtle)]">
+                                        <h5 className="text-sm font-medium mb-4 flex items-center gap-2 text-[var(--text-primary)]">
+                                            <Scale className="h-4 w-4 text-[var(--text-secondary)]" />
+                                            Weight Slabs & Base Rates
+                                        </h5>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
@@ -990,295 +1036,186 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                                 />
                                             </div>
                                         </div>
-                                    </CardContent>
-                                </Card>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                                {/* COD Rule */}
-                                <Card className="bg-[var(--bg-secondary)] border-[var(--border-subtle)]">
-                                    <CardContent className="p-4 space-y-3">
-                                        <h4 className="text-sm font-medium text-[var(--text-primary)]">
-                                            COD Rule
-                                        </h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                    Rule Type
-                                                </label>
-                                                <Select
-                                                    value={rateCardForm.codRuleType}
-                                                    onChange={(e) =>
-                                                        setRateCardForm({
-                                                            ...rateCardForm,
-                                                            codRuleType: e.target.value as RateCardForm['codRuleType'],
-                                                        })
-                                                    }
-                                                    options={codRuleTypeOptions}
-                                                />
-                                            </div>
-                                            {rateCardForm.codRuleType === 'slab' && (
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Slab Basis
-                                                    </label>
-                                                    <Select
-                                                        value={rateCardForm.codSlabBasis}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                codSlabBasis: e.target.value as RateCardForm['codSlabBasis'],
-                                                            })
-                                                        }
-                                                        options={codBasisOptions}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {rateCardForm.codRuleType === 'flat' && (
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                    Flat Charge (INR)
-                                                </label>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    value={rateCardForm.codFlatCharge}
-                                                    onChange={(e) =>
-                                                        setRateCardForm({
-                                                            ...rateCardForm,
-                                                            codFlatCharge: e.target.value,
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                        )}
-
-                                        {rateCardForm.codRuleType === 'percentage' && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Percentage
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        value={rateCardForm.codPercentage}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                codPercentage: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Min Charge
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        value={rateCardForm.codMinCharge}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                codMinCharge: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Max Charge
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        value={rateCardForm.codMaxCharge}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                codMaxCharge: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {rateCardForm.codRuleType === 'slab' && (
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                    Slabs JSON
-                                                </label>
-                                                <textarea
-                                                    value={rateCardForm.codSlabsJson}
-                                                    onChange={(e) =>
-                                                        setRateCardForm({
-                                                            ...rateCardForm,
-                                                            codSlabsJson: e.target.value,
-                                                        })
-                                                    }
-                                                    className="min-h-[130px] w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-xs font-mono text-[var(--text-primary)]"
-                                                    placeholder='[{"min":0,"max":1000,"value":30,"type":"flat"}]'
-                                                />
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-
-                                {/* Fuel and RTO */}
-                                <Card className="bg-[var(--bg-secondary)] border-[var(--border-subtle)]">
-                                    <CardContent className="p-4 space-y-4">
-                                        <h4 className="text-sm font-medium text-[var(--text-primary)]">
-                                            Fuel & RTO
-                                        </h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                    Fuel %
-                                                </label>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={rateCardForm.fuelPercentage}
-                                                    onChange={(e) =>
-                                                        setRateCardForm({
-                                                            ...rateCardForm,
-                                                            fuelPercentage: e.target.value,
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                    Fuel Base
-                                                </label>
-                                                <Select
-                                                    value={rateCardForm.fuelBase}
-                                                    onChange={(e) =>
-                                                        setRateCardForm({
-                                                            ...rateCardForm,
-                                                            fuelBase: e.target.value as RateCardForm['fuelBase'],
-                                                        })
-                                                    }
-                                                    options={fuelBaseOptions}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                    RTO Rule
-                                                </label>
-                                                <Select
-                                                    value={rateCardForm.rtoRuleType}
-                                                    onChange={(e) =>
-                                                        setRateCardForm({
-                                                            ...rateCardForm,
-                                                            rtoRuleType: e.target.value as RateCardForm['rtoRuleType'],
-                                                        })
-                                                    }
-                                                    options={rtoRuleTypeOptions}
-                                                />
-                                            </div>
-                                            {rateCardForm.rtoRuleType === 'flat' && (
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Flat Amount
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        value={rateCardForm.rtoFlatAmount}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                rtoFlatAmount: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {rateCardForm.rtoRuleType === 'percentage' && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Percentage
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        value={rateCardForm.rtoPercentage}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                rtoPercentage: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Min Charge
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        value={rateCardForm.rtoMinCharge}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                rtoMinCharge: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">
-                                                        Max Charge
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        value={rateCardForm.rtoMaxCharge}
-                                                        onChange={(e) =>
-                                                            setRateCardForm({
-                                                                ...rateCardForm,
-                                                                rtoMaxCharge: e.target.value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-
-                                {/* Actions */}
-                                <div className="flex justify-end gap-3 pt-2">
-                                    <Button variant="outline" onClick={resetRateCardForm}>
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        onClick={saveRateCard}
-                                        disabled={createRateCardMutation.isPending || updateRateCardMutation.isPending}
-                                    >
-                                        {(createRateCardMutation.isPending || updateRateCardMutation.isPending) && (
-                                            <div className="h-4 w-4 mr-2 border-2 border-[var(--text-inverse)] border-t-transparent rounded-full animate-spin" />
-                                        )}
-                                        <Save className="h-4 w-4 mr-2" />
-                                        {editingRateCard ? 'Update' : 'Save'} Rate Card
-                                    </Button>
+                            {/* SECTION 3: Advanced Rules (Accordion) */}
+                            <Card className="border-[var(--border-subtle)]">
+                                <div className="bg-[var(--bg-subtle)] px-6 py-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                                        <SlidersHorizontal className="h-4 w-4 text-indigo-600" />
+                                    </div>
+                                    <h4 className="font-semibold text-[var(--text-primary)]">Advanced Rules</h4>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <CardContent className="p-0">
+                                    <Accordion type="multiple" className="divide-y divide-[var(--border-subtle)]">
+                                        {/* COD Rules Accordion */}
+                                        <AccordionItem value="cod" className="border-0">
+                                            <AccordionTrigger className="px-6 py-4 hover:bg-[var(--bg-subtle)]">
+                                                <div className="flex items-center gap-3 flex-1">
+                                                    <Banknote className="h-4 w-4 text-[var(--text-secondary)]" />
+                                                    <span className="text-sm font-medium">COD Surcharges</span>
+                                                    {rateCardForm.codRuleType !== 'none' && (
+                                                        <Badge variant="primary" size="sm" className="ml-auto mr-2 uppercase text-[10px]">
+                                                            {rateCardForm.codRuleType}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="px-6 pb-6 pt-2 bg-[var(--bg-subtle)]/30">
+                                                <div className="space-y-4 max-w-3xl">
+                                                    <div className="w-full sm:w-1/2">
+                                                        <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Rule Type</label>
+                                                        <Select
+                                                            value={rateCardForm.codRuleType}
+                                                            onChange={(e) => setRateCardForm({ ...rateCardForm, codRuleType: e.target.value as RateCardForm['codRuleType'] })}
+                                                            options={codRuleTypeOptions}
+                                                        />
+                                                    </div>
+
+                                                    {rateCardForm.codRuleType === 'flat' && (
+                                                        <div className="w-full sm:w-1/2">
+                                                            <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Flat Charge (₹)</label>
+                                                            <Input type="number" min="0" value={rateCardForm.codFlatCharge} onChange={(e) => setRateCardForm({ ...rateCardForm, codFlatCharge: e.target.value })} />
+                                                        </div>
+                                                    )}
+
+                                                    {rateCardForm.codRuleType === 'percentage' && (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                            <div>
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Percentage (%)</label>
+                                                                <Input type="number" min="0" step="0.01" value={rateCardForm.codPercentage} onChange={(e) => setRateCardForm({ ...rateCardForm, codPercentage: e.target.value })} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Min Charge (₹)</label>
+                                                                <Input type="number" min="0" value={rateCardForm.codMinCharge} onChange={(e) => setRateCardForm({ ...rateCardForm, codMinCharge: e.target.value })} placeholder="Optional" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Max Charge (₹)</label>
+                                                                <Input type="number" min="0" value={rateCardForm.codMaxCharge} onChange={(e) => setRateCardForm({ ...rateCardForm, codMaxCharge: e.target.value })} placeholder="Optional" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {rateCardForm.codRuleType === 'slab' && (
+                                                        <div className="space-y-3">
+                                                            <div className="w-full sm:w-1/2">
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Slab Basis</label>
+                                                                <Select value={rateCardForm.codSlabBasis} onChange={(e) => setRateCardForm({ ...rateCardForm, codSlabBasis: e.target.value as RateCardForm['codSlabBasis'] })} options={codBasisOptions} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Slab Configuration (JSON)</label>
+                                                                <textarea
+                                                                    className="w-full h-32 p-3 rounded-md bg-[var(--bg-primary)] border border-[var(--border-default)] text-xs font-mono focus:ring-2 focus:ring-[var(--primary-blue)] focus:outline-none text-[var(--text-primary)]"
+                                                                    value={rateCardForm.codSlabsJson}
+                                                                    onChange={(e) => setRateCardForm({ ...rateCardForm, codSlabsJson: e.target.value })}
+                                                                    placeholder='[{"min":0,"max":1000,"value":30,"type":"flat"}]'
+                                                                />
+                                                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                                                    Format: {`[{ "min": 0, "max": 1000, "value": 30, "type": "flat" }]`}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+
+                                        {/* Fuel Surcharge Accordion */}
+                                        <AccordionItem value="fuel" className="border-0">
+                                            <AccordionTrigger className="px-6 py-4 hover:bg-[var(--bg-subtle)]">
+                                                <div className="flex items-center gap-3 flex-1">
+                                                    <Fuel className="h-4 w-4 text-[var(--text-secondary)]" />
+                                                    <span className="text-sm font-medium">Fuel Surcharge</span>
+                                                    {Number(rateCardForm.fuelPercentage) > 0 && (
+                                                        <Badge variant="primary" size="sm" className="ml-auto mr-2">
+                                                            {rateCardForm.fuelPercentage}%
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="px-6 pb-6 pt-2 bg-[var(--bg-subtle)]/30">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+                                                    <div>
+                                                        <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Surcharge %</label>
+                                                        <Input type="number" min="0" step="0.01" value={rateCardForm.fuelPercentage} onChange={(e) => setRateCardForm({ ...rateCardForm, fuelPercentage: e.target.value })} />
+                                                        <p className="text-xs text-[var(--text-muted)] mt-1">Applied as percentage of freight</p>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Applied On</label>
+                                                        <Select value={rateCardForm.fuelBase} onChange={(e) => setRateCardForm({ ...rateCardForm, fuelBase: e.target.value as RateCardForm['fuelBase'] })} options={fuelBaseOptions} />
+                                                    </div>
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+
+                                        {/* RTO Rules Accordion */}
+                                        <AccordionItem value="rto" className="border-0">
+                                            <AccordionTrigger className="px-6 py-4 hover:bg-[var(--bg-subtle)]">
+                                                <div className="flex items-center gap-3 flex-1">
+                                                    <RotateCcw className="h-4 w-4 text-[var(--text-secondary)]" />
+                                                    <span className="text-sm font-medium">RTO Returns</span>
+                                                    <Badge variant="secondary" size="sm" className="ml-auto mr-2 text-[10px] uppercase">
+                                                        {rateCardForm.rtoRuleType.replace('_', ' ')}
+                                                    </Badge>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="px-6 pb-6 pt-2 bg-[var(--bg-subtle)]/30">
+                                                <div className="space-y-4 max-w-3xl">
+                                                    <div className="w-full sm:w-1/2">
+                                                        <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Rule Type</label>
+                                                        <Select value={rateCardForm.rtoRuleType} onChange={(e) => setRateCardForm({ ...rateCardForm, rtoRuleType: e.target.value as RateCardForm['rtoRuleType'] })} options={rtoRuleTypeOptions} />
+                                                    </div>
+
+                                                    {rateCardForm.rtoRuleType === 'flat' && (
+                                                        <div className="w-full sm:w-1/2">
+                                                            <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Flat RTO Charge (₹)</label>
+                                                            <Input type="number" min="0" value={rateCardForm.rtoFlatAmount} onChange={(e) => setRateCardForm({ ...rateCardForm, rtoFlatAmount: e.target.value })} />
+                                                        </div>
+                                                    )}
+
+                                                    {rateCardForm.rtoRuleType === 'percentage' && (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                            <div>
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">% of Forward</label>
+                                                                <Input type="number" min="0" step="0.01" value={rateCardForm.rtoPercentage} onChange={(e) => setRateCardForm({ ...rateCardForm, rtoPercentage: e.target.value })} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Min Charge (₹)</label>
+                                                                <Input type="number" min="0" value={rateCardForm.rtoMinCharge} onChange={(e) => setRateCardForm({ ...rateCardForm, rtoMinCharge: e.target.value })} placeholder="Optional" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-medium text-[var(--text-primary)] mb-1.5 block">Max Charge (₹)</label>
+                                                                <Input type="number" min="0" value={rateCardForm.rtoMaxCharge} onChange={(e) => setRateCardForm({ ...rateCardForm, rtoMaxCharge: e.target.value })} placeholder="Optional" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                </CardContent>
+                            </Card>
+
+
+                            {/* Actions */}
+                            <div className="flex justify-end gap-3 pt-2">
+                                <Button variant="outline" onClick={resetRateCardForm}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={saveRateCard}
+                                    disabled={createRateCardMutation.isPending || updateRateCardMutation.isPending}
+                                >
+                                    {(createRateCardMutation.isPending || updateRateCardMutation.isPending) && (
+                                        <div className="h-4 w-4 mr-2 border-2 border-[var(--text-inverse)] border-t-transparent rounded-full animate-spin" />
+                                    )}
+                                    <Save className="h-4 w-4 mr-2" />
+                                    {editingRateCard ? 'Update' : 'Save'} Rate Card
+                                </Button>
+                            </div>
+                        </div>
                     ) : (
                         <Card className="border-[var(--border-default)] min-h-[400px]">
                             {!selectedServiceId ? (

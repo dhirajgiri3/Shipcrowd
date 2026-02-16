@@ -2,8 +2,9 @@ import { NextFunction, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import BookFromQuoteService from '../../../../core/application/services/shipping/book-from-quote.service';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
+import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
 import { Order, User } from '../../../../infrastructure/database/mongoose/models';
-import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import {
     guardChecks,
@@ -43,6 +44,7 @@ void auth;
             warehouse: req.query.warehouse,
             phone: req.query.phone,
             companyId: req.query.companyId, // Admin can filter by specific company
+            source: req.query.source, // Order source: manual, shopify, woocommerce, amazon, flipkart, api, bulk_import
         };
 
         // Admin can see all orders (pass null for companyId to service)
@@ -301,8 +303,21 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
             throw new AppError(reason || 'Cannot delete order', 'CANNOT_DELETE_ORDER', 400);
         }
 
+        const hasActive = await ShipmentService.hasActiveShipment(order._id as mongoose.Types.ObjectId);
+        if (hasActive) {
+            throw new ConflictError(
+                'Cannot delete order: An active shipment exists. Cancel the shipment first, then delete the order.',
+                ErrorCode.BIZ_SHIPMENT_EXISTS
+            );
+        }
+
         order.isDeleted = true;
         await order.save();
+
+        const companyId = String(order.companyId);
+        await OrderService.getInstance().invalidateOrderListsForCompany(companyId);
+        await OrderService.getInstance().invalidateOrderDetail(orderId);
+
         await createAuditLog(
             auth.userId,
             auth.companyId || String(order.companyId),

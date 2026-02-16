@@ -50,6 +50,7 @@ export interface ShipmentFilters {
     orderId?: string;
     status?: string;
     carrier?: string;
+    warehouse?: string;
     search?: string;
     sortBy?: string;
     startDate?: string;

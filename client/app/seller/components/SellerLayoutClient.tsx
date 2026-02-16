@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Sidebar } from '@/src/components/seller/layout/Sidebar';
 import { Header } from '@/src/components/seller/layout/Header';
+import { QuickActionsFAB } from '@/src/components/seller/dashboard/QuickActionsFAB';
 import { ThemeProvider } from '@/src/components/shared/ThemeProvider';
 import { ToastProvider } from '@/src/components/ui/feedback/Toast';
 import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
@@ -107,6 +108,7 @@ export function SellerLayoutClient({
                                     {children}
                                 </div>
                             </main>
+                            <QuickActionsFAB />
                         </div>
                     </div>
                 </ToastProvider>
