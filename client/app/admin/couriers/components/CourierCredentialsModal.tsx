@@ -68,6 +68,12 @@ export function CourierCredentialsModal({ isOpen, onClose, courier }: CourierCre
     const isDelhivery = provider === 'delhivery';
     const isEkart = provider === 'ekart';
     const hasSavedCredentials = Boolean((courier as Courier | null)?.credentialsConfigured);
+    const integrationIsActive = (() => {
+        const detail = courier as (Courier & { isActive?: boolean }) | null;
+        if (typeof detail?.isActive === 'boolean') return detail.isActive;
+        const list = courier as (CourierListItem & { status?: 'active' | 'inactive' }) | null;
+        return list?.status === 'active';
+    })();
 
     useEffect(() => {
         if (!isOpen || !courier) return;
@@ -144,9 +150,13 @@ export function CourierCredentialsModal({ isOpen, onClose, courier }: CourierCre
                             <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 flex items-start gap-3">
                                 <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                                 <div className="space-y-1">
-                                    <h4 className="text-sm font-medium text-emerald-900 dark:text-emerald-100">Credentials Configured</h4>
+                                    <h4 className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
+                                        {integrationIsActive ? 'Credentials Configured' : 'Credentials Saved (Inactive)'}
+                                    </h4>
                                     <p className="text-sm text-emerald-700 dark:text-emerald-300/80 leading-relaxed">
-                                        Secure credentials are saved. Leave fields blank to keep existing values, or enter new ones to rotate keys.
+                                        {integrationIsActive
+                                            ? 'Secure credentials are saved. Leave fields blank to keep existing values, or enter new ones to rotate keys.'
+                                            : 'Secure credentials are saved, but this integration is currently inactive. Activating will still require valid endpoint and credentials.'}
                                     </p>
                                 </div>
                             </div>
@@ -332,4 +342,3 @@ export function CourierCredentialsModal({ isOpen, onClose, courier }: CourierCre
         </Dialog>
     );
 }
-

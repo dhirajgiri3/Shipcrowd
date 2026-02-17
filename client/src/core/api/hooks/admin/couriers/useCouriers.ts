@@ -123,7 +123,7 @@ export const useUpdateCourier = (options?: UseMutationOptions<Courier, ApiError,
             showSuccessToast('Courier updated successfully');
         },
         onError: (error) => handleApiError(error),
-        retry: RETRY_CONFIG.DEFAULT,
+        retry: RETRY_CONFIG.NO_RETRY,
         ...options,
     });
 };
@@ -147,7 +147,7 @@ export const useToggleCourierStatus = (options?: UseMutationOptions<Courier, Api
             showSuccessToast(`Courier ${data.isActive ? 'activated' : 'deactivated'} successfully`);
         },
         onError: (error) => handleApiError(error),
-        retry: RETRY_CONFIG.DEFAULT,
+        retry: RETRY_CONFIG.NO_RETRY,
         ...options,
     });
 };

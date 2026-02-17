@@ -69,10 +69,9 @@ export function handleApiError(error: unknown | ApiError, fallbackMessage = ERRO
     };
 
     const debugMessage = extractMessage(error) || fallbackMessage;
-    console.error('API Error:', {
-        message: debugMessage,
-        raw: error,
-    });
+    if (process.env.NODE_ENV === 'development') {
+        console.warn('API Error:', debugMessage);
+    }
 
     // 1. Handle normalized ApiError from our API client
     if (error && typeof error === 'object' && 'code' in error && 'message' in error) {

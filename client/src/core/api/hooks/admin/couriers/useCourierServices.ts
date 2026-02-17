@@ -30,19 +30,52 @@ export interface CourierServiceItem {
 interface CourierServiceListResponse {
     success: boolean;
     data: CourierServiceItem[];
+    pagination?: {
+        total: number;
+        page: number;
+        limit: number;
+        pages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+    };
 }
 
 export const useCourierServices = (filters?: Record<string, any>, options?: UseQueryOptions<CourierServiceItem[], ApiError>) => {
     return useQuery<CourierServiceItem[], ApiError>({
         queryKey: queryKeys.courierServices.list(filters),
         queryFn: async () => {
-            const response = await apiClient.get<CourierServiceListResponse>('/admin/courier-services', { params: filters });
+            const response = await apiClient.get<CourierServiceListResponse>('/admin/courier-services', {
+                params: { limit: 100, ...filters },
+            });
             return response.data.data || [];
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
         refetchOnWindowFocus: false, // Don't refetch when user switches tabs
         refetchOnReconnect: true,    // Do refetch after network restore
+        ...options,
+    });
+};
+
+export const useCourierServicesList = (
+    filters?: Record<string, any>,
+    options?: UseQueryOptions<{ data: CourierServiceItem[]; pagination?: CourierServiceListResponse['pagination'] }, ApiError>
+) => {
+    return useQuery<{ data: CourierServiceItem[]; pagination?: CourierServiceListResponse['pagination'] }, ApiError>({
+        queryKey: [...queryKeys.courierServices.list(filters), 'paginated'],
+        queryFn: async () => {
+            const response = await apiClient.get<CourierServiceListResponse>('/admin/courier-services', {
+                params: { limit: 20, ...filters },
+            });
+            return {
+                data: response.data.data || [],
+                pagination: response.data.pagination,
+            };
+        },
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
         ...options,
     });
 };
@@ -172,6 +205,7 @@ export const useSyncProviderServices = (options?: UseMutationOptions<any, ApiErr
             showSuccessToast('Provider services synced');
         },
         onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.NO_RETRY,
         ...options,
     });
 };

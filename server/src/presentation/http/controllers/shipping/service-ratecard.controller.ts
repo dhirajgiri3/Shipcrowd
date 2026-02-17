@@ -162,16 +162,39 @@ export const listServiceRateCards = async (req: Request, res: Response, next: Ne
         const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
         const skip = (page - 1) * limit;
 
-        const query: any = { isDeleted: false };
+        const includeDeleted = String(req.query.includeDeleted || 'false').toLowerCase() === 'true';
+        const query: any = { isDeleted: includeDeleted ? { $in: [false, true] } : false };
         query.companyId = companyScope;
         if (req.query.serviceId) query.serviceId = req.query.serviceId;
         if (req.query.cardType) query.cardType = req.query.cardType;
         if (req.query.flowType) query.flowType = req.query.flowType;
         if (req.query.category) query.category = req.query.category;
         if (req.query.status) query.status = req.query.status;
+        if (req.query.search) {
+            const search = String(req.query.search).trim();
+            if (search) {
+                query.$or = [
+                    { sourceMode: { $regex: search, $options: 'i' } },
+                    { 'zoneRules.zoneKey': { $regex: search, $options: 'i' } },
+                ];
+            }
+        }
+
+        const sortBy = String(req.query.sortBy || 'createdAt');
+        const sortOrder = String(req.query.sortOrder || 'desc').toLowerCase() === 'asc' ? 1 : -1;
+        const sortableFields = new Set([
+            'createdAt',
+            'updatedAt',
+            'status',
+            'cardType',
+            'flowType',
+            'sourceMode',
+        ]);
+        const sortField = sortableFields.has(sortBy) ? sortBy : 'createdAt';
+        const sortQuery = { [sortField]: sortOrder } as Record<string, 1 | -1>;
 
         const [items, total] = await Promise.all([
-            ServiceRateCard.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            ServiceRateCard.find(query).sort(sortQuery).skip(skip).limit(limit).lean(),
             ServiceRateCard.countDocuments(query),
         ]);
 
@@ -316,7 +339,10 @@ export const updateServiceRateCard = async (req: Request, res: Response, next: N
                 companyId: targetCompanyId,
                 isDeleted: false,
             },
-            { $set: validation.data },
+            {
+                $set: validation.data,
+                $inc: { 'metadata.version': 1 },
+            },
             { new: true }
         ).lean();
 
@@ -359,6 +385,7 @@ export const importServiceRateCard = async (req: Request, res: Response, next: N
                     'metadata.importedAt': new Date(),
                     'metadata.importedFrom': metadata?.importedFrom || 'manual',
                 },
+                $inc: { 'metadata.version': 1 },
             },
             { new: true }
         ).lean();
@@ -458,6 +485,109 @@ export const simulateServiceRateCard = async (req: Request, res: Response, next:
     }
 };
 
+export const deleteServiceRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const admin = isPlatformAdmin(req.user ?? {});
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
+
+        const deleted = await ServiceRateCard.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                companyId: targetCompanyId,
+                isDeleted: false,
+            },
+            {
+                $set: { isDeleted: true, status: 'inactive' },
+                $inc: { 'metadata.version': 1 },
+            },
+            { new: true }
+        ).lean();
+
+        if (!deleted) {
+            throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
+        }
+
+        sendSuccess(res, deleted, 'Service rate card deleted');
+    } catch (error) {
+        logger.error('Error deleting service rate card:', error);
+        next(error);
+    }
+};
+
+export const restoreServiceRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const admin = isPlatformAdmin(req.user ?? {});
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
+
+        const restored = await ServiceRateCard.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                companyId: targetCompanyId,
+                isDeleted: true,
+            },
+            {
+                $set: { isDeleted: false },
+                $inc: { 'metadata.version': 1 },
+            },
+            { new: true }
+        ).lean();
+
+        if (!restored) {
+            throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
+        }
+
+        sendSuccess(res, restored, 'Service rate card restored');
+    } catch (error) {
+        logger.error('Error restoring service rate card:', error);
+        next(error);
+    }
+};
+
+export const cloneServiceRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const admin = isPlatformAdmin(req.user ?? {});
+        const targetCompanyId = resolveRateCardScope(req, admin, auth.companyId);
+
+        const source = await ServiceRateCard.findOne({
+            _id: req.params.id,
+            companyId: targetCompanyId,
+            isDeleted: false,
+        }).lean();
+
+        if (!source) {
+            throw new NotFoundError('Service rate card', ErrorCode.RES_NOT_FOUND);
+        }
+
+        const now = new Date();
+        const clonePayload: any = {
+            ...source,
+            _id: undefined,
+            isDeleted: false,
+            status: 'draft',
+            effectiveDates: {
+                startDate: now,
+                endDate: source.effectiveDates?.endDate,
+            },
+            metadata: {
+                version: 1,
+                importedFrom: 'clone',
+                importedAt: now,
+            },
+            createdAt: undefined,
+            updatedAt: undefined,
+        };
+
+        const cloned = await ServiceRateCard.create(clonePayload);
+        sendCreated(res, cloned, 'Service rate card cloned');
+    } catch (error) {
+        logger.error('Error cloning service rate card:', error);
+        next(error);
+    }
+};
+
 export default {
     listServiceRateCards,
     createServiceRateCard,
@@ -465,4 +595,7 @@ export default {
     updateServiceRateCard,
     importServiceRateCard,
     simulateServiceRateCard,
+    deleteServiceRateCard,
+    restoreServiceRateCard,
+    cloneServiceRateCard,
 };

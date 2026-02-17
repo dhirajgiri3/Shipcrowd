@@ -36,11 +36,22 @@ export const CACHE_TIMES = {
   },
 };
 
+const isClientError = (error: unknown): boolean => {
+  const status = Number((error as any)?.response?.status || 0);
+  if (status >= 400 && status < 500) return true;
+
+  const code = String((error as any)?.code || '').toUpperCase();
+  return /^HTTP_4\d\d$/.test(code);
+};
+
 /**
  * Retry configuration for different error types
  */
 export const RETRY_CONFIG = {
-  DEFAULT: 1,
+  DEFAULT: (failureCount: number, error: unknown) => {
+    if (isClientError(error)) return false;
+    return failureCount < 1;
+  },
   AGGRESSIVE: 3,
   NO_RETRY: 0,
 };

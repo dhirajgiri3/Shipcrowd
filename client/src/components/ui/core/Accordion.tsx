@@ -120,6 +120,8 @@ export function AccordionTrigger({
         <button
             type="button"
             onClick={() => value && toggle(value)}
+            aria-expanded={isOpen}
+            aria-controls={value ? `accordion-content-${value}` : undefined}
             className={cn(
                 "flex flex-1 items-center justify-between w-full py-4 px-4 text-sm font-medium transition-all hover:bg-[var(--bg-subtle)] text-start",
                 isOpen && "border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]",
@@ -160,6 +162,8 @@ export function AccordionContent({
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
+                    id={value ? `accordion-content-${value}` : undefined}
+                    role="region"
                 >
                     <div className={cn("px-4 py-4 pt-4", className)}>{children}</div>
                 </motion.div>

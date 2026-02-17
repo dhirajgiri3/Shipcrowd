@@ -49,4 +49,25 @@ router.post(
     asyncHandler(serviceRateCardController.simulateServiceRateCard)
 );
 
+router.post(
+    '/:id/clone',
+    authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(serviceRateCardController.cloneServiceRateCard)
+);
+
+router.post(
+    '/:id/restore',
+    authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(serviceRateCardController.restoreServiceRateCard)
+);
+
+router.delete(
+    '/:id',
+    authenticate,
+    requireAccess({ roles: ['admin', 'super_admin'], tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(serviceRateCardController.deleteServiceRateCard)
+);
+
 export default router;

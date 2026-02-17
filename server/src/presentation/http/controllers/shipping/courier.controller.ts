@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import axios from 'axios';
 import CourierProviderRegistry, {
     CanonicalCourierProvider,
 } from '../../../../core/application/services/courier/courier-provider-registry';
+import { validateCourierCredentialsOrThrow } from '../../../../core/application/services/courier/courier-credentials.validator';
 import { CourierFactory } from '../../../../core/application/services/courier/courier.factory';
 import {
     CourierService,
@@ -13,7 +13,7 @@ import {
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import asyncHandler from '../../../../shared/utils/asyncHandler';
 import { parseQueryDateRange } from '../../../../shared/utils/dateRange';
-import { decryptData, encryptData } from '../../../../shared/utils/encryption';
+import { encryptData } from '../../../../shared/utils/encryption';
 
 const SUPPORTED_PROVIDERS = CourierProviderRegistry.getSupportedProviders();
 type SupportedProvider = CanonicalCourierProvider;
@@ -31,13 +31,6 @@ const DELIVERED_SHIPMENT_STATUSES = ['delivered', 'DELIVERED'];
 const RTO_SHIPMENT_STATUSES = ['rto', 'returned', 'rto_delivered', 'return_initiated', 'RTO', 'RETURNED', 'RTO_DELIVERED', 'RETURN_INITIATED'];
 const NDR_SHIPMENT_STATUSES = ['ndr', 'NDR'];
 const SLA_MIN_SAMPLE_SIZE = Number(process.env.COURIER_SLA_MIN_SAMPLE_SIZE || 10);
-const DELHIVERY_BASE_URL_FALLBACK = process.env.DELHIVERY_BASE_URL || 'https://staging-express.delhivery.com';
-const DELHIVERY_TOKEN_ERROR_PATTERNS = [
-    'login or api key required',
-    'authentication credentials were not provided',
-    'unauthorized client/user',
-    'invalid token',
-];
 
 function resolveCourierConfigScope(req: Request): string | null {
     const role = String((req as any).user?.role || '');
@@ -120,83 +113,6 @@ function encodeCredential(value: unknown): string {
         return normalized;
     }
     return encryptData(normalized);
-}
-
-function decodeCredential(value: unknown): string | undefined {
-    if (typeof value !== 'string') {
-        return undefined;
-    }
-    const normalized = value.trim();
-    if (!normalized) {
-        return undefined;
-    }
-
-    let decoded = normalized;
-    for (let i = 0; i < 2; i += 1) {
-        try {
-            decoded = decryptData(decoded).trim();
-        } catch {
-            break;
-        }
-    }
-
-    return decoded || normalized;
-}
-
-function normalizeBaseUrl(value?: string | null): string {
-    const normalized = String(value || '').trim();
-    if (!normalized) {
-        return DELHIVERY_BASE_URL_FALLBACK;
-    }
-    return normalized.replace(/\/+$/, '');
-}
-
-function hasDelhiveryAuthError(payload: unknown): boolean {
-    const text = typeof payload === 'string'
-        ? payload.toLowerCase()
-        : JSON.stringify(payload || {}).toLowerCase();
-    return DELHIVERY_TOKEN_ERROR_PATTERNS.some((pattern) => text.includes(pattern));
-}
-
-async function validateDelhiveryApiKeyOrThrow(params: {
-    apiKey: string;
-    baseUrl: string;
-}): Promise<void> {
-    const apiKey = String(params.apiKey || '').trim();
-    if (!apiKey) {
-        throw new ValidationError('Delhivery API token is required');
-    }
-
-    const baseUrl = normalizeBaseUrl(params.baseUrl);
-
-    try {
-        const response = await axios.get(`${baseUrl}/c/api/pin-codes/json/`, {
-            headers: {
-                Authorization: `Token ${apiKey}`,
-                Accept: 'application/json',
-            },
-            params: { filter_codes: '110001' },
-            timeout: 10000,
-        });
-
-        if (hasDelhiveryAuthError(response.data)) {
-            throw new ValidationError('Invalid Delhivery API token');
-        }
-    } catch (error: any) {
-        if (error instanceof ValidationError) {
-            throw error;
-        }
-
-        const status = Number(error?.response?.status || 0);
-        const body = error?.response?.data;
-        if (status === 401 || status === 403 || hasDelhiveryAuthError(body)) {
-            throw new ValidationError('Invalid Delhivery API token');
-        }
-
-        throw new ValidationError(
-            'Unable to verify Delhivery API token. Please try again after checking Delhivery connectivity.'
-        );
-    }
 }
 
 function buildShipmentMatch(companyId: string | null, provider: SupportedProvider) {
@@ -706,28 +622,67 @@ export class CourierController {
         const existingIntegration = await Integration.findOne(
             buildIntegrationQuery(companyId, provider)
         ).lean();
+        const wasActive = Boolean(existingIntegration?.settings?.isActive);
+        const nextIsActive = typeof isActive === 'boolean' ? isActive : wasActive;
+        const isActivatingNow = !wasActive && nextIsActive;
+        const existingBaseUrl = String((existingIntegration as any)?.settings?.baseUrl || '').trim();
+        const requestBaseUrl = typeof apiEndpoint === 'string' ? apiEndpoint.trim() : '';
+        const isBaseUrlBeingUpdated = Boolean(requestBaseUrl) && requestBaseUrl !== existingBaseUrl;
+
+        if (provider === 'velocity') {
+            const requestUsername = typeof credentials?.username === 'string' ? credentials.username.trim() : '';
+            const requestPassword = typeof credentials?.password === 'string' ? credentials.password.trim() : '';
+            const isCredentialBeingUpdated = Boolean(requestUsername || requestPassword);
+            const shouldValidate = isActivatingNow || isCredentialBeingUpdated || isBaseUrlBeingUpdated;
+
+            if (shouldValidate) {
+                await validateCourierCredentialsOrThrow({
+                    provider: 'velocity',
+                    integration: existingIntegration as any,
+                    overrides: {
+                        username: requestUsername || undefined,
+                        password: requestPassword || undefined,
+                        baseUrl: typeof apiEndpoint === 'string' ? apiEndpoint.trim() || undefined : undefined,
+                    },
+                });
+            }
+        }
+
+        if (provider === 'ekart') {
+            const requestClientId = typeof credentials?.clientId === 'string' ? credentials.clientId.trim() : '';
+            const requestUsername = typeof credentials?.username === 'string' ? credentials.username.trim() : '';
+            const requestPassword = typeof credentials?.password === 'string' ? credentials.password.trim() : '';
+            const isCredentialBeingUpdated = Boolean(requestClientId || requestUsername || requestPassword);
+            const shouldValidate = isActivatingNow || isCredentialBeingUpdated || isBaseUrlBeingUpdated;
+
+            if (shouldValidate) {
+                await validateCourierCredentialsOrThrow({
+                    provider: 'ekart',
+                    integration: existingIntegration as any,
+                    overrides: {
+                        clientId: requestClientId || undefined,
+                        username: requestUsername || undefined,
+                        password: requestPassword || undefined,
+                        baseUrl: typeof apiEndpoint === 'string' ? apiEndpoint.trim() || undefined : undefined,
+                    },
+                });
+            }
+        }
 
         if (provider === 'delhivery') {
             const requestApiKeyRaw = credentials?.apiKey ?? apiKey;
             const requestApiKey = typeof requestApiKeyRaw === 'string' ? requestApiKeyRaw.trim() : '';
-            const existingApiKey = decodeCredential(existingIntegration?.credentials?.apiKey);
-            const effectiveApiKey = requestApiKey || existingApiKey || '';
-            const nextIsActive = typeof isActive === 'boolean'
-                ? isActive
-                : Boolean(existingIntegration?.settings?.isActive);
-            const shouldValidate =
-                nextIsActive &&
-                (Boolean(requestApiKeyRaw) || typeof isActive === 'boolean');
+            const isTokenBeingUpdated = Boolean(requestApiKey);
+            const shouldValidate = isActivatingNow || isTokenBeingUpdated || isBaseUrlBeingUpdated;
 
             if (shouldValidate) {
-                const baseUrl = normalizeBaseUrl(
-                    typeof apiEndpoint === 'string' && apiEndpoint.trim()
-                        ? apiEndpoint
-                        : (existingIntegration as any)?.settings?.baseUrl
-                );
-                await validateDelhiveryApiKeyOrThrow({
-                    apiKey: effectiveApiKey,
-                    baseUrl,
+                await validateCourierCredentialsOrThrow({
+                    provider: 'delhivery',
+                    integration: existingIntegration as any,
+                    overrides: {
+                        apiKey: requestApiKey || undefined,
+                        baseUrl: typeof apiEndpoint === 'string' ? apiEndpoint.trim() || undefined : undefined,
+                    },
                 });
             }
         }
@@ -823,6 +778,13 @@ export class CourierController {
         const integrationActive = Boolean(integration?.settings?.isActive);
         const isCurrentlyEnabled = hasActiveServices && integrationActive;
         const nextStatus = isCurrentlyEnabled ? 'inactive' : 'active';
+
+        if (nextStatus === 'active') {
+            await validateCourierCredentialsOrThrow({
+                provider,
+                integration: integration as any,
+            });
+        }
 
         await Promise.all([
             CourierService.updateMany(

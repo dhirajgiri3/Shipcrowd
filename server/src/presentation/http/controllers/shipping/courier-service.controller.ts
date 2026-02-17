@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { validateCourierCredentialsOrThrow } from '../../../../core/application/services/courier/courier-credentials.validator';
 import CourierProviderRegistry from '../../../../core/application/services/courier/courier-provider-registry';
 import { CourierService, Integration } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
@@ -292,6 +293,11 @@ export const syncProviderServices = async (req: Request, res: Response, next: Ne
         if (!integration) {
             throw new ValidationError('Active integration not found for provider', ErrorCode.RES_INTEGRATION_NOT_FOUND);
         }
+
+        await validateCourierCredentialsOrThrow({
+            provider: canonicalProvider,
+            integration: integration as any,
+        });
 
         const serviceTypes = parseServiceTypeFromProvider(canonicalProvider);
         const createdIds: string[] = [];

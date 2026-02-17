@@ -11,6 +11,7 @@ export interface ServiceRateCardItem {
     flowType?: 'forward' | 'reverse';
     category?: 'default' | 'basic' | 'standard' | 'advanced' | 'custom';
     status: 'draft' | 'active' | 'inactive';
+    isDeleted?: boolean;
     sourceMode: 'LIVE_API' | 'TABLE' | 'HYBRID';
     currency?: 'INR';
     effectiveDates?: {
@@ -69,12 +70,54 @@ export interface ServiceRateCardItem {
     }>;
 }
 
+export interface PaginatedResult<T> {
+    data: T[];
+    pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        pages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+    };
+}
+
 export const useServiceRateCards = (filters?: Record<string, any>, options?: UseQueryOptions<ServiceRateCardItem[], ApiError>) => {
     return useQuery<ServiceRateCardItem[], ApiError>({
         queryKey: queryKeys.serviceRateCards.list(filters),
         queryFn: async () => {
-            const response = await apiClient.get('/admin/service-ratecards', { params: filters });
+            const response = await apiClient.get('/admin/service-ratecards', {
+                params: { limit: 100, ...filters },
+            });
             return response.data.data || [];
+        },
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};
+
+export const useServiceRateCardsList = (
+    filters?: Record<string, any>,
+    options?: UseQueryOptions<PaginatedResult<ServiceRateCardItem>, ApiError>
+) => {
+    return useQuery<PaginatedResult<ServiceRateCardItem>, ApiError>({
+        queryKey: [...queryKeys.serviceRateCards.list(filters), 'paginated'],
+        queryFn: async () => {
+            const response = await apiClient.get('/admin/service-ratecards', {
+                params: { limit: 20, ...filters },
+            });
+            return {
+                data: response.data.data || [],
+                pagination: response.data.pagination || {
+                    total: 0,
+                    page: Number(filters?.page || 1),
+                    limit: Number(filters?.limit || 20),
+                    pages: 1,
+                    hasNext: false,
+                    hasPrev: false,
+                },
+            };
         },
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
@@ -130,6 +173,54 @@ export const useImportServiceRateCard = (
             queryClient.invalidateQueries({ queryKey: queryKeys.serviceRateCards.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.serviceRateCards.detail(variables.id) });
             showSuccessToast('Service rate card imported');
+        },
+        onError: (error) => handleApiError(error),
+        ...options,
+    });
+};
+
+export const useDeleteServiceRateCard = (options?: UseMutationOptions<void, ApiError, string>) => {
+    const queryClient = useQueryClient();
+    return useMutation<void, ApiError, string>({
+        mutationFn: async (id: string) => {
+            await apiClient.delete(`/admin/service-ratecards/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.serviceRateCards.all() });
+            showSuccessToast('Service rate card deleted');
+        },
+        onError: (error) => handleApiError(error),
+        ...options,
+    });
+};
+
+export const useRestoreServiceRateCard = (options?: UseMutationOptions<ServiceRateCardItem, ApiError, string>) => {
+    const queryClient = useQueryClient();
+    return useMutation<ServiceRateCardItem, ApiError, string>({
+        mutationFn: async (id: string) => {
+            const response = await apiClient.post(`/admin/service-ratecards/${id}/restore`);
+            return response.data.data || response.data;
+        },
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.serviceRateCards.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.serviceRateCards.detail(id) });
+            showSuccessToast('Service rate card restored');
+        },
+        onError: (error) => handleApiError(error),
+        ...options,
+    });
+};
+
+export const useCloneServiceRateCard = (options?: UseMutationOptions<ServiceRateCardItem, ApiError, string>) => {
+    const queryClient = useQueryClient();
+    return useMutation<ServiceRateCardItem, ApiError, string>({
+        mutationFn: async (id: string) => {
+            const response = await apiClient.post(`/admin/service-ratecards/${id}/clone`);
+            return response.data.data || response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.serviceRateCards.all() });
+            showSuccessToast('Service rate card cloned as draft');
         },
         onError: (error) => handleApiError(error),
         ...options,

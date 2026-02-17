@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
@@ -10,16 +10,20 @@ import { DataTable } from '@/src/components/ui/data/DataTable';
 import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
 import { Skeleton } from '@/src/components/ui/data/Skeleton';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { ConfirmDialog } from '@/src/components/ui/feedback/ConfirmDialog';
 import {
     CourierServiceItem,
     ServiceRateCardItem,
-    useServiceRateCards,
+    useServiceRateCardsList,
     useCreateServiceRateCard,
-    useUpdateServiceRateCard
+    useUpdateServiceRateCard,
+    useCloneServiceRateCard,
+    useDeleteServiceRateCard,
+    useRestoreServiceRateCard,
 } from '@/src/core/api/hooks/admin';
 import {
     Save, Plus, Edit2, Coins, ArrowRight, Info, X,
-    Settings, Scale, Banknote, Fuel, RotateCcw, SlidersHorizontal
+    Settings, Scale, Banknote, Fuel, RotateCcw, SlidersHorizontal, Copy, Trash2, Undo2
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/src/components/ui/core/Accordion';
 import { Select } from '@/src/components/ui/form/Select';
@@ -178,6 +182,53 @@ function RateCardTableSkeleton() {
     );
 }
 
+const rateCardTips = [
+    {
+        label: 'Cost Card',
+        badge: 'Cost',
+        description: 'Capture what you pay carriers for each service and flow.',
+    },
+    {
+        label: 'Sell Card',
+        badge: 'Sell',
+        description: 'Set what you charge sellers with category-based pricing.',
+    },
+    {
+        label: 'Table Mode',
+        badge: 'Static',
+        description: 'Use for fixed slabs and predictable billing rules.',
+    },
+    {
+        label: 'Live API Mode',
+        badge: 'Dynamic',
+        description: 'Use when carrier rates are fetched in real time.',
+    },
+];
+
+function RateCardTips({ compact = false }: { compact?: boolean }) {
+    return (
+        <div className={compact ? 'space-y-2.5' : 'space-y-3'}>
+            <div className="grid grid-cols-1 gap-2">
+                {rateCardTips.map((tip) => (
+                    <div
+                        key={tip.label}
+                        className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2.5"
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold text-[var(--text-primary)]">{tip.label}</p>
+                            <Badge variant="secondary" size="sm">{tip.badge}</Badge>
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1">{tip.description}</p>
+                    </div>
+                ))}
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+                Suggested workflow: configure <strong>Cost</strong> first, then create <strong>Sell</strong>.
+            </p>
+        </div>
+    );
+}
+
 export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTabProps) {
     const { addToast } = useToast();
     const [selectedServiceId, setSelectedServiceId] = useState('');
@@ -187,21 +238,49 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [listFlowType, setListFlowType] = useState<'all' | 'forward' | 'reverse'>('all');
     const [listCategory, setListCategory] = useState<'all' | 'default' | 'basic' | 'standard' | 'advanced' | 'custom'>('all');
+    const [listIncludeDeleted, setListIncludeDeleted] = useState(false);
+    const [listPage, setListPage] = useState(1);
+    const [confirmState, setConfirmState] = useState<{
+        action: 'delete' | 'restore';
+        card: ServiceRateCardItem;
+    } | null>(null);
 
-    const { data: rateCards = [], isLoading: isRateCardsLoading } = useServiceRateCards(
-        selectedServiceId
-            ? {
-                serviceId: selectedServiceId,
-                ...(listFlowType !== 'all' ? { flowType: listFlowType } : {}),
-                ...(listCategory !== 'all' ? { category: listCategory } : {}),
-            }
-            : undefined
+    const listFilters = useMemo(
+        () =>
+            selectedServiceId
+                ? {
+                    serviceId: selectedServiceId,
+                    page: listPage,
+                    limit: 20,
+                    includeDeleted: listIncludeDeleted,
+                    ...(listFlowType !== 'all' ? { flowType: listFlowType } : {}),
+                    ...(listCategory !== 'all' ? { category: listCategory } : {}),
+                }
+                : undefined,
+        [selectedServiceId, listPage, listIncludeDeleted, listFlowType, listCategory]
     );
+
+    const { data: rateCardList, isLoading: isRateCardsLoading } = useServiceRateCardsList(listFilters);
+    const rateCards = rateCardList?.data || [];
+    const pagination = rateCardList?.pagination;
 
     const createRateCardMutation = useCreateServiceRateCard();
     const updateRateCardMutation = useUpdateServiceRateCard();
+    const cloneRateCardMutation = useCloneServiceRateCard();
+    const deleteRateCardMutation = useDeleteServiceRateCard();
+    const restoreRateCardMutation = useRestoreServiceRateCard();
 
     const [hasAutoStarted, setHasAutoStarted] = useState(false);
+    const isActionPending =
+        createRateCardMutation.isPending ||
+        updateRateCardMutation.isPending ||
+        cloneRateCardMutation.isPending ||
+        deleteRateCardMutation.isPending ||
+        restoreRateCardMutation.isPending;
+
+    useEffect(() => {
+        setListPage(1);
+    }, [selectedServiceId, listFlowType, listCategory, listIncludeDeleted]);
 
     const resetRateCardForm = () => {
         setEditingRateCard(null);
@@ -490,6 +569,33 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
             };
         }
 
+        const existingZoneRules = editingRateCard?.zoneRules || [];
+        const updatedZoneRules =
+            existingZoneRules.length === 0
+                ? [zoneRule]
+                : (() => {
+                    const targetZoneKey = (rateCardForm.zoneKey.trim() || 'zoneD').toLowerCase();
+                    const zoneIndex = existingZoneRules.findIndex(
+                        (rule) => String(rule.zoneKey || '').toLowerCase() === targetZoneKey
+                    );
+                    if (zoneIndex >= 0) {
+                        const copy = [...existingZoneRules];
+                        const originalZone = copy[zoneIndex];
+                        const originalSlabs = originalZone?.slabs || [];
+                        const nextSlabs =
+                            originalSlabs.length > 0
+                                ? [{ ...originalSlabs[0], ...zoneRule.slabs[0] }, ...originalSlabs.slice(1)]
+                                : zoneRule.slabs;
+                        copy[zoneIndex] = {
+                            ...originalZone,
+                            ...zoneRule,
+                            slabs: nextSlabs,
+                        };
+                        return copy;
+                    }
+                    return [zoneRule, ...existingZoneRules.slice(1)];
+                })();
+
         const payload: Partial<ServiceRateCardItem> = {
             serviceId: rateCardForm.serviceId,
             cardType: rateCardForm.cardType,
@@ -502,13 +608,13 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                 startDate: startDateIso,
                 endDate: endDateIso,
             },
-            calculation: {
+            calculation: editingRateCard?.calculation || {
                 weightBasis: 'max',
                 roundingUnitKg: 0.5,
                 roundingMode: 'ceil',
                 dimDivisor: 5000,
             },
-            zoneRules: [zoneRule],
+            zoneRules: updatedZoneRules,
         };
 
         try {
@@ -521,6 +627,28 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                 await createRateCardMutation.mutateAsync(payload);
             }
             resetRateCardForm();
+        } catch {
+            // Error handled by mutation hook with Toast
+        }
+    };
+
+    const cloneRateCard = async (card: ServiceRateCardItem) => {
+        try {
+            await cloneRateCardMutation.mutateAsync(card._id);
+        } catch {
+            // Error handled by mutation hook with Toast
+        }
+    };
+
+    const onConfirmLifecycleAction = async () => {
+        if (!confirmState) return;
+        try {
+            if (confirmState.action === 'delete') {
+                await deleteRateCardMutation.mutateAsync(confirmState.card._id);
+            } else {
+                await restoreRateCardMutation.mutateAsync(confirmState.card._id);
+            }
+            setConfirmState(null);
         } catch {
             // Error handled by mutation hook with Toast
         }
@@ -572,12 +700,23 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                 <div className="text-sm flex flex-col gap-1">
                     <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1">
                         {row.zoneRules?.[0]?.zoneKey || '-'}
+                        {row.zoneRules?.length > 1 ? (
+                            <span className="text-xs text-[var(--text-muted)]">
+                                +{row.zoneRules.length - 1} more zones
+                            </span>
+                        ) : null}
                     </div>
                     {row.zoneRules?.[0]?.slabs?.[0] ? (
                         <div className="text-[var(--text-secondary)] text-xs">
                             {`${row.zoneRules[0].slabs[0].minKg}-${row.zoneRules[0].slabs[0].maxKg}kg @ ₹${row.zoneRules[0].slabs[0].charge}`}
                             <span className="text-[var(--text-muted)] mx-1.5">·</span>
                             <span>+₹{row.zoneRules[0].additionalPerKg}/kg</span>
+                            {row.zoneRules[0].slabs.length > 1 ? (
+                                <>
+                                    <span className="text-[var(--text-muted)] mx-1.5">·</span>
+                                    <span>{row.zoneRules[0].slabs.length} slabs</span>
+                                </>
+                            ) : null}
                         </div>
                     ) : (
                         <span className="text-xs text-[var(--text-muted)]">No slab config</span>
@@ -610,18 +749,52 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
             header: 'Actions',
             accessorKey: 'actions',
             cell: (row: ServiceRateCardItem) => (
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-1">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => startEdit(row)}
                         className="h-8 w-8 p-0"
+                        title="Edit"
                     >
                         <Edit2 className="h-4 w-4 text-[var(--text-secondary)]" />
                     </Button>
+                    {!row.isDeleted && (
+                        <>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => cloneRateCard(row)}
+                                className="h-8 w-8 p-0"
+                                title="Clone"
+                            >
+                                <Copy className="h-4 w-4 text-[var(--text-secondary)]" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmState({ action: 'delete', card: row })}
+                                className="h-8 w-8 p-0"
+                                title="Delete"
+                            >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                        </>
+                    )}
+                    {row.isDeleted && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setConfirmState({ action: 'restore', card: row })}
+                            className="h-8 w-8 p-0"
+                            title="Restore"
+                        >
+                            <Undo2 className="h-4 w-4 text-[var(--primary-blue)]" />
+                        </Button>
+                    )}
                 </div>
             ),
-            width: '60px',
+            width: '160px',
             stickyRight: true
         }
     ];
@@ -685,11 +858,7 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <ul className="text-xs text-[var(--text-secondary)] space-y-1.5 list-disc list-inside">
-                                <li>Create <strong>Cost</strong> cards for what you pay carriers.</li>
-                                <li>Create <strong>Sell</strong> cards for what you charge sellers.</li>
-                                <li>Use <strong>Table</strong> mode for static rates.</li>
-                            </ul>
+                            <RateCardTips compact />
                         </CardContent>
                     </Card>
                 )}
@@ -736,12 +905,7 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                     <Coins className="h-4 w-4 text-[var(--primary-blue)]" />
                                     Rate Card Tips
                                 </h4>
-                                <ul className="text-xs text-[var(--text-secondary)] space-y-2 list-disc list-inside">
-                                    <li>Create <strong className="text-[var(--text-primary)]">Cost</strong> cards for what you pay carriers.</li>
-                                    <li>Create <strong className="text-[var(--text-primary)]">Sell</strong> cards for what you charge sellers.</li>
-                                    <li>Use <strong className="text-[var(--text-primary)]">Table</strong> mode for static rates.</li>
-                                    <li>Use <strong className="text-[var(--text-primary)]">Live API</strong> for dynamic carrier rates.</li>
-                                </ul>
+                                <RateCardTips />
                             </CardContent>
                         </Card>
                     </div>
@@ -916,8 +1080,8 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                         </div>
                                     </div>
 
-                                    {/* Status and Zone */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {/* Status */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
                                                 Status
@@ -929,19 +1093,6 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                                     status: e.target.value as RateCardForm['status']
                                                 })}
                                                 options={statusOptions}
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-2">
-                                            <label className="text-xs font-semibold uppercase text-[var(--text-muted)] tracking-wider">
-                                                Zone Key
-                                            </label>
-                                            <Input
-                                                value={rateCardForm.zoneKey}
-                                                onChange={(e) => setRateCardForm({
-                                                    ...rateCardForm,
-                                                    zoneKey: e.target.value
-                                                })}
-                                                placeholder="e.g. zoneD"
                                             />
                                         </div>
                                     </div>
@@ -1206,9 +1357,9 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                 </Button>
                                 <Button
                                     onClick={saveRateCard}
-                                    disabled={createRateCardMutation.isPending || updateRateCardMutation.isPending}
+                                    disabled={isActionPending}
                                 >
-                                    {(createRateCardMutation.isPending || updateRateCardMutation.isPending) && (
+                                    {isActionPending && (
                                         <div className="h-4 w-4 mr-2 border-2 border-[var(--text-inverse)] border-t-transparent rounded-full animate-spin" />
                                     )}
                                     <Save className="h-4 w-4 mr-2" />
@@ -1229,7 +1380,7 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                             ) : (
                                 <>
                                     <CardContent className="border-b border-[var(--border-subtle)] p-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                             <Select
                                                 value={listFlowType}
                                                 onChange={(e) =>
@@ -1252,6 +1403,16 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                                 options={[
                                                     { label: 'All Categories', value: 'all' },
                                                     ...categoryOptions,
+                                                ]}
+                                            />
+                                            <Select
+                                                value={listIncludeDeleted ? 'all' : 'activeOnly'}
+                                                onChange={(e) =>
+                                                    setListIncludeDeleted(e.target.value === 'all')
+                                                }
+                                                options={[
+                                                    { label: 'Active Only', value: 'activeOnly' },
+                                                    { label: 'Active + Deleted', value: 'all' },
                                                 ]}
                                             />
                                         </div>
@@ -1278,6 +1439,17 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                                                 columns={columns}
                                                 data={rateCards}
                                                 isLoading={isRateCardsLoading}
+                                                pagination={
+                                                    pagination
+                                                        ? {
+                                                            currentPage: pagination.page,
+                                                            totalPages: pagination.pages,
+                                                            totalItems: pagination.total,
+                                                            onPageChange: (page) => setListPage(page),
+                                                        }
+                                                        : undefined
+                                                }
+                                                disablePagination={false}
                                             />
                                         </CardContent>
                                     )}
@@ -1287,6 +1459,20 @@ export function RateCardsTab({ services, autoStartCreate = false }: RateCardsTab
                     )}
                 </div>
             </div>
+            <ConfirmDialog
+                open={Boolean(confirmState)}
+                title={confirmState?.action === 'restore' ? 'Restore rate card?' : 'Delete rate card?'}
+                description={
+                    confirmState?.action === 'restore'
+                        ? 'This will mark the card active in listings again.'
+                        : 'This will soft delete the card and keep it in history.'
+                }
+                confirmText={confirmState?.action === 'restore' ? 'Restore' : 'Delete'}
+                confirmVariant={confirmState?.action === 'restore' ? 'primary' : 'danger'}
+                isLoading={deleteRateCardMutation.isPending || restoreRateCardMutation.isPending}
+                onConfirm={onConfirmLifecycleAction}
+                onCancel={() => setConfirmState(null)}
+            />
         </div>
     );
 }
