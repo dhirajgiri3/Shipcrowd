@@ -6,10 +6,12 @@
 
 import RTOController from '@/presentation/http/controllers/rto/rto.controller';
 import { authenticate } from '@/presentation/http/middleware/auth/auth';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 import { Router } from 'express';
 import multer from 'multer';
 
 const router = Router();
+const rtoMutationAccess = requireAccess({ roles: ['staff', 'admin'] });
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -36,10 +38,10 @@ router.get('/pending', RTOController.getPendingRTOs);
 router.get('/events/:id', RTOController.getRTOEvent);
 
 // Trigger RTO manually
-router.post('/trigger', RTOController.triggerRTO);
+router.post('/trigger', rtoMutationAccess, RTOController.triggerRTO);
 
 // Update RTO status
-router.patch('/events/:id/status', RTOController.updateStatus);
+router.patch('/events/:id/status', rtoMutationAccess, RTOController.updateStatus);
 
 // Upload QC photos (before recording QC)
 router.post('/events/:id/qc/upload', upload.array('photos', 10), RTOController.uploadQCPhotos);

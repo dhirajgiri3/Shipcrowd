@@ -86,12 +86,14 @@ router.post(
 // Request on-demand payout
 router.post(
     '/request-payout',
+    requireAccess({ roles: ['admin'] }),
     codRemittanceController.requestPayout
 );
 
 // Schedule payout
 router.post(
     '/schedule-payout',
+    requireAccess({ roles: ['admin'] }),
     codRemittanceController.schedulePayout
 );
 
@@ -105,6 +107,7 @@ const upload = multer({
 // Upload MIS file for reconciliation
 router.post(
     '/upload-mis',
+    requireAccess({ roles: ['admin'] }),
     upload.single('file'),
     codRemittanceController.uploadMIS
 );

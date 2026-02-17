@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
+import ImpersonationService from '../../../../core/application/services/admin/impersonation.service';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import { getAccessTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
@@ -28,6 +29,19 @@ export const authenticate = async (
 
     // Verify token (enforce blacklist for immediate logout/revocation)
     const payload = await verifyAccessToken(token, true);
+
+    // If this is an impersonation token, ensure the backing session is still active.
+    if (payload.impersonation?.sessionToken) {
+      const verification = await ImpersonationService.verifySession(payload.impersonation.sessionToken);
+      if (!verification.valid) {
+        res.status(401).json({
+          success: false,
+          message: verification.reason || 'Impersonation session is no longer valid',
+          code: 'IMPERSONATION_SESSION_INVALID',
+        });
+        return;
+      }
+    }
 
     // Fetch full user data from database for access tier checks
     const dbUser = await User.findById(payload.userId)
@@ -123,7 +137,7 @@ export const authenticate = async (
     if (dbUser.companyId) {
       const company = await Company.findById(dbUser.companyId).select('isSuspended suspendedAt suspensionReason');
 
-      if (company?.isSuspended) {
+      if (company?.isSuspended && !isPlatformAdmin(dbUser)) {
         logger.warn('Access denied: Company is suspended', {
           userId: payload.userId,
           companyId: dbUser.companyId,

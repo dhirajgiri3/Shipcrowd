@@ -62,7 +62,6 @@ import labelTemplateRoutes from './shipping/label-template.routes';
 // ============================================================================
 import packingStationRoutes from './disputes/packing-station.routes';
 import weightDisputesRoutes from './disputes/weight-disputes.routes';
-import fraudRoutes from './fraud/fraud.routes';
 import disputeRoutes from './logistics/dispute.routes';
 import ndrCommunicationRoutes from './ndr/ndr-communication.routes';
 import ndrRoutes from './ndr/ndr.routes';
@@ -212,7 +211,7 @@ router.use('/disputes/weight', weightDisputesRoutes);
 router.use('/packing-station', packingStationRoutes); // Week 2: Packing station evidence capture
 router.use('/weight-discrepancies', weightDisputesRoutes); // Alias for frontend compatibility
 router.use('/disputes', disputeRoutes); // General Disputes
-router.use('/fraud', fraudRoutes);
+// Fraud routes intentionally unmounted (archived feature).
 
 // 6. Finance
 router.use('/admin/finance', adminFinanceRoutes); // Admin-specific finance routes

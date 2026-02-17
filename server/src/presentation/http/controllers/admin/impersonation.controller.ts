@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import ImpersonationService from '../../../../core/application/services/admin/impersonation.service';
-import { ValidationError } from '../../../../shared/errors/app.error';
+import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { clearAuthCookies, getAuthCookieNames, getAuthCookieOptions } from '../../../../shared/helpers/auth-cookies';
 import { guardChecks, parsePagination } from '../../../../shared/helpers/controller.helpers';
 import logger from '../../../../shared/logger/winston.logger';
 import { calculatePagination, sendCreated, sendPaginated, sendSuccess } from '../../../../shared/utils/responseHelper';
@@ -32,13 +34,9 @@ export const startImpersonation = async (req: Request, res: Response, next: Next
             metadata,
         });
 
-        // Set impersonation token in cookie
-        res.cookie('impersonationToken', result.impersonationToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        });
+        // Set impersonation token as the active access token cookie so authenticate() can read it.
+        const { accessCookieName } = getAuthCookieNames();
+        res.cookie(accessCookieName, result.impersonationToken, getAuthCookieOptions(15 * 60 * 1000));
 
         sendCreated(res, result, 'Impersonation session started successfully');
     } catch (error) {
@@ -66,7 +64,8 @@ export const endImpersonation = async (req: Request, res: Response, next: NextFu
             adminUserId: auth.userId,
         });
 
-        // Clear impersonation token cookie
+        // Clear active auth cookies and legacy impersonation token cookie.
+        clearAuthCookies(res);
         res.clearCookie('impersonationToken');
 
         sendSuccess(res, result, 'Impersonation session ended successfully');
@@ -99,12 +98,23 @@ export const getActiveSessions = async (req: Request, res: Response, next: NextF
  */
 export const getImpersonationHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-void auth;
+        const auth = guardChecks(req, { requireCompany: false });
 
         const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
 
-        const { targetUserId, adminUserId } = req.query;
+        const { targetUserId } = req.query;
+        const requestedAdminUserId = req.query.adminUserId as string | undefined;
+        let adminUserId = requestedAdminUserId;
+
+        if (!auth.isSuperAdmin) {
+            if (requestedAdminUserId && requestedAdminUserId !== auth.userId) {
+                throw new AuthorizationError(
+                    'You can only view your own impersonation history',
+                    ErrorCode.AUTHZ_FORBIDDEN
+                );
+            }
+            adminUserId = auth.userId;
+        }
 
         const result = await ImpersonationService.getImpersonationHistory({
             targetUserId: targetUserId as string,
@@ -131,7 +141,8 @@ export const endAllSessions = async (req: Request, res: Response, next: NextFunc
 
         const result = await ImpersonationService.endAllSessionsForAdmin(auth.userId);
 
-        // Clear impersonation token cookie
+        // Clear active auth cookies and legacy impersonation token cookie.
+        clearAuthCookies(res);
         res.clearCookie('impersonationToken');
 
         sendSuccess(res, result, 'All impersonation sessions ended successfully');

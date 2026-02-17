@@ -11,6 +11,7 @@ import { requireAccess } from '@/presentation/http/middleware/auth/unified-acces
 import { Router } from 'express';
 
 const router = Router();
+const ndrMutationAccess = requireAccess({ roles: ['seller', 'staff', 'admin'] });
 
 // All routes require authentication
 router.use(authenticate);
@@ -25,16 +26,16 @@ router.get('/events', NDRController.listNDREvents);
 router.get('/events/:id', NDRController.getNDREvent);
 
 // Resolve NDR manually
-router.post('/events/:id/resolve', NDRController.resolveNDR);
+router.post('/events/:id/resolve', ndrMutationAccess, NDRController.resolveNDR);
 
 // Execute manual seller/admin action
-router.post('/events/:id/action', NDRController.takeAction);
+router.post('/events/:id/action', ndrMutationAccess, NDRController.takeAction);
 
 // Escalate NDR
-router.post('/events/:id/escalate', NDRController.escalateNDR);
+router.post('/events/:id/escalate', ndrMutationAccess, NDRController.escalateNDR);
 
 // Trigger resolution workflow
-router.post('/events/:id/trigger-workflow', NDRController.triggerWorkflow);
+router.post('/events/:id/trigger-workflow', ndrMutationAccess, NDRController.triggerWorkflow);
 
 /**
  * NDR Analytics

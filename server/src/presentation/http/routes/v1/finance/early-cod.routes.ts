@@ -1,5 +1,6 @@
 import { EarlyCODController } from '@/presentation/http/controllers/finance/early-cod.controller';
 import { authenticate } from '@/presentation/http/middleware';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 import express from 'express';
 
 const router = express.Router();
@@ -13,9 +14,9 @@ router.get('/eligibility', EarlyCODController.checkEligibility);
 router.get('/enrollment', EarlyCODController.getEnrollment);
 
 // POST /api/v1/finance/cod/early-program/enroll
-router.post('/enroll', EarlyCODController.enroll);
+router.post('/enroll', requireAccess({ kyc: true }), EarlyCODController.enroll);
 
 // POST /api/v1/finance/cod/early-program/create-batch
-router.post('/create-batch', EarlyCODController.createEarlyBatch);
+router.post('/create-batch', requireAccess({ kyc: true }), EarlyCODController.createEarlyBatch);
 
 export default router;

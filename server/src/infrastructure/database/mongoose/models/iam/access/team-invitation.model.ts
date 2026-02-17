@@ -5,7 +5,16 @@ export interface ITeamInvitation extends Document {
   email: string;
   companyId: mongoose.Types.ObjectId;
   invitedBy: mongoose.Types.ObjectId;
-  teamRole: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
+  teamRole:
+    | 'owner'
+    | 'admin'
+    | 'manager'
+    | 'member'
+    | 'viewer'
+    | 'warehouse_manager'
+    | 'inventory_manager'
+    | 'picker'
+    | 'packer';
   invitationMessage?: string;
   token: string;
   expiresAt: Date;
@@ -36,7 +45,17 @@ const TeamInvitationSchema = new Schema<ITeamInvitation>(
     },
     teamRole: {
       type: String,
-      enum: ['owner', 'admin', 'manager', 'member', 'viewer'],
+      enum: [
+        'owner',
+        'admin',
+        'manager',
+        'member',
+        'viewer',
+        'warehouse_manager',
+        'inventory_manager',
+        'picker',
+        'packer',
+      ],
       default: 'member',
     },
     invitationMessage: {

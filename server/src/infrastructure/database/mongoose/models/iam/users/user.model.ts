@@ -13,7 +13,16 @@ export interface IUser extends Document {
   name: string;
   role: 'super_admin' | 'admin' | 'seller' | 'staff';
   companyId?: mongoose.Types.ObjectId; // Admin with company = dual role (admin + seller)
-  teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
+  teamRole?:
+    | 'owner'
+    | 'admin'
+    | 'manager'
+    | 'member'
+    | 'viewer'
+    | 'warehouse_manager'
+    | 'inventory_manager'
+    | 'picker'
+    | 'packer';
   teamStatus?: 'active' | 'invited' | 'suspended';
   // ✅ V5 RBAC: Platform Role (replaces role enum)
   platformRole?: mongoose.Types.ObjectId;
@@ -169,7 +178,17 @@ const UserSchema = new Schema<IUser>(
     },
     teamRole: {
       type: String,
-      enum: ['owner', 'admin', 'manager', 'member', 'viewer'],
+      enum: [
+        'owner',
+        'admin',
+        'manager',
+        'member',
+        'viewer',
+        'warehouse_manager',
+        'inventory_manager',
+        'picker',
+        'packer',
+      ],
     },
     teamStatus: {
       type: String,

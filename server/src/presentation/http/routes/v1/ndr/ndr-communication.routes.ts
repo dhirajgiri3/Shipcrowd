@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import NDRCommunicationController from '../../../controllers/ndr/ndr-communication.controller';
 import { authenticate } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.post(
 router.post(
     '/bulk-notify',
     authenticate,
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
     NDRCommunicationController.sendBulkNotifications
 );

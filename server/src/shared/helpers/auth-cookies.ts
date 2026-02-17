@@ -79,7 +79,8 @@ export const getAccessTokenFromRequest = (req: Request): string | undefined => {
 
   const cookieToken =
     req.cookies?.[accessCookieName] ||
-    legacyAccessCookieNames.map((name) => req.cookies?.[name]).find(Boolean);
+    legacyAccessCookieNames.map((name) => req.cookies?.[name]).find(Boolean) ||
+    req.cookies?.impersonationToken;
 
   if (cookieToken) {
     return cookieToken;

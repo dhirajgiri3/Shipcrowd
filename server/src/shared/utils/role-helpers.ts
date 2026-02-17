@@ -15,7 +15,11 @@ const TEAM_ROLE_HIERARCHY: Record<string, number> = {
     owner: 4,
     admin: 3,
     manager: 2,
+    warehouse_manager: 2,
     member: 1,
+    inventory_manager: 1,
+    picker: 1,
+    packer: 1,
     viewer: 0,
 };
 

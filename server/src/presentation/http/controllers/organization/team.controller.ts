@@ -25,14 +25,33 @@ const withAuth = (handler: (req: Request, res: Response, next: NextFunction) => 
 const inviteTeamMemberSchema = z.object({
   email: z.string().email(),
   name: z.string().optional(),
-  role: z.enum(['admin', 'manager', 'member', 'viewer', 'warehouse_manager']),
+  role: z.enum([
+    'admin',
+    'manager',
+    'member',
+    'viewer',
+    'warehouse_manager',
+    'inventory_manager',
+    'picker',
+    'packer',
+  ]),
   permissions: z.array(z.string()).optional(),
   warehouseId: z.string().optional(),
   invitationMessage: z.string().optional(),
 });
 
 const updateTeamMemberSchema = z.object({
-  teamRole: z.enum(['owner', 'admin', 'manager', 'member', 'viewer']),
+  teamRole: z.enum([
+    'owner',
+    'admin',
+    'manager',
+    'member',
+    'viewer',
+    'warehouse_manager',
+    'inventory_manager',
+    'picker',
+    'packer',
+  ]),
   teamStatus: z.enum(['active', 'suspended']).optional(),
 });
 

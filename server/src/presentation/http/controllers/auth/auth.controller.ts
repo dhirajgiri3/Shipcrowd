@@ -64,7 +64,17 @@ const registerSchema = z.object({
   // SECURITY: Admin role removed from registration - admins created via DB only
   role: z.enum(['seller', 'staff']).optional(),
   companyId: z.string().optional(),
-  teamRole: z.enum(['owner', 'admin', 'manager', 'member', 'viewer']).optional(),
+  teamRole: z.enum([
+    'owner',
+    'admin',
+    'manager',
+    'member',
+    'viewer',
+    'warehouse_manager',
+    'inventory_manager',
+    'picker',
+    'packer',
+  ]).optional(),
   invitationToken: z.string().optional(),
 });
 

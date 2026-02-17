@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { AccessTier } from '../../../../core/domain/types/access-tier';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**
  * Helper to get numeric level of tier
@@ -22,6 +23,7 @@ const getTierLevel = (tier: AccessTier): number => {
  */
 export const determineUserTier = (user: any): AccessTier => {
     if (!user) return AccessTier.EXPLORER;
+    if (isPlatformAdmin(user)) return AccessTier.PRODUCTION;
 
     // Production check: KYC Verified
     // WARNING: This is a global check. Company-specific KYC is validated in requireAccess()

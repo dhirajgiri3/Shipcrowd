@@ -52,7 +52,7 @@ export const requireAccess = (options: AccessOptions) => {
             }
 
             // 3. Access Tier Check
-            if (options.tier) {
+            if (options.tier && !isPlatformAdmin(user)) {
                 const currentTier = determineUserTier(user);
                 const getLevel = (t: AccessTier) => {
                     if (t === AccessTier.PRODUCTION) return 3;
@@ -75,13 +75,12 @@ export const requireAccess = (options: AccessOptions) => {
             }
 
             // 4. KYC Check (Explicit or via Tier)
-            const isDev = process.env.NODE_ENV === 'development';
-            if (!isDev && options.kyc !== false && (options.kyc || options.tier === AccessTier.PRODUCTION)) {
+            const disableKycCheck = process.env.DISABLE_KYC_CHECK === 'true';
+            if (!disableKycCheck && options.kyc !== false && (options.kyc || options.tier === AccessTier.PRODUCTION)) {
                 // Check if user has completed KYC in general
                 if (
                     !isPlatformAdmin(user) &&
-                    !user.kycStatus?.isComplete &&
-                    user.kycStatus?.state !== KYCState.VERIFIED
+                    (!user.kycStatus?.isComplete || user.kycStatus?.state !== KYCState.VERIFIED)
                 ) {
                     res.status(403).json({
                         success: false,

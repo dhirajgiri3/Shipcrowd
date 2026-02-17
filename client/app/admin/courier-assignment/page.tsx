@@ -1,5 +1,5 @@
-import { CourierPoliciesClient } from './components/CourierPoliciesClient';
+import { CourierAssignmentClient } from './components/CourierAssignmentClient';
 
-export default function CourierPoliciesPage() {
-    return <CourierPoliciesClient />;
+export default function CourierAssignmentPage() {
+    return <CourierAssignmentClient />;
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import ManifestController from '../../../controllers/shipments/manifest.controller';
 import { authenticate } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
@@ -14,6 +15,7 @@ const router = Router();
 router.post(
     '/manifest',
     authenticate,
+    requireAccess({ kyc: true }),
     apiRateLimiter,
     ManifestController.createManifest
 );
@@ -57,6 +59,7 @@ router.get(
 router.post(
     '/manifests/:id/close',
     authenticate,
+    requireAccess({ kyc: true }),
     apiRateLimiter,
     ManifestController.closeManifest
 );
@@ -65,6 +68,7 @@ router.post(
 router.post(
     '/manifests/:id/handover',
     authenticate,
+    requireAccess({ kyc: true }),
     apiRateLimiter,
     ManifestController.handoverManifest
 );
@@ -73,6 +77,7 @@ router.post(
 router.patch(
     '/manifests/:id',
     authenticate,
+    requireAccess({ kyc: true }),
     apiRateLimiter,
     ManifestController.updateManifest
 );
@@ -81,6 +86,7 @@ router.patch(
 router.delete(
     '/manifests/:id',
     authenticate,
+    requireAccess({ kyc: true }),
     apiRateLimiter,
     ManifestController.deleteManifest
 );
@@ -89,6 +95,7 @@ router.delete(
 router.post(
     '/manifests/:id/add-shipments',
     authenticate,
+    requireAccess({ kyc: true }),
     apiRateLimiter,
     ManifestController.addShipments
 );
@@ -97,6 +104,7 @@ router.post(
 router.post(
     '/manifests/:id/remove-shipments',
     authenticate,
+    requireAccess({ kyc: true }),
     apiRateLimiter,
     ManifestController.removeShipments
 );

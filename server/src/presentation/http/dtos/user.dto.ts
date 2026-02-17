@@ -98,7 +98,16 @@ export interface UserResponse {
     name: string;
     role: 'super_admin' | 'admin' | 'seller' | 'staff';
     companyId?: string;
-    teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
+    teamRole?:
+        | 'owner'
+        | 'admin'
+        | 'manager'
+        | 'member'
+        | 'viewer'
+        | 'warehouse_manager'
+        | 'inventory_manager'
+        | 'picker'
+        | 'packer';
     teamStatus?: 'active' | 'invited' | 'suspended';
     googleId?: string;
     oauthProvider?: 'email' | 'google';

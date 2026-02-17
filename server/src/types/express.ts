@@ -30,7 +30,16 @@ declare global {
       name?: string;
       role: string;
       companyId?: string;
-      teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
+      teamRole?:
+        | 'owner'
+        | 'admin'
+        | 'manager'
+        | 'member'
+        | 'viewer'
+        | 'warehouse_manager'
+        | 'inventory_manager'
+        | 'picker'
+        | 'packer';
       teamStatus?: 'active' | 'invited' | 'suspended';
       // Access tier detection fields
       isEmailVerified?: boolean;
@@ -66,7 +75,16 @@ export interface AuthRequest extends Request {
     name?: string;
     role: string;
     companyId?: string;
-    teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
+    teamRole?:
+      | 'owner'
+      | 'admin'
+      | 'manager'
+      | 'member'
+      | 'viewer'
+      | 'warehouse_manager'
+      | 'inventory_manager'
+      | 'picker'
+      | 'packer';
     teamStatus?: 'active' | 'invited' | 'suspended';
   };
 }

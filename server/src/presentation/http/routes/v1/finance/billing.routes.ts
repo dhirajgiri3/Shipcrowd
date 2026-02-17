@@ -1,8 +1,10 @@
 import express from 'express';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import analyticsController from '../../../controllers/analytics/analytics.controller';
 import walletController from '../../../controllers/finance/wallet.controller';
 import { authenticate } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = express.Router();
 
@@ -11,7 +13,12 @@ const router = express.Router();
  * @desc Get billing overview (Revenue Stats)
  * @access Private
  */
-router.get('/overview', authenticate, asyncHandler(analyticsController.getRevenueStats));
+router.get(
+    '/overview',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(analyticsController.getRevenueStats)
+);
 
 /**
  * @route GET /api/v1/finance/billing/recharges/pending
@@ -21,6 +28,7 @@ router.get('/overview', authenticate, asyncHandler(analyticsController.getRevenu
 router.get(
     '/recharges/pending',
     authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
     async (req, res, next) => {
         // Adapter: Filter for recharges that might be pending
         // Since getPendingRecharges doesn't exist, we filter transaction history

@@ -270,12 +270,12 @@ export function PoliciesTab() {
                                     <div>
                                         <CardTitle className="flex items-center gap-2">
                                             <ShieldCheck className="h-5 w-5 text-[var(--primary-blue)]" />
-                                            Policy Configuration
+                                            Assignment Rules
                                         </CardTitle>
                                         <CardDescription>Rules that determine carrier selection.</CardDescription>
                                     </div>
                                     <Badge variant={policyForm.isActive ? 'default' : 'secondary'}>
-                                        {policyForm.isActive ? 'Active Policy' : 'Policy Inactive'}
+                                        {policyForm.isActive ? 'Rules Active' : 'Rules Inactive'}
                                     </Badge>
                                 </div>
                             </CardHeader>
@@ -358,7 +358,7 @@ export function PoliciesTab() {
                                                     checked={policyForm.isActive}
                                                     onCheckedChange={(checked) => setPolicyForm({ ...policyForm, isActive: checked })}
                                                 />
-                                                Policy Active
+                                                Rules Active
                                             </label>
                                         </div>
                                     </div>

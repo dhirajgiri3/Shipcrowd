@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import InvoiceController from '../../../controllers/finance/invoice.controller';
-import { authenticate } from '../../../middleware/auth/auth';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
@@ -14,6 +15,8 @@ const router = Router();
 router.post(
     '/',
     authenticate,
+    requireAccess({ kyc: true }),
+    csrfProtection,
     apiRateLimiter,
     InvoiceController.createInvoice
 );
@@ -43,6 +46,8 @@ router.get(
 router.post(
     '/:id/send',
     authenticate,
+    requireAccess({ kyc: true }),
+    csrfProtection,
     apiRateLimiter,
     InvoiceController.sendInvoice
 );
@@ -51,6 +56,8 @@ router.post(
 router.post(
     '/credit-notes',
     authenticate,
+    requireAccess({ kyc: true }),
+    csrfProtection,
     apiRateLimiter,
     InvoiceController.createCreditNote
 );
@@ -66,6 +73,8 @@ router.get(
 router.post(
     '/tax/gstr-export',
     authenticate,
+    requireAccess({ kyc: true }),
+    csrfProtection,
     apiRateLimiter,
     InvoiceController.exportGSTR
 );
@@ -74,6 +83,8 @@ router.post(
 router.post(
     '/:id/generate-irn',
     authenticate,
+    requireAccess({ kyc: true }),
+    csrfProtection,
     apiRateLimiter,
     InvoiceController.generateIRN
 );
@@ -82,6 +93,8 @@ router.post(
 router.post(
     '/:id/cancel-irn',
     authenticate,
+    requireAccess({ kyc: true }),
+    csrfProtection,
     apiRateLimiter,
     InvoiceController.cancelIRN
 );

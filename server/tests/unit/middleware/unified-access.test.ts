@@ -75,7 +75,7 @@ describe('Unified Access Middleware', () => {
         req.user = { role: 'user' } as any;
         mockDetermineUserTier.mockReturnValue(AccessTier.PRODUCTION); // User is Production
 
-        await requireAccess({ tier: AccessTier.PRODUCTION })(req as Request, res, next);
+        await requireAccess({ tier: AccessTier.PRODUCTION, kyc: false })(req as Request, res, next);
         expect(next).toHaveBeenCalled();
     });
 
@@ -90,8 +90,7 @@ describe('Unified Access Middleware', () => {
     });
 
     test('should pass if KYC is complete', async () => {
-        req.user = { role: 'user', kycStatus: { isComplete: true, state: KYCState.VERIFIED }, companyId: '123' } as any;
-        mockFindOne.mockResolvedValue({ _id: 'kyc_doc_id' }); // Mock remote KYC check success
+        req.user = { _id: 'user-123', role: 'seller', kycStatus: { isComplete: true, state: KYCState.VERIFIED } } as any;
 
         await requireAccess({ kyc: true })(req as Request, res, next);
         expect(next).toHaveBeenCalled();
